@@ -1,7 +1,6 @@
 import dynamic from "next/dynamic";
 const DownloadProjectButton = dynamic(
-  () => import("./download-button").then((m) => m.DownloadProjectButton),
-  { ssr: false }
+  () => import("./download-button").then((m) => m.DownloadProjectButton)
 );
 
 export default function HelloPage() {
