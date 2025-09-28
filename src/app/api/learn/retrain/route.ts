@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { learnInputs, learnKeywords, learnSuggestions, learnClicks } from '@/db/schema';
 import { eq, gte } from 'drizzle-orm';
+import { checkDatabaseAvailability } from '@/lib/db-utils';
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if database is available
+    const dbError = checkDatabaseAvailability();
+    if (dbError) return dbError;
+
     console.log('Starting model retraining process');
 
     // Parse request body

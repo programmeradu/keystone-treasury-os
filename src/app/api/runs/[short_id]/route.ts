@@ -2,16 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { runs } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { checkDatabaseAvailability } from '@/lib/db-utils';
 
-interface RouteParams {
-  params: {
-    short_id: string;
-  };
-}
-
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: Request) {
   try {
-    const { short_id } = params;
+    // Check if database is available
+    const dbError = checkDatabaseAvailability();
+    if (dbError) return dbError;
+
+    const { pathname } = new URL(request.url);
+    const match = pathname.match(/\/api\/runs\/([^/]+)\/?$/i);
+    const short_id = match?.[1] || "";
 
     // Validate shortId format (12 characters alphanumeric)
     if (!short_id || short_id.length !== 12 || !/^[a-zA-Z0-9]{12}$/.test(short_id)) {
