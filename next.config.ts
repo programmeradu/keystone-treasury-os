@@ -17,6 +17,15 @@ const nextConfig: NextConfig = {
     ],
   },
   outputFileTracingRoot: path.resolve(__dirname, '../../'),
+  webpack: (config) => {
+    // Avoid bundling optional CLI-only pretty printer pulled in by pino via walletconnect logger
+    config.resolve = config.resolve || {};
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      'pino-pretty': false as unknown as string,
+    };
+    return config;
+  },
   turbopack: {
     rules: {
       "*.{jsx,tsx}": {
@@ -27,4 +36,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-// Orchids restart: 1759051547195
+// Orchids restart: 1759075365097

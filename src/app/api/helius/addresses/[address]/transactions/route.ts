@@ -11,7 +11,6 @@ import { NextResponse } from "next/server";
 export async function GET(req: Request) {
   try {
     const { pathname } = new URL(req.url);
-    // Extract dynamic [address] from /api/helius/addresses/[address]/transactions
     const match = pathname.match(/\/api\/helius\/addresses\/([^/]+)\/transactions/i);
     const address = match?.[1] || "";
     if (!address || address.length < 20) {
