@@ -3,15 +3,14 @@ import { db } from '@/db';
 import { alerts } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { Resend } from 'resend';
+import { checkDatabaseAvailability } from '@/utils/db';
 
 export async function POST(request: NextRequest) {
   try {
     // Check if database is available
-    if (!db) {
-      return NextResponse.json({
-        error: "Database service is currently unavailable",
-        code: "DATABASE_UNAVAILABLE"
-      }, { status: 503 });
+    const dbCheckResponse = checkDatabaseAvailability();
+    if (dbCheckResponse) {
+      return dbCheckResponse;
     }
 
     const { email, thresholdUsd, minGasUnits } = await request.json();
