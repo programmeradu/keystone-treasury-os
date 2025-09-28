@@ -58,7 +58,6 @@ function extractParams(req: NextRequest) {
   // 1) Try req.nextUrl
   let sp: URLSearchParams | null = null;
   try {
-    // @ts-expect-error: nextUrl exists on NextRequest
     const nx = (req as any).nextUrl;
     if (nx?.searchParams) sp = nx.searchParams as URLSearchParams;
   } catch {}
