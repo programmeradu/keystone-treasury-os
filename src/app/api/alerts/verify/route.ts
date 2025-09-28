@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { alerts } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { checkDatabaseAvailability } from '@/utils/db';
+import { checkDatabaseAvailability } from '@/lib/db-utils';
 
 export async function GET(request: NextRequest) {
   try {
     // Check if database is available
-    const dbCheckResponse = await checkDatabaseAvailability();
+    const dbCheckResponse = checkDatabaseAvailability();
     if (dbCheckResponse) {
       return dbCheckResponse;
     }

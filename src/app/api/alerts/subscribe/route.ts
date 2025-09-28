@@ -3,7 +3,7 @@ import { db } from '@/db';
 import { alerts } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { Resend } from 'resend';
-import { checkDatabaseAvailability } from '@/utils/db';
+import { checkDatabaseAvailability } from '@/lib/db-utils';
 
 export async function POST(request: NextRequest) {
   try {
