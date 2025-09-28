@@ -3,7 +3,11 @@ import { AtlasClient } from "@/components/atlas/atlas-client";
 
 export const dynamic = "force-dynamic";
 
-export default function SolanaAtlasPage({ searchParams }: { searchParams?: Record<string, string | string[] | undefined> }) {
+export default async function SolanaAtlasPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
+  // Resolve searchParams to satisfy Next.js 15 PageProps typing; we don't currently use it.
+  if (searchParams) {
+    await searchParams;
+  }
   const backgrounds: string[] = [
     "https://slelguoygbfzlpylpxfs.supabase.co/storage/v1/object/public/project-uploads/839a9d0f-c8ea-4ee9-aa5d-ded18c4cf0d9/generated_images/wide-4k-ghibli-inspired-city-scene-at-go-bdf9f492-20250928003342.jpg?",
     "https://slelguoygbfzlpylpxfs.supabase.co/storage/v1/object/public/project-uploads/839a9d0f-c8ea-4ee9-aa5d-ded18c4cf0d9/generated_images/wide-4k-pixar-inspired-stylized-waterfro-eacfb486-20250928003350.jpg?",
