@@ -2,11 +2,24 @@ import { drizzle } from 'drizzle-orm/libsql';
 import { createClient } from '@libsql/client';
 import * as schema from '@/db/schema';
 
-const client = createClient({
-  url: process.env.TURSO_CONNECTION_URL!,
-  authToken: process.env.TURSO_AUTH_TOKEN!,
-});
+// Create client only if environment variables are available
+// This prevents build-time errors when deploying to Netlify
+const createDbClient = () => {
+  const url = process.env.TURSO_CONNECTION_URL;
+  const authToken = process.env.TURSO_AUTH_TOKEN;
+  
+  if (!url || !authToken) {
+    // Return a mock client for build-time compatibility
+    return null;
+  }
+  
+  return createClient({
+    url,
+    authToken,
+  });
+};
 
-export const db = drizzle(client, { schema });
+const client = createDbClient();
+export const db = client ? drizzle(client, { schema }) : null;
 
 export type Database = typeof db;

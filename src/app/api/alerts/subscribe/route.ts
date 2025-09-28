@@ -6,6 +6,14 @@ import { Resend } from 'resend';
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if database is available
+    if (!db) {
+      return NextResponse.json({
+        error: "Database service is currently unavailable",
+        code: "DATABASE_UNAVAILABLE"
+      }, { status: 503 });
+    }
+
     const { email, thresholdUsd, minGasUnits } = await request.json();
 
     // Validate email format

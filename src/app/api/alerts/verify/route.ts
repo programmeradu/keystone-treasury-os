@@ -5,6 +5,14 @@ import { eq } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
   try {
+    // Check if database is available
+    if (!db) {
+      return NextResponse.json({
+        error: "Database service is currently unavailable",
+        code: "DATABASE_UNAVAILABLE"
+      }, { status: 503 });
+    }
+
     const { searchParams } = new URL(request.url);
     const token = searchParams.get('token');
 

@@ -10,6 +10,18 @@ export async function POST(request: NextRequest) {
   let errors = 0;
 
   try {
+    // Check if database is available
+    if (!db) {
+      console.error('Database not available - missing TURSO_CONNECTION_URL or TURSO_AUTH_TOKEN');
+      return NextResponse.json({
+        ok: false,
+        error: 'Database configuration error',
+        checked: 0,
+        notified: 0,
+        errors: 1
+      }, { status: 500 });
+    }
+
     // Check required environment variables
     const resendApiKey = process.env.RESEND_API_KEY;
     const emailFrom = process.env.EMAIL_FROM;
