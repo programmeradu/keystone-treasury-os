@@ -58,6 +58,7 @@ function extractParams(req: NextRequest) {
   // 1) Try req.nextUrl
   let sp: URLSearchParams | null = null;
   try {
+    // @ts-expect-error: nextUrl exists on NextRequest
     const nx = (req as any).nextUrl;
     if (nx?.searchParams) sp = nx.searchParams as URLSearchParams;
   } catch {}
@@ -248,10 +249,6 @@ export async function GET(request: NextRequest) {
 
   const fromChainConfig = CHAIN_MAP[fromChain];
   const toChainConfig = CHAIN_MAP[toChain];
-
-  // Narrow token symbols to definite strings after validation
-  const fromTokenStr: string = fromToken;
-  const toTokenStr: string = (toToken ?? fromTokenStr);
   if (!fromChainConfig || !toChainConfig) {
     return NextResponse.json(
       { error: `Unsupported chain: ${fromChainRaw} or ${toChainRaw}. Supported: ethereum, arbitrum, base, polygon, bsc` },
@@ -259,15 +256,15 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  let fromTokenAddress = fromTokenStr === "ETH" ? TOKEN_MAP.ETH : 
-    (fromTokenStr === "USDC" ? fromChainConfig.usdcAddress : null);
-  let toTokenAddress = toTokenStr === "ETH" ? TOKEN_MAP.ETH : 
-    (toTokenStr === "USDC" ? toChainConfig.usdcAddress : null);
+  let fromTokenAddress = fromToken === "ETH" ? TOKEN_MAP.ETH : 
+    (fromToken === "USDC" ? fromChainConfig.usdcAddress : null);
+  let toTokenAddress = toToken === "ETH" ? TOKEN_MAP.ETH : 
+    (toToken === "USDC" ? toChainConfig.usdcAddress : null);
 
-  if (fromTokenStr === "USDC" && !fromTokenAddress) {
+  if (fromToken === "USDC" && !fromTokenAddress) {
     return NextResponse.json({ error: `USDC address not found for ${fromChain}` }, { status: 400 });
   }
-  if (toTokenStr === "USDC" && !toTokenAddress) {
+  if (toToken === "USDC" && !toTokenAddress) {
     return NextResponse.json({ error: `USDC address not found for ${toChain}` }, { status: 400 });
   }
 
@@ -275,8 +272,8 @@ export async function GET(request: NextRequest) {
   if (!RANGO_API_KEY) {
     return NextResponse.json({ error: "Rango API key not configured" }, { status: 500 });
   }
-  const fromAsset = buildRangoAsset(fromChain, fromTokenStr, fromTokenAddress);
-  const toAsset = buildRangoAsset(toChain, toTokenStr, toTokenAddress);
+  const fromAsset = buildRangoAsset(fromChain, fromToken, fromTokenAddress);
+  const toAsset = buildRangoAsset(toChain, toToken, toTokenAddress);
   const rango = await tryRangoQuote({
     from: fromAsset,
     to: toAsset,
@@ -311,18 +308,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Ensure definite tokens for URL param construction
-  const fromTokenStr: string = fromToken;
-  const toTokenStr: string = (toToken ?? fromTokenStr);
-
   // Reuse GET logic to avoid divergence
   const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "localhost:3000";
   const proto = req.headers.get("x-forwarded-proto") || "http";
   const url = new URL(`${proto}://${host}/api/bridge/quote`);
   url.searchParams.set("fromChain", fromChain);
   url.searchParams.set("toChain", toChain);
-  url.searchParams.set("fromToken", fromTokenStr);
-  url.searchParams.set("toToken", toTokenStr);
+  url.searchParams.set("fromToken", fromToken);
+  url.searchParams.set("toToken", toToken);
   url.searchParams.set("fromAmount", fromAmount);
 
   return fetch(url.toString(), { cache: "no-store" });

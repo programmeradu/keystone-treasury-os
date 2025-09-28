@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 // GET /api/helius/addresses/[address]/transactions?limit=100&before=<signature>&until=<signature>&startTime=<unix>&endTime=<unix>&page=<n>
 // Proxies to Helius Parsed Transaction History API:
@@ -8,11 +8,12 @@ import { NextResponse } from "next/server";
 // - Supports optional network param (?network=mainnet|devnet). Defaults to mainnet.
 // - Returns { ok, address, network, params, items, page, cursor? } shape
 
-export async function GET(req: Request) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { address: string } }
+) {
   try {
-    const { pathname } = new URL(req.url);
-    const match = pathname.match(/\/api\/helius\/addresses\/([^/]+)\/transactions/i);
-    const address = match?.[1] || "";
+    const address = params.address;
     if (!address || address.length < 20) {
       return NextResponse.json({ ok: false, error: "Invalid Solana address" }, { status: 400 });
     }

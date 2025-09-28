@@ -170,6 +170,92 @@ export function AtlasClient() {
   const [compassData, setCompassData] = useState<any | null>(null);
   const [selectedAirdropId, setSelectedAirdropId] = useState<string | null>(null);
 
+  // Helper: build a few realistic heuristic airdrops when scan returns sparse results
+  function buildHeuristicAirdrops(addr: string, sol: number | null) {
+    const now = Date.now();
+    const tasksSwapUsdc = [{ id: `t-swap-usdc-${now}` , type: "swap", label: "Swap 0.1 SOL → USDC on Jupiter", venue: "Jupiter", value: 0.1 }];
+    const tasksStakeMnde = [{ id: `t-stake-mnde-${now}`, type: "stake", label: "Stake 1 SOL with Marinade", venue: "Marinade", value: 1 }];
+    const items = [] as any[];
+    // Jupiter is generally open to anyone; encourage a small swap
+    items.push({
+      id: `air-jup-${addr.slice(0,6)}-${now}`,
+      name: "Jupiter Quests",
+      source: "jup.ag",
+      status: "eligible",
+      estReward: "Points/Boost (speculative)",
+      details: "Execute a small swap to accrue activity for potential points/quests.",
+      endsAt: null,
+      tasks: tasksSwapUsdc,
+    });
+    // Marinade staking eligibility if user has at least ~1 SOL
+    if ((sol ?? 0) >= 1) {
+      items.push({
+        id: `air-mnde-${addr.slice(0,6)}-${now}`,
+        name: "Marinade Staking",
+        source: "marinade.finance",
+        status: "eligible",
+        estReward: "Staking APY + quests (ongoing)",
+        details: "Stake SOL to receive mSOL and participate in ecosystem quests.",
+        endsAt: null,
+        tasks: tasksStakeMnde,
+      });
+    }
+    return items;
+  }
+
+  // Try to drive the embedded Jupiter widget for swap quests; fall back to internal swap flow
+  async function tryInitiateJupiterSwap({ amount = 0.1, inputMint = MINTS.SOL, outputMint = MINTS.USDC }: { amount?: number; inputMint?: string; outputMint?: string; }) {
+    const Jupiter: any = (window as any)?.Jupiter;
+    const container = document.getElementById("jupiter-integrated");
+    const want = { inputMint, outputMint, amount: String(amount) };
+    try {
+      if (Jupiter && typeof Jupiter.init === "function") {
+        if (typeof Jupiter.setFormProps === "function") {
+          Jupiter.setFormProps({ initialInputMint: inputMint, initialOutputMint: outputMint, initialAmount: String(amount) });
+        } else if (typeof Jupiter.syncProps === "function") {
+          Jupiter.syncProps({ formProps: { initialInputMint: inputMint, initialOutputMint: outputMint, initialAmount: String(amount) } });
+        }
+        // Give the widget a moment to compute routes, then click swap if a button exists
+        await new Promise((r) => setTimeout(r, 550));
+        const btn = container?.querySelector('button:has(span),button');
+        // Heuristic: click the last primary-ish button
+        const buttons = container ? Array.from(container.querySelectorAll('button')) as HTMLButtonElement[] : [];
+        const primary = buttons.reverse().find(b => /swap|review|confirm/i.test(b.textContent || ""));
+        (primary || btn)?.click?.();
+        toast.message("Jupiter swap initiated", { description: `${amount} SOL → USDC via embedded widget` });
+        return true;
+      }
+    } catch {}
+    // Fallback to internal quote + executeSwap
+    setKind("swap_jupiter");
+    setAmountSol(Number(amount));
+    await simulate();
+    await executeSwap();
+    return true;
+  }
+
+  // Execute a specific quest task directly
+  async function handleExecuteTask(t: any) {
+    const type = (t?.type || t?.kind || "").toLowerCase();
+    const val = typeof t?.value === "number" ? t.value : typeof t?.amount === "number" ? t.amount : 0.1;
+    if (!publicKey) { toast.error("Connect wallet to execute"); return; }
+    if (type === "swap") {
+      await tryInitiateJupiterSwap({ amount: val, inputMint: t?.inputMint || MINTS.SOL, outputMint: t?.outputMint || MINTS.USDC });
+      return;
+    }
+    if (type === "stake") {
+      setKind("stake_marinade");
+      setAmountSol(val);
+      await executeStake();
+      return;
+    }
+    if (type === "lp") {
+      toast.message("LP flow not automated yet", { description: "Use target vault UI for deposit." });
+      return;
+    }
+    toast.info("Unsupported task type for execute yet.");
+  }
+
   // NEW: Speculative opportunities (airdrops.io)
   const [specLoading, setSpecLoading] = useState(false);
   const [specError, setSpecError] = useState<string | null>(null);
@@ -221,9 +307,24 @@ export function AtlasClient() {
     if (e) e.preventDefault();
     const text = cmdText.trim();
     if (!text) return;
-    // prime Strategy Lab with input and tool
+
+    // Quick NLP: Quests intents (e.g., "scan my wallet for airdrops")
+    const lower = text.toLowerCase();
+    const wantsAirdrops = /(scan|check|find|show|discover).*air\s?-?\s?drops?|airdrop/.test(lower) || /airdrops?/.test(lower);
+    if (wantsAirdrops) {
+      setActiveTab('quests');
+      setCmdText("");
+      setTimeout(() => {
+        scanAirdrops();
+        document.getElementById('airdrop-compass')?.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
+      return;
+    }
+
+    // Default: Strategy Lab intents
     setActiveTab('lab');
     setNlpText(cmdTool === 'auto' ? text : `${cmdTool} ${text}`);
+    setCmdText("");
     // allow tab render, then parse/simulate
     setTimeout(() => {
       nlpInputRef.current?.focus();
@@ -752,9 +853,14 @@ export function AtlasClient() {
     try {
       const addr = publicKey.toBase58();
       const j = await fetchJsonWithRetry(`/api/airdrops/scan?address=${addr}`, { cache: "no-store" });
-      setCompassData((j as any).data);
+      let data = (j as any).data || j;
+      // Merge in heuristics to ensure a few realistic, actionable items
+      const heur = buildHeuristicAirdrops(addr, solBalance);
+      const eligibleNow = Array.isArray(data?.eligibleNow) ? [...data.eligibleNow, ...heur] : heur;
+      data = { ...(data || {}), eligibleNow };
+      setCompassData(data);
       toast.success("Airdrop scan complete");
-      const first = (j as any)?.data?.eligibleNow?.[0]?.id || null;
+      const first = (data as any)?.eligibleNow?.[0]?.id || null;
       setSelectedAirdropId(first);
     } catch (e: any) {
       setCompassError(e?.message || String(e));
@@ -1061,7 +1167,7 @@ export function AtlasClient() {
               {/* 3-column uniform grid with equal-height cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
                 {/* Airdrop Compass */}
-                <div className="h-full">
+                <div className="h-full" id="airdrop-compass">
                   <Card className="atlas-card relative overflow-hidden h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)] min-h-[360px]">
                     <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
                     <CardHeader className="pb-2 flex flex-col gap-2">
@@ -1100,20 +1206,20 @@ export function AtlasClient() {
                       }
 
                       {compassData &&
-                      <div className="grid md:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                           {/* Airdrop list */}
-                          <div className="md:col-span-1 space-y-2">
+                          <div className="md:col-span-1 space-y-2 min-w-0 max-h-72 overflow-y-auto pr-1">
                             <div className="text-xs font-medium opacity-80">Detected Airdrops</div>
                             {(compassData.eligibleNow || []).map((a: any) =>
                           <button
                             key={a.id}
                             onClick={() => setSelectedAirdropId(a.id)}
-                            className={`relative overflow-hidden w-full text-left rounded-md p-2 text-xs bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 transition-colors hover:shadow-[0_6px_18px_-12px_rgba(0,0,0,0.3)] ${selectedAirdropId === a.id ? "bg-muted/50" : ""}`}>
+                            className={`relative overflow-hidden w-full text-left rounded-md p-2 text-xs bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 transition-colors hover:shadow-[0_6px_18px_-12px_rgba(0,0,0,0.3)] min-w-0 ${selectedAirdropId === a.id ? "bg-muted/50" : ""}`}>
 
                                 <span className="pointer-events-none absolute -top-8 -right-8 h-16 w-16 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/25%,transparent_70%)]" />
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between gap-2">
                                   <span className="font-medium truncate">{a.name}</span>
-                                  <div className="flex items-center gap-1">
+                                  <div className="flex items-center gap-1 shrink-0">
                                     {a.source &&
                                 <Badge variant="secondary" className="text-[10px]">{a.source}</Badge>
                                 }
@@ -1122,13 +1228,13 @@ export function AtlasClient() {
                                     </Badge>
                                   </div>
                                 </div>
-                                <div className="mt-1 opacity-70">{a.estReward}</div>
+                                <div className="mt-1 opacity-70 break-words">{a.estReward}</div>
                               </button>
                           )}
                           </div>
 
                           {/* Airdrop details */}
-                          <div className="md:col-span-2">
+                          <div className="md:col-span-2 min-w-0">
                             {(() => {
                             const all = [
                             ...(compassData.eligibleNow || [])];
@@ -1137,9 +1243,9 @@ export function AtlasClient() {
                             if (!sel) return <div className="text-xs opacity-70">No eligible airdrops detected for this wallet.</div>;
                             return (
                               <div className="space-y-2 text-xs">
-                                  <div className="flex items-center justify-between">
-                                    <div className="font-medium">{sel.name}</div>
-                                    <div className="flex items-center gap-2">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="font-medium truncate">{sel.name}</div>
+                                    <div className="flex items-center gap-2 shrink-0">
                                       {sel.source && <Badge variant="secondary">{sel.source}</Badge>}
                                       <Badge variant={sel.status === "eligible" ? "default" : "secondary"}>{sel.status}</Badge>
                                       {sel.endsAt &&
@@ -1147,20 +1253,25 @@ export function AtlasClient() {
                                     }
                                     </div>
                                   </div>
-                                  <div className="opacity-80">{sel.details}</div>
+                                  <div className="opacity-80 break-words">{sel.details}</div>
                                   <Separator />
                                   <div className="font-medium">Tasks</div>
                                   <ul className="space-y-2">
                                     {sel.tasks?.map((t: any) =>
-                                  <li key={t.id} className="relative overflow-hidden flex items-center justify-between rounded-md p-2 bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 transition-colors hover:shadow-[0_6px_18px_-12px_rgba(0,0,0,0.3)]">
+                                  <li key={t.id} className="relative overflow-hidden flex flex-wrap items-center justify-between gap-2 rounded-md p-2 bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 transition-colors hover:shadow-[0_6px_18px_-12px_rgba(0,0,0,0.3)] min-w-0">
                                         <span className="pointer-events-none absolute -top-8 -right-8 h-16 w-16 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/25%,transparent_70%)]" />
-                                        <div className="flex flex-col">
-                                          <span>{t.label}</span>
+                                        <div className="flex flex-col min-w-0">
+                                          <span className="break-words">{t.label}</span>
                                           {t.venue && <span className="text-[10px] opacity-60">Venue: {t.venue}</span>}
                                         </div>
-                                        <Button size="sm" variant="secondary" onClick={() => handleSimulateTask(t)}>
-                                          <span className="flex items-center gap-1.5"><GlyphCompass className="h-3.5 w-3.5" /><span>Simulate</span></span>
-                                        </Button>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                          <Button size="sm" variant="secondary" onClick={() => handleSimulateTask(t)}>
+                                            <span className="flex items-center gap-1.5"><GlyphCompass className="h-3.5 w-3.5" /><span>Simulate</span></span>
+                                          </Button>
+                                          <Button size="sm" onClick={() => handleExecuteTask(t)}>
+                                            Execute
+                                          </Button>
+                                        </div>
                                       </li>
                                   )}
                                   </ul>

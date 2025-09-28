@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import {
   Bot,
   ShieldCheck,
@@ -19,6 +20,7 @@ import {
   Loader2 } from
 "lucide-react";
 import TreasurySimulator from "@/components/TreasurySimulator";
+import { useAccount } from "wagmi";
 
 export const HomeClient = () => {
   // Unified 4K real-photo background for the entire page
@@ -102,13 +104,10 @@ function Header() {
         </nav>
         <div className="flex items-center gap-2">
           <Button variant="secondary" size="sm" asChild>
-            <a href="#showcase" aria-label="Jump to interactive showcase">Try a Command</a>
+            <a href="/app" aria-label="Open the Keystone app">Open App</a>
           </Button>
           <Button size="sm" asChild>
             <a href="#contact" aria-label="Request access to Keystone">Request Access</a>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <a href="/api/download-project" download aria-label="Download project as ZIP">Download Project (ZIP)</a>
           </Button>
           
         </div>
@@ -377,7 +376,10 @@ function SolanaAtlasSection() {
 
 }
 
-function ShowcaseSection() {
+export function ShowcaseSection() {
+  const { isConnected } = useAccount();
+  const formRef = useRef<HTMLFormElement>(null);
+  const [needsWalletOpen, setNeedsWalletOpen] = useState(false);
   const [command, setCommand] = useState("");
   const [submitted, setSubmitted] = useState<string | null>(null);
   const [plannerEnabled, setPlannerEnabled] = useState(true);
@@ -415,6 +417,17 @@ function ShowcaseSection() {
   // Mini Solana Atlas widget prices
   const [solPrice, setSolPrice] = useState<number | null>(null);
   const [msolPrice, setMsolPrice] = useState<number | null>(null);
+  // Execution progress (via /api/execute)
+  const [execRun, setExecRun] = useState<any | null>(null);
+  const [execLoading, setExecLoading] = useState<boolean>(false);
+  const [execError, setExecError] = useState<string | null>(null);
+
+  function handleExecuteClick() {
+    const trimmed = command.trim();
+    if (!trimmed) return;
+    // execute immediately without confirm dialog
+    formRef.current?.requestSubmit();
+  }
 
   // Recompute USD estimate when either gas price or ETH/USD updates
   useEffect(() => {
@@ -556,6 +569,9 @@ function ShowcaseSection() {
     setValidationProgress(0);
     setToolResult(null);
     setToolError(null);
+    setExecRun(null);
+    setExecError(null);
+    setExecLoading(false);
 
     if (!trimmed) return;
 
@@ -755,8 +771,22 @@ function ShowcaseSection() {
             })
           });
           const qj = await q.json();
-          if (q.ok && qj?.data) setRouteQuote(qj.data);else
-          setRouteError(mapRouteError(qj?.error || "Best route temporarily unavailable. Please try again shortly."));
+          if (q.ok && qj?.data) setRouteQuote(qj.data); else {
+            setRouteError(mapRouteError(qj?.error || "Best route temporarily unavailable. Please try again shortly."));
+            // Fallback: unified deterministic quotes
+            try {
+              const uq = await fetch("/api/quotes", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ prompt: trimmed })
+              });
+              const uj = await uq.json();
+              if (uq.ok && uj?.data) {
+                setRouteQuote(uj.data);
+                setRouteError(null);
+              }
+            } catch {}
+          }
 
           // yields on destination
           const y = await fetch(`/api/yields?asset=${token}&chain=${to}`);
@@ -769,8 +799,22 @@ function ShowcaseSection() {
           const sellAmount = sellToken === "USDC" ? Math.round(notional * 1e6) : Math.round(notional * 1e18);
           const q = await fetch(`/api/swap/quote?sellToken=${sellToken}&buyToken=${buyToken}&sellAmount=${sellAmount}&chainId=1`);
           const qj = await q.json();
-          if (q.ok && qj?.data) setRouteQuote(qj.data);else
-          setRouteError(mapRouteError(qj?.error || "Unable to fetch a quote for the given parameters."));
+          if (q.ok && qj?.data) setRouteQuote(qj.data); else {
+            setRouteError(mapRouteError(qj?.error || "Unable to fetch a quote for the given parameters."));
+            // Fallback: unified deterministic quotes
+            try {
+              const uq = await fetch("/api/quotes", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ prompt: trimmed })
+              });
+              const uj = await uq.json();
+              if (uq.ok && uj?.data) {
+                setRouteQuote(uj.data);
+                setRouteError(null);
+              }
+            } catch {}
+          }
 
           // yields for buy side on ethereum
           const destAsset = buyToken;
@@ -783,6 +827,34 @@ function ShowcaseSection() {
       }
     }
   }
+
+  // Background: execute planned steps (deterministic stub)
+  useEffect(() => {
+    const run = async () => {
+      if (!submitted) return;
+      if (execRun || execLoading) return;
+      try {
+        setExecLoading(true);
+        const res = await fetch("/api/execute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: submitted, steps: serverSteps || undefined })
+        });
+        const data = await res.json();
+        if (!res.ok || data?.ok === false) {
+          setExecError(data?.error || "Execution failed");
+        } else {
+          setExecRun(data.run);
+        }
+      } catch (e: any) {
+        setExecError(e?.message || "Execution error");
+      } finally {
+        setExecLoading(false);
+      }
+    };
+    run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [submitted, serverSteps]);
 
   // Friendlier error mapping for route quotes
   function mapRouteError(msg: string): string {
@@ -817,7 +889,7 @@ function ShowcaseSection() {
 
         <Card className="mt-6 border-border/70 bg-background/70 supports-[backdrop-filter]:backdrop-blur-sm">
           <CardContent className="pt-6">
-            <form onSubmit={onSubmit} className="flex flex-col gap-3">
+            <form onSubmit={onSubmit} ref={formRef} className="flex flex-col gap-3">
               <div className="flex items-center gap-2">
                 <Terminal className="h-4 w-4 opacity-70" />
                 {selectedTool &&
@@ -832,9 +904,7 @@ function ShowcaseSection() {
                   aria-describedby="command-help"
                   autoComplete="off"
                   spellCheck={false} />
-
-
-                <Button type="submit" size="sm" className="shrink-0" disabled={!command.trim() || loading || toolLoading} aria-disabled={!command.trim() || loading || toolLoading} aria-busy={loading || toolLoading}>
+                <Button type="button" onClick={handleExecuteClick} size="sm" className="shrink-0" disabled={!command.trim() || loading || toolLoading} aria-disabled={!command.trim() || loading || toolLoading} aria-busy={loading || toolLoading}>
                   {loading || toolLoading ?
                   <span className="inline-flex items-center gap-2">
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -910,6 +980,21 @@ function ShowcaseSection() {
                 </div>
               </div>
             </form>
+
+            {/* Wallet Required Dialog */}
+            <Dialog open={needsWalletOpen} onOpenChange={setNeedsWalletOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Connect your wallet</DialogTitle>
+                  <DialogDescription>
+                    You need to connect a wallet before executing commands.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button variant="secondary" size="sm" onClick={() => setNeedsWalletOpen(false)}>Close</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
             <Separator className="my-4" />
 
@@ -1023,6 +1108,35 @@ function ShowcaseSection() {
                     }
                     </div>
                   }
+
+                  {/* Execution Progress */}
+                  {(execLoading || execRun || execError) && (
+                    <div className="mt-3 rounded-md border border-border/70 bg-background/70 p-2">
+                      <div className="mb-1 text-[10px] uppercase tracking-wide opacity-60">Execution</div>
+                      {execLoading && (
+                        <div className="text-xs opacity-80 inline-flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Starting…</div>
+                      )}
+                      {execError && (
+                        <div className="text-[11px] opacity-80">{execError}</div>
+                      )}
+                      {execRun && (
+                        <div className="text-xs">
+                          <div className="font-medium">{execRun.summary}</div>
+                          {Array.isArray(execRun.steps) && execRun.steps.length > 0 && (
+                            <ul className="mt-2 space-y-1">
+                              {execRun.steps.map((st: any) => (
+                                <li key={st.index} className="flex items-center gap-2">
+                                  <span className={`h-2 w-2 rounded-full ${st.status === "confirmed" ? "bg-green-500" : st.status === "success" ? "bg-emerald-400" : "bg-yellow-500"}`} />
+                                  <span className="truncate">{st.title}</span>
+                                  <span className="ml-auto text-[10px] opacity-70">{st.status}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Magic: Route Preview */}
                   {routeQuote &&
@@ -1156,6 +1270,22 @@ function UseCasesSection() {
               <p>Schedule contributor payroll across chains, auto-route stablecoins, and capture approvals with one prompt.</p>
             </CardContent>
           </Card>
+          <Card className="border-border/70 bg-background/70 transition-colors hover:bg-background/80 hover:border-border supports-[backdrop-filter]:backdrop-blur-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Investor Reporting & Audit</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 text-xs opacity-80">
+              <p>Generate board-ready treasury reports, PnL, and audit trails in seconds—export to CSV/PDF and share securely.</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border/70 bg-background/70 transition-colors hover:bg-background/80 hover:border-border supports-[backdrop-filter]:backdrop-blur-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Scenario Planning & Hedging</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 text-xs opacity-80">
+              <p>Ask "What if SOL drops 20%?"—auto-simulate impact, propose rebalances, and place hedges with risk limits.</p>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </section>);
@@ -1202,6 +1332,7 @@ function SiteFooter() {
           <nav aria-label="Footer" role="navigation" className="flex flex-wrap gap-4">
             <a href="#features" className="opacity-80 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm">Features</a>
             <a href="#showcase" className="opacity-80 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm">Showcase</a>
+            <a href="/app" className="opacity-80 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm">App</a>
             <a href="/oracle" className="opacity-80 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm">Oracle</a>
             <a href="/atlas" className="opacity-80 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm">Solana Atlas</a>
             <a href="#use-cases" className="opacity-80 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm">Use Cases</a>

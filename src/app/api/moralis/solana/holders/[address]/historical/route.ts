@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 
-export async function GET(req: Request) {
-  const { pathname } = new URL(req.url);
-  const match = pathname.match(/\/api\/moralis\/solana\/holders\/([^/]+)\/historical/i);
-  const address = match?.[1] || "";
+export async function GET(req: Request, { params }: { params: { address: string } }) {
+  const address = params.address;
   if (!address) {
     return NextResponse.json({ error: "Missing token address" }, { status: 400 });
   }

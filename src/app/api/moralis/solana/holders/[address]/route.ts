@@ -1,14 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 // GET /api/moralis/solana/holders/[address]?limit=100&cursor=<cursor>
 // Note: Despite the path name, this implementation prefers Helius DAS (getAssetsByOwner)
 // to fetch a wallet's token/NFT holdings. We keep the path for backward-compatibility.
 
-export async function GET(req: Request) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { address: string } }
+) {
   try {
-    const { pathname } = new URL(req.url);
-    const match = pathname.match(/\/api\/moralis\/solana\/holders\/([^/]+)$/i);
-    const address = match?.[1] || "";
+    const address = params.address;
     if (!address || address.length < 20) {
       return NextResponse.json({ ok: false, error: "Invalid Solana address" }, { status: 400 });
     }

@@ -1,7 +1,4 @@
-import dynamic from "next/dynamic";
-const DownloadProjectButton = dynamic(
-  () => import("./download-button").then((m) => m.DownloadProjectButton)
-);
+import { DownloadProjectButton } from "./download-button";
 
 export default function HelloPage() {
   return (

@@ -23,8 +23,8 @@ While competitors build better dashboards, we're eliminating the need for them e
 - Core APIs: Helius (Solana Infra), Bitquery (Multi-Chain Analytics), Jupiter (Solana Swaps)
 
 ### 4) The Pitch
-- Pitch Deck:(https://app.foundance.org/projects/12619?cid=20634)
-- Video Demo: 
+- Pitch Deck: ADD_LINK_HERE
+- Video Demo: ADD_LINK_HERE
 
 ---
 
@@ -132,11 +132,14 @@ Tips: In the bottom command bar, try typing: "scan my wallet for airdrops". It w
 ---
 
 ## Team & Contact
-- Team: KeyStone
-- Contact: founder@stauniverse.tech
+- Team: ADD_NAMES_AND_ROLES
+- Contact: ADD_EMAIL or X/Discord handle
 - Why us: Deep experience across DeFi infra, risk, and product. We're building the command layer so teams can focus on intent—not interfaces.
 
 ---
+
+## License
+- MIT (or choose your license)
 
 ## Acknowledgments
 - Thanks to Helius, Bitquery, Jupiter, Marinade, and the Solana ecosystem for infrastructure and tooling.

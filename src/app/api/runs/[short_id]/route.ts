@@ -1,13 +1,17 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { runs } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
-export async function GET(request: Request) {
+interface RouteParams {
+  params: {
+    short_id: string;
+  };
+}
+
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const { pathname } = new URL(request.url);
-    const match = pathname.match(/\/api\/runs\/([^/]+)\/?$/i);
-    const short_id = match?.[1] || "";
+    const { short_id } = params;
 
     // Validate shortId format (12 characters alphanumeric)
     if (!short_id || short_id.length !== 12 || !/^[a-zA-Z0-9]{12}$/.test(short_id)) {
@@ -57,11 +61,9 @@ export async function GET(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const { pathname } = new URL(request.url);
-    const match = pathname.match(/\/api\/runs\/([^/]+)\/?$/i);
-    const short_id = match?.[1] || "";
+    const { short_id } = params;
 
     // Validate shortId format (12 characters alphanumeric)  
     if (!short_id || short_id.length !== 12 || !/^[a-zA-Z0-9]{12}$/.test(short_id)) {

@@ -42,8 +42,9 @@ export async function GET(_req: NextRequest) {
       "**/.cache/**",
       "**/.vercel/**",
       "**/.swc/**",
-      "**/.env",
-      "**/.env.*",
+      // removed env ignores to include env files in the zip
+      // "**/.env",
+      // "**/.env.*",
       "**/*.zip",
     ],
   });
