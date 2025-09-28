@@ -1,0 +1,75 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+  schedule:
+    - cron: "0 3 * * *" # daily at 03:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    name: Build, Start, and Test
+    runs-on: ubuntu-latest
+
+    # Temporary direct envs for CI test run (hardcoded for this repo's test only)
+    env:
+      HELIUS_API_KEY: db37b6d5-ae87-48d0-85e7-69a95445ea9d
+      MORALIS_API_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6ImRlNGE3ODUwLWQ5NzYtNDY0MS1iNjU4LTZkM2M1N2MyNzg3NiIsIm9yZ0lkIjoiMzk2MTk4IiwidXNlcklkIjoiNDA3MTIwIiwidHlwZUlkIjoiOGQ4ZjQ0MDQtOWM5MS00OWUyLTljMDYtN2I1ZWQ3NWNiMDgzIiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3MTgyNTk1NDIsImV4cCI6NDg3NDAxOTU0Mn0.53LerZ_cvXI4jMMiKPe8yk8iJRn_i3wySaXC4OQgg4Y
+      BITQUERY_API_KEY: ory_at_GzGMcEongqrTd9l5wZGI8Pood9UNF3As8LFLM6ZlKdY.BFsV_Nv13O9XKQryN5mY9h9HFNZ_1v5G9l2v_b8vqIU
+      SOLSCAN_API_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjcmVhdGVkQXQiOjE3NTg4MjMyNjU1MzksImVtYWlsIjoic2FtdWVsYWR1MTk3MEBnbWFpbC5jb20iLCJhY3Rpb24iOiJ0b2tlbi1hcGkiLCJhcGlWZXJzaW9uIjoidjIiLCJpYXQiOjE3NTg4MjMyNjV9.A_9VrM7sBfRU-bEQd47nwlFmT8hc85wAi-NA1-r9quM
+      NOWNODES_API_KEY: adbf21ea-2752-4e1d-bb2c-6b5306fc6820
+      JUPITER_BASE_URL: https://quote-api.jup.ag
+      RPC_URL: https://api.mainnet-beta.solana.com
+      SAMPLE_SOL_ADDRESS: 4Nd1mXQqBkvG8rCk1vQzWQd8G4N7hM3sF1P2aZx5J6bS
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Start server
+        run: |
+          nohup npm start -- -p 3000 > .next-server.log 2>&1 &
+          echo "Waiting for server to be ready..."
+          for i in {1..60}; do
+            if curl -sSf http://localhost:3000 > /dev/null; then
+              echo "Server is up!"
+              break
+            fi
+            echo "Attempt $i: retrying in 2s..."
+            sleep 2
+          done
+          # Final check
+          curl -sSf http://localhost:3000 > /dev/null
+
+      - name: Run integration tests
+        env:
+          BASE_URL: http://localhost:3000
+          SAMPLE_SOL_ADDRESS: ${{ env.SAMPLE_SOL_ADDRESS }}
+        run: node scripts/test-integrations.mjs
+
+      - name: Upload integration reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-reports
+          path: |
+            reports/**/*.json
+            .next-server.log
+          if-no-files-found: warn

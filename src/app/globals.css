@@ -1,0 +1,347 @@
+/* Updated: 2025-09-28T09:26:06.757Z */
+/* Updated: 2025-09-28T08:54:08.137Z */
+/* Updated: 2025-09-28T08:50:36.513Z */
+/* Updated: 2025-09-28T07:59:00.433Z */
+/* Updated: 2025-09-28T04:08:43.530Z */
+/* Updated: 2025-09-28T04:08:42.956Z */
+/* Updated: 2025-09-28T01:14:52.990Z */
+/* Updated: 2025-09-27T21:24:37.269Z */
+/* Updated: 2025-09-27T14:55:47.449Z */
+/* Updated: 2025-09-27T13:35:29.143Z */
+/* Updated: 2025-09-27T13:34:54.262Z */
+/* Updated: 2025-09-27T13:34:53.595Z */
+/* Updated: 2025-09-27T12:51:46.380Z */
+/* Updated: 2025-09-27T12:47:14.947Z */
+/* Updated: 2025-09-27T04:50:01.481Z */
+/* Updated: 2025-09-27T03:19:35.256Z */
+/* Updated: 2025-09-27T00:44:19.496Z */
+/* Updated: 2025-09-27T00:35:32.197Z */
+/* Updated: 2025-09-26T23:53:31.305Z */
+/* Updated: 2025-09-26T23:30:24.037Z */
+/* Updated: 2025-09-26T21:10:41.018Z */
+/* Updated: 2025-09-26T21:09:25.857Z */
+/* Updated: 2025-09-26T21:03:16.834Z */
+/* Updated: 2025-09-26T21:01:49.857Z */
+/* Updated: 2025-09-26T20:44:44.100Z */
+/* Updated: 2025-09-26T20:44:38.466Z */
+/* Updated: 2025-09-26T20:28:54.126Z */
+/* Updated: 2025-09-26T17:09:30.609Z */
+/* Updated: 2025-09-26T17:05:35.361Z */
+/* Updated: 2025-09-26T17:05:34.698Z */
+/* Updated: 2025-09-26T17:01:02.545Z */
+/* Updated: 2025-09-26T16:27:20.590Z */
+/* Updated: 2025-09-26T15:53:42.230Z */
+/* Updated: 2025-09-26T13:10:52.321Z */
+/* Updated: 2025-09-26T03:54:39.231Z */
+/* Updated: 2025-09-26T02:57:27.988Z */
+/* Updated: 2025-09-26T02:57:23.876Z */
+/* Updated: 2025-09-26T02:12:29.926Z */
+/* Updated: 2025-09-25T22:43:00.178Z */
+/* Updated: 2025-09-25T22:42:59.641Z */
+/* Updated: 2025-09-25T21:33:45.228Z */
+/* Updated: 2025-09-25T21:00:24.347Z */
+/* Updated: 2025-09-25T19:13:59.790Z */
+/* Updated: 2025-09-25T14:19:42.576Z */
+/* Updated: 2025-09-25T14:19:36.890Z */
+/* Updated: 2025-09-25T12:42:50.702Z */
+/* Updated: 2025-09-25T12:26:36.962Z */
+/* Updated: 2025-09-25T12:26:31.294Z */
+/* Updated: 2025-09-25T12:00:59.899Z */
+/* Updated: 2025-09-25T03:55:14.198Z */
+/* Updated: 2025-09-25T03:55:13.313Z */
+/* Updated: 2025-09-25T03:41:38.555Z */
+/* Updated: 2025-09-25T03:41:37.945Z */
+/* Updated: 2025-09-25T03:10:40.203Z */
+/* Updated: 2025-09-25T02:59:06.106Z */
+/* Updated: 2025-09-25T02:18:13.635Z */
+/* Updated: 2025-09-24T17:35:39.324Z */
+/* Updated: 2025-09-24T17:19:52.444Z */
+/* Updated: 2025-09-24T17:19:37.738Z */
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL@20..48,100..700,0..1');
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Updated: 2025-09-24T15:56:28.409Z */
+/* Updated: 2025-09-24T15:08:48.698Z */
+/* Updated: 2025-09-24T14:50:44.365Z */
+/* Updated: 2025-09-24T14:33:50.141Z */
+/* Updated: 2025-09-24T14:33:44.760Z */
+/* Updated: 2025-09-24T14:17:53.731Z */
+/* Updated: 2025-09-24T14:17:48.439Z */
+/* Updated: 2025-09-24T02:46:39.350Z */
+/* Updated: 2025-09-24T02:12:54.568Z */
+/* Updated: 2025-09-23T23:54:59.515Z */
+/* Updated: 2025-09-23T23:03:38.794Z */
+/* Updated: 2025-09-23T21:55:33.936Z */
+/* Updated: 2025-09-23T21:45:27.151Z */
+/* Updated: 2025-09-23T21:33:34.616Z */
+/* Updated: 2025-09-23T21:33:31.111Z */
+/* Updated: 2025-09-23T00:07:59.591Z */
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+
+  /* Jupiter Plugin theme (light) */
+  --jupiter-plugin-primary: 26, 115, 95; /* teal aligned with theme greens */
+  --jupiter-plugin-background: 255, 255, 255;
+  --jupiter-plugin-primaryText: 20, 23, 28; /* near foreground */
+  --jupiter-plugin-warning: 251, 191, 36; /* amber-400 */
+  --jupiter-plugin-interactive: 33, 42, 54; /* dark slate for buttons */
+  --jupiter-plugin-module: 243, 245, 247; /* subtle panels */
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+
+  /* Jupiter Plugin theme (dark) */
+  --jupiter-plugin-primary: 108, 226, 188; /* bright teal for dark bg */
+  --jupiter-plugin-background: 18, 22, 28; /* close to card/bg */
+  --jupiter-plugin-primaryText: 232, 249, 255;
+  --jupiter-plugin-warning: 251, 191, 36;
+  --jupiter-plugin-interactive: 40, 48, 61;
+  --jupiter-plugin-module: 28, 34, 44;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Clay mode: playful, squishy styles scoped under [data-style="clay"] */
+  [data-style="clay"] {
+    --clay-shadow: 0 8px 0 oklch(0.6 0 0 / 0.25), 0 2px 0 oklch(1 0 0 / 0.35) inset;
+    --clay-shadow-hover: 0 10px 0 oklch(0.6 0 0 / 0.28), 0 2px 0 oklch(1 0 0 / 0.4) inset;
+    --clay-shadow-active: 0 4px 0 oklch(0.6 0 0 / 0.25), 0 1px 0 oklch(1 0 0 / 0.3) inset;
+    --clay-radius: 16px;
+  }
+
+  /* Buttons */
+  [data-style="clay"] button {
+    border-radius: var(--clay-radius) !important;
+    box-shadow: var(--clay-shadow);
+    transform: translateY(0);
+    transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+  }
+  [data-style="clay"] button:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--clay-shadow-hover);
+    filter: saturate(1.05);
+  }
+  [data-style="clay"] button:active {
+    transform: translateY(2px);
+    box-shadow: var(--clay-shadow-active);
+    filter: saturate(1.02);
+  }
+  [data-style="clay"] button:focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* Cards and rounded containers */
+  [data-style="clay"] .rounded-md,
+  [data-style="clay"] .rounded-lg,
+  [data-style="clay"] .rounded-xl,
+  [data-style="clay"] .rounded-2xl,
+  [data-style="clay"] .rounded-full {
+    border-radius: var(--clay-radius) !important;
+  }
+  [data-style="clay"] .rounded-md,
+  [data-style="clay"] .rounded-lg,
+  [data-style="clay"] .rounded-xl {
+    box-shadow: 0 8px 0 oklch(0.6 0 0 / 0.18), 0 1px 0 oklch(1 0 0 / 0.25) inset;
+    transition: transform 120ms ease, box-shadow 120ms ease;
+  }
+  [data-style="clay"] .rounded-md:hover,
+  [data-style="clay"] .rounded-lg:hover,
+  [data-style="clay"] .rounded-xl:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 0 oklch(0.6 0 0 / 0.2), 0 1.5px 0 oklch(1 0 0 / 0.28) inset;
+  }
+  [data-style="clay"] .rounded-md:active,
+  [data-style="clay"] .rounded-lg:active,
+  [data-style="clay"] .rounded-xl:active {
+    transform: translateY(2px);
+    box-shadow: 0 4px 0 oklch(0.6 0 0 / 0.2), 0 1px 0 oklch(1 0 0 / 0.22) inset;
+  }
+
+  /* Inputs */
+  [data-style="clay"] input,
+  [data-style="clay"] select,
+  [data-style="clay"] textarea {
+    border-radius: calc(var(--clay-radius) - 4px) !important;
+    box-shadow: 0 4px 0 oklch(0.6 0 0 / 0.16), 0 1px 0 oklch(1 0 0 / 0.2) inset;
+    transition: transform 120ms ease, box-shadow 120ms ease;
+  }
+  [data-style="clay"] input:focus,
+  [data-style="clay"] select:focus,
+  [data-style="clay"] textarea:focus {
+    outline: 3px solid var(--ring);
+    outline-offset: 2px;
+    box-shadow: 0 5px 0 oklch(0.6 0 0 / 0.18), 0 1.5px 0 oklch(1 0 0 / 0.24) inset;
+  }
+
+  /* Pills/chips like badges */
+  [data-style="clay"] .rounded-full {
+    box-shadow: 0 6px 0 oklch(0.6 0 0 / 0.16), 0 1px 0 oklch(1 0 0 / 0.22) inset;
+  }
+
+  /* Atlas sleek cards (default + clay) */
+  .atlas-card {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    background: var(--color-card);
+    backdrop-filter: saturate(1.05) blur(8px);
+    transition: transform 160ms ease, box-shadow 200ms ease, border-color 160ms ease;
+    box-shadow: 0 10px 30px -18px oklch(0 0 0 / 0.35);
+  }
+  .atlas-card:hover {
+    transform: translateY(-2px);
+    border-color: oklch(1 0 0 / 0.18);
+    box-shadow: 0 14px 40px -18px oklch(0 0 0 / 0.45);
+  }
+  .atlas-card::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--color-border), transparent);
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  .atlas-card::after {
+    content: "";
+    position: absolute;
+    right: -56px;
+    top: -56px;
+    width: 160px;
+    height: 160px;
+    border-radius: 999px;
+    background: radial-gradient(closest-side, var(--color-accent) 0%, transparent 70%);
+    opacity: 0.18;
+    pointer-events: none;
+  }
+  /* Make inner tiles (small list items) match the card sleek look */
+  .atlas-tile {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+    background: color-mix(in oklch, var(--color-card) 85%, transparent);
+    transition: border-color 160ms ease, box-shadow 200ms ease, transform 120ms ease;
+  }
+  .atlas-tile:hover { transform: translateY(-1px); border-color: oklch(1 0 0 / 0.18); box-shadow: 0 8px 24px -16px oklch(0 0 0 / 0.4); }
+}
+
+/* Hide Next.js error overlay portal */
+nextjs-portal {
+  display: none !important;
+}
