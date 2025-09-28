@@ -20,6 +20,6 @@ const createDbClient = () => {
 };
 
 const client = createDbClient();
-export const db = client ? drizzle(client, { schema }) : null;
+export const db = client ? drizzle(client, { schema }) : (() => { throw new Error('Database not available - missing environment variables'); })();
 
 export type Database = typeof db;
