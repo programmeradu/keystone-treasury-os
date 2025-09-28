@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 // GET /api/helius/addresses/[address]/transactions?limit=100&before=<signature>&until=<signature>&startTime=<unix>&endTime=<unix>&page=<n>
 // Proxies to Helius Parsed Transaction History API:
@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 // - Returns { ok, address, network, params, items, page, cursor? } shape
 
 export async function GET(
-  req: NextRequest,
+  req: Request,
   { params }: { params: { address: string } }
 ) {
   try {
