@@ -112,9 +112,10 @@ export async function GET(req: NextRequest) {
         hb = setInterval(() => sendEvent("ping", { ts: Date.now() }), 20000);
       });
 
-      ws.on("message", (raw: WebSocket.RawData) => {
+      ws.on("message", (raw) => {
         try {
-          const msg = JSON.parse(raw.toString());
+          const text = typeof raw === "string" ? raw : (raw as any)?.toString?.() ?? "";
+          const msg = JSON.parse(text);
           // mark alive on any message
           alive = true;
           switch (msg.type) {
