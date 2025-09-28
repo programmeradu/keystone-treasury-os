@@ -2,15 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { alerts } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { checkDatabaseAvailability } from '@/utils/db';
 
 export async function GET(request: NextRequest) {
   try {
     // Check if database is available
-    if (!db) {
-      return NextResponse.json({
-        error: "Database service is currently unavailable",
-        code: "DATABASE_UNAVAILABLE"
-      }, { status: 503 });
+    const dbCheckResponse = await checkDatabaseAvailability();
+    if (dbCheckResponse) {
+      return dbCheckResponse;
     }
 
     const { searchParams } = new URL(request.url);
