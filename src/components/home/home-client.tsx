@@ -107,9 +107,6 @@ function Header() {
           <Button size="sm" asChild>
             <a href="#contact" aria-label="Request access to Keystone">Request Access</a>
           </Button>
-          <Button variant="outline" size="sm" asChild>
-            <a href="/api/download-project" download aria-label="Download project as ZIP">Download Project (ZIP)</a>
-          </Button>
           
         </div>
       </div>

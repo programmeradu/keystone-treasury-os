@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { learnInputs, learnClicks, learnSuggestions } from '@/db/schema';
 import { gte } from 'drizzle-orm';
+import { checkDatabaseAvailability } from '@/lib/db-utils';
 
 export async function GET(request: NextRequest) {
   try {
+    // Check if database is available
+    const dbError = checkDatabaseAvailability();
+    if (dbError) return dbError;
+
     const { searchParams } = new URL(request.url);
     const limit = Math.min(parseInt(searchParams.get('limit') || '6'), 20);
     

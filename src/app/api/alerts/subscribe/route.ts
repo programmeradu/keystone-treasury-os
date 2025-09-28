@@ -3,9 +3,16 @@ import { db } from '@/db';
 import { alerts } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { Resend } from 'resend';
+import { checkDatabaseAvailability } from '@/lib/db-utils';
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if database is available
+    const dbCheckResponse = checkDatabaseAvailability();
+    if (dbCheckResponse) {
+      return dbCheckResponse;
+    }
+
     const { email, thresholdUsd, minGasUnits } = await request.json();
 
     // Validate email format

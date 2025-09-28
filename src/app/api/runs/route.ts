@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { runs } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { randomBytes } from 'crypto';
+import { checkDatabaseAvailability } from '@/lib/db-utils';
 
 function generateShortId(): string {
   const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
@@ -22,6 +23,10 @@ function validateJsonSize(obj: any, maxSizeBytes: number): boolean {
 
 export async function GET(request: NextRequest) {
   try {
+    // Check if database is available
+    const dbError = checkDatabaseAvailability();
+    if (dbError) return dbError;
+
     const { searchParams } = new URL(request.url);
     const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 50);
 
@@ -55,6 +60,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if database is available
+    const dbError = checkDatabaseAvailability();
+    if (dbError) return dbError;
+
     const body = await request.json();
     const { prompt, planResult, toolResult, runLabel } = body;
 

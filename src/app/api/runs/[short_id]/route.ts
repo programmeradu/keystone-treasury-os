@@ -2,9 +2,14 @@ import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { runs } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { checkDatabaseAvailability } from '@/lib/db-utils';
 
 export async function GET(request: Request) {
   try {
+    // Check if database is available
+    const dbError = checkDatabaseAvailability();
+    if (dbError) return dbError;
+
     const { pathname } = new URL(request.url);
     const match = pathname.match(/\/api\/runs\/([^/]+)\/?$/i);
     const short_id = match?.[1] || "";

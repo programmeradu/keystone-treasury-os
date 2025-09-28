@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { learnClicks } from '@/db/schema';
+import { checkDatabaseAvailability } from '@/lib/db-utils';
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if database is available
+    const dbError = checkDatabaseAvailability();
+    if (dbError) return dbError;
+
     // Parse request body
     const body = await request.json();
     const { text } = body;

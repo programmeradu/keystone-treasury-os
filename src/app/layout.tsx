@@ -10,6 +10,13 @@ export const metadata: Metadata = {
   title: "KeyStone — The Command Layer for Treasury Management",
   description:
     "Manage your entire Web3 treasury through natural language. KeyStone turns complex, multi-step operations into simple, declarative prompts.",
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/icon.svg', type: 'image/svg+xml', sizes: '512x512' }
+    ],
+    apple: '/icon.svg',
+  },
 };
 
 export default function RootLayout({
