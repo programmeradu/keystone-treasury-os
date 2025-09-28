@@ -25,4 +25,4 @@ For this Venturethon, we built a complete, three-part functional prototype to de
 
 ### 4. The Pitch
 * **Pitch Deck:** [it's in the submission]
-* **Video Demo:** [Link to your Loom/YouTube video]
+* **Video Demo:** [[Link to YouTube video]](https://youtu.be/xdPtQzPEWmE)
