@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:integrations": "node scripts/test-integrations.mjs"
+    "test:integrations": "node scripts/test-integrations.mjs",
+    "github:bulk-delete": "node scripts/github-bulk-delete.mjs"
   },
   "dependencies": {
     "@coinbase/onchainkit": "^1.0.3",
