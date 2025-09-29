@@ -24,7 +24,9 @@ export async function POST(req: NextRequest) {
       const status = isLast ? "pending" : (idx % 3 === 0 ? "confirmed" : "success");
       const duration = status === "pending" ? 0 : 500 + Math.random() * 1500;
       const cost = status === "pending" ? "0.00" : (0.5 + Math.random() * 5).toFixed(2);
-      const txHash = status === "pending" ? "" : `0x${Math.random().toString(16).slice(2, 10)}${Math.random().toString(16).slice(2, 10)}...`;
+      const txHash = status === "pending"
+        ? ""
+        : `0x${Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
 
       return {
         index: idx,
