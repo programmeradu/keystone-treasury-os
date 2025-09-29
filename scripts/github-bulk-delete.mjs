@@ -73,13 +73,15 @@ function parseDate(d) {
 }
 
 async function ghFetch(url, token, init = {}, retry = 0) {
-  const headers = {
+  const baseHeaders = {
     'accept': 'application/vnd.github+json',
-    'authorization': `Bearer ${token}`,
+    'user-agent': 'keystone-treasury-os-cli',
     'x-github-api-version': '2022-11-28',
-    ...(init.headers || {}),
   };
-  const res = await fetch(url, { ...init, headers });
+  const res0 = await fetch(url, { ...init, headers: { ...baseHeaders, 'authorization': `token ${token}`, ...(init.headers || {}) } });
+  const res = res0.status === 401
+    ? await fetch(url, { ...init, headers: { ...baseHeaders, 'authorization': `Bearer ${token}`, ...(init.headers || {}) } })
+    : res0;
 
   // Basic rate-limit handling
   if (res.status === 403 && res.headers.get('x-ratelimit-remaining') === '0') {

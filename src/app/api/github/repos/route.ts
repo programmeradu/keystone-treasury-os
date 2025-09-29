@@ -4,12 +4,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function getToken(): string | null {
-  return (
-    process.env.GITHUB_TOKEN ||
-    process.env.GH_TOKEN ||
-    process.env.GITHUB_PAT ||
-    null
-  );
+  const candidates = [process.env.GITHUB_TOKEN, process.env.GH_TOKEN, process.env.GITHUB_PAT];
+  for (const v of candidates) {
+    if (v && String(v).trim()) return String(v).trim();
+  }
+  return null;
 }
 
 function isEnabled() {
@@ -46,14 +45,27 @@ export async function GET(req: Request) {
     : `https://api.github.com/user/repos?per_page=${perPage}&affiliation=owner,collaborator,organization_member&sort=full_name&direction=asc&page=${page}`;
 
   try {
-    const res = await fetch(api, {
+    let res = await fetch(api, {
       headers: {
         accept: "application/vnd.github+json",
-        authorization: `Bearer ${token}`,
+        // Use 'token' scheme for PATs
+        authorization: `token ${token}`,
+        "user-agent": "keystone-treasury-os",
         "x-github-api-version": "2022-11-28",
       },
       cache: "no-store",
     });
+    if (res.status === 401) {
+      res = await fetch(api, {
+        headers: {
+          accept: "application/vnd.github+json",
+          authorization: `Bearer ${token}`,
+          "user-agent": "keystone-treasury-os",
+          "x-github-api-version": "2022-11-28",
+        },
+        cache: "no-store",
+      });
+    }
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       return NextResponse.json({ error: `GitHub error: ${res.status} ${res.statusText} ${text}` }, { status: 502 });
