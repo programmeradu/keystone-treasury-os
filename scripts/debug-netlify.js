@@ -115,7 +115,7 @@ function checkApiRoutes() {
         }
       }
     } catch (e) {
-      // ignore
+      warnings.push(`⚠️  Error reading directory "${dir}": ${e.message}`);
     }
     return count;
   };
