@@ -1487,7 +1487,7 @@ export default function ChainFlowOracle() {
       "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     ].map(a => a.toLowerCase()));
 
-    const toAllowlist = new Set<string>(([] as string[]).map((a) => a.toLowerCase()));
+    const toAllowlist = new Set<string>();
     EXTRA_ALLOWLIST.forEach((a) => toAllowlist.add(a));
 
     const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
