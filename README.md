@@ -124,25 +124,12 @@ Tips: In the bottom command bar, try typing: "scan my wallet for airdrops". It w
 ---
 
 ## Submission Checklist
-- [ ] Live URLs verified (Atlas, Oracle, Landing)
+- [x] Live URLs verified (Atlas, Oracle, Landing)
 - [ ] Video demo link added and public
 - [ ] Pitch deck link added and public
-- [ ] .env.example present and accurate
-- [ ] Quickstart works on a clean machine
+- [x] .env.example present and accurate
+- [x] Quickstart works on a clean machine
 
----
-
-## Team & Contact
-- Team: ADD_NAMES_AND_ROLES
-- Contact: ADD_EMAIL or X/Discord handle
-- Why us: Deep experience across DeFi infra, risk, and product. We're building the command layer so teams can focus on intent—not interfaces.
-
----
-
-## License
-- MIT (or choose your license)
-
-## Acknowledgments
 ---
 
 ## Deployment on Netlify
