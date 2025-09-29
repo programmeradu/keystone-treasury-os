@@ -12,6 +12,7 @@
     "lint": "next lint",
     "test:integrations": "node scripts/test-integrations.mjs",
     "test:api-endpoints": "node scripts/test-api-endpoints.js",
+    "debug:netlify": "node scripts/debug-netlify.js",
     "github:bulk-delete": "node scripts/github-bulk-delete.mjs",
     "hooks:install": "node -e \"const fs=require('node:fs');fs.mkdirSync('.git/hooks',{recursive:true});fs.writeFileSync('.git/hooks/pre-push','#!/bin/sh\\nnode scripts/pre-push-scan.mjs\\n');fs.chmodSync('.git/hooks/pre-push',0o755);console.log('pre-push hook installed');\""
   },

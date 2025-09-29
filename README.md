@@ -156,4 +156,32 @@ After setting envs, trigger a deploy. Verify these endpoints in production (shou
 
 If you still see 404s on `/api/*`, ensure the plugin is installed and `netlify.toml` exists at the repo root.
 
+### Testing API Endpoints After Deployment
+
+Use the included test script to verify API endpoints are working:
+
+```bash
+# Test local development server
+npm run test:api-endpoints
+
+# Test production deployment
+npm run test:api-endpoints https://your-site.netlify.app
+```
+
+### Deployment Troubleshooting
+
+If API routes return 404 on Netlify:
+
+1. **Check plugin installation**: Ensure `@netlify/plugin-nextjs` is in both `package.json` dependencies and `netlify.toml`
+2. **Verify build logs**: Check that API routes are built as serverless functions (look for ƒ symbol in build output)
+3. **Environment variables**: Set required API keys in Netlify Site Settings → Environment Variables
+4. **No publish directory**: Don't set a `publish` directory in `netlify.toml` - the plugin manages this
+5. **No manual redirects**: Avoid manual `/api/*` redirects in `netlify.toml` - the plugin handles routing
+
+### Common Issues
+
+- **500 errors**: Usually missing API keys (expected for external APIs)
+- **404 errors**: Configuration issue with netlify.toml or missing plugin
+- **Build failures**: Check Node.js version (requires Node 20+)
+
 - Thanks to Helius, Bitquery, Jupiter, Marinade, and the Solana ecosystem for infrastructure and tooling.
