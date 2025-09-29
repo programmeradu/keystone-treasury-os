@@ -62,8 +62,9 @@ function main() {
   const offenders = [];
   for (const rel of files) {
     if (!rel || rel.startsWith('.git/')) continue;
-    if (rel === '.env' || rel.startsWith('.env')) {
-      offenders.push({ file: rel, match: '.env file should never be committed' });
+    // Block real env files but allow the template
+    if (rel === '.env' || (rel.startsWith('.env.') && rel !== '.env.example')) {
+      offenders.push({ file: rel, match: '.env file should never be committed (commit .env.example only)' });
       continue;
     }
     if (!isTextFile(rel)) continue;
