@@ -143,4 +143,28 @@ Tips: In the bottom command bar, try typing: "scan my wallet for airdrops". It w
 - MIT (or choose your license)
 
 ## Acknowledgments
+---
+
+## Deployment on Netlify
+
+This project is configured to deploy on Netlify with the official Next.js runtime plugin so that App Router API routes under `src/app/api/**` are built as serverless functions.
+
+- `netlify.toml` declares the `@netlify/plugin-nextjs` plugin and Node 20 runtime
+- `@netlify/plugin-nextjs` is listed in `package.json`
+
+Environment variables: set server-only keys in Netlify → Site settings → Build & deploy → Environment.
+
+Common vars:
+- HELIUS_API_KEY — Solana RPC (used by `/api/solana/rpc` proxy)
+- BITQUERY_API_KEY — analytics routes
+- MORALIS_API_KEY — holders routes
+- NEXT_PUBLIC_* — client-side safe values (e.g., NEXT_PUBLIC_SOLANA_RPC, NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID)
+
+After setting envs, trigger a deploy. Verify these endpoints in production (should not be 404):
+- POST `/api/solana/rpc`
+- GET `/api/jupiter/price`
+- Other routes under `src/app/api/**`
+
+If you still see 404s on `/api/*`, ensure the plugin is installed and `netlify.toml` exists at the repo root.
+
 - Thanks to Helius, Bitquery, Jupiter, Marinade, and the Solana ecosystem for infrastructure and tooling.

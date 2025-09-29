@@ -2,6 +2,9 @@
   "name": "app",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
@@ -12,6 +15,7 @@
     "hooks:install": "node -e \"const fs=require('node:fs');fs.mkdirSync('.git/hooks',{recursive:true});fs.writeFileSync('.git/hooks/pre-push','#!/bin/sh\\nnode scripts/pre-push-scan.mjs\\n');fs.chmodSync('.git/hooks/pre-push',0o755);console.log('pre-push hook installed');\""
   },
   "dependencies": {
+    "@netlify/plugin-nextjs": "^5.8.0",
     "@coinbase/onchainkit": "^1.0.3",
     "@hookform/resolvers": "^3.10.0",
     "@libsql/client": "^0.15.15",
