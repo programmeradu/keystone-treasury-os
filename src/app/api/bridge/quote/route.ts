@@ -58,7 +58,6 @@ function extractParams(req: NextRequest) {
   // 1) Try req.nextUrl
   let sp: URLSearchParams | null = null;
   try {
-    // @ts-expect-error: nextUrl exists on NextRequest
     const nx = (req as any).nextUrl;
     if (nx?.searchParams) sp = nx.searchParams as URLSearchParams;
   } catch {}
@@ -232,7 +231,7 @@ export async function GET(request: NextRequest) {
   const fromChain = normalizeChainKey(fromChainRaw);
   const toChain = normalizeChainKey(toChainRaw);
 
-  if (!fromChain || !toChain || !fromToken || !fromAmount) {
+  if (!fromChain || !toChain || !fromToken || !toToken || !fromAmount) {
     // Debug payload to inspect what's actually received by the server
     const debug = {
       url: (request as any).url,
@@ -242,7 +241,7 @@ export async function GET(request: NextRequest) {
       toChainRaw,
     };
     return NextResponse.json(
-      { error: "Missing or invalid params: fromChain, toChain, fromToken, fromAmount", debug },
+      { error: "Missing or invalid params: fromChain, toChain, fromToken, toToken, fromAmount", debug },
       { status: 400 }
     );
   }
@@ -301,9 +300,9 @@ export async function POST(req: NextRequest) {
   const fromChain = normalizeChainKey(fromChainRaw);
   const toChain = normalizeChainKey(toChainRaw);
 
-  if (!fromChain || !toChain || !fromToken || !fromAmount) {
+  if (!fromChain || !toChain || !fromToken || !toToken || !fromAmount) {
     return NextResponse.json(
-      { error: "Missing or invalid params: fromChain, toChain, fromToken, fromAmount" },
+      { error: "Missing or invalid params: fromChain, toChain, fromToken, toToken, fromAmount" },
       { status: 400 }
     );
   }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-export async function GET(req: Request, { params }: { params: { address: string } }) {
-  const address = params.address;
+export async function GET(req: Request, { params }: { params: Promise<{ address: string }> }) {
+  const { address } = await params;
   if (!address) {
     return NextResponse.json({ error: "Missing token address" }, { status: 400 });
   }

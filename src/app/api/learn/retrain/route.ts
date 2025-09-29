@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     // Step 1: Fetch recent user inputs
     let recentInputs: Array<{ text: string; createdAt: number }> = [];
     try {
-      recentInputs = await db.select()
+      recentInputs = await db!.select()
         .from(learnInputs)
         .where(gte(learnInputs.createdAt, cutoffTimestamp));
     } catch (error) {
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
     // Step 5: Get clicked suggestions to boost their weights
     let clickedSuggestions: Array<{ text: string }> = [];
     try {
-      clickedSuggestions = await db.select({ text: learnClicks.text })
+      clickedSuggestions = await db!.select({ text: learnClicks.text })
         .from(learnClicks);
     } catch (error) {
       console.log('No learn_clicks data:', error);

@@ -6,10 +6,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { address: string } }
+  { params }: { params: Promise<{ address: string }> }
 ) {
   try {
-    const address = params.address;
+    const { address } = await params;
     if (!address || address.length < 20) {
       return NextResponse.json({ ok: false, error: "Invalid Solana address" }, { status: 400 });
     }

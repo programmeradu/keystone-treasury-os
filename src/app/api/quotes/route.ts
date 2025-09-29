@@ -30,7 +30,7 @@ function inferFromPrompt(prompt: string) {
     toChain,
     fromToken,
     toToken,
-    fromAmount: String(fromToken === "USDC" ? notional * 1_000_000 : notional * 1_000_000_000_000_000_000n),
+    fromAmount: String(fromToken === "USDC" ? notional * 1_000_000 : BigInt(notional) * BigInt("1000000000000000000")),
     notional,
   } as const;
 }

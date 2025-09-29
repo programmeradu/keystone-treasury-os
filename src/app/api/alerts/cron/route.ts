@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     const ethUsd = priceData.ethereum.usd;
 
     // Query all verified and active alerts
-    const activeAlerts = await db.select()
+    const activeAlerts = await db!.select()
       .from(alerts)
       .where(
         and(
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
             });
 
             // Update last_notified_at timestamp
-            await db.update(alerts)
+            await db!.update(alerts)
               .set({
                 lastNotifiedAt: Date.now(),
                 updatedAt: Date.now()

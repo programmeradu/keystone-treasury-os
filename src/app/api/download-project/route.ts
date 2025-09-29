@@ -11,7 +11,7 @@ export async function GET(_req: NextRequest) {
   const stream = new PassThrough();
 
   const archive = archiver("zip", { zlib: { level: 9 } });
-  archive.on("warning", (err) => {
+  archive.on("warning", (err: any) => {
     if ((err as any).code === "ENOENT") {
       // log non-blocking warnings if needed
       console.warn("archiver warning:", err.message);
@@ -19,7 +19,7 @@ export async function GET(_req: NextRequest) {
       stream.emit("error", err);
     }
   });
-  archive.on("error", (err) => {
+  archive.on("error", (err: any) => {
     stream.emit("error", err);
   });
 

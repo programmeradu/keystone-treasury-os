@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     // Insert into learnClicks table
     const createdAt = Date.now();
     
-    const result = await db.insert(learnClicks)
+    const result = await db!.insert(learnClicks)
       .values({
         text: sanitizedText,
         createdAt: createdAt

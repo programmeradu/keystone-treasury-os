@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
 
   const defaulted = inSteps.length > 0 ? inSteps : [{ type: "yield", params: { asset: "USDC", chain: "base" } }];
 
-  const results: SimResult[] = defaulted.map((step, idx) => {
+  const results: SimResult[] = defaulted.map((step: any, idx: number) => {
     const type = String(step?.type || "unknown");
     const id = String(step?.id || `${type}_${idx + 1}`);
     const k = JSON.stringify(step?.params || {});
