@@ -217,7 +217,7 @@ export function AtlasClient() {
         }
         // Give the widget a moment to compute routes, then click swap if a button exists
         await new Promise((r) => setTimeout(r, 550));
-        const btn = container?.querySelector('button:has(span),button');
+        const btn = container?.querySelector('button:has(span),button') as HTMLButtonElement | null;
         // Heuristic: click the last primary-ish button
         const buttons = container ? Array.from(container.querySelectorAll('button')) as HTMLButtonElement[] : [];
         const primary = buttons.reverse().find(b => /swap|review|confirm/i.test(b.textContent || ""));

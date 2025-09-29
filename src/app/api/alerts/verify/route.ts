@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Look up alert by verify token
-    const alert = await db.select()
+    const alert = await db!.select()
       .from(alerts)
       .where(eq(alerts.verifyToken, token))
       .limit(1);
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Update alert: set verified=true, verifyToken=null, updatedAt=now
-    const updated = await db.update(alerts)
+    const updated = await db!.update(alerts)
       .set({
         verified: true,
         verifyToken: null,

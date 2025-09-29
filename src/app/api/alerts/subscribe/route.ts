@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const now = Date.now();
 
     // Check for existing unverified alert with same email and conditionType
-    const existingAlert = await db.select()
+    const existingAlert = await db!.select()
       .from(alerts)
       .where(and(
         eq(alerts.email, email.toLowerCase()),
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     if (existingAlert.length > 0) {
       // Update existing unverified alert
-      const updatedAlert = await db.update(alerts)
+      const updatedAlert = await db!.update(alerts)
         .set({
           thresholdUsd: finalThresholdUsd,
           minGasUnits: finalMinGasUnits,
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       const verifyToken = generateToken();
 
       // Create new alert
-      const newAlert = await db.insert(alerts)
+      const newAlert = await db!.insert(alerts)
         .values({
           email: email.toLowerCase(),
           conditionType,

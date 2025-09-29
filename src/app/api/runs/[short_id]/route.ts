@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     }
 
     // Get run by shortId (no auth required - public sharing)
-    const run = await db.select()
+    const run = await db!.select()
       .from(runs)
       .where(eq(runs.shortId, short_id))
       .limit(1);
@@ -62,9 +62,9 @@ export async function GET(request: Request) {
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ short_id: string }> }) {
   try {
-    const { short_id } = params;
+    const { short_id } = await params;
 
     // Validate shortId format (12 characters alphanumeric)  
     if (!short_id || short_id.length !== 12 || !/^[a-zA-Z0-9]{12}$/.test(short_id)) {
@@ -76,7 +76,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     // Check if run exists
-    const existingRun = await db.select()
+    const existingRun = await db!.select()
       .from(runs)
       .where(eq(runs.shortId, short_id))
       .limit(1);
@@ -89,7 +89,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     // Delete the run (no auth required for now)
-    const deleted = await db.delete(runs)
+    const deleted = await db!.delete(runs)
       .where(eq(runs.shortId, short_id))
       .returning();
 

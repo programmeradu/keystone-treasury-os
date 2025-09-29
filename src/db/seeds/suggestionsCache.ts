@@ -1,5 +1,5 @@
 import { db } from '@/db';
-import { suggestionsCache } from '@/db/schema';
+import { learnSuggestions } from '@/db/schema';
 
 async function main() {
     const currentTimestamp = Math.floor(Date.now() / 1000);
@@ -55,7 +55,7 @@ async function main() {
         }
     ];
 
-    await db.insert(suggestionsCache).values(sampleSuggestions);
+    await db!.insert(learnSuggestions).values(sampleSuggestions);
     
     console.log('✅ Suggestions cache seeder completed successfully');
 }

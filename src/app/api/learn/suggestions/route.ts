@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     let recentClicks: Array<{ text: string, createdAt: number }> = [];
     
     try {
-      recentInputs = await db.select({
+      recentInputs = await db!.select({
         text: learnInputs.text,
         createdAt: learnInputs.createdAt
       })
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     }
     
     try {
-      recentClicks = await db.select({
+      recentClicks = await db!.select({
         text: learnClicks.text,
         createdAt: learnClicks.createdAt
       })
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     // Fetch cached suggestions from last 30 days
     let cachedSuggestions: Array<{ text: string, weight: number }> = [];
     try {
-      cachedSuggestions = await db.select({
+      cachedSuggestions = await db!.select({
         text: learnSuggestions.text,
         weight: learnSuggestions.weight
       })

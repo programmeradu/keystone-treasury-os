@@ -55,7 +55,7 @@ async function main() {
         },
     ];
 
-    await db.insert(learnSuggestions).values(sampleSuggestions);
+    await db!.insert(learnSuggestions).values(sampleSuggestions);
     
     console.log('✅ LearnSuggestions seeder completed successfully');
 }

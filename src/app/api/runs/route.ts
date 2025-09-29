@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 50);
 
-    const results = await db.select()
+    const results = await db!.select()
       .from(runs)
       .orderBy(desc(runs.createdAt))
       .limit(limit);
@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
       shortId = generateShortId();
       
       // Check if shortId already exists
-      const existing = await db.select()
+      const existing = await db!.select()
         .from(runs)
         .where(eq(runs.shortId, shortId))
         .limit(1);
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
 
     const now = Date.now();
 
-    const newRun = await db.insert(runs)
+    const newRun = await db!.insert(runs)
       .values({
         shortId: shortId!,
         prompt: sanitizedPrompt,

@@ -186,8 +186,8 @@ export default function ChainFlowOracle() {
     try {
       const parts = text.split(/(```[\s\S]*?```)/g);
       const clean = (t: string) => {
-        let out = t.replace(/\*\*(.+?)\*\*/gs, "$1");
-        out = out.replace(/\*(\S[^*]*?)\*/gs, "$1");
+        let out = t.replace(/\*\*(.+?)\*\*/g, "$1");
+        out = out.replace(/\*(\S[^*]*?)\*/g, "$1");
         // collapse markdown hard line breaks (two spaces before newline)
         out = out.replace(/[ \t]+\n/g, "\n");
         return out;
@@ -989,7 +989,7 @@ export default function ChainFlowOracle() {
     // kick off tailored planning message
     updateGlobalLoadingMsg(prompt, intentPreview?.intent);
     // Preserve previous result for delta comparison
-    setPrevPlanResult((curr) => (planResult ? planResult : curr));
+    setPrevPlanResult((curr: any) => (planResult ? planResult : curr));
     setPlanResult(null);
     try {
       const data = await fetchJsonWithRetry("/api/planner", {
@@ -1124,7 +1124,7 @@ export default function ChainFlowOracle() {
           const formatUnits = (val: string | number, dec: number): string => {
             try {
               const bi = BigInt(String(val));
-              const base = 10n ** BigInt(dec);
+              const base = BigInt(10) ** BigInt(dec);
               const whole = bi / base;
               const frac = bi % base;
               const fracStr = frac.toString().padStart(dec, "0").slice(0, 6).replace(/0+$/, "");
@@ -1227,7 +1227,7 @@ export default function ChainFlowOracle() {
             if (!val) return "—";
             try {
               const bi = BigInt(val);
-              const base = 10n ** BigInt(dec);
+              const base = BigInt(10) ** BigInt(dec);
               const whole = bi / base;
               const frac = bi % base;
               const s = frac.toString().padStart(dec, "0").slice(0, 6).replace(/0+$/, "");
@@ -1487,9 +1487,7 @@ export default function ChainFlowOracle() {
       "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     ].map(a => a.toLowerCase()));
 
-    const toAllowlist = new Set<string>([
-      // Known safe placeholders can be added here per-chain (routers, bridges, etc.)
-    ].map((a) => a.toLowerCase()));
+    const toAllowlist = new Set<string>();
     EXTRA_ALLOWLIST.forEach((a) => toAllowlist.add(a));
 
     const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
@@ -2577,7 +2575,7 @@ export default function ChainFlowOracle() {
                                   if (!val && val !== 0) return "-";
                                   try {
                                     const bi = BigInt(String(val));
-                                    const base = 10n ** BigInt(dec);
+                                    const base = BigInt(10) ** BigInt(dec);
                                     const whole = bi / base;
                                     const frac = bi % base;
                                     // keep up to 6 fractional digits trimmed
@@ -2712,7 +2710,7 @@ export default function ChainFlowOracle() {
                                   if (!val) return "—";
                                   try {
                                     const bi = BigInt(val);
-                                    const base = 10n ** BigInt(dec);
+                                    const base = BigInt(10) ** BigInt(dec);
                                     const whole = bi / base;
                                     const frac = bi % base;
                                     const s = frac.toString().padStart(dec, "0").slice(0, 6).replace(/0+$/, "");

@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       createdAt: Date.now()
     };
 
-    const newUserInput = await db.insert(learnInputs)
+    const newUserInput = await db!.insert(learnInputs)
       .values(insertData)
       .returning();
 
