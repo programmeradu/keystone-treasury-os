@@ -9,6 +9,11 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/next"
+  status = 200
 [build]
   publish = ".next"
   command = "npm run build"
