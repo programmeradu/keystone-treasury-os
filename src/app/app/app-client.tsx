@@ -121,8 +121,7 @@ export const KeystoneApp: React.FC = () => {
         throw new Error(data.error || "Execution failed");
       }
       setRun(data.run || null);
-    } catch (err: any) {
-      setError(err?.message || "Unexpected error");
+    } catch (err: any)      setError(err?.message || "Unexpected error");
     } finally {
       setIsExecuting(false);
     }
@@ -274,8 +273,8 @@ export const KeystoneApp: React.FC = () => {
                             </div>
                             {s.status !== "pending" && (
                               <div className="mt-2 pl-7 flex items-center gap-4 text-muted-foreground animate-in fade-in">
-                                {s.duration !== undefined && <div>Duration: {s.duration}ms</div>}
-                                {s.cost !== undefined && <div>Cost: ${s.cost}</div>}
+                                {s.duration != null && <div>Duration: {s.duration}ms</div>}
+                                {s.cost != null && <div>Cost: ${s.cost}</div>}
                                 {s.txHash && <a href={`https://etherscan.io/tx/${s.txHash}`} target="_blank" rel="noopener noreferrer" className="font-mono text-blue-400 hover:underline">{s.txHash.slice(0,12)}...</a>}
                               </div>
                             )}
