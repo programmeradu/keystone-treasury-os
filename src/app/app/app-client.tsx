@@ -121,8 +121,7 @@ export const KeystoneApp: React.FC = () => {
         throw new Error(data.error || "Execution failed");
       }
       setRun(data.run || null);
-    } catch (err: any) {
-      setError(err?.message || "Unexpected error");
+    } catch (err: any)      setError(err?.message || "Unexpected error");
     } finally {
       setIsExecuting(false);
     }
