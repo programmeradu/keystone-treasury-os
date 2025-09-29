@@ -58,24 +58,25 @@ npm run build && npm start
 ---
 
 ## Environment Variables
-Create a `.env` from `.env.example`.
+Create a `.env` from `.env.example`. The template includes all keys referenced across the app. Only populate what you need for your local workflows.
 
-Required/Primary:
-- HELIUS_API_KEY=           # Solana infra (transactions, balances, DAS)
-- BITQUERY_API_KEY=         # Multi-chain analytics
-- NEXT_PUBLIC_SOLANA_CLUSTER=mainnet-beta  # or devnet
+Core keys you’ll likely need for Atlas/Oracle:
+- HELIUS_API_KEY — Solana infra (DAS, balances, txns)
+- BITQUERY_API_KEY — Multi-chain analytics
+- NEXT_PUBLIC_SOLANA_CLUSTER — e.g., mainnet-beta
 
-Optional/Feature-gated:
-- JUPITER_REFERRAL_ACCOUNT= # If referral routing is enabled for swaps
-- MORALIS_API_KEY=          # If Moralis endpoints are used
-- ETH_RPC_URL=              # For EVM examples (fallbacks may exist)
-- OPENAI_API_KEY=           # If AI routes use OpenAI in your environment
-- NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID= # If WalletConnect is used by wallet adapters
-- NEXT_PUBLIC_SITE_URL=https://keystone.stauniverse.tech
+Other optional keys (enable features if present):
+- MORALIS_API_KEY — Solana holders routes
+- ZERO_EX_API_KEY — EVM swap quotes
+- RANGO_API_KEY — Bridge quotes
+- NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID — WalletConnect in client UI
+- OPENAI_API_KEY, GROQ_API_KEY, NLPCLOUD_API_KEY — AI routes
+- NEXT_PUBLIC_SOLANA_RPC — custom Solana endpoint for client
+- NOWNODES_API_KEY, ETH_RPC_URL — EVM RPC examples
 
-Notes:
-- Atlas runs with degraded functionality if specific provider keys are missing.
-- Transactions are always signed client-side; no private keys are stored server-side.
+Client-exposed variables must start with `NEXT_PUBLIC_`. Server-only secrets must not.
+
+Production hosting (e.g., Netlify): Do not rely on `.env` in the repo. Set the required environment variables in your hosting provider dashboard. This repository’s build is configured to proceed even with ESLint/TS errors for rapid prototyping, but you should still provide API keys so features work at runtime.
 
 ---
 
