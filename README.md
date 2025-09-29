@@ -152,6 +152,8 @@ This project is configured to deploy on Netlify with the official Next.js runtim
 - `netlify.toml` declares the `@netlify/plugin-nextjs` plugin and Node 20 runtime
 - `@netlify/plugin-nextjs` is listed in `package.json`
 
+Note: Do not set a `publish` directory in `netlify.toml` for Next.js sites using the plugin; the plugin manages output and functions mapping.
+
 Environment variables: set server-only keys in Netlify → Site settings → Build & deploy → Environment.
 
 Common vars:
