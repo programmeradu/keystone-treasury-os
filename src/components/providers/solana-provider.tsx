@@ -27,9 +27,12 @@ export function SolanaProviders({ children }: { children: ReactNode }) {
     }
     
     // Fallback for SSR (won't be used for connection but needed for hydration)
-    return process.env.NEXT_PUBLIC_SITE_URL 
-      ? `${process.env.NEXT_PUBLIC_SITE_URL}/api/solana/rpc`
-      : "http://localhost:3000/api/solana/rpc";
+    if (process.env.NEXT_PUBLIC_SITE_URL) {
+      return `${process.env.NEXT_PUBLIC_SITE_URL}/api/solana/rpc`;
+    }
+    throw new Error(
+      "No Solana RPC endpoint configured. Please set NEXT_PUBLIC_SOLANA_RPC or NEXT_PUBLIC_SITE_URL in your environment."
+    );
   }, []);
 
   const wallets = useMemo(
