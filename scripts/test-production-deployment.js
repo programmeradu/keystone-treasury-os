@@ -5,7 +5,9 @@
  * Tests that RPC proxy is working and verifies no 403 errors
  */
 
-const PROD_URL = process.argv[2] || 'https://keystone.stauniverse.tech';
+// NOTE: The default production URL below is a placeholder and MUST be updated for different deployments.
+// You can override it by setting the PROD_URL environment variable or passing a command-line argument.
+const PROD_URL = process.env.PROD_URL || process.argv[2] || 'https://keystone.stauniverse.tech';
 
 console.log(`\n${'='.repeat(70)}`);
 console.log(`🧪 Testing Netlify Deployment: ${PROD_URL}`);
