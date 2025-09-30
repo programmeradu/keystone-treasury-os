@@ -45,15 +45,45 @@ const rkTheme = lightTheme({
 
 export function Web3Providers({ children }: { children: ReactNode }) {
   const apiKey = process.env.NEXT_PUBLIC_CDP_API_KEY;
+  
+  // Safety check for undefined values to prevent hydration mismatches
+  if (typeof window === 'undefined') {
+    // During SSR, return minimal structure
+    return (
+      <WagmiProvider config={fallbackConfig}>
+        <QueryClientProvider client={queryClient}>
+          {/* Only include OnchainKitProvider if we have a valid API key */}
+          {apiKey ? (
+            <OnchainKitProvider apiKey={apiKey} chain={base}>
+              {children}
+            </OnchainKitProvider>
+          ) : (
+            children
+          )}
+        </QueryClientProvider>
+      </WagmiProvider>
+    );
+  }
+
   return (
     <WagmiProvider config={rainbowConfig}>
       <QueryClientProvider client={queryClient}>
         {projectId ? (
           <RainbowKitProvider theme={rkTheme} modalSize="compact">
-            <OnchainKitProvider apiKey={apiKey} chain={base}>{children}</OnchainKitProvider>
+            {apiKey ? (
+              <OnchainKitProvider apiKey={apiKey} chain={base}>{children}</OnchainKitProvider>
+            ) : (
+              children
+            )}
           </RainbowKitProvider>
         ) : (
-          <OnchainKitProvider apiKey={apiKey} chain={base}>{children}</OnchainKitProvider>
+          <>
+            {apiKey ? (
+              <OnchainKitProvider apiKey={apiKey} chain={base}>{children}</OnchainKitProvider>
+            ) : (
+              children
+            )}
+          </>
         )}
       </QueryClientProvider>
     </WagmiProvider>
