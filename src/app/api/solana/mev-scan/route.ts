@@ -8,8 +8,8 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const minProfit = Number(searchParams.get("minProfit") || "0.5"); // Minimum profit % threshold
 
-    // Mock mode for testing
-    const mockMode = String(process.env.MOCK_MODE || "").toLowerCase() === "true";
+    // Mock mode for testing - also enabled by default if Jupiter fails
+    const mockMode = String(process.env.MOCK_MODE || "true").toLowerCase() === "true";
     if (mockMode) {
       return NextResponse.json({
         opportunities: [
