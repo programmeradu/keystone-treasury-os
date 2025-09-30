@@ -24,6 +24,9 @@ import {
 "@/components/ui/dropdown-menu";
 import { useRouter, useSearchParams } from "next/navigation";
 import { JupiterSwapCard } from "@/components/atlas/JupiterSwapCard";
+import { RugPullDetector } from "@/components/atlas/RugPullDetector";
+import { DCABotCard } from "@/components/atlas/DCABotCard";
+import { MEVScanner } from "@/components/atlas/MEVScanner";
 
 // Jupiter core mints (mainnet)
 const MINTS = {
@@ -1589,6 +1592,15 @@ export function AtlasClient() {
                     </CardContent>
                   </Card>
                 </div>
+
+                {/* 🏴‍☠️ Rug Pull Detector - NEW */}
+                <RugPullDetector />
+
+                {/* 🤖 Auto-DCA Bot Builder - NEW */}
+                <DCABotCard />
+
+                {/* 🎯 MEV Opportunity Scanner - NEW */}
+                <MEVScanner />
               </div>
             </TabsContent>
 
