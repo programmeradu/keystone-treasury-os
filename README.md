@@ -154,6 +154,30 @@ After setting envs, trigger a deploy. Verify these endpoints in production (shou
 
 If you still see 404s on `/api/*`, ensure the plugin is installed and `netlify.toml` exists at the repo root.
 
+### Verifying the RPC Fix
+
+After deploying, verify that the RPC 403 errors are resolved:
+
+```bash
+# Test all production endpoints including RPC proxy
+npm run test:production https://keystone.stauniverse.tech
+```
+
+This will verify:
+- API routes are deployed correctly (no 404s)
+- Solana RPC proxy is working (no 403s)
+- Client will use the proxy instead of public RPC
+
+You can also manually test the RPC proxy:
+
+```bash
+curl -X POST https://keystone.stauniverse.tech/api/solana/rpc \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}'
+```
+
+Expected: 200 status with JSON-RPC response (or 500 if upstream is down, but not 404).
+
 ### Testing API Endpoints After Deployment
 
 Use the included test script to verify API endpoints are working:
