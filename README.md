@@ -57,7 +57,7 @@ npm run build && npm start
 Create a `.env` from `.env.example`. The template includes all keys referenced across the app. Only populate what you need for your local workflows.
 
 Core keys you’ll likely need for Atlas/Oracle:
-- HELIUS_API_KEY — Solana infra (DAS, balances, txns)
+- HELIUS_API_KEY — Solana infra (DAS, balances, txns). **Recommended**: improves RPC reliability and prevents 403 errors
 - BITQUERY_API_KEY — Multi-chain analytics
 - NEXT_PUBLIC_SOLANA_CLUSTER — e.g., mainnet-beta
 
@@ -67,12 +67,14 @@ Other optional keys (enable features if present):
 - RANGO_API_KEY — Bridge quotes
 - NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID — WalletConnect in client UI
 - OPENAI_API_KEY, GROQ_API_KEY, NLPCLOUD_API_KEY — AI routes
-- NEXT_PUBLIC_SOLANA_RPC — custom Solana endpoint for client
+- NEXT_PUBLIC_SOLANA_RPC — custom Solana endpoint for client (optional; defaults to `/api/solana/rpc` proxy)
 - NOWNODES_API_KEY, ETH_RPC_URL — EVM RPC examples
 
 Client-exposed variables must start with `NEXT_PUBLIC_`. Server-only secrets must not.
 
 Production hosting (e.g., Netlify): Do not rely on `.env` in the repo. Set the required environment variables in your hosting provider dashboard. This repository’s build is configured to proceed even with ESLint/TS errors for rapid prototyping, but you should still provide API keys so features work at runtime.
+
+**Note on Solana RPC**: The client automatically uses the `/api/solana/rpc` proxy endpoint to avoid rate limits and 403 errors from public RPC nodes. The proxy uses `HELIUS_API_KEY` if available, otherwise falls back to the public Solana RPC. You can override this by setting `NEXT_PUBLIC_SOLANA_RPC` to a custom authenticated endpoint.
 
 ---
 
@@ -179,5 +181,11 @@ If API routes return 404 on Netlify:
 - **500 errors**: Usually missing API keys (expected for external APIs)
 - **404 errors**: Configuration issue with netlify.toml or missing plugin
 - **Build failures**: Check Node.js version (requires Node 20+)
+- **403 RPC errors**: The app uses `/api/solana/rpc` proxy by default to avoid rate limits and auth issues with public Solana RPC endpoints. If you see 403 errors:
+  - Ensure `HELIUS_API_KEY` is set in Netlify environment variables (recommended)
+  - Or set `NEXT_PUBLIC_SOLANA_RPC` to a custom RPC endpoint with proper authentication
+  - The client automatically uses `window.location.origin/api/solana/rpc` instead of calling `https://api.mainnet-beta.solana.com` directly
 
-- Thanks to Helius, Bitquery, Jupiter, Marinade, and the Solana ecosystem for infrastructure and tooling.
+---
+
+Thanks to Helius, Bitquery, Jupiter, Marinade, and the Solana ecosystem for infrastructure and tooling.
