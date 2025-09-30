@@ -17,7 +17,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  outputFileTracingRoot: path.resolve(__dirname, '../../'),
+  // Remove potentially problematic outputFileTracingRoot for Netlify
+  // outputFileTracingRoot: path.resolve(__dirname, '../../'),
+  
   // Enable the visual-edits component tagger loader only when explicitly requested
   ...(enableVisualEdits
     ? {
@@ -33,4 +35,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-// Orchids restart: 1759096263992

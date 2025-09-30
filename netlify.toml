@@ -11,11 +11,6 @@
   # Increase timeout for scraping functions
   timeout = 15
 
-# Specific configuration for airdrops API function
-[[functions]]
-  pattern = "api/airdrops/**"
-  timeout = 15
-
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
