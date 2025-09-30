@@ -71,6 +71,7 @@ export async function GET(req: Request) {
 
     // Birdeye API key
     const birdeyeKey = process.env.BIRDEYE_API_KEY;
+    console.log("Birdeye API Key present:", !!birdeyeKey, "Length:", birdeyeKey?.length);
     if (!birdeyeKey) {
       console.warn("BIRDEYE_API_KEY not configured, returning empty opportunities");
       return NextResponse.json({
@@ -112,8 +113,12 @@ export async function GET(req: Request) {
 
     clearTimeout(timeoutId);
 
+    console.log("Birdeye API response status:", birdeyeRes.status);
+    
     if (!birdeyeRes.ok) {
-      throw new Error(`Birdeye API returned ${birdeyeRes.status}`);
+      const errorText = await birdeyeRes.text();
+      console.error("Birdeye API error:", errorText);
+      throw new Error(`Birdeye API returned ${birdeyeRes.status}: ${errorText}`);
     }
 
     const birdeyeData = await birdeyeRes.json();
