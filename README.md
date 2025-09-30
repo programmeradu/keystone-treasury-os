@@ -22,10 +22,6 @@ While competitors build better dashboards, we're eliminating the need for them e
 - Web3: Ethers.js, viem, @solana/web3.js
 - Core APIs: Helius (Solana Infra), Bitquery (Multi-Chain Analytics), Jupiter (Solana Swaps)
 
-### 4) The Pitch
-- Pitch Deck: ADD_LINK_HERE
-- Video Demo: ADD_LINK_HERE
-
 ---
 
 ## Quickstart (Local Development)
