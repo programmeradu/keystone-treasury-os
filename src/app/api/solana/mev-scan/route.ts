@@ -97,6 +97,8 @@ export async function GET(req: Request) {
       `https://public-api.birdeye.so/defi/multi_price?list_address=${tokens.map(t => t.mint).join(',')}&include_liquidity=true`,
       {
         headers: {
+          'accept': 'application/json',
+          'x-chain': 'solana',
           'X-API-KEY': birdeyeKey,
         },
         signal: controller.signal,
