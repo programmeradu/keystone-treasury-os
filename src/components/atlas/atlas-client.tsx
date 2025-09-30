@@ -1700,7 +1700,7 @@ export function AtlasClient() {
       {/* Floating bottom command bar */}
       <form onSubmit={handleBottomSubmit} className="fixed inset-x-0 bottom-4 z-50">
         <div className="mx-auto max-w-3xl px-4">
-          <div className="flex items-center gap-2 rounded-full bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/50 shadow-lg px-2 py-1">
+          <div className="flex items-center gap-2 rounded-full bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/90 shadow-lg px-2 py-1 border border-border/50">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="sm" variant="ghost" className="h-8 px-3 rounded-full text-xs">
