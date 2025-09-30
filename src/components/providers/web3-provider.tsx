@@ -45,15 +45,26 @@ const rkTheme = lightTheme({
 
 export function Web3Providers({ children }: { children: ReactNode }) {
   const apiKey = process.env.NEXT_PUBLIC_CDP_API_KEY;
+
   return (
     <WagmiProvider config={rainbowConfig}>
       <QueryClientProvider client={queryClient}>
         {projectId ? (
           <RainbowKitProvider theme={rkTheme} modalSize="compact">
-            <OnchainKitProvider apiKey={apiKey} chain={base}>{children}</OnchainKitProvider>
+            {apiKey ? (
+              <OnchainKitProvider apiKey={apiKey} chain={base}>{children}</OnchainKitProvider>
+            ) : (
+              children
+            )}
           </RainbowKitProvider>
         ) : (
-          <OnchainKitProvider apiKey={apiKey} chain={base}>{children}</OnchainKitProvider>
+          <>
+            {apiKey ? (
+              <OnchainKitProvider apiKey={apiKey} chain={base}>{children}</OnchainKitProvider>
+            ) : (
+              children
+            )}
+          </>
         )}
       </QueryClientProvider>
     </WagmiProvider>

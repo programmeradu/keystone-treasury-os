@@ -483,7 +483,10 @@ export function AtlasClient() {
       setSpecError(null);
       try {
         const j = await fetchJsonWithRetry("/api/airdrops/speculative/solana", { cache: "no-store" });
-        if (mounted) setSpecItems(Array.isArray((j as any)?.items) ? (j as any).items : (j as any)?.data || []);
+        const items = Array.isArray((j as any)?.items) ? (j as any).items : (j as any)?.data || [];
+        if (mounted) {
+          setSpecItems(items);
+        }
       } catch (e: any) {
         if (mounted) setSpecError(e?.message || String(e));
       } finally {

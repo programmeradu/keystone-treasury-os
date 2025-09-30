@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type ReporterProps = {
   /*  ⎯⎯ props are only provided on the global-error page ⎯⎯ */
@@ -9,11 +9,19 @@ type ReporterProps = {
 };
 
 export default function ErrorReporter({ error, reset }: ReporterProps) {
+  const [isClient, setIsClient] = useState(false);
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   /* ─ instrumentation shared by every route ─ */
   const lastOverlayMsg = useRef("");
   const pollRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    if (!isClient) return;
+    
     const inIframe = window.parent !== window;
     if (!inIframe) return;
 
@@ -66,15 +74,16 @@ export default function ErrorReporter({ error, reset }: ReporterProps) {
     pollRef.current = setInterval(pollOverlay, 1000);
 
     return () => {
+      if (!isClient) return;
       window.removeEventListener("error", onError);
       window.removeEventListener("unhandledrejection", onReject);
       pollRef.current && clearInterval(pollRef.current);
     };
-  }, []);
+  }, [isClient]);
 
   /* ─ extra postMessage when on the global-error route ─ */
   useEffect(() => {
-    if (!error) return;
+    if (!error || !isClient) return;
     window.parent.postMessage(
       {
         type: "global-error-reset",
@@ -89,7 +98,7 @@ export default function ErrorReporter({ error, reset }: ReporterProps) {
       },
       "*"
     );
-  }, [error]);
+  }, [error, isClient]);
 
   /* ─ ordinary pages render nothing ─ */
   if (!error) return null;
