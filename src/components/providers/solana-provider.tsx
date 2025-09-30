@@ -13,8 +13,27 @@ import {
 import "@solana/wallet-adapter-react-ui/styles.css";
 
 export function SolanaProviders({ children }: { children: ReactNode }) {
-  const rawEndpoint = process.env.NEXT_PUBLIC_SOLANA_RPC || "https://api.mainnet-beta.solana.com";
-  const endpoint = /^https?:\/\//.test(rawEndpoint) ? rawEndpoint : "https://api.mainnet-beta.solana.com";
+  // Use our proxy endpoint by default to avoid 403 errors from public RPC
+  // Falls back to custom RPC if NEXT_PUBLIC_SOLANA_RPC is set
+  const endpoint = useMemo(() => {
+    const customRpc = process.env.NEXT_PUBLIC_SOLANA_RPC;
+    if (customRpc && /^https?:\/\//.test(customRpc)) {
+      return customRpc;
+    }
+    
+    // Use our proxy endpoint (works in both dev and production)
+    if (typeof window !== "undefined") {
+      return `${window.location.origin}/api/solana/rpc`;
+    }
+    
+    // Fallback for SSR (won't be used for connection but needed for hydration)
+    if (process.env.NEXT_PUBLIC_SITE_URL) {
+      return `${process.env.NEXT_PUBLIC_SITE_URL}/api/solana/rpc`;
+    }
+    // Fallback to localhost for SSR/local development
+    return "http://localhost:3000/api/solana/rpc";
+  }, []);
+
   const wallets = useMemo(
     () => [
       new PhantomWalletAdapter(),
