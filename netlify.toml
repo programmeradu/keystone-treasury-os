@@ -3,9 +3,18 @@
 
 [build.environment]
   NODE_VERSION = "20"
+  # Optimize build for production
+  NODE_ENV = "production"
 
 [functions]
   node_bundler = "esbuild"
+  # Increase timeout for scraping functions
+  timeout = 15
+
+# Specific configuration for airdrops API function
+[[functions]]
+  pattern = "api/airdrops/**"
+  timeout = 15
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
@@ -33,3 +42,9 @@
   for = "/*.css"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+
+# Optimize API routes caching
+[[headers]]
+  for = "/api/airdrops/speculative/solana"
+  [headers.values]
+    Cache-Control = "private, max-age=60"

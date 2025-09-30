@@ -14,7 +14,10 @@ function absUrl(href?: string) {
 
 // Fallback data when the source is unavailable after all retry attempts
 function getFallbackData() {
-  console.log("Airdrops API: Using fallback data - real scraping failed after all attempts");
+  const isProduction = process.env.NODE_ENV === 'production';
+  const environmentInfo = isProduction ? 'production' : 'development';
+  
+  console.log(`Airdrops API: Using fallback data in ${environmentInfo} environment - real scraping failed after all attempts`);
   
   const fallbackItems = [
     {
@@ -61,6 +64,10 @@ function getFallbackData() {
     }
   ];
 
+  const message = isProduction 
+    ? "Real-time scraping temporarily unavailable in production. Serving curated Solana DeFi opportunities. If this persists, check Netlify function logs for network errors."
+    : "Real-time scraping temporarily unavailable (likely firewall restrictions in development). Serving curated Solana DeFi opportunities.";
+
   return NextResponse.json(
     {
       count: fallbackItems.length,
@@ -68,7 +75,8 @@ function getFallbackData() {
       source: SOURCE_URL,
       scrapedAt: new Date().toISOString(),
       fallback: true,
-      message: "Real-time scraping temporarily unavailable. Serving curated Solana DeFi opportunities. These protocols have active ecosystems with potential for rewards and airdrops."
+      environment: environmentInfo,
+      message: message
     },
     { status: 200, headers: { "Cache-Control": "private, max-age=900" } } // 15 min cache for fallback
   );
@@ -82,34 +90,39 @@ export async function GET() {
     try {
       console.log(`Airdrops API: Attempt ${attempt}/3`);
       
-      // Enhanced user agents to avoid bot detection
+      // Enhanced user agents to avoid bot detection - more variety and recent versions
       const userAgents = [
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:121.0) Gecko/20100101 Firefox/121.0"
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:132.0) Gecko/20100101 Firefox/132.0",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15"
       ];
       const randomUA = userAgents[Math.floor(Math.random() * userAgents.length)];
 
-      // Exponential backoff delay for retries
+      // Shorter exponential backoff delay for retries (better for serverless)
       if (attempt > 1) {
-        const delay = Math.pow(2, attempt - 1) * 1000; // 2s, 4s delays
-        console.log(`Airdrops API: Waiting ${delay}ms before retry`);
+        const delay = Math.pow(1.5, attempt - 1) * 1000; // 1.5s, 2.25s delays
+        console.log(`Airdrops API: Waiting ${Math.round(delay)}ms before retry`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
 
-      const timeoutMs = 15000 + (attempt * 5000); // Increase timeout with attempts: 20s, 25s, 30s
+      // Shorter timeouts optimized for serverless functions (Netlify has 10s default limit)
+      const timeoutMs = 8000 + (attempt * 1000); // 9s, 10s, 11s - stay under Netlify limits
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      console.log(`Airdrops API: Attempt ${attempt} using timeout ${timeoutMs}ms and UA: ${randomUA.substring(0, 50)}...`);
 
       const res = await fetch(SOURCE_URL, {
         cache: "no-store",
         headers: {
           "user-agent": randomUA,
           accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-          "accept-language": "en-US,en;q=0.9",
-          "accept-encoding": "gzip, deflate, br",
+          "accept-language": "en-US,en;q=0.9,fr;q=0.8,de;q=0.7",
+          "accept-encoding": "gzip, deflate, br, zstd",
           "dnt": "1",
           "connection": "keep-alive",
           "upgrade-insecure-requests": "1",
@@ -118,14 +131,35 @@ export async function GET() {
           "sec-fetch-site": "none",
           "sec-fetch-user": "?1",
           "cache-control": "max-age=0",
+          // Add more realistic headers to avoid bot detection
+          "sec-ch-ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+          "sec-ch-ua-mobile": "?0",
+          "sec-ch-ua-platform": '"Windows"',
+          "pragma": "no-cache",
         },
         signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
 
+      console.log(`Airdrops API: Attempt ${attempt} got response status: ${res.status}`);
+
       if (!res.ok) {
-        console.warn(`Airdrops API: Attempt ${attempt} failed with status ${res.status}`);
+        console.warn(`Airdrops API: Attempt ${attempt} failed with status ${res.status} ${res.statusText}`);
+        
+        // Check for specific error codes that might indicate different issues
+        if (res.status === 403) {
+          console.warn("Airdrops API: 403 Forbidden - possible bot detection or IP blocking");
+        } else if (res.status === 429) {
+          console.warn("Airdrops API: 429 Rate Limited - backing off longer");
+          // For rate limiting, wait longer before next attempt
+          if (attempt < 3) {
+            await new Promise(resolve => setTimeout(resolve, 3000));
+          }
+        } else if (res.status >= 500) {
+          console.warn("Airdrops API: Server error, trying next attempt");
+        }
+        
         if (attempt === 3) {
           // Only use fallback after all attempts failed
           console.warn("Airdrops API: All attempts failed, using fallback data");
@@ -145,6 +179,7 @@ export async function GET() {
         continue;
       }
 
+      console.log(`Airdrops API: Attempt ${attempt} received ${html.length} chars of HTML content`);
       const $ = cheerio.load(html);
       const items = await parseAirdropsContent($);
 
@@ -157,6 +192,7 @@ export async function GET() {
             source: SOURCE_URL,
             scrapedAt: new Date().toISOString(),
             attempt: attempt,
+            fallback: false, // Explicitly mark as real data
           },
           { status: 200, headers: { "Cache-Control": "private, max-age=60" } }
         );
@@ -173,9 +209,15 @@ export async function GET() {
       
       // Check if it's a network/timeout error
       if (err.name === 'AbortError') {
-        console.warn(`Airdrops API: Attempt ${attempt} timed out`);
+        console.warn(`Airdrops API: Attempt ${attempt} timed out after ${8000 + (attempt * 1000)}ms`);
       } else if (err.code === 'ENOTFOUND' || err.message.includes('fetch failed')) {
-        console.warn(`Airdrops API: Attempt ${attempt} network error`);
+        console.warn(`Airdrops API: Attempt ${attempt} network error - DNS resolution or connection failed`);
+      } else if (err.code === 'ECONNREFUSED') {
+        console.warn(`Airdrops API: Attempt ${attempt} connection refused`);
+      } else if (err.code === 'ETIMEDOUT') {
+        console.warn(`Airdrops API: Attempt ${attempt} connection timed out`);
+      } else {
+        console.warn(`Airdrops API: Attempt ${attempt} unexpected error:`, err.code || err.name);
       }
       
       if (attempt === 3) {
