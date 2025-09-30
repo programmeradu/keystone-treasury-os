@@ -94,13 +94,18 @@ export async function GET(req: Request) {
 
     // Fetch multi-price data from Birdeye
     const birdeyeRes = await fetch(
-      `https://public-api.birdeye.so/defi/multi_price?list_address=${tokens.map(t => t.mint).join(',')}&include_liquidity=true`,
+      'https://public-api.birdeye.so/defi/multi_price?ui_amount_mode=raw',
       {
+        method: 'POST',
         headers: {
           'accept': 'application/json',
           'x-chain': 'solana',
+          'content-type': 'application/json',
           'X-API-KEY': birdeyeKey,
         },
+        body: JSON.stringify({
+          list_address: tokens.map(t => t.mint).join(','),
+        }),
         signal: controller.signal,
       }
     );
