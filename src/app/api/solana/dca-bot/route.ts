@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import { db } from "@/db";
+import { dcaBots, dcaExecutions } from "@/db/schema";
+import { eq, and, lte, desc } from "drizzle-orm";
+import { getTokenPrice, calculateNextExecution } from "@/lib/jupiter-executor";
 
 export const dynamic = "force-dynamic";
 
@@ -6,78 +10,77 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const action = searchParams.get("action") || "list"; // list, get, create, execute
+    const action = searchParams.get("action") || "list";
+    const userId = searchParams.get("userId") || "demo_user"; // TODO: Get from auth
 
-    // Mock mode for testing
-    const mockMode = String(process.env.MOCK_MODE || "").toLowerCase() === "true";
-    if (mockMode || action === "list") {
+    if (action === "list") {
+      // Fetch all bots for user
+      const bots = await db
+        .select()
+        .from(dcaBots)
+        .where(eq(dcaBots.userId, userId))
+        .orderBy(desc(dcaBots.createdAt));
+
+      // Calculate current stats for each bot
+      const botsWithStats = await Promise.all(
+        bots.map(async (bot) => {
+          // Get current price
+          const currentPrice = await getTokenPrice(bot.buyTokenMint);
+          
+          // Calculate average price
+          const avgPrice = bot.totalReceived > 0 
+            ? bot.totalInvested / bot.totalReceived 
+            : 0;
+          
+          // Calculate P/L
+          const currentValue = currentPrice ? bot.totalReceived * currentPrice : 0;
+          const pnlPercent = bot.totalInvested > 0
+            ? ((currentValue - bot.totalInvested) / bot.totalInvested) * 100
+            : 0;
+
+          return {
+            id: bot.id,
+            name: bot.name,
+            status: bot.status,
+            fromToken: bot.paymentTokenSymbol,
+            toToken: bot.buyTokenSymbol,
+            amount: bot.amountUsd,
+            frequency: bot.frequency,
+            nextExecution: bot.nextExecution,
+            totalInvested: bot.totalInvested,
+            totalReceived: bot.totalReceived,
+            avgPrice,
+            currentPrice: currentPrice || 0,
+            pnlPercent,
+            executionCount: bot.executionCount,
+            createdAt: bot.createdAt,
+          };
+        })
+      );
+
+      // Calculate summary
+      const totalInvested = botsWithStats.reduce((sum, bot) => sum + bot.totalInvested, 0);
+      const totalValue = botsWithStats.reduce((sum, bot) => {
+        return sum + (bot.totalReceived * bot.currentPrice);
+      }, 0);
+      const overallPnl = totalInvested > 0 
+        ? ((totalValue - totalInvested) / totalInvested) * 100 
+        : 0;
+
       return NextResponse.json({
-        bots: [
-          {
-            id: "dca-1",
-            name: "SOL Weekly DCA",
-            status: "active",
-            fromToken: "USDC",
-            toToken: "SOL",
-            amount: 100, // USDC per execution
-            frequency: "weekly", // daily, weekly, monthly
-            nextExecution: Date.now() + 1000 * 60 * 60 * 24 * 3, // 3 days
-            totalInvested: 800,
-            totalReceived: 5.45, // SOL
-            avgPrice: 146.79,
-            currentPrice: 150.12,
-            pnlPercent: 2.27,
-            executionCount: 8,
-            createdAt: Date.now() - 1000 * 60 * 60 * 24 * 60, // 60 days ago
-          },
-          {
-            id: "dca-2",
-            name: "JUP Monthly Stack",
-            status: "active",
-            fromToken: "USDC",
-            toToken: "JUP",
-            amount: 50,
-            frequency: "monthly",
-            nextExecution: Date.now() + 1000 * 60 * 60 * 24 * 15,
-            totalInvested: 150,
-            totalReceived: 125.5,
-            avgPrice: 1.19,
-            currentPrice: 1.25,
-            pnlPercent: 5.04,
-            executionCount: 3,
-            createdAt: Date.now() - 1000 * 60 * 60 * 24 * 90,
-          },
-          {
-            id: "dca-3",
-            name: "BONK Daily Drip",
-            status: "paused",
-            fromToken: "USDC",
-            toToken: "BONK",
-            amount: 10,
-            frequency: "daily",
-            nextExecution: null,
-            totalInvested: 200,
-            totalReceived: 9_800_000_000,
-            avgPrice: 0.0000204,
-            currentPrice: 0.0000210,
-            pnlPercent: 2.94,
-            executionCount: 20,
-            createdAt: Date.now() - 1000 * 60 * 60 * 24 * 30,
-          },
-        ],
+        bots: botsWithStats,
         summary: {
-          totalBots: 3,
-          activeBots: 2,
-          totalInvested: 1150,
-          totalValue: 1185.50,
-          overallPnl: 3.09,
+          totalBots: bots.length,
+          activeBots: bots.filter(b => b.status === 'active').length,
+          totalInvested,
+          totalValue,
+          overallPnl,
         },
       }, { status: 200 });
     }
 
-    // For create/update actions, would need POST endpoint
     return NextResponse.json({
-      error: "Action not supported in GET. Use POST for create/update/execute.",
+      error: "Action not supported",
     }, { status: 400 });
 
   } catch (e: any) {
@@ -90,61 +93,169 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const action = body.action; // create, pause, resume, execute, delete
+    const action = body.action;
+    const userId = body.userId || "demo_user"; // TODO: Get from auth
 
-    // Mock mode for testing
-    const mockMode = String(process.env.MOCK_MODE || "").toLowerCase() === "true";
-    if (mockMode) {
-      if (action === "create") {
-        return NextResponse.json({
-          success: true,
-          bot: {
-            id: `dca-${Date.now()}`,
-            name: body.name || "New DCA Bot",
-            status: "active",
-            fromToken: body.fromToken,
-            toToken: body.toToken,
-            amount: body.amount,
-            frequency: body.frequency,
-            nextExecution: Date.now() + 1000 * 60 * 60 * 24, // 1 day
-            totalInvested: 0,
-            totalReceived: 0,
-            executionCount: 0,
-            createdAt: Date.now(),
-          },
-        }, { status: 200 });
+    // CREATE BOT
+    if (action === "create") {
+      const {
+        name,
+        buyTokenMint,
+        buyTokenSymbol,
+        paymentTokenMint,
+        paymentTokenSymbol,
+        amountUsd,
+        frequency,
+        maxSlippage,
+        walletAddress,
+      } = body;
+
+      // Validation
+      if (!name || !buyTokenMint || !paymentTokenMint || !walletAddress) {
+        return NextResponse.json(
+          { error: "Missing required fields" },
+          { status: 400 }
+        );
       }
 
-      if (action === "execute") {
-        return NextResponse.json({
-          success: true,
-          execution: {
-            botId: body.botId,
-            timestamp: Date.now(),
-            fromAmount: 100,
-            toAmount: 0.67,
-            price: 149.25,
-            txnSignature: "5xK..." + Date.now(),
-          },
-        }, { status: 200 });
+      if (amountUsd < 1) {
+        return NextResponse.json(
+          { error: "Amount must be at least $1" },
+          { status: 400 }
+        );
       }
+
+      // Create bot ID
+      const botId = `dca_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const now = Date.now();
+      const startDate = now;
+      const nextExecution = calculateNextExecution(startDate, frequency as any);
+
+      // Insert into database
+      await db.insert(dcaBots).values({
+        id: botId,
+        userId,
+        name,
+        buyTokenMint,
+        buyTokenSymbol,
+        paymentTokenMint,
+        paymentTokenSymbol,
+        amountUsd,
+        frequency,
+        startDate,
+        endDate: null,
+        maxSlippage: maxSlippage || 0.5,
+        status: "active",
+        walletAddress,
+        nextExecution,
+        executionCount: 0,
+        totalInvested: 0,
+        totalReceived: 0,
+        createdAt: now,
+        updatedAt: now,
+      });
 
       return NextResponse.json({
         success: true,
-        message: `Action ${action} completed`,
+        bot: {
+          id: botId,
+          name,
+          status: "active",
+          nextExecution,
+        },
       }, { status: 200 });
     }
 
-    // Real implementation would:
-    // 1. Store bot config in database
-    // 2. Schedule execution via cron/queue system
-    // 3. Execute swaps via Jupiter API
-    // 4. Track performance & notify user
-    // 5. Handle errors & retries
+    // PAUSE BOT
+    if (action === "pause") {
+      const { botId } = body;
+      
+      await db
+        .update(dcaBots)
+        .set({ 
+          status: "paused",
+          nextExecution: null,
+          updatedAt: Date.now(),
+        })
+        .where(and(
+          eq(dcaBots.id, botId),
+          eq(dcaBots.userId, userId)
+        ));
+
+      return NextResponse.json({ success: true }, { status: 200 });
+    }
+
+    // RESUME BOT
+    if (action === "resume") {
+      const { botId } = body;
+      
+      const bot = await db
+        .select()
+        .from(dcaBots)
+        .where(and(
+          eq(dcaBots.id, botId),
+          eq(dcaBots.userId, userId)
+        ))
+        .limit(1);
+
+      if (bot.length === 0) {
+        return NextResponse.json(
+          { error: "Bot not found" },
+          { status: 404 }
+        );
+      }
+
+      const nextExecution = calculateNextExecution(Date.now(), bot[0].frequency as any);
+      
+      await db
+        .update(dcaBots)
+        .set({ 
+          status: "active",
+          nextExecution,
+          updatedAt: Date.now(),
+        })
+        .where(eq(dcaBots.id, botId));
+
+      return NextResponse.json({ success: true }, { status: 200 });
+    }
+
+    // EXECUTE BOT (Manual execution)
+    if (action === "execute") {
+      const { botId } = body;
+      
+      const bot = await db
+        .select()
+        .from(dcaBots)
+        .where(and(
+          eq(dcaBots.id, botId),
+          eq(dcaBots.userId, userId)
+        ))
+        .limit(1);
+
+      if (bot.length === 0) {
+        return NextResponse.json(
+          { error: "Bot not found" },
+          { status: 404 }
+        );
+      }
+
+      // In Phase 1, we just return instructions for manual execution
+      // In Phase 2, this would execute the actual swap
+      return NextResponse.json({
+        success: true,
+        message: "Manual execution - please approve the transaction in your wallet",
+        instructions: {
+          buyToken: bot[0].buyTokenSymbol,
+          paymentToken: bot[0].paymentTokenSymbol,
+          amount: bot[0].amountUsd,
+          jupiterUrl: `https://jup.ag/swap/${bot[0].paymentTokenMint}-${bot[0].buyTokenMint}`,
+        },
+      }, { status: 200 });
+    }
 
     return NextResponse.json({
-      error: "Real DCA execution not implemented yet. Use MOCK_MODE for testing.",
-    }, { status: 501 });
+      error: "Unknown action",
+    }, { status: 400 });
 
   } catch (e: any) {
     console.error("DCA bot POST error:", e);

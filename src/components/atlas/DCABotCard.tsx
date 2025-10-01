@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, Bot, Play, Pause, TrendingUp, TrendingDown } from "lucide-react";
+import { Loader2, Bot, Play, Pause, TrendingUp, TrendingDown, Zap } from "lucide-react";
 import { toast } from "sonner";
+import { CreateDCABotModal } from "./CreateDCABotModal";
 
 export function DCABotCard() {
   const [loading, setLoading] = useState(false);
@@ -55,6 +56,29 @@ export function DCABotCard() {
       fetchBots(); // Refresh
     } catch (e: any) {
       toast.error(e.message || "Failed to toggle bot");
+    }
+  };
+
+  const executeBot = async (botId: string) => {
+    try {
+      toast.info("Executing trade...");
+      
+      const res = await fetch("/api/solana/dca-bot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "execute",
+          botId,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      toast.success("Trade executed successfully!");
+      fetchBots(); // Refresh
+    } catch (e: any) {
+      toast.error(e.message || "Failed to execute trade");
     }
   };
 
@@ -196,18 +220,30 @@ export function DCABotCard() {
                       "Paused"
                     )}
                   </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-6 px-2"
-                    onClick={() => toggleBot(bot.id, bot.status)}
-                  >
-                    {bot.status === "active" ? (
-                      <Pause className="h-3 w-3" />
-                    ) : (
-                      <Play className="h-3 w-3" />
-                    )}
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-2"
+                      onClick={() => executeBot(bot.id)}
+                      title="Execute now"
+                    >
+                      <Zap className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-2"
+                      onClick={() => toggleBot(bot.id, bot.status)}
+                      title={bot.status === "active" ? "Pause" : "Resume"}
+                    >
+                      {bot.status === "active" ? (
+                        <Pause className="h-3 w-3" />
+                      ) : (
+                        <Play className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -220,14 +256,7 @@ export function DCABotCard() {
           )}
 
           {/* Create Bot CTA */}
-          <Button
-            size="sm"
-            variant="outline"
-            className="w-full"
-            onClick={() => toast.info("DCA Bot builder coming soon!")}
-          >
-            + Create New Bot
-          </Button>
+          <CreateDCABotModal onBotCreated={fetchBots} />
         </CardContent>
       </Card>
     </div>
