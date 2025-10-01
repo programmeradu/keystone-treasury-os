@@ -63,14 +63,32 @@ export function MEVScanner() {
     return "text-red-500 border-red-500/30 bg-red-500/10";
   };
 
-  // Format price to show appropriate decimal places
+  // Format price with crypto-style subscript notation for small numbers
+  // Example: 0.00002058 → $0.0₅2058 (subscript 5 = five zeros)
   const formatPrice = (price: number) => {
     if (price === 0) return "$0.00";
     if (price >= 1) return `$${price.toFixed(4)}`;
     if (price >= 0.01) return `$${price.toFixed(4)}`;
-    if (price >= 0.0001) return `$${price.toFixed(6)}`;
-    // For very small numbers (like BONK), use scientific notation or many decimals
-    return `$${price.toExponential(2)}`;
+    
+    // For very small numbers, use subscript notation
+    const str = price.toFixed(20); // Get enough decimals
+    const match = str.match(/^0\.(0+)([1-9]\d*)/);
+    
+    if (match) {
+      const zeros = match[1].length; // Count leading zeros after decimal
+      const digits = match[2].slice(0, 4); // Get first 4 significant digits
+      
+      // Unicode subscript numbers: ₀₁₂₃₄₅₆₇₈₉
+      const subscriptMap: { [key: string]: string } = {
+        '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
+        '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉'
+      };
+      
+      const subscript = zeros.toString().split('').map(d => subscriptMap[d]).join('');
+      return `$0.0${subscript}${digits}`;
+    }
+    
+    return `$${price.toFixed(8)}`;
   };
 
   return (
