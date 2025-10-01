@@ -159,6 +159,13 @@ export async function GET(req: Request) {
                 jupiterValidated = false;
               }
 
+              // Calculate actual profit: (sell price - buy price) / buy price * 100
+              const actualProfitPercent = ((sellPrice - buyPrice) / buyPrice) * 100;
+              
+              // Calculate profit in USD for a $100 trade
+              const tradeAmount = 100; // $100 trade
+              const profitInUsd = (actualProfitPercent / 100) * tradeAmount;
+
               opportunities.push({
                 id: `arb-${token.symbol}-${buyDex}-${sellDex}-${Date.now()}`,
                 type: "arbitrage",
@@ -167,12 +174,12 @@ export async function GET(req: Request) {
                 sellDex: sellDex.charAt(0).toUpperCase() + sellDex.slice(1),
                 buyPrice,
                 sellPrice,
-                profitPercent: realProfit.toFixed(2),
-                profitUsd: (realProfit * buyPrice * 10).toFixed(2),
-                tradeSize: 10,
+                profitPercent: actualProfitPercent.toFixed(2),
+                profitUsd: profitInUsd.toFixed(2),
+                tradeSize: tradeAmount,
                 gasEstimate: 0.001,
-                confidence: jupiterValidated && realProfit > 1.5 ? "high" : 
-                           jupiterValidated && realProfit > 0.8 ? "medium" : "low",
+                confidence: jupiterValidated && actualProfitPercent > 1.5 ? "high" : 
+                           jupiterValidated && actualProfitPercent > 0.8 ? "medium" : "low",
                 expiresIn: Math.floor(Math.random() * 15) + 5,
                 liquidity: Math.min(buyPair.liquidity?.usd || 0, sellPair.liquidity?.usd || 0),
                 volume24h: buyPair.volume?.h24 || 0,

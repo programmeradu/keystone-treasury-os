@@ -91,7 +91,14 @@ export function MEVScanner() {
                 }}
                 className="h-6 px-2 text-[11px] rounded-md"
               >
-                {autoScan ? "Auto" : "Manual"}
+                {autoScan ? (
+                  <>
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse mr-1.5" />
+                    Auto
+                  </>
+                ) : (
+                  "Auto Scan"
+                )}
               </Button>
               <Button
                 size="sm"
@@ -100,7 +107,7 @@ export function MEVScanner() {
                 disabled={loading}
                 className="h-6 px-2 text-[11px] rounded-md"
               >
-                {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Scan"}
+                {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Scan Now"}
               </Button>
             </div>
           </div>
@@ -173,8 +180,8 @@ export function MEVScanner() {
                         <span className="font-mono">${opp.profitUsd}</span>
                       </div>
                       <div>
-                        <span className="opacity-70">Size:</span>{" "}
-                        <span className="font-mono">{opp.tradeSize}</span>
+                        <span className="opacity-70">Trade:</span>{" "}
+                        <span className="font-mono">${opp.tradeSize}</span>
                       </div>
                     </div>
 
