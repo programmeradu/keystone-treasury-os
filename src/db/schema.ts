@@ -79,6 +79,12 @@ export const dcaBots = sqliteTable('dca_bots', {
   executionCount: integer('execution_count').notNull().default(0),
   totalInvested: real('total_invested').notNull().default(0), // Total USD spent
   totalReceived: real('total_received').notNull().default(0), // Total tokens received
+  // Phase 2 fields
+  delegationAmount: real('delegation_amount'), // Approved delegation amount in payment token
+  delegationExpiry: integer('delegation_expiry'), // When delegation expires
+  lastExecutionAttempt: integer('last_execution_attempt'), // Last execution attempt timestamp
+  failedAttempts: integer('failed_attempts').notNull().default(0), // Consecutive failures
+  pauseReason: text('pause_reason'), // Why bot was paused
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
 }, (table) => ({
@@ -101,6 +107,10 @@ export const dcaExecutions = sqliteTable('dca_executions', {
   status: text('status').notNull(), // 'success', 'failed', 'pending'
   errorMessage: text('error_message'),
   jupiterQuoteId: text('jupiter_quote_id'), // For debugging
+  // Phase 2 fields
+  errorCode: text('error_code'), // Error type if failed
+  retryCount: integer('retry_count').notNull().default(0), // How many retries
+  jupiterRoute: text('jupiter_route'), // JSON of swap route used
   createdAt: integer('created_at').notNull(),
 }, (table) => ({
   botIdx: index('dca_executions_bot_idx').on(table.botId),

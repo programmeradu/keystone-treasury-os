@@ -229,6 +229,116 @@ export function calculateNextExecution(
 }
 
 /**
+ * Execute a swap via Jupiter (for automated DCA)
+ * This will be called by the cron job for Phase 2
+ */
+export async function executeSwap(params: {
+  inputMint: string;
+  outputMint: string;
+  amountInSmallestUnit: number;
+  slippageBps: number;
+  userWallet: string;
+}): Promise<JupiterSwapResult> {
+  try {
+    // Get quote
+    const quote = await getJupiterQuote(
+      params.inputMint,
+      params.outputMint,
+      params.amountInSmallestUnit,
+      params.slippageBps
+    );
+
+    if (!quote) {
+      return {
+        success: false,
+        inAmount: 0,
+        outAmount: 0,
+        price: 0,
+        slippage: 0,
+        error: 'Failed to get Jupiter quote',
+      };
+    }
+
+    // Get swap transaction from Jupiter
+    const swapResponse = await fetch('https://quote-api.jup.ag/v6/swap', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        quoteResponse: quote,
+        userPublicKey: params.userWallet,
+        wrapAndUnwrapSol: true,
+        dynamicComputeUnitLimit: true,
+        prioritizationFeeLamports: 'auto',
+      }),
+    });
+
+    if (!swapResponse.ok) {
+      const error = await swapResponse.text();
+      console.error('Jupiter swap error:', error);
+      return {
+        success: false,
+        inAmount: 0,
+        outAmount: 0,
+        price: 0,
+        slippage: 0,
+        error: `Failed to get swap transaction: ${error}`,
+      };
+    }
+
+    const { swapTransaction } = await swapResponse.json();
+
+    // Return the transaction for signing
+    // Note: Actual signing and sending will happen on the client side or via delegation
+    const inAmount = parseFloat(quote.inAmount);
+    const outAmount = parseFloat(quote.outAmount);
+    const price = inAmount > 0 ? outAmount / inAmount : 0;
+    const slippage = quote.slippageBps / 100;
+
+    return {
+      success: true,
+      inAmount,
+      outAmount,
+      price,
+      slippage,
+      // For Phase 2: This would include the signed transaction signature
+      txSignature: swapTransaction, // Raw transaction to be signed
+    };
+  } catch (error: any) {
+    console.error('Swap execution failed:', error);
+    return {
+      success: false,
+      inAmount: 0,
+      outAmount: 0,
+      price: 0,
+      slippage: 0,
+      error: error.message || 'Swap execution failed',
+    };
+  }
+}
+
+/**
+ * Check token balance for a wallet
+ * Note: This requires Solana RPC access
+ */
+export async function checkBalance(
+  wallet: string,
+  mint: string,
+  rpcUrl?: string
+): Promise<number> {
+  try {
+    // This is a placeholder - in Phase 2, we'll integrate with Solana RPC
+    // For now, return 0 to indicate we need actual RPC integration
+    console.warn('checkBalance requires Solana RPC integration');
+    return 0;
+  } catch (error) {
+    console.error('Failed to check balance:', error);
+    return 0;
+  }
+}
+
+/**
  * Validate bot configuration before creation
  */
 export async function validateBotConfig(config: {
