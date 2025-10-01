@@ -8,7 +8,6 @@
 import { NextResponse } from 'next/server';
 import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 import { 
-  createApproveInstruction,
   getAssociatedTokenAddressSync,
   TOKEN_PROGRAM_ID 
 } from '@solana/spl-token';
