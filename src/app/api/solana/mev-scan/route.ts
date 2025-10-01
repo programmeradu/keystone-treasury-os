@@ -120,6 +120,44 @@ export async function GET(req: Request) {
               const buyPrice = Math.min(price1, price2);
               const sellPrice = Math.max(price1, price2);
               const buyPair = price1 < price2 ? pair1 : pair2;
+              const sellPair = price1 < price2 ? pair2 : pair1;
+
+              // Validate with Jupiter Quote API for actual executable price
+              let jupiterValidated = false;
+              let realProfit = profitPercent;
+              
+              try {
+                // Get Jupiter quote for a small trade (1 token)
+                const amount = token.symbol === 'SOL' ? 1000000000 : // 1 SOL
+                              token.symbol === 'BONK' ? 1000000000000 : // 1000 BONK
+                              1000000000; // 1 token
+                
+                const quoteController = new AbortController();
+                const quoteTimeout = setTimeout(() => quoteController.abort(), 3000);
+                
+                const jupiterQuote = await fetch(
+                  `https://quote-api.jup.ag/v6/quote?inputMint=${token.mint}&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=${amount}&slippageBps=50`,
+                  { signal: quoteController.signal }
+                );
+                
+                clearTimeout(quoteTimeout);
+                
+                if (jupiterQuote.ok) {
+                  const quote = await jupiterQuote.json();
+                  const jupiterPrice = parseFloat(quote.outAmount) / amount;
+                  
+                  // Recalculate profit based on Jupiter's executable price
+                  const adjustedProfit = Math.abs((sellPrice - jupiterPrice) / jupiterPrice * 100);
+                  
+                  if (adjustedProfit >= minProfit * 0.7) { // Allow 30% slippage tolerance
+                    jupiterValidated = true;
+                    realProfit = adjustedProfit;
+                  }
+                }
+              } catch (jupiterError) {
+                // If Jupiter fails, use DexScreener data (still reliable)
+                jupiterValidated = false;
+              }
 
               opportunities.push({
                 id: `arb-${token.symbol}-${buyDex}-${sellDex}-${Date.now()}`,
@@ -129,15 +167,19 @@ export async function GET(req: Request) {
                 sellDex: sellDex.charAt(0).toUpperCase() + sellDex.slice(1),
                 buyPrice,
                 sellPrice,
-                profitPercent: profitPercent.toFixed(2),
-                profitUsd: (profitPercent * buyPrice * 10).toFixed(2),
+                profitPercent: realProfit.toFixed(2),
+                profitUsd: (realProfit * buyPrice * 10).toFixed(2),
                 tradeSize: 10,
                 gasEstimate: 0.001,
-                confidence: profitPercent > 1.5 ? "high" : profitPercent > 0.8 ? "medium" : "low",
+                confidence: jupiterValidated && realProfit > 1.5 ? "high" : 
+                           jupiterValidated && realProfit > 0.8 ? "medium" : "low",
                 expiresIn: Math.floor(Math.random() * 15) + 5,
-                liquidity: buyPair.liquidity?.usd || 0,
+                liquidity: Math.min(buyPair.liquidity?.usd || 0, sellPair.liquidity?.usd || 0),
                 volume24h: buyPair.volume?.h24 || 0,
                 priceChange24h: buyPair.priceChange?.h24 || 0,
+                verified: jupiterValidated,
+                buyPairAddress: buyPair.pairAddress,
+                sellPairAddress: sellPair.pairAddress,
               });
             }
           }
@@ -149,11 +191,24 @@ export async function GET(req: Request) {
       }
     }
 
+    // Sort by profit potential and confidence
+    opportunities.sort((a, b) => {
+      if (a.verified !== b.verified) return a.verified ? -1 : 1;
+      return parseFloat(b.profitPercent) - parseFloat(a.profitPercent);
+    });
+
+    const verifiedCount = opportunities.filter(o => o.verified).length;
+
     return NextResponse.json({
       opportunities: opportunities.slice(0, 10), // Top 10 opportunities
       scannedAt: Date.now(),
       nextScanIn: 5,
-      source: "dexscreener",
+      source: "dexscreener + jupiter",
+      stats: {
+        total: opportunities.length,
+        verified: verifiedCount,
+        unverified: opportunities.length - verifiedCount,
+      }
     }, { status: 200 });
 
   } catch (e: any) {
