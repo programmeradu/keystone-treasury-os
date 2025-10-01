@@ -9,6 +9,14 @@ export const dynamic = "force-dynamic";
 // DCA Bot - Create and manage Dollar-Cost Averaging strategies
 export async function GET(req: Request) {
   try {
+    // Check database connection
+    if (!db) {
+      return NextResponse.json(
+        { error: "Database not available" },
+        { status: 503 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action") || "list";
     const userId = searchParams.get("userId") || "demo_user"; // TODO: Get from auth
@@ -92,6 +100,14 @@ export async function GET(req: Request) {
 // Create or manage DCA bots
 export async function POST(req: Request) {
   try {
+    // Check database connection
+    if (!db) {
+      return NextResponse.json(
+        { error: "Database not available" },
+        { status: 503 }
+      );
+    }
+
     const body = await req.json();
     const action = body.action;
     const userId = body.userId || "demo_user"; // TODO: Get from auth
