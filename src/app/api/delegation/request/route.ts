@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
 import { 
   createApproveInstruction,
-  getAssociatedTokenAddress,
+  getAssociatedTokenAddressSync,
   TOKEN_PROGRAM_ID 
 } from '@solana/spl-token';
 import { getConnection } from '@/lib/solana-rpc';
@@ -64,8 +64,8 @@ export async function POST(request: Request) {
     const tokenMintPubkey = new PublicKey(tokenMint);
     const delegateWallet = new PublicKey(delegationWalletKey);
 
-    // Get user's token account
-    const userTokenAccount = await getAssociatedTokenAddress(
+    // Get user's token account (sync in v0.4.x)
+    const userTokenAccount = getAssociatedTokenAddressSync(
       tokenMintPubkey,
       userWallet
     );

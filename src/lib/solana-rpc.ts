@@ -12,9 +12,9 @@ import {
   VersionedTransaction
 } from '@solana/web3.js';
 import { 
-  getAssociatedTokenAddress, 
+  getAssociatedTokenAddressSync,
   getAccount,
-  TOKEN_PROGRAM_ID 
+  TOKEN_PROGRAM_ID
 } from '@solana/spl-token';
 
 // RPC Connection
@@ -60,8 +60,8 @@ export async function getTokenBalance(
     const walletPublicKey = new PublicKey(walletAddress);
     const mintPublicKey = new PublicKey(tokenMint);
     
-    // Get associated token account
-    const tokenAccount = await getAssociatedTokenAddress(
+    // Get associated token account (sync in v0.4.x)
+    const tokenAccount = getAssociatedTokenAddressSync(
       mintPublicKey,
       walletPublicKey
     );
@@ -275,7 +275,7 @@ export async function tokenAccountExists(
     const walletPublicKey = new PublicKey(walletAddress);
     const mintPublicKey = new PublicKey(tokenMint);
     
-    const tokenAccount = await getAssociatedTokenAddress(
+    const tokenAccount = getAssociatedTokenAddressSync(
       mintPublicKey,
       walletPublicKey
     );
