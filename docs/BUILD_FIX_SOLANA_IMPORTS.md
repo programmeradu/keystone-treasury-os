@@ -1,115 +1,94 @@
-# Build Fix - @solana/spl-token Import Error
+# Build Fix: @solana/spl-token v0.4.x Compatibility
 
-## Issue
-Netlify deployment failed with TypeScript error:
+## Error #1: getAssociatedTokenAddress Not Found
+
+**Build Error:**
 ```
-Type error: Module '@solana/spl-token' has no exported member 'getAssociatedTokenAddress'.
+Type error: Module '"@solana/spl-token"' has no exported member 'getAssociatedTokenAddress'.
 ```
 
-## Root Cause
-The project uses `@solana/spl-token` version `^0.4.14`, where the function `getAssociatedTokenAddress` was changed to `getAssociatedTokenAddressSync` (synchronous version).
+**Root Cause:**
+In @solana/spl-token v0.4.x, the function was renamed from async to sync:
+- v0.3.x: `await getAssociatedTokenAddress()` (async)
+- v0.4.x: `getAssociatedTokenAddressSync()` (synchronous)
 
-## Solution Applied
+**Fix Applied:**
 
-### Files Modified:
-1. **src/lib/solana-rpc.ts**
-2. **src/app/api/delegation/request/route.ts**
-
-### Changes Made:
-
-**Before:**
 ```typescript
-import { 
-  getAssociatedTokenAddress,  // ❌ Not exported in v0.4.x
-  getAccount,
-  TOKEN_PROGRAM_ID 
-} from '@solana/spl-token';
+// BEFORE (v0.3.x style)
+import { getAssociatedTokenAddress, ... } from '@solana/spl-token';
+const account = await getAssociatedTokenAddress(mint, wallet);
 
-// Usage
-const tokenAccount = await getAssociatedTokenAddress(
-  mintPublicKey,
-  walletPublicKey
-);
+// AFTER (v0.4.x)
+import { getAssociatedTokenAddressSync, ... } from '@solana/spl-token';
+const account = getAssociatedTokenAddressSync(mint, wallet); // No await!
 ```
 
-**After:**
-```typescript
-import { 
-  getAssociatedTokenAddressSync,  // ✅ Correct for v0.4.x
-  getAccount,
-  TOKEN_PROGRAM_ID 
-} from '@solana/spl-token';
-
-// Usage (no await needed - synchronous)
-const tokenAccount = getAssociatedTokenAddressSync(
-  mintPublicKey,
-  walletPublicKey
-);
-```
-
-## Locations Updated
-
-### src/lib/solana-rpc.ts
-- Line 15: Import statement
-- Line 65: `getTokenBalance()` function
-- Line 279: `tokenAccountExists()` function
-
-### src/app/api/delegation/request/route.ts
-- Line 12: Import statement
-- Line 68: Token account lookup
-
-## Verification
-
-**Commit:** `5094c749` - "fix: Update @solana/spl-token imports for v0.4.x compatibility"
-
-**Pushed to GitHub:** ✅ Yes
-
-**Netlify Deployment:** 🔄 Building now
-
-## Version Notes
-
-The change from `getAssociatedTokenAddress` (async) to `getAssociatedTokenAddressSync` (sync) occurred between major versions of `@solana/spl-token`:
-
-- **v0.3.x:** `getAssociatedTokenAddress` (async) - returns Promise
-- **v0.4.x:** `getAssociatedTokenAddressSync` (sync) - returns PublicKey directly
-
-Our project uses v0.4.14, so we use the synchronous version.
-
-## Testing
-
-After Netlify deployment succeeds, test these endpoints:
-
-1. **Balance Check:**
-   ```bash
-   curl "https://keystone-treasury-os.netlify.app/api/test/balance?wallet=YOUR_WALLET"
-   ```
-
-2. **Delegation Request:**
-   ```bash
-   curl -X POST "https://keystone-treasury-os.netlify.app/api/delegation/request" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "walletAddress": "YOUR_WALLET",
-       "tokenMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-       "amount": 100,
-       "expiryDays": 30
-     }'
-   ```
-
-## Status
-
-- ✅ Error 1 identified (getAssociatedTokenAddress)
-- ✅ Fix 1 applied (use getAssociatedTokenAddressSync)
-- ✅ Error 2 identified (createApproveInstruction)
-- ✅ Fix 2 applied (use createApproveCheckedInstruction)
-- ✅ Code committed (commits: 5094c749, e5481444)
-- ✅ Changes pushed
-- 🔄 Netlify rebuilding
-- ⏳ Verification pending
+**Files Modified:**
+- `src/lib/solana-rpc.ts` (3 occurrences)
+- `src/app/api/delegation/request/route.ts` (1 occurrence)
 
 ---
 
-**Expected Result:** Build should complete successfully and all API endpoints should work correctly.
+## Error #2: createApproveCheckedInstruction Not Found
+
+**Build Error:**
+```
+Type error: Module '"@solana/spl-token"' has no exported member 'createApproveCheckedInstruction'.
+```
+
+**Root Cause:**
+The JavaScript SDK v0.4.x does NOT have `createApproveCheckedInstruction`. This was a misunderstanding - the "Checked" variant exists in the Rust on-chain program (`spl_token::instruction::approve_checked`) but not in the JS SDK.
+
+The correct function in v0.4.x JS SDK is simply `createApproveInstruction`.
+
+**Fix Applied:**
+
+```typescript
+// WRONG (this function doesn't exist in JS SDK)
+import { createApproveCheckedInstruction, ... } from '@solana/spl-token';
+const instruction = createApproveCheckedInstruction(
+  account,
+  mint,      // ❌ Not needed
+  delegate,
+  owner,
+  amount,
+  decimals,  // ❌ Not needed
+  signers,
+  programId
+);
+
+// CORRECT (v0.4.x JS SDK)
+import { createApproveInstruction, ... } from '@solana/spl-token';
+const instruction = createApproveInstruction(
+  account,    // Token account
+  delegate,   // Delegate wallet
+  owner,      // Owner wallet
+  amount,     // Amount (bigint)
+  signers,    // Multi-signers (usually [])
+  programId   // TOKEN_PROGRAM_ID
+);
+```
+
+**Key Differences:**
+- ✅ Standard `createApproveInstruction` (no "Checked")
+- ✅ NO mint parameter
+- ✅ NO decimals parameter
+- ✅ Simpler signature with 6 parameters instead of 8
+
+**Files Modified:**
+- `src/app/api/delegation/request/route.ts`
+
+---
+
+## Summary
+
+Both errors stemmed from misunderstanding the v0.4.x API:
+
+1. **getAssociatedTokenAddress** → **getAssociatedTokenAddressSync** (made synchronous)
+2. ~~createApproveCheckedInstruction~~ → **createApproveInstruction** (Checked variant doesn't exist in JS SDK)
+
+The v0.4.x JS SDK uses simpler function signatures than we initially thought. The "Checked" instructions exist in the Rust on-chain program for additional validation, but the JavaScript SDK abstracts this away.
 
 ## Additional Fixes Applied
 

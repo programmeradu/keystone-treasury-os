@@ -35,7 +35,7 @@ The function doesn't actually need to be async since it's just computing a PDA (
 
 ---
 
-### 2. createApproveInstruction → createApproveCheckedInstruction
+### 2. createApproveInstruction (No "Checked" in JS SDK!)
 
 **Old (v0.3.x):**
 ```typescript
@@ -51,24 +51,27 @@ const instruction = createApproveInstruction(
 );
 ```
 
-**New (v0.4.x):**
+**New (v0.4.x - SAME FUNCTION NAME!):**
 ```typescript
-import { createApproveCheckedInstruction } from '@solana/spl-token';
+import { createApproveInstruction } from '@solana/spl-token';
 
-const instruction = createApproveCheckedInstruction(
+const instruction = createApproveInstruction(
   tokenAccount,      // Source account
-  mint,              // Token mint (NEW - required)
   delegate,          // Delegate
   owner,             // Owner
   amount,            // Amount (bigint)
-  decimals,          // Decimals (NEW - required)
   multiSigners,      // Multi-signers
   programId          // Token program ID
 );
 ```
 
+**Important Note:**
+Despite what you might expect, **there is NO `createApproveCheckedInstruction` in the JavaScript SDK v0.4.x**. The function name remains `createApproveInstruction` and the signature is the same.
+
+The "Checked" variant (`approve_checked`) exists in the **Rust on-chain program** for additional validation, but the JavaScript SDK does NOT expose a separate function for it. The JS SDK uses the standard approve instruction.
+
 **Why?**
-The "Checked" version includes additional validation to ensure the token mint and decimals match, preventing errors from mismatched token parameters.
+The JavaScript SDK abstracts away the on-chain instruction details. While the Solana program has both `Approve` and `ApproveChecked` instructions, the JS SDK provides a single interface that works for both.
 
 ---
 
@@ -90,15 +93,15 @@ import {
 
 ## Best Practices for v0.4.x
 
-### Use "Checked" Instructions When Available
+### Use Standard Instructions
 
-Always prefer the "Checked" versions of instructions:
+The v0.4.x JS SDK keeps things simple:
 
-- ✅ `createApproveCheckedInstruction` over `createApproveInstruction`
-- ✅ `createTransferCheckedInstruction` over `createTransferInstruction`
-- ✅ `createMintToCheckedInstruction` over `createMintToInstruction`
+- ✅ `createApproveInstruction` - Standard approval (no "Checked" variant in JS SDK)
+- ✅ `createTransferInstruction` - Standard transfer
+- ✅ `createMintToInstruction` - Standard mint
 
-**Why?** Checked instructions validate decimals and mint address, preventing costly errors.
+**Note:** While the Rust on-chain program has "Checked" variants with additional validation, the JavaScript SDK v0.4.x abstracts this away and provides simpler function signatures.
 
 ### Use Sync Functions for PDA Derivation
 
@@ -107,25 +110,17 @@ For functions that derive addresses (PDAs), use the synchronous versions:
 - ✅ `getAssociatedTokenAddressSync()` - Synchronous
 - ❌ `getAssociatedTokenAddress()` - Not available in v0.4.x
 
-### Always Specify Decimals
+### Always Get Decimals When Needed
 
-Many v0.4.x functions require explicit decimals parameter:
+For amount calculations, always fetch the token decimals:
 
 ```typescript
 // Get decimals from mint info
 const mintInfo = await connection.getParsedAccountInfo(mintPublicKey);
 const decimals = (mintInfo.value?.data as any)?.parsed?.info?.decimals || 9;
 
-// Use in instruction
-const instruction = createApproveCheckedInstruction(
-  tokenAccount,
-  mintPublicKey,
-  delegate,
-  owner,
-  BigInt(amount),
-  decimals,  // ← Required!
-  []
-);
+// Convert human-readable amount to smallest units
+const amountInSmallestUnits = BigInt(Math.floor(amount * Math.pow(10, decimals)));
 ```
 
 ---
@@ -136,9 +131,8 @@ const instruction = createApproveCheckedInstruction(
 import { Connection, PublicKey } from '@solana/web3.js';
 import { 
   getAssociatedTokenAddressSync,
-  createApproveCheckedInstruction,
-  TOKEN_PROGRAM_ID,
-  getAccount
+  createApproveInstruction,
+  TOKEN_PROGRAM_ID
 } from '@solana/spl-token';
 
 async function approveTokenDelegate(
@@ -154,21 +148,19 @@ async function approveTokenDelegate(
     ownerWallet
   );
 
-  // 2. Get token decimals
+  // 2. Get token decimals for amount conversion
   const mintInfo = await connection.getParsedAccountInfo(tokenMint);
   const decimals = (mintInfo.value?.data as any)?.parsed?.info?.decimals || 9;
 
   // 3. Convert amount to smallest units
   const amountInSmallestUnits = BigInt(Math.floor(amount * Math.pow(10, decimals)));
 
-  // 4. Create approve instruction (checked version)
-  const approveInstruction = createApproveCheckedInstruction(
+  // 4. Create approve instruction (standard v0.4.x)
+  const approveInstruction = createApproveInstruction(
     tokenAccount,
-    tokenMint,
     delegateWallet,
     ownerWallet,
     amountInSmallestUnits,
-    decimals,
     [],
     TOKEN_PROGRAM_ID
   );
@@ -220,29 +212,26 @@ if (isV04) {
 | Function | v0.3.x | v0.4.x |
 |----------|--------|--------|
 | Get token address | `await getAssociatedTokenAddress()` | `getAssociatedTokenAddressSync()` |
-| Approve delegation | `createApproveInstruction()` | `createApproveCheckedInstruction()` |
-| Transfer tokens | `createTransferInstruction()` | `createTransferCheckedInstruction()` ✅ |
-| Mint tokens | `createMintToInstruction()` | `createMintToCheckedInstruction()` ✅ |
+| Approve delegation | `createApproveInstruction()` | `createApproveInstruction()` ✅ |
+| Transfer tokens | `createTransferInstruction()` | `createTransferInstruction()` ✅ |
+| Mint tokens | `createMintToInstruction()` | `createMintToInstruction()` ✅ |
 | Get account info | `getAccount()` | `getAccount()` ✅ |
 | Get mint info | `getMint()` | `getMint()` ✅ |
 
-✅ = Recommended for safety
+✅ = Same API in both versions (or very similar)
 
 ---
 
 ## Troubleshooting
 
 ### Error: Module has no exported member 'getAssociatedTokenAddress'
-**Solution:** Use `getAssociatedTokenAddressSync` instead
+**Solution:** Use `getAssociatedTokenAddressSync` instead (no await needed)
 
-### Error: Module has no exported member 'createApproveInstruction'
-**Solution:** Use `createApproveCheckedInstruction` instead
+### Error: Module has no exported member 'createApproveCheckedInstruction'
+**Solution:** Use `createApproveInstruction` - there is no "Checked" variant in the JS SDK v0.4.x
 
-### Error: Too few arguments
-**Solution:** Check if you're missing the `decimals` parameter in "Checked" instructions
-
-### Error: Invalid mint
-**Solution:** Make sure you're passing the token mint PublicKey to "Checked" instructions
+### Error: Too few arguments / Too many arguments
+**Solution:** Check the function signature - v0.4.x uses simpler signatures than you might expect
 
 ---
 
