@@ -3,3 +3,12 @@ command = "npm run build"
 
 [[plugins]]
 package = "@netlify/plugin-nextjs"
+
+# Netlify Functions Configuration
+[functions]
+directory = "netlify/functions"
+node_bundler = "esbuild"
+
+# Scheduled Function for DCA Bot Execution
+[functions."dca-execute-scheduled"]
+schedule = "*/5 * * * *"  # Every 5 minutes
