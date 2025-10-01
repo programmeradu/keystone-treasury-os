@@ -58,29 +58,9 @@ export async function GET(req: Request) {
       }, { status: 200 });
     }
 
-    // Real implementation would:
-    // 1. Query Jupiter, Orca, Raydium, Meteora for prices
-    // 2. Calculate cross-DEX arbitrage opportunities
-    // 3. Monitor pending transactions for sandwich opportunities
-    // 4. Estimate gas & slippage
-    // 5. Filter by minimum profit threshold
-
-    // Real implementation using Birdeye Multi-Price API
-    // Get cross-DEX prices for multiple tokens in a single call
+    // Real implementation using DexScreener API
+    // Get cross-DEX prices for multiple tokens - FREE, no API key needed!
     const opportunities: any[] = [];
-
-    // Birdeye API key
-    const birdeyeKey = process.env.BIRDEYE_API_KEY;
-    console.log("Birdeye API Key present:", !!birdeyeKey, "Length:", birdeyeKey?.length);
-    if (!birdeyeKey) {
-      console.warn("BIRDEYE_API_KEY not configured, returning empty opportunities");
-      return NextResponse.json({
-        opportunities: [],
-        scannedAt: Date.now(),
-        nextScanIn: 5,
-        warning: "BIRDEYE_API_KEY not configured",
-      }, { status: 200 });
-    }
 
     // Token mints to scan
     const tokens = [
@@ -90,122 +70,90 @@ export async function GET(req: Request) {
       { mint: "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs", symbol: "ORCA" },
     ];
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
-
-    // Fetch multi-price data from Birdeye
-    const birdeyeRes = await fetch(
-      'https://public-api.birdeye.so/defi/multi_price?ui_amount_mode=raw',
-      {
-        method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'x-chain': 'solana',
-          'content-type': 'application/json',
-          'X-API-KEY': birdeyeKey,
-        },
-        body: JSON.stringify({
-          list_address: tokens.map(t => t.mint).join(','),
-        }),
-        signal: controller.signal,
-      }
-    );
-
-    clearTimeout(timeoutId);
-
-    console.log("Birdeye API response status:", birdeyeRes.status);
-    
-    if (!birdeyeRes.ok) {
-      const errorText = await birdeyeRes.text();
-      console.error("Birdeye API error:", errorText);
-      throw new Error(`Birdeye API returned ${birdeyeRes.status}: ${errorText}`);
-    }
-
-    const birdeyeData = await birdeyeRes.json();
-    
-    // Parse Birdeye response and find arbitrage opportunities
+    // Scan each token for cross-DEX arbitrage opportunities
     for (const token of tokens) {
-      const tokenData = birdeyeData.data?.[token.mint];
-      if (!tokenData) continue;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-      const basePrice = tokenData.value || 0;
-      if (!basePrice) continue;
+        // Fetch all pairs for this token from DexScreener
+        const response = await fetch(
+          `https://api.dexscreener.com/latest/dex/tokens/${token.mint}`,
+          { signal: controller.signal }
+        );
 
-      // Check if we have per-DEX prices
-      const dexPrices = tokenData.priceByDex || {};
-      const dexNames = Object.keys(dexPrices);
+        clearTimeout(timeoutId);
 
-      if (dexNames.length < 2) {
-        // If no per-DEX breakdown, simulate with small variance based on real market data
-        // Using Birdeye's aggregated price and liquidity
-        const variance = (Math.random() - 0.5) * 0.03; // ±1.5%
-        const dex1Price = basePrice * (1 + variance);
-        const dex2Price = basePrice * (1 - variance);
-        const profitPercent = Math.abs((dex2Price - dex1Price) / dex1Price * 100);
+        if (!response.ok) continue;
 
-        if (profitPercent >= minProfit) {
-          opportunities.push({
-            id: `arb-${token.symbol}-${Date.now()}`,
-            type: "arbitrage",
-            token: `${token.symbol}/USDC`,
-            buyDex: variance > 0 ? "Orca" : "Jupiter",
-            sellDex: variance > 0 ? "Jupiter" : "Orca",
-            buyPrice: Math.min(dex1Price, dex2Price),
-            sellPrice: Math.max(dex1Price, dex2Price),
-            profitPercent: profitPercent.toFixed(2),
-            profitUsd: (profitPercent * basePrice * 10).toFixed(2),
-            tradeSize: 10,
-            gasEstimate: 0.001,
-            confidence: profitPercent > 1 ? "high" : profitPercent > 0.5 ? "medium" : "low",
-            expiresIn: Math.floor(Math.random() * 15) + 5,
-            liquidity: tokenData.liquidity || 0,
-            priceChange24h: tokenData.priceChange24h || 0,
-          });
-        }
-      } else {
-        // We have real per-DEX prices! Find arbitrage
-        for (let i = 0; i < dexNames.length; i++) {
-          for (let j = i + 1; j < dexNames.length; j++) {
-            const dex1 = dexNames[i];
-            const dex2 = dexNames[j];
-            const price1 = dexPrices[dex1];
-            const price2 = dexPrices[dex2];
+        const data = await response.json();
+        const pairs = data.pairs || [];
+
+        // Filter for Solana DEX pairs with good liquidity
+        const solanaPairs = pairs.filter((pair: any) => 
+          pair.chainId === 'solana' && 
+          pair.liquidity?.usd > 10000 && // At least $10k liquidity
+          pair.priceUsd
+        );
+
+        if (solanaPairs.length < 2) continue;
+
+        // Compare prices across different DEXs
+        for (let i = 0; i < solanaPairs.length; i++) {
+          for (let j = i + 1; j < solanaPairs.length; j++) {
+            const pair1 = solanaPairs[i];
+            const pair2 = solanaPairs[j];
+
+            // Skip if same DEX
+            if (pair1.dexId === pair2.dexId) continue;
+
+            const price1 = parseFloat(pair1.priceUsd);
+            const price2 = parseFloat(pair2.priceUsd);
 
             if (!price1 || !price2) continue;
 
             const profitPercent = Math.abs((price2 - price1) / price1 * 100);
 
             if (profitPercent >= minProfit) {
-              const buyDex = price1 < price2 ? dex1 : dex2;
-              const sellDex = price1 < price2 ? dex2 : dex1;
+              const buyDex = price1 < price2 ? pair1.dexId : pair2.dexId;
+              const sellDex = price1 < price2 ? pair2.dexId : pair1.dexId;
+              const buyPrice = Math.min(price1, price2);
+              const sellPrice = Math.max(price1, price2);
+              const buyPair = price1 < price2 ? pair1 : pair2;
 
               opportunities.push({
-                id: `arb-${token.symbol}-${dex1}-${dex2}-${Date.now()}`,
+                id: `arb-${token.symbol}-${buyDex}-${sellDex}-${Date.now()}`,
                 type: "arbitrage",
                 token: `${token.symbol}/USDC`,
-                buyDex,
-                sellDex,
-                buyPrice: Math.min(price1, price2),
-                sellPrice: Math.max(price1, price2),
+                buyDex: buyDex.charAt(0).toUpperCase() + buyDex.slice(1),
+                sellDex: sellDex.charAt(0).toUpperCase() + sellDex.slice(1),
+                buyPrice,
+                sellPrice,
                 profitPercent: profitPercent.toFixed(2),
-                profitUsd: (profitPercent * Math.min(price1, price2) * 10).toFixed(2),
+                profitUsd: (profitPercent * buyPrice * 10).toFixed(2),
                 tradeSize: 10,
                 gasEstimate: 0.001,
                 confidence: profitPercent > 1.5 ? "high" : profitPercent > 0.8 ? "medium" : "low",
                 expiresIn: Math.floor(Math.random() * 15) + 5,
-                liquidity: tokenData.liquidity || 0,
+                liquidity: buyPair.liquidity?.usd || 0,
+                volume24h: buyPair.volume?.h24 || 0,
+                priceChange24h: buyPair.priceChange?.h24 || 0,
               });
             }
           }
         }
+      } catch (error) {
+        console.error(`Error scanning ${token.symbol}:`, error);
+        // Continue with next token
+        continue;
       }
     }
 
     return NextResponse.json({
-      opportunities: opportunities.slice(0, 10),
+      opportunities: opportunities.slice(0, 10), // Top 10 opportunities
       scannedAt: Date.now(),
       nextScanIn: 5,
-      source: "birdeye",
+      source: "dexscreener",
     }, { status: 200 });
 
   } catch (e: any) {
