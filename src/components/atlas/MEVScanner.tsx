@@ -63,6 +63,16 @@ export function MEVScanner() {
     return "text-red-500 border-red-500/30 bg-red-500/10";
   };
 
+  // Format price to show appropriate decimal places
+  const formatPrice = (price: number) => {
+    if (price === 0) return "$0.00";
+    if (price >= 1) return `$${price.toFixed(4)}`;
+    if (price >= 0.01) return `$${price.toFixed(4)}`;
+    if (price >= 0.0001) return `$${price.toFixed(6)}`;
+    // For very small numbers (like BONK), use scientific notation or many decimals
+    return `$${price.toExponential(2)}`;
+  };
+
   return (
     <div className="h-full">
       <Card className="atlas-card relative overflow-hidden h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)] min-h-[360px]">
@@ -158,7 +168,7 @@ export function MEVScanner() {
                           {opp.token}
                         </div>
                         <div className="text-[11px] opacity-70 mt-0.5">
-                          Buy on {opp.buyDex} @ ${opp.buyPrice?.toFixed(4)} · Sell on {opp.sellDex} @ ${opp.sellPrice?.toFixed(4)}
+                          Buy on {opp.buyDex} @ {formatPrice(opp.buyPrice)} · Sell on {opp.sellDex} @ {formatPrice(opp.sellPrice)}
                         </div>
                       </div>
                       <Badge
