@@ -104,30 +104,18 @@ export function MEVScanner() {
               </span>
             </CardTitle>
             <div className="flex items-center gap-2">
+              {/* Last Scan Timestamp */}
+              {lastScan && (
+                <span className="text-[10px] opacity-60">
+                  {new Date(lastScan).toLocaleTimeString()}
+                </span>
+              )}
               <Badge
                 variant={opportunities.length > 0 ? "default" : "secondary"}
                 className="h-6 px-2 text-[10px] rounded-md leading-none"
               >
                 {opportunities.length} Opp{opportunities.length !== 1 ? "s" : ""}
               </Badge>
-              <Button
-                size="sm"
-                variant={autoScan ? "default" : "outline"}
-                onClick={() => {
-                  setAutoScan(!autoScan);
-                  toast.success(autoScan ? "Auto-scan disabled" : "Auto-scan enabled");
-                }}
-                className="h-6 px-2 text-[11px] rounded-md"
-              >
-                {autoScan ? (
-                  <>
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse mr-1.5" />
-                    Auto
-                  </>
-                ) : (
-                  "Auto Scan"
-                )}
-              </Button>
               <Button
                 size="sm"
                 variant="outline"
@@ -157,20 +145,8 @@ export function MEVScanner() {
             </Alert>
           )}
 
-          {/* Last Scan Info */}
-          {lastScan && (
-            <div className="flex items-center justify-between text-[11px] opacity-70">
-              <span>Last scan: {new Date(lastScan).toLocaleTimeString()}</span>
-              {autoScan && <span className="flex items-center gap-1">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Auto-scanning
-              </span>}
-            </div>
-          )}
-
           {/* Opportunities List */}
-          <div className="space-y-2 max-h-72 overflow-y-auto">
-            {opportunities.map((opp) => (
+          <div className="space-y-2 max-h-72 overflow-y-auto">{opportunities.map((opp) => (
               <div
                 key={opp.id}
                 className="relative overflow-hidden rounded-md p-3 bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 transition-colors hover:shadow-[0_6px_18px_-12px_rgba(0,0,0,0.3)]"
