@@ -8,7 +8,7 @@
 import { NextResponse } from 'next/server';
 import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 import { 
-  createApproveCheckedInstruction,
+  createApproveInstruction,
   getAssociatedTokenAddressSync,
   TOKEN_PROGRAM_ID 
 } from '@solana/spl-token';
@@ -78,14 +78,12 @@ export async function POST(request: Request) {
     // Convert amount to smallest units
     const amountInSmallestUnits = Math.floor(amount * Math.pow(10, decimals));
 
-    // Create approval instruction (using ApproveChecked for v0.4.x)
-    const approveInstruction = createApproveCheckedInstruction(
+    // Create approval instruction (v0.4.x standard instruction)
+    const approveInstruction = createApproveInstruction(
       userTokenAccount,        // Token account to delegate from
-      tokenMintPubkey,         // Token mint
       delegateWallet,          // Delegate (our server wallet)
       userWallet,              // Owner (user's wallet - will sign)
       BigInt(amountInSmallestUnits), // Amount to approve
-      decimals,                // Token decimals
       [],                      // Multi-signers (none for user wallets)
       TOKEN_PROGRAM_ID
     );
