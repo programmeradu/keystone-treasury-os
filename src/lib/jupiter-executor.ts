@@ -319,8 +319,76 @@ export async function executeSwap(params: {
 }
 
 /**
+ * Execute swap and send transaction to Solana
+ * This version actually signs and sends the transaction
+ * NOTE: This requires a delegation mechanism or server-side wallet
+ */
+export async function executeSwapWithSigning(params: {
+  inputMint: string;
+  outputMint: string;
+  amountInSmallestUnit: number;
+  slippageBps: number;
+  userWallet: string;
+  signerKeypair?: any; // Keypair for signing (delegation or server wallet)
+}): Promise<JupiterSwapResult & { transactionUrl?: string }> {
+  try {
+    // Step 1: Get Jupiter swap transaction
+    const swapResult = await executeSwap(params);
+    
+    if (!swapResult.success || !swapResult.txSignature) {
+      return swapResult;
+    }
+
+    // Step 2: Sign and send transaction
+    // TODO: Implement delegation mechanism for non-custodial signing
+    // For now, this is a placeholder showing the flow
+    
+    if (!params.signerKeypair) {
+      return {
+        ...swapResult,
+        success: false,
+        error: 'Delegation mechanism required - cannot sign without user approval'
+      };
+    }
+
+    const { sendVersionedTransaction } = await import('./solana-rpc');
+    
+    const result = await sendVersionedTransaction(
+      swapResult.txSignature as string,
+      params.signerKeypair
+    );
+
+    if (!result.success) {
+      return {
+        ...swapResult,
+        success: false,
+        error: result.error || 'Transaction failed to send'
+      };
+    }
+
+    // Step 3: Return success with transaction signature
+    return {
+      ...swapResult,
+      success: true,
+      txSignature: result.signature,
+      transactionUrl: `https://solscan.io/tx/${result.signature}`
+    };
+  } catch (error: any) {
+    console.error('Swap with signing failed:', error);
+    return {
+      success: false,
+      inAmount: 0,
+      outAmount: 0,
+      price: 0,
+      slippage: 0,
+      error: error.message || 'Swap execution failed',
+    };
+  }
+}
+
+/**
  * Check token balance for a wallet
- * Note: This requires Solana RPC access
+ * Integrates with Solana RPC to get real-time balances
  */
 export async function checkBalance(
   wallet: string,
@@ -328,10 +396,17 @@ export async function checkBalance(
   rpcUrl?: string
 ): Promise<number> {
   try {
-    // This is a placeholder - in Phase 2, we'll integrate with Solana RPC
-    // For now, return 0 to indicate we need actual RPC integration
-    console.warn('checkBalance requires Solana RPC integration');
-    return 0;
+    const { getTokenBalance, getSolBalance, TOKENS } = await import('./solana-rpc');
+    
+    // Check if it's SOL (native token)
+    const isSol = mint === TOKENS.SOL || mint.toLowerCase() === 'sol';
+    
+    if (isSol) {
+      return await getSolBalance(wallet);
+    }
+    
+    // For SPL tokens
+    return await getTokenBalance(wallet, mint);
   } catch (error) {
     console.error('Failed to check balance:', error);
     return 0;
