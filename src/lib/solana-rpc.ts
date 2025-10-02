@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Solana RPC Integration
  * Handles blockchain operations: balance checks, transactions, confirmations

@@ -20,6 +20,9 @@ const nextConfig: NextConfig = {
   // Remove potentially problematic outputFileTracingRoot for Netlify
   // outputFileTracingRoot: path.resolve(__dirname, '../../'),
   
+  // Mark @solana/spl-token as external to avoid bundling issues
+  serverExternalPackages: ['@solana/spl-token'],
+  
   // Enable the visual-edits component tagger loader only when explicitly requested
   ...(enableVisualEdits
     ? {
