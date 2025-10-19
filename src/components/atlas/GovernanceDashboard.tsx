@@ -89,37 +89,34 @@ export function GovernanceDashboard() {
 
   return (
     <div className="h-full">
-      <Card className="atlas-card relative overflow-hidden h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)] min-h-[360px]">
+      <Card className="atlas-card relative overflow-hidden h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)] max-h-[420px]">
         <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
-        <CardHeader className="pb-2 flex flex-col gap-2">
-          <div className="flex h-8 items-center justify-between gap-2">
-            <CardTitle className="text-sm leading-none">
-              <span className="flex items-center gap-2">
-                <Vote className="h-4 w-4" />
-                <span>🗳️ Governance Dashboard</span>
+        <CardHeader className="pb-1.5 pt-3 px-4 flex flex-col gap-1.5">
+          <div className="flex h-7 items-center justify-between gap-2">
+            <CardTitle className="text-xs leading-none">
+              <span className="flex items-center gap-1.5">
+                <Vote className="h-3.5 w-3.5" />
+                <span>🗳️ Governance</span>
               </span>
             </CardTitle>
-            <div className="flex items-center gap-2 shrink-0">
-              <Badge variant="secondary" className="h-6 px-2 text-[10px] rounded-md leading-none">
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Badge variant="secondary" className="h-5 px-1.5 text-[9px] rounded leading-none">
                 DAOs
               </Badge>
-              <Button size="sm" variant="outline" onClick={fetchProposals} disabled={loading} className="h-6 px-2 text-[11px] rounded-md">
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Refresh"}
+              <Button size="sm" variant="outline" onClick={fetchProposals} disabled={loading} className="h-5 px-1.5 text-[9px] rounded">
+                {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Refresh"}
               </Button>
             </div>
           </div>
-          <div className="text-xs opacity-70">
-            Track active governance proposals across Solana DAOs and vote with your tokens.
-          </div>
         </CardHeader>
-        <CardContent className="pt-0 space-y-3">
+        <CardContent className="pt-0 px-4 pb-3 space-y-2 flex-1 overflow-hidden">
           {/* Filter Buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Button
               size="sm"
               variant={filterStatus === "all" ? "default" : "secondary"}
               onClick={() => setFilterStatus("all")}
-              className="h-7 px-3 text-[11px]"
+              className="h-6 px-2 text-[10px]"
             >
               All
             </Button>
@@ -127,7 +124,7 @@ export function GovernanceDashboard() {
               size="sm"
               variant={filterStatus === "active" ? "default" : "secondary"}
               onClick={() => setFilterStatus("active")}
-              className="h-7 px-3 text-[11px]"
+              className="h-6 px-2 text-[10px]"
             >
               Active
             </Button>
@@ -135,63 +132,62 @@ export function GovernanceDashboard() {
               size="sm"
               variant={filterStatus === "closed" ? "default" : "secondary"}
               onClick={() => setFilterStatus("closed")}
-              className="h-7 px-3 text-[11px]"
+              className="h-6 px-2 text-[10px]"
             >
               Closed
             </Button>
           </div>
 
           {loading && (
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-40" />
-              <Skeleton className="h-3 w-full" />
-              <Skeleton className="h-3 w-2/3" />
+            <div className="space-y-1.5">
+              <Skeleton className="h-3 w-32" />
+              <Skeleton className="h-2.5 w-full" />
+              <Skeleton className="h-2.5 w-2/3" />
             </div>
           )}
 
           {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
+            <Alert variant="destructive" className="py-2">
+              <AlertDescription className="text-[10px]">{error}</AlertDescription>
             </Alert>
           )}
 
           {!loading && !error && proposals.length === 0 && (
-            <div className="text-xs opacity-70 text-center py-4">
-              No proposals found for the selected filter.
+            <div className="text-[10px] opacity-70 text-center py-3">
+              No proposals found.
             </div>
           )}
 
           {!loading && !error && proposals.length > 0 && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 h-[calc(100%-2rem)]">
               {/* Proposals List */}
-              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {proposals.map((proposal) => (
+              <div className="space-y-1.5 overflow-y-auto pr-1 max-h-[280px]">
+                {proposals.slice(0, 6).map((proposal) => (
                   <button
                     key={proposal.id}
                     onClick={() => setSelectedProposal(proposal.id)}
-                    className={`relative overflow-hidden w-full text-left rounded-md p-2 text-xs bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 transition-colors hover:shadow-[0_6px_18px_-12px_rgba(0,0,0,0.3)] ${
+                    className={`relative overflow-hidden w-full text-left rounded p-1.5 text-[10px] bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 transition-colors hover:shadow-md ${
                       selectedProposal === proposal.id ? "bg-muted/50 border border-border" : ""
                     }`}
                   >
-                    <span className="pointer-events-none absolute -top-8 -right-8 h-16 w-16 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/25%,transparent_70%)]" />
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <span className="font-medium line-clamp-1">{proposal.title}</span>
-                      <Badge className={`text-[10px] ${getStatusColor(proposal.status)}`}>
+                    <div className="flex items-start justify-between gap-1.5 mb-1">
+                      <span className="font-medium line-clamp-1 text-[11px]">{proposal.title}</span>
+                      <Badge className={`text-[8px] px-1 py-0 ${getStatusColor(proposal.status)}`}>
                         {proposal.status}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-2 text-[10px] opacity-70">
-                      <span className="flex items-center gap-1">
-                        <Users className="h-3 w-3" />
+                    <div className="flex items-center gap-2 text-[9px] opacity-70">
+                      <span className="flex items-center gap-0.5 truncate">
+                        <Users className="h-2.5 w-2.5 shrink-0" />
                         {proposal.protocol}
                       </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
+                      <span className="flex items-center gap-0.5 shrink-0">
+                        <Clock className="h-2.5 w-2.5" />
                         {calculateTimeRemaining(proposal.endsAt)}
                       </span>
                     </div>
                     {/* Vote bar */}
-                    <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="mt-1.5 h-1 bg-muted rounded-full overflow-hidden">
                       <div
                         className="h-full bg-emerald-500"
                         style={{
@@ -204,21 +200,21 @@ export function GovernanceDashboard() {
               </div>
 
               {/* Proposal Details */}
-              <div className="space-y-2 text-xs">
+              <div className="space-y-1.5 text-[10px] overflow-y-auto max-h-[280px]">
                 {selectedProposalData ? (
                   <>
-                    <div className="rounded-md p-3 bg-muted/30">
-                      <div className="font-medium mb-2">{selectedProposalData.title}</div>
-                      <div className="space-y-1 opacity-80">
-                        <div className="flex justify-between">
+                    <div className="rounded p-2 bg-muted/30">
+                      <div className="font-medium mb-1.5 text-[11px] line-clamp-2">{selectedProposalData.title}</div>
+                      <div className="space-y-1 opacity-80 text-[9px]">
+                        <div className="flex justify-between items-center">
                           <span>Protocol:</span>
-                          <Badge variant="secondary" className="text-[10px]">
+                          <Badge variant="secondary" className="text-[8px] px-1 py-0">
                             {selectedProposalData.protocol}
                           </Badge>
                         </div>
-                        <div className="flex justify-between">
+                        <div className="flex justify-between items-center">
                           <span>Status:</span>
-                          <Badge className={`text-[10px] ${getStatusColor(selectedProposalData.status)}`}>
+                          <Badge className={`text-[8px] px-1 py-0 ${getStatusColor(selectedProposalData.status)}`}>
                             {selectedProposalData.status}
                           </Badge>
                         </div>
@@ -230,34 +226,34 @@ export function GovernanceDashboard() {
                     </div>
 
                     {/* Voting Stats */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="rounded-md p-2 bg-emerald-500/10 border border-emerald-500/30">
-                        <div className="text-[10px] opacity-70">For</div>
-                        <div className="font-mono text-sm font-bold text-emerald-500">
-                          {selectedProposalData.votesFor.toLocaleString()}
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div className="rounded p-1.5 bg-emerald-500/10 border border-emerald-500/30">
+                        <div className="text-[8px] opacity-70">For</div>
+                        <div className="font-mono text-[11px] font-bold text-emerald-500">
+                          {(selectedProposalData.votesFor / 1000).toFixed(0)}k
                         </div>
                       </div>
-                      <div className="rounded-md p-2 bg-red-500/10 border border-red-500/30">
-                        <div className="text-[10px] opacity-70">Against</div>
-                        <div className="font-mono text-sm font-bold text-red-500">
-                          {selectedProposalData.votesAgainst.toLocaleString()}
+                      <div className="rounded p-1.5 bg-red-500/10 border border-red-500/30">
+                        <div className="text-[8px] opacity-70">Against</div>
+                        <div className="font-mono text-[11px] font-bold text-red-500">
+                          {(selectedProposalData.votesAgainst / 1000).toFixed(0)}k
                         </div>
                       </div>
                     </div>
 
                     {/* Quorum Status */}
-                    <div className={`rounded-md p-2 ${selectedProposalData.quorumReached ? "bg-emerald-500/10 border border-emerald-500/30" : "bg-amber-500/10 border border-amber-500/30"}`}>
-                      <div className="flex items-center justify-between">
-                        <span>Quorum Status</span>
-                        <Badge variant={selectedProposalData.quorumReached ? "default" : "secondary"} className="text-[10px]">
-                          {selectedProposalData.quorumReached ? "Reached" : "Not Reached"}
+                    <div className={`rounded p-1.5 ${selectedProposalData.quorumReached ? "bg-emerald-500/10 border border-emerald-500/30" : "bg-amber-500/10 border border-amber-500/30"}`}>
+                      <div className="flex items-center justify-between text-[9px]">
+                        <span>Quorum</span>
+                        <Badge variant={selectedProposalData.quorumReached ? "default" : "secondary"} className="text-[8px] px-1 py-0">
+                          {selectedProposalData.quorumReached ? "✓" : "✗"}
                         </Badge>
                       </div>
                     </div>
 
                     {/* Description */}
                     {selectedProposalData.description && (
-                      <div className="rounded-md p-2 bg-muted/30 text-[11px] opacity-80 line-clamp-3">
+                      <div className="rounded p-1.5 bg-muted/30 text-[9px] opacity-80 line-clamp-4">
                         {selectedProposalData.description}
                       </div>
                     )}
