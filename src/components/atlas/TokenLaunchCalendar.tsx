@@ -48,8 +48,14 @@ export function TokenLaunchCalendar() {
       }
       
       setLaunches(data.launches || []);
-      if (data.launches?.length > 0 && !selectedLaunch) {
-        setSelectedLaunch(data.launches[0].id);
+      // Ensure selectedLaunch is always valid after fetching
+      if (data.launches?.length > 0) {
+        const exists = data.launches.some((launch: TokenLaunch) => launch.id === selectedLaunch);
+        if (!exists) {
+          setSelectedLaunch(data.launches[0].id);
+        }
+      } else {
+        setSelectedLaunch(null);
       }
     } catch (e: any) {
       setError(e.message || String(e));
