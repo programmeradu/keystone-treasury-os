@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, Vote, TrendingUp, Users, Clock } from "lucide-react";
+import { Loader2, Vote, Users, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 interface Proposal {
