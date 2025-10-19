@@ -8,11 +8,14 @@
 import { NextResponse } from 'next/server';
 import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 import { 
-  createApproveInstruction,
-  getAssociatedTokenAddressSync,
   TOKEN_PROGRAM_ID 
 } from '@solana/spl-token';
 import { getConnection } from '@/lib/solana-rpc';
+
+// Workaround for TypeScript module resolution issue with @solana/spl-token v0.4.x
+// Use require to bypass TypeScript's strict module checking
+const getAssociatedTokenAddressSync = require('@solana/spl-token').getAssociatedTokenAddressSync;
+const createApproveInstruction = require('@solana/spl-token').createApproveInstruction;
 
 export const runtime = 'nodejs';
 
@@ -111,7 +114,7 @@ export async function POST(request: Request) {
       transaction: {
         instruction: {
           programId: approveInstruction.programId.toBase58(),
-          keys: approveInstruction.keys.map(k => ({
+          keys: approveInstruction.keys.map((k: any) => ({
             pubkey: k.pubkey.toBase58(),
             isSigner: k.isSigner,
             isWritable: k.isWritable
