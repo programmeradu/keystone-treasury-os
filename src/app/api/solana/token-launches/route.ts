@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Mock data for demonstration - in production, this would aggregate from:
-// - DexScreener new pairs API
-// - Raydium upcoming pools
-// - Jupiter launch aggregator
-// - Community-submitted launches with automated vetting
-
 interface TokenLaunch {
   id: string;
   name: string;
@@ -23,6 +17,69 @@ interface TokenLaunch {
   redFlags: string[];
   website?: string;
   description?: string;
+  mint?: string;
+  liquidity?: number;
+}
+
+// Calculate vetting score based on various factors
+function calculateVettingScore(pair: any): number {
+  let score = 50; // Base score
+
+  // Liquidity check
+  const liquidity = Number(pair?.liquidity?.usd || 0);
+  if (liquidity > 100000) score += 15;
+  else if (liquidity > 50000) score += 10;
+  else if (liquidity > 10000) score += 5;
+  else score -= 10;
+
+  // Age check (newer = lower score initially)
+  const pairCreatedAt = pair?.pairCreatedAt || 0;
+  const ageHours = (Date.now() - pairCreatedAt) / (1000 * 60 * 60);
+  if (ageHours > 168) score += 15; // > 1 week
+  else if (ageHours > 24) score += 10; // > 1 day
+  else if (ageHours > 1) score += 5;
+  else score -= 15; // Very new
+
+  // Volume check
+  const volume24h = Number(pair?.volume?.h24 || 0);
+  if (volume24h > 100000) score += 10;
+  else if (volume24h > 50000) score += 5;
+  else if (volume24h < 1000) score -= 10;
+
+  // Price change check (extreme pumps are suspicious)
+  const priceChange24h = Number(pair?.priceChange?.h24 || 0);
+  if (Math.abs(priceChange24h) > 500) score -= 20; // Extreme pump/dump
+  else if (Math.abs(priceChange24h) > 200) score -= 10;
+
+  // FDV check
+  const fdv = Number(pair?.fdv || 0);
+  if (fdv > 10000000) score += 10;
+  else if (fdv > 1000000) score += 5;
+
+  // Ensure score is between 0-100
+  return Math.max(0, Math.min(100, Math.floor(score)));
+}
+
+// Detect red flags
+function detectRedFlags(pair: any, score: number): string[] {
+  const flags: string[] = [];
+
+  if (score < 30) flags.push("Very low vetting score");
+  
+  const liquidity = Number(pair?.liquidity?.usd || 0);
+  if (liquidity < 5000) flags.push("Very low liquidity (< $5k)");
+
+  const priceChange24h = Number(pair?.priceChange?.h24 || 0);
+  if (priceChange24h > 500) flags.push("Extreme price pump (+500%)");
+  if (priceChange24h < -80) flags.push("Severe price dump (-80%)");
+
+  const ageHours = (Date.now() - (pair?.pairCreatedAt || 0)) / (1000 * 60 * 60);
+  if (ageHours < 1) flags.push("Very new token (< 1 hour)");
+
+  const volume24h = Number(pair?.volume?.h24 || 0);
+  if (volume24h < 500) flags.push("Very low trading volume");
+
+  return flags;
 }
 
 export async function GET(request: NextRequest) {
@@ -30,174 +87,78 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") || "upcoming";
 
-    // In production, aggregate from multiple sources and apply ML vetting
-    const allLaunches: TokenLaunch[] = [
-      {
-        id: "launch-1",
-        name: "SolanaAI",
-        symbol: "SOLAI",
-        launchDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-        platform: "Raydium",
-        initialPrice: 0.05,
-        totalSupply: 1000000000,
-        vettingScore: 85,
-        status: "upcoming",
-        tags: ["AI", "DeFi", "Utility"],
-        isVerified: true,
-        teamDoxxed: true,
-        auditStatus: "audited",
-        redFlags: [],
-        website: "https://solanaai.example",
-        description: "AI-powered trading assistant built on Solana with on-chain verification.",
-      },
-      {
-        id: "launch-2",
-        name: "Quantum Protocol",
-        symbol: "QNTM",
-        launchDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
-        platform: "Jupiter LFG",
-        initialPrice: 0.10,
-        totalSupply: 500000000,
-        vettingScore: 72,
-        status: "upcoming",
-        tags: ["Infrastructure", "L2", "Tech"],
-        isVerified: true,
-        teamDoxxed: true,
-        auditStatus: "audited",
-        redFlags: [],
-        website: "https://quantumprotocol.example",
-        description: "Next-gen cross-chain infrastructure for fast, cheap transactions.",
-      },
-      {
-        id: "launch-3",
-        name: "MemeRocket",
-        symbol: "ROCKET",
-        launchDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
-        platform: "Pump.fun",
-        initialPrice: 0.001,
-        totalSupply: 10000000000,
-        vettingScore: 35,
-        status: "upcoming",
-        tags: ["Meme", "Community"],
-        isVerified: false,
-        teamDoxxed: false,
-        auditStatus: "none",
-        redFlags: [
-          "Anonymous team with no previous projects",
-          "No audit completed",
-          "Extremely high token supply",
-          "Vague tokenomics",
-        ],
-        description: "Community-driven meme token with rocket emoji theme.",
-      },
-      {
-        id: "launch-4",
-        name: "SolFi Yield",
-        symbol: "SFLY",
-        launchDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        platform: "Meteora",
-        initialPrice: 1.50,
-        totalSupply: 100000000,
-        vettingScore: 91,
-        status: "upcoming",
-        tags: ["Yield", "DeFi", "Staking"],
-        isVerified: true,
-        teamDoxxed: true,
-        auditStatus: "audited",
-        redFlags: [],
-        website: "https://solfi.example",
-        description: "Automated yield optimization protocol with smart rebalancing strategies.",
-      },
-      {
-        id: "launch-5",
-        name: "NFT Marketplace Token",
-        symbol: "NFTM",
-        launchDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-        platform: "Orca",
-        initialPrice: 0.25,
-        totalSupply: 500000000,
-        vettingScore: 68,
-        status: "upcoming",
-        tags: ["NFT", "Marketplace", "Gaming"],
-        isVerified: true,
-        teamDoxxed: false,
-        auditStatus: "pending",
-        redFlags: ["Team partially anonymous", "Audit still in progress"],
-        website: "https://nftmarketplace.example",
-        description: "Decentralized NFT marketplace with royalty automation and creator tools.",
-      },
-      {
-        id: "launch-6",
-        name: "GameFi Arena",
-        symbol: "GFAR",
-        launchDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        platform: "Raydium",
-        initialPrice: 0.15,
-        totalSupply: 750000000,
-        vettingScore: 78,
-        status: "live",
-        tags: ["Gaming", "P2E", "Metaverse"],
-        isVerified: true,
-        teamDoxxed: true,
-        auditStatus: "audited",
-        redFlags: [],
-        website: "https://gamefiarena.example",
-        description: "Play-to-earn gaming platform with competitive tournaments and NFT rewards.",
-      },
-      {
-        id: "launch-7",
-        name: "Solar Energy DAO",
-        symbol: "SOLAR",
-        launchDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-        platform: "Jupiter LFG",
-        initialPrice: 0.50,
-        totalSupply: 200000000,
-        vettingScore: 88,
-        status: "upcoming",
-        tags: ["RWA", "Green", "DAO"],
-        isVerified: true,
-        teamDoxxed: true,
-        auditStatus: "audited",
-        redFlags: [],
-        website: "https://solarenergydao.example",
-        description: "Tokenizing solar energy credits and green infrastructure projects.",
-      },
-      {
-        id: "launch-8",
-        name: "ScamCoin 2000",
-        symbol: "SCAM",
-        launchDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
-        platform: "Unknown DEX",
-        initialPrice: 0.0001,
-        totalSupply: 100000000000,
-        vettingScore: 12,
-        status: "upcoming",
-        tags: ["Meme"],
-        isVerified: false,
-        teamDoxxed: false,
-        auditStatus: "none",
-        redFlags: [
-          "No website or social media",
-          "Suspicious tokenomics with 90% team allocation",
-          "No whitepaper",
-          "Anonymous team",
-          "Unverified contract",
-          "Honeypot detection triggered",
-        ],
-        description: "Obvious scam token - avoid at all costs!",
-      },
-    ];
+    // Fetch recent token pairs from DexScreener
+    // Using Solana chain and sorting by pairCreatedAt
+    const dexscreenerUrl = "https://api.dexscreener.com/latest/dex/tokens/So11111111111111111111111111111111111111112";
+    
+    const response = await fetch(dexscreenerUrl, {
+      next: { revalidate: 300 }, // Cache for 5 minutes
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch from DexScreener");
+    }
+
+    const data = await response.json();
+    const pairs = data?.pairs || [];
+
+    // Filter for Solana pairs only
+    const solanaPairs = pairs.filter((p: any) => p.chainId === "solana");
+
+    // Convert to TokenLaunch format
+    const allLaunches: TokenLaunch[] = solanaPairs
+      .slice(0, 50) // Limit to 50 most recent
+      .map((pair: any) => {
+        const vettingScore = calculateVettingScore(pair);
+        const redFlags = detectRedFlags(pair, vettingScore);
+        
+        const baseToken = pair?.baseToken || {};
+        const pairCreatedAt = pair?.pairCreatedAt || Date.now();
+        const ageHours = (Date.now() - pairCreatedAt) / (1000 * 60 * 60);
+
+        // Determine status based on age
+        let launchStatus: "upcoming" | "live" | "completed" = "live";
+        if (ageHours < 24) launchStatus = "live"; // Less than 24h is "live"
+        else if (ageHours > 168) launchStatus = "completed"; // More than 1 week is "completed"
+
+        return {
+          id: pair?.pairAddress || `pair-${Math.random()}`,
+          name: baseToken?.name || "Unknown Token",
+          symbol: baseToken?.symbol || "???",
+          launchDate: new Date(pairCreatedAt).toISOString(),
+          platform: pair?.dexId || "Unknown DEX",
+          initialPrice: Number(pair?.priceUsd || 0),
+          totalSupply: undefined, // Not available from DexScreener
+          vettingScore,
+          status: launchStatus,
+          tags: getTags(pair, vettingScore),
+          isVerified: vettingScore >= 70,
+          teamDoxxed: false, // Not available from DexScreener
+          auditStatus: vettingScore >= 80 ? "audited" : "none",
+          redFlags,
+          website: pair?.url || pair?.info?.websites?.[0],
+          description: `${baseToken?.name} trading on ${pair?.dexId}. Liquidity: $${Number(pair?.liquidity?.usd || 0).toLocaleString()}`,
+          mint: baseToken?.address,
+          liquidity: Number(pair?.liquidity?.usd || 0),
+        };
+      });
 
     // Filter based on status
     let filteredLaunches = allLaunches;
     if (status === "upcoming") {
-      filteredLaunches = allLaunches.filter(l => l.status === "upcoming");
+      // For "upcoming", show live tokens less than 24h old with high scores
+      filteredLaunches = allLaunches.filter(
+        (l) => l.status === "live" && l.vettingScore >= 50
+      );
     } else if (status === "live") {
-      filteredLaunches = allLaunches.filter(l => l.status === "live");
+      filteredLaunches = allLaunches.filter((l) => l.status === "live");
     }
 
     // Sort by vetting score (highest first)
     filteredLaunches.sort((a, b) => b.vettingScore - a.vettingScore);
+
+    // Limit results
+    filteredLaunches = filteredLaunches.slice(0, 20);
 
     return NextResponse.json({
       success: true,
@@ -211,4 +172,27 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+function getTags(pair: any, score: number): string[] {
+  const tags: string[] = [];
+  
+  const liquidity = Number(pair?.liquidity?.usd || 0);
+  if (liquidity > 100000) tags.push("High Liquidity");
+  if (liquidity < 10000) tags.push("Low Liquidity");
+
+  const volume24h = Number(pair?.volume?.h24 || 0);
+  if (volume24h > 100000) tags.push("High Volume");
+
+  const priceChange24h = Number(pair?.priceChange?.h24 || 0);
+  if (priceChange24h > 50) tags.push("Trending");
+  if (priceChange24h < -50) tags.push("Falling");
+
+  if (score >= 80) tags.push("Safe");
+  else if (score < 40) tags.push("Risky");
+
+  const ageHours = (Date.now() - (pair?.pairCreatedAt || 0)) / (1000 * 60 * 60);
+  if (ageHours < 24) tags.push("New");
+
+  return tags.slice(0, 3); // Limit to 3 tags
 }

@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
-// Mock data for demonstration - in production, this would:
-// - Fetch wallet holdings from Helius/Alchemy
-// - Calculate PnL from transaction history
-// - Analyze trading patterns
-// - Compare with successful trader profiles
+import { Connection, PublicKey } from "@solana/web3.js";
 
 interface PortfolioData {
   address: string;
@@ -39,6 +34,19 @@ interface PortfolioData {
   };
 }
 
+const TOKEN_SYMBOLS: Record<string, string> = {
+  "So11111111111111111111111111111111111111112": "SOL",
+  "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": "USDC",
+  "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB": "USDT",
+  "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN": "JUP",
+  "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So": "mSOL",
+  "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs": "BONK",
+  "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263": "PYTH",
+  "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3": "ORCA",
+  "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL": "JTO",
+  "WENWENvqqNya429ubCdR81ZmD69brwQaaBYY6p3LCpk": "WEN",
+};
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -59,110 +67,134 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // In production:
-    // 1. Fetch all token accounts using Helius DAS or Solana getTokenAccountsByOwner
-    // 2. Get current prices from Jupiter
-    // 3. Parse transaction history to calculate avg buy prices and PnL
-    // 4. Analyze trading frequency and patterns
-    // 5. Calculate diversification and risk scores
+    // Validate it's a valid public key
+    try {
+      new PublicKey(address);
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid Solana wallet address format" },
+        { status: 400 }
+      );
+    }
 
-    // Mock data for demonstration
-    const mockPortfolio: PortfolioData = {
-      address: address,
-      totalValue: 125430.50,
-      pnl: 32150.75,
-      pnlPercent: 34.5,
-      holdings: [
-        {
-          token: "So11111111111111111111111111111111111111112",
-          symbol: "SOL",
-          balance: 325.5,
-          value: 65100.00,
-          pnl: 15300.50,
-          pnlPercent: 30.7,
-          avgBuyPrice: 153.00,
-          currentPrice: 200.00,
-        },
-        {
-          token: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-          symbol: "USDC",
-          balance: 25000.00,
-          value: 25000.00,
-          pnl: 0,
-          pnlPercent: 0,
-          avgBuyPrice: 1.00,
-          currentPrice: 1.00,
-        },
-        {
-          token: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
-          symbol: "JUP",
-          balance: 15000,
-          value: 18750.00,
-          pnl: 8750.00,
-          pnlPercent: 87.5,
-          avgBuyPrice: 0.67,
-          currentPrice: 1.25,
-        },
-        {
-          token: "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
-          symbol: "mSOL",
-          balance: 50.2,
-          value: 10545.00,
-          pnl: 2045.00,
-          pnlPercent: 24.0,
-          avgBuyPrice: 169.00,
-          currentPrice: 210.00,
-        },
-        {
-          token: "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
-          symbol: "BONK",
-          balance: 50000000,
-          value: 3535.50,
-          pnl: 1535.50,
-          pnlPercent: 76.8,
-          avgBuyPrice: 0.00004,
-          currentPrice: 0.000707,
-        },
-        {
-          token: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
-          symbol: "PYTH",
-          balance: 10000,
-          value: 1500.00,
-          pnl: -500.00,
-          pnlPercent: -25.0,
-          avgBuyPrice: 0.20,
-          currentPrice: 0.15,
-        },
-        {
-          token: "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3",
-          symbol: "ORCA",
-          balance: 500,
-          value: 1000.00,
-          pnl: 200.00,
-          pnlPercent: 25.0,
-          avgBuyPrice: 1.60,
-          currentPrice: 2.00,
-        },
-      ],
-      topPerformer: {
-        symbol: "JUP",
-        pnlPercent: 87.5,
+    // Fetch token accounts using Solana RPC
+    const rpcUrl = process.env.HELIUS_API_KEY
+      ? `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`
+      : process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+
+    const connection = new Connection(rpcUrl, "confirmed");
+    
+    // Get SOL balance
+    const solBalance = await connection.getBalance(new PublicKey(address));
+    
+    // Get token accounts
+    const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+      new PublicKey(address),
+      { programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
+    );
+
+    // Collect all mint addresses
+    const mintAddresses: string[] = ["So11111111111111111111111111111111111111112"]; // SOL
+    const tokenBalances: Array<{ mint: string; balance: number; decimals: number }> = [
+      {
+        mint: "So11111111111111111111111111111111111111112",
+        balance: solBalance / 1e9,
+        decimals: 9,
       },
-      worstPerformer: {
-        symbol: "PYTH",
-        pnlPercent: -25.0,
-      },
-      diversificationScore: 78,
-      riskScore: 42,
+    ];
+
+    for (const { account } of tokenAccounts.value) {
+      const parsedInfo = account.data.parsed.info;
+      const balance = parsedInfo.tokenAmount.uiAmount;
+      if (balance > 0) {
+        mintAddresses.push(parsedInfo.mint);
+        tokenBalances.push({
+          mint: parsedInfo.mint,
+          balance: balance,
+          decimals: parsedInfo.tokenAmount.decimals,
+        });
+      }
+    }
+
+    // Fetch prices from Jupiter
+    const pricesRes = await fetch(
+      `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/jupiter/price?mints=${mintAddresses.join(",")}`
+    );
+    const pricesData = await pricesRes.json();
+    const prices: Record<string, number> = {};
+    for (const [mint, data] of Object.entries(pricesData.data || {})) {
+      prices[mint] = (data as any).price || 0;
+    }
+
+    // Calculate portfolio
+    const holdings = tokenBalances
+      .map((token) => {
+        const currentPrice = prices[token.mint] || 0;
+        const value = token.balance * currentPrice;
+        const symbol = TOKEN_SYMBOLS[token.mint] || token.mint.slice(0, 6);
+        
+        // Simulate PnL (in real implementation, would calculate from transaction history)
+        const pnlPercent = Math.random() * 100 - 25; // Random for demo
+        const avgBuyPrice = currentPrice / (1 + pnlPercent / 100);
+        const pnl = value - (token.balance * avgBuyPrice);
+
+        return {
+          token: token.mint,
+          symbol,
+          balance: token.balance,
+          value,
+          pnl,
+          pnlPercent,
+          avgBuyPrice,
+          currentPrice,
+        };
+      })
+      .filter((h) => h.value > 0.01)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10); // Top 10 holdings
+
+    const totalValue = holdings.reduce((sum, h) => sum + h.value, 0);
+    const totalPnl = holdings.reduce((sum, h) => sum + h.pnl, 0);
+    const pnlPercent = totalValue > 0 ? (totalPnl / (totalValue - totalPnl)) * 100 : 0;
+
+    // Find top/worst performers
+    const sortedByPnl = [...holdings].sort((a, b) => b.pnlPercent - a.pnlPercent);
+    const topPerformer = sortedByPnl[0];
+    const worstPerformer = sortedByPnl[sortedByPnl.length - 1];
+
+    // Calculate diversification score (0-100, higher is more diversified)
+    const diversificationScore = Math.min(
+      100,
+      Math.floor((holdings.length / 10) * 50 + (1 - (holdings[0]?.value || 0) / totalValue) * 50)
+    );
+
+    // Calculate risk score (0-100, based on portfolio concentration)
+    const topHoldingPercent = (holdings[0]?.value || 0) / totalValue;
+    const riskScore = Math.floor(topHoldingPercent * 100);
+
+    const portfolio: PortfolioData = {
+      address,
+      totalValue,
+      pnl: totalPnl,
+      pnlPercent,
+      holdings,
+      topPerformer: topPerformer
+        ? { symbol: topPerformer.symbol, pnlPercent: topPerformer.pnlPercent }
+        : undefined,
+      worstPerformer: worstPerformer
+        ? { symbol: worstPerformer.symbol, pnlPercent: worstPerformer.pnlPercent }
+        : undefined,
+      diversificationScore,
+      riskScore,
       tradingPatterns: {
-        avgHoldTime: 45,
-        winRate: 68.5,
-        totalTrades: 127,
-        activeTrader: true,
+        avgHoldTime: Math.floor(Math.random() * 60) + 15, // Random for demo
+        winRate: Math.random() * 40 + 50, // Random 50-90% for demo
+        totalTrades: holdings.length * 10, // Estimate
+        activeTrader: holdings.length > 5,
       },
     };
 
-    return NextResponse.json(mockPortfolio);
+    return NextResponse.json({ portfolio });
   } catch (error: any) {
     console.error("Wallet analysis API error:", error);
     return NextResponse.json(
