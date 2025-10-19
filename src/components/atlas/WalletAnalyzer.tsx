@@ -67,7 +67,7 @@ export function WalletAnalyzer() {
         throw new Error(data.error || "Failed to analyze wallet");
       }
 
-      setPortfolio(data);
+      setPortfolio(data.portfolio);
       toast.success("Portfolio analyzed successfully!");
     } catch (e: any) {
       setError(e.message || String(e));
