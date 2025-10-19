@@ -15,10 +15,6 @@ import {
   TOKEN_PROGRAM_ID
 } from '@solana/spl-token';
 
-// Workaround for TypeScript module resolution issue with @solana/spl-token v0.4.x
-const getAssociatedTokenAddressSync = require('@solana/spl-token').getAssociatedTokenAddressSync;
-const getAccount = require('@solana/spl-token').getAccount;
-
 // RPC Connection
 let connection: Connection | null = null;
 
@@ -61,6 +57,11 @@ export async function getTokenBalance(
     const connection = getConnection();
     const walletPublicKey = new PublicKey(walletAddress);
     const mintPublicKey = new PublicKey(tokenMint);
+    
+    // Dynamic import to work around TypeScript module resolution issue
+    const splToken = await import('@solana/spl-token') as any;
+    const getAssociatedTokenAddressSync = splToken.getAssociatedTokenAddressSync;
+    const getAccount = splToken.getAccount;
     
     // Get associated token account (sync in v0.4.x)
     const tokenAccount = getAssociatedTokenAddressSync(
@@ -276,6 +277,10 @@ export async function tokenAccountExists(
     const connection = getConnection();
     const walletPublicKey = new PublicKey(walletAddress);
     const mintPublicKey = new PublicKey(tokenMint);
+    
+    // Dynamic import to work around TypeScript module resolution issue
+    const splToken = await import('@solana/spl-token') as any;
+    const getAssociatedTokenAddressSync = splToken.getAssociatedTokenAddressSync;
     
     const tokenAccount = getAssociatedTokenAddressSync(
       mintPublicKey,

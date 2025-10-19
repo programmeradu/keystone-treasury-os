@@ -12,11 +12,6 @@ import {
 } from '@solana/spl-token';
 import { getConnection } from '@/lib/solana-rpc';
 
-// Workaround for TypeScript module resolution issue with @solana/spl-token v0.4.x
-// Use require to bypass TypeScript's strict module checking
-const getAssociatedTokenAddressSync = require('@solana/spl-token').getAssociatedTokenAddressSync;
-const createApproveInstruction = require('@solana/spl-token').createApproveInstruction;
-
 export const runtime = 'nodejs';
 
 interface DelegationRequest {
@@ -61,6 +56,11 @@ export async function POST(request: Request) {
         error: 'Delegation wallet not configured. Please contact support.'
       }, { status: 503 });
     }
+
+    // Dynamic import to work around TypeScript module resolution issue
+    const splToken = await import('@solana/spl-token') as any;
+    const getAssociatedTokenAddressSync = splToken.getAssociatedTokenAddressSync;
+    const createApproveInstruction = splToken.createApproveInstruction;
 
     // Convert addresses to PublicKeys
     const userWallet = new PublicKey(walletAddress);
