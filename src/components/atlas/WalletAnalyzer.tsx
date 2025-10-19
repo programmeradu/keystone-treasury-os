@@ -247,8 +247,8 @@ export function WalletAnalyzer() {
                             {((holding.value / portfolio.totalValue) * 100).toFixed(1)}%
                           </Badge>
                         </div>
-                        <div className={`font-mono text-sm ${getPnLColor(holding.pnl)}`}>
-                          {holding.pnl >= 0 ? "+" : ""}{holding.pnlPercent.toFixed(2)}%
+                        <div className={`font-mono text-sm ${getPnLColor(holding.pnlPercent)}`}>
+                          {holding.pnlPercent >= 0 ? "+" : ""}{holding.pnlPercent.toFixed(2)}%
                         </div>
                       </div>
                       <div className="flex items-center justify-between text-[10px] opacity-70">
