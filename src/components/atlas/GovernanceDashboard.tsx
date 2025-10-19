@@ -54,6 +54,7 @@ export function GovernanceDashboard() {
   };
 
   useEffect(() => {
+    setSelectedProposal(null);
     fetchProposals();
   }, [filterStatus]);
 
