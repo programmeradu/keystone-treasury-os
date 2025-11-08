@@ -27,6 +27,8 @@ import { JupiterSwapCard } from "@/components/atlas/JupiterSwapCard";
 import { RugPullDetector } from "@/components/atlas/RugPullDetector";
 import { DCABotCard } from "@/components/atlas/DCABotCard";
 import { MEVScanner } from "@/components/atlas/MEVScanner";
+import { RiskDashboard } from "@/components/atlas/RiskDashboard";
+import { NotificationSettings } from "@/components/atlas/NotificationSettings";
 
 // Jupiter core mints (mainnet)
 const MINTS = {
@@ -1769,6 +1771,12 @@ export function AtlasClient() {
 
                 {/* 🏴‍☠️ Rug Pull Detector - NEW */}
                 <RugPullDetector />
+
+                {/* 🛡️ Unified Risk Dashboard - NEW */}
+                <RiskDashboard walletAddress={publicKey?.toBase58()} />
+
+                {/* 🔔 Notification Settings - NEW */}
+                <NotificationSettings />
 
                 {/* 🤖 Auto-DCA Bot Builder - NEW */}
                 <DCABotCard />
