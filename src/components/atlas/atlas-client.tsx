@@ -35,7 +35,7 @@ const MINTS = {
   MSOL: "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So"
 } as const;
 
-type StrategyKind = "stake_marinade" | "swap_jupiter" | "lp_sol_usdc";
+type StrategyKind = "stake_marinade" | "swap_jupiter" | "lp_sol_usdc" | "arbitrage" | "mev_scan" | "governance_vote";
 
 // Unique inline glyph for Atlas branding
 function GlyphAtlas({ className = "h-4 w-4" }: {className?: string;}) {
@@ -311,16 +311,77 @@ export function AtlasClient() {
     const text = cmdText.trim();
     if (!text) return;
 
-    // Quick NLP: Quests intents (e.g., "scan my wallet for airdrops")
+    // Enhanced NLP: Detect various intents and route to appropriate tools
     const lower = text.toLowerCase();
+    
+    // Airdrop scanning intent
     const wantsAirdrops = /(scan|check|find|show|discover).*air\s?-?\s?drops?|airdrop/.test(lower) || /airdrops?/.test(lower);
     if (wantsAirdrops) {
       setActiveTab('quests');
       setCmdText("");
       setTimeout(() => {
-        scanAirdrops();
+        scanAirdrops(false);
         document.getElementById('airdrop-compass')?.scrollIntoView({ behavior: 'smooth' });
       }, 50);
+      return;
+    }
+
+    // MEV scanning intent
+    const wantsMEV = /(mev|front\s?run|sandwich|arbitrage)/.test(lower);
+    if (wantsMEV) {
+      setActiveTab('quests');
+      setCmdText("");
+      toast.info("Showing MEV Scanner");
+      setTimeout(() => {
+        document.getElementById('mev-scanner')?.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
+      return;
+    }
+
+    // Rug check / security intent
+    const wantsRugCheck = /(rug|scam|security|safe|check token)/.test(lower);
+    if (wantsRugCheck) {
+      setActiveTab('quests');
+      setCmdText("");
+      toast.info("Opening Rug Pull Detector");
+      setTimeout(() => {
+        document.getElementById('rug-detector')?.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
+      return;
+    }
+
+    // Governance intent
+    const wantsGovernance = /(governance|dao|proposal|vote|voting)/.test(lower);
+    if (wantsGovernance) {
+      setActiveTab('quests');
+      setCmdText("");
+      toast.info("Showing Governance Dashboard");
+      setTimeout(() => {
+        document.getElementById('governance')?.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
+      return;
+    }
+
+    // Wallet analysis intent
+    const walletMatch = text.match(/([1-9A-HJ-NP-Za-km-z]{32,44})/);
+    const wantsWalletAnalysis = /(analyze|check|inspect|review).*wallet/.test(lower) || walletMatch;
+    if (wantsWalletAnalysis) {
+      setActiveTab('quests');
+      if (walletMatch) {
+        // Extract wallet address and trigger portfolio analyzer
+        const walletAddr = walletMatch[1];
+        toast.info(`Analyzing wallet: ${walletAddr.slice(0, 8)}...`);
+        // Scroll to portfolio analyzer section
+        setTimeout(() => {
+          document.getElementById('portfolio-analyzer')?.scrollIntoView({ behavior: 'smooth' });
+        }, 50);
+      } else {
+        toast.info("Opening Wallet Portfolio Analyzer");
+        setTimeout(() => {
+          document.getElementById('portfolio-analyzer')?.scrollIntoView({ behavior: 'smooth' });
+        }, 50);
+      }
+      setCmdText("");
       return;
     }
 
@@ -358,6 +419,15 @@ export function AtlasClient() {
       setPricesLoading(false);
     }
   }
+
+  // Auto-refresh prices every 60 seconds
+  useEffect(() => {
+    refreshPrices(); // Initial fetch
+    const interval = setInterval(() => {
+      refreshPrices();
+    }, 60000); // 60 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   // Lightweight retry/backoff helper
   async function fetchJsonWithRetry(input: RequestInfo | URL, init?: RequestInit, retries = 3, baseDelayMs = 400) {
@@ -640,18 +710,48 @@ export function AtlasClient() {
         if (r.ok) parsed = await r.json();
       } catch {}
 
-      // Fallback lightweight parser
+      // Enhanced fallback parser with support for new strategy types
       if (!parsed) {
         const lower = text.toLowerCase();
         const amtMatch = lower.match(/([0-9]+(?:\.[0-9]+)?)\s*sol/);
         const amt = amtMatch ? Number(amtMatch[1]) : amountSol;
-        if (lower.includes("stake")) parsed = { action: "stake", amount: amt, asset: "SOL", venue: "marinade", confidence: 0.5 };else
-        if (lower.includes("swap")) parsed = { action: "swap", amount: amt, asset: "SOL", venue: "jupiter", confidence: 0.5 };else
-        if (lower.includes("lp") || lower.includes("liquidity")) parsed = { action: "lp", amount: amt, asset: "SOL", venue: "sol/usdc", confidence: 0.5 };
+        
+        // Arbitrage detection
+        if (lower.includes("arbitrage") || (lower.includes("raydium") && lower.includes("orca"))) {
+          parsed = { 
+            action: "arbitrage", 
+            amount: amt, 
+            venues: ["raydium", "orca"],
+            confidence: 0.6 
+          };
+        } 
+        // MEV detection
+        else if (lower.includes("mev") || lower.includes("front") || lower.includes("sandwich")) {
+          parsed = { 
+            action: "mev_scan", 
+            amount: amt,
+            confidence: 0.6 
+          };
+        }
+        // Governance detection
+        else if (lower.includes("governance") || lower.includes("vote") || lower.includes("proposal")) {
+          parsed = { 
+            action: "governance_vote",
+            confidence: 0.6 
+          };
+        }
+        // Existing parsers
+        else if (lower.includes("stake")) {
+          parsed = { action: "stake", amount: amt, asset: "SOL", venue: "marinade", confidence: 0.5 };
+        } else if (lower.includes("swap")) {
+          parsed = { action: "swap", amount: amt, asset: "SOL", venue: "jupiter", confidence: 0.5 };
+        } else if (lower.includes("lp") || lower.includes("liquidity")) {
+          parsed = { action: "lp", amount: amt, asset: "SOL", venue: "sol/usdc", confidence: 0.5 };
+        }
       }
 
       if (!parsed) {
-        toast.error("Could not understand that. Try: 'stake 5 sol with marinade'");
+        toast.error("Could not understand that. Try: 'stake 5 sol', 'find arbitrage opportunities', or 'scan for MEV'");
         return;
       }
 
@@ -659,6 +759,10 @@ export function AtlasClient() {
       let nextKind: StrategyKind = "stake_marinade";
       if (parsed.action === "swap") nextKind = "swap_jupiter";
       if (parsed.action === "lp") nextKind = "lp_sol_usdc";
+      if (parsed.action === "arbitrage") nextKind = "arbitrage";
+      if (parsed.action === "mev_scan") nextKind = "mev_scan";
+      if (parsed.action === "governance_vote") nextKind = "governance_vote";
+      
       setKind(nextKind);
       if (typeof parsed.amount === "number" && !Number.isNaN(parsed.amount)) setAmountSol(parsed.amount);
 
@@ -701,6 +805,40 @@ export function AtlasClient() {
         const usdc = 1;
         setQuote({ kind, prices: { SOL: sol, USDC: usdc }, note: "Use Orca/Kamino UI for exact vault APY; prices are live from Jupiter." });
         toast.success("LP baseline ready");
+      } else if (kind === "arbitrage") {
+        // Arbitrage opportunity simulation
+        const sol = prices.SOL ?? 0;
+        setQuote({ 
+          kind, 
+          strategy: "Cross-DEX Arbitrage",
+          venues: ["Raydium", "Orca"],
+          estimatedSpread: "0.3-0.8%",
+          riskLevel: "Medium-High",
+          note: "Arbitrage opportunities are time-sensitive. Actual spreads vary by liquidity and network conditions.",
+          warning: "Consider gas fees and slippage. Monitor MEV risks."
+        });
+        toast.success("Arbitrage analysis ready");
+      } else if (kind === "mev_scan") {
+        // MEV scanning simulation
+        setQuote({ 
+          kind,
+          strategy: "MEV Opportunity Scan",
+          opportunityTypes: ["Sandwich", "Liquidation", "Arbitrage"],
+          riskLevel: "High",
+          note: "MEV opportunities require advanced technical knowledge and fast execution.",
+          warning: "High competition from sophisticated bots. Risk of failed transactions and losses."
+        });
+        toast.success("MEV scan parameters ready");
+      } else if (kind === "governance_vote") {
+        // Governance voting simulation
+        setQuote({ 
+          kind,
+          strategy: "Governance Participation",
+          availableDAOs: ["Marinade", "Jito", "Kamino", "Pyth"],
+          note: "Review active proposals and vote with your staked tokens.",
+          requirement: "Token holdings or staked positions required for voting power."
+        });
+        toast.success("Governance options ready");
       }
     } catch (e: any) {
       setError(e?.message || String(e));
@@ -848,8 +986,8 @@ export function AtlasClient() {
     document.getElementById("strategy-lab")?.scrollIntoView({ behavior: "smooth" });
   }
 
-  async function scanAirdrops() {
-    if (!publicKey) {
+  async function scanAirdrops(demoMode = false) {
+    if (!publicKey && !demoMode) {
       toast.error("Connect wallet to scan airdrops");
       return;
     }
@@ -857,17 +995,43 @@ export function AtlasClient() {
     setCompassError(null);
     setCompassData(null);
     try {
-      const addr = publicKey.toBase58();
-      const j = await fetchJsonWithRetry(`/api/airdrops/scan?address=${addr}`, { cache: "no-store" });
-      let data = (j as any).data || j;
-      // Merge in heuristics to ensure a few realistic, actionable items
-      const heur = buildHeuristicAirdrops(addr, solBalance);
-      const eligibleNow = Array.isArray(data?.eligibleNow) ? [...data.eligibleNow, ...heur] : heur;
-      data = { ...(data || {}), eligibleNow };
-      setCompassData(data);
-      toast.success("Airdrop scan complete");
-      const first = (data as any)?.eligibleNow?.[0]?.id || null;
-      setSelectedAirdropId(first);
+      if (demoMode) {
+        // Demo mode: show sample airdrops without wallet connection
+        const demoAddress = "DEMO1111111111111111111111111111111111111111";
+        const heur = buildHeuristicAirdrops(demoAddress, 10); // Assume 10 SOL for demo
+        const demoData = {
+          eligibleNow: [
+            ...heur,
+            {
+              id: `demo-orca-${Date.now()}`,
+              name: "Orca Whirlpools",
+              source: "orca.so",
+              status: "potential",
+              estReward: "Liquidity mining rewards",
+              details: "Provide liquidity to earn trading fees and potential ORCA rewards.",
+              endsAt: null,
+              tasks: [{ id: `t-lp-orca-${Date.now()}`, type: "lp", label: "Provide SOL/USDC liquidity on Orca", venue: "Orca", value: 1 }]
+            }
+          ]
+        };
+        await new Promise((r) => setTimeout(r, 800)); // Simulate API delay
+        setCompassData(demoData);
+        toast.info("Demo mode: Connect wallet for personalized results");
+        const first = demoData.eligibleNow[0]?.id || null;
+        setSelectedAirdropId(first);
+      } else {
+        const addr = publicKey!.toBase58();
+        const j = await fetchJsonWithRetry(`/api/airdrops/scan?address=${addr}`, { cache: "no-store" });
+        let data = (j as any).data || j;
+        // Merge in heuristics to ensure a few realistic, actionable items
+        const heur = buildHeuristicAirdrops(addr, solBalance);
+        const eligibleNow = Array.isArray(data?.eligibleNow) ? [...data.eligibleNow, ...heur] : heur;
+        data = { ...(data || {}), eligibleNow };
+        setCompassData(data);
+        toast.success("Airdrop scan complete");
+        const first = (data as any)?.eligibleNow?.[0]?.id || null;
+        setSelectedAirdropId(first);
+      }
     } catch (e: any) {
       setCompassError(e?.message || String(e));
     } finally {
@@ -1182,12 +1346,22 @@ export function AtlasClient() {
                           <span className="flex items-center gap-2"><GlyphCompass /><span>Airdrop Compass</span></span>
                         </CardTitle>
                         <div className="flex items-center gap-2 shrink-0">
+                          {!publicKey && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-6 px-2 text-[11px] rounded-md leading-none"
+                              onClick={() => scanAirdrops(true)}
+                              disabled={compassLoading}>
+                              {compassLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "View Demo"}
+                            </Button>
+                          )}
                           <Button
                             id="quick-scan"
                             size="sm"
                             variant="secondary"
                             className="h-6 px-2 text-[11px] rounded-md leading-none"
-                            onClick={scanAirdrops}
+                            onClick={() => scanAirdrops(false)}
                             disabled={!publicKey || compassLoading}>
 
                              {compassLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Scan Wallet"}
@@ -1195,7 +1369,7 @@ export function AtlasClient() {
                         </div>
                       </div>
                       {!publicKey &&
-                      <div className="text-xs opacity-70">Connect your wallet to scan for eligible and potential airdrops.</div>
+                      <div className="text-xs opacity-70">Connect your wallet to scan for eligible airdrops, or view demo to explore features.</div>
                       }
                     </CardHeader>
                     <CardContent className="pt-0 space-y-4">
@@ -1665,6 +1839,14 @@ export function AtlasClient() {
                           <div>Out (USDC): <span className="font-mono">{Number(quote.data.outAmount || 0) / 1e6}</span></div>
                           <div>Price Impact: <span className="font-mono">{(quote.data.priceImpactPct * 100).toFixed(2)}%</span></div>
                           <div>Slippage Bps: <span className="font-mono">{quote.data.slippageBps}</span></div>
+                          <div className="col-span-2 text-[10px] opacity-70 mt-1">
+                            Est. Gas: ~0.000005 SOL (5000 lamports)
+                            {quote.data.priceImpactPct > 0.01 && (
+                              <span className="block text-yellow-600 dark:text-yellow-500 mt-1">
+                                ⚠ High price impact ({(quote.data.priceImpactPct * 100).toFixed(2)}%). Consider smaller amount.
+                              </span>
+                            )}
+                          </div>
                           <div className="col-span-2 mt-1">
                             <Button size="sm" onClick={executeSwap} disabled={!publicKey || execLoading} className="mt-1">
                               {execLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Execute Swap"}
@@ -1697,6 +1879,65 @@ export function AtlasClient() {
                       <div className="mb-1 font-medium">LP Baseline</div>
                       <div>Prices — SOL: ${prices.SOL?.toFixed(2) ?? "-"} · USDC: $1.00</div>
                       <div className="mt-1 text-[10px] opacity-70">Fetch exact APY in target vault UI; Atlas will add direct vault integrations next.</div>
+                    </div>
+                  }
+
+                  {quote && kind === "arbitrage" &&
+                  <div className="text-xs rounded-md border p-3 bg-muted/30">
+                      <div className="mb-1 font-medium">Arbitrage Analysis</div>
+                      <div>Strategy: <span className="font-mono">{quote.strategy}</span></div>
+                      <div>Venues: <span className="font-mono">{quote.venues?.join(" ↔ ")}</span></div>
+                      <div>Est. Spread: <span className="font-mono">{quote.estimatedSpread}</span></div>
+                      <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded">
+                        <div className="font-medium text-yellow-700 dark:text-yellow-500">Risk: {quote.riskLevel}</div>
+                        <div className="text-[10px] opacity-80 mt-1">{quote.warning}</div>
+                      </div>
+                      <div className="mt-2 text-[10px] opacity-70">{quote.note}</div>
+                    </div>
+                  }
+
+                  {quote && kind === "mev_scan" &&
+                  <div className="text-xs rounded-md border p-3 bg-muted/30">
+                      <div className="mb-1 font-medium">MEV Scanner</div>
+                      <div>Types: <span className="font-mono">{quote.opportunityTypes?.join(", ")}</span></div>
+                      <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 rounded">
+                        <div className="font-medium text-red-700 dark:text-red-500">Risk: {quote.riskLevel}</div>
+                        <div className="text-[10px] opacity-80 mt-1">{quote.warning}</div>
+                      </div>
+                      <div className="mt-2 text-[10px] opacity-70">{quote.note}</div>
+                      <div className="mt-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => {
+                            setActiveTab('quests');
+                            setTimeout(() => document.getElementById('mev-scanner')?.scrollIntoView({ behavior: 'smooth' }), 100);
+                          }}>
+                          View MEV Scanner
+                        </Button>
+                      </div>
+                    </div>
+                  }
+
+                  {quote && kind === "governance_vote" &&
+                  <div className="text-xs rounded-md border p-3 bg-muted/30">
+                      <div className="mb-1 font-medium">Governance Participation</div>
+                      <div>Available DAOs: <span className="font-mono">{quote.availableDAOs?.join(", ")}</span></div>
+                      <div className="mt-2 p-2 bg-blue-500/10 border border-blue-500/20 rounded">
+                        <div className="text-[10px] opacity-80">{quote.requirement}</div>
+                      </div>
+                      <div className="mt-2 text-[10px] opacity-70">{quote.note}</div>
+                      <div className="mt-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => {
+                            setActiveTab('quests');
+                            setTimeout(() => document.getElementById('governance')?.scrollIntoView({ behavior: 'smooth' }), 100);
+                          }}>
+                          View Governance Dashboard
+                        </Button>
+                      </div>
                     </div>
                   }
 
