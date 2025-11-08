@@ -31,6 +31,7 @@ import { RiskDashboard } from "@/components/atlas/RiskDashboard";
 import { NotificationSettings } from "@/components/atlas/NotificationSettings";
 import { Watchlist } from "@/components/atlas/Watchlist";
 import { TransactionTimeMachine } from "@/components/atlas/TransactionTimeMachine";
+import { CopyMyWallet } from "@/components/atlas/CopyMyWallet";
 
 // Jupiter core mints (mainnet)
 const MINTS = {
@@ -1781,6 +1782,9 @@ export function AtlasClient() {
 
                 {/* ⏰ Transaction Time Machine - NEW */}
                 <TransactionTimeMachine />
+
+                {/* 📋 Copy My Wallet - NEW */}
+                <CopyMyWallet />
 
                 {/* 🔔 Notification Settings - NEW */}
                 <NotificationSettings />
