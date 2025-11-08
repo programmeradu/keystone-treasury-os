@@ -9,6 +9,14 @@ While competitors build better dashboards, we're eliminating the need for them e
 - The Solana Atlas (Live Prototype)
   - A free, public-good dashboard for the Solana ecosystem. It's our acquisition flywheel and includes the Airdrop Compass and a DeFi Strategy Simulator.
   - Live: https://keystone.stauniverse.tech/atlas
+  - **NEW Features:**
+    - 🎯 Demo Mode - Explore airdrop opportunities without wallet connection
+    - 🛡️ Unified Risk Dashboard - Aggregates security signals from multiple sources
+    - 💰 Gas & Slippage Warnings - Smart transaction cost estimates
+    - 🧠 Enhanced Command Layer - Natural language support for arbitrage, MEV, governance
+    - 🔔 Notification Settings - Configurable alerts for opportunities
+    - ⭐ Persistent Watchlist - Track favorite tokens across sessions
+    - 🔄 Auto-Refresh - Market data updates every 60 seconds
 - The ChainFlow Oracle (Core Tech Demo)
   - A focused demo of our AI-powered engine, showing how natural language can simulate complex treasury flows.
   - Oracle Link: https://keystone.stauniverse.tech/oracle
