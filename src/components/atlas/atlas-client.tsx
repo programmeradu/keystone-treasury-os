@@ -32,6 +32,7 @@ import { NotificationSettings } from "@/components/atlas/NotificationSettings";
 import { Watchlist } from "@/components/atlas/Watchlist";
 import { TransactionTimeMachine } from "@/components/atlas/TransactionTimeMachine";
 import { CopyMyWallet } from "@/components/atlas/CopyMyWallet";
+import { FeeSaver } from "@/components/atlas/FeeSaver";
 
 // Jupiter core mints (mainnet)
 const MINTS = {
@@ -1785,6 +1786,9 @@ export function AtlasClient() {
 
                 {/* 📋 Copy My Wallet - NEW */}
                 <CopyMyWallet />
+
+                {/* ⚡ Fee Saver - NEW */}
+                <FeeSaver />
 
                 {/* 🔔 Notification Settings - NEW */}
                 <NotificationSettings />

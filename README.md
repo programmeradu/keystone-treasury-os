@@ -19,6 +19,7 @@ While competitors build better dashboards, we're eliminating the need for them e
     - 🔄 Auto-Refresh - Market data updates every 60 seconds
     - ⏰ **Transaction Time Machine** - Historical "what-if" analysis for strategies
     - 📋 **Copy My Wallet** - Clone successful portfolios with one click
+    - ⚡ **Fee Saver** - Bundle transactions to save 50-90% on fees
 - The ChainFlow Oracle (Core Tech Demo)
   - A focused demo of our AI-powered engine, showing how natural language can simulate complex treasury flows.
   - Oracle Link: https://keystone.stauniverse.tech/oracle
