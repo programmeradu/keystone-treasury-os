@@ -4,9 +4,8 @@ import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertTriangle, Shield, TrendingDown, AlertCircle, CheckCircle } from "lucide-react";
+import { AlertTriangle, Shield, AlertCircle, CheckCircle } from "lucide-react";
 
 interface RiskSignal {
   id: string;
@@ -25,7 +24,7 @@ interface RiskDashboardProps {
 
 export function RiskDashboard({ walletAddress, className = "" }: RiskDashboardProps) {
   const [riskSignals, setRiskSignals] = useState<RiskSignal[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const [overallRisk, setOverallRisk] = useState<"safe" | "low" | "medium" | "high" | "critical">("safe");
 
   // Aggregate risk signals from various sources

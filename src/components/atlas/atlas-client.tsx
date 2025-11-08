@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey, LAMPORTS_PER_SOL, VersionedTransaction, Transaction } from "@solana/web3.js";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
@@ -401,7 +401,7 @@ export function AtlasClient() {
   };
 
   // Manual refresh for Market Snapshot
-  async function refreshPrices() {
+  const refreshPrices = useCallback(async () => {
     try {
       setPricesLoading(true);
       const j = await fetchJsonWithRetry("/api/jupiter/price?ids=SOL,MSOL,USDC", { cache: "no-store" });
@@ -421,7 +421,7 @@ export function AtlasClient() {
     } finally {
       setPricesLoading(false);
     }
-  }
+  }, []);
 
   // Auto-refresh prices every 60 seconds
   useEffect(() => {
@@ -430,7 +430,7 @@ export function AtlasClient() {
       refreshPrices();
     }, 60000); // 60 seconds
     return () => clearInterval(interval);
-  }, []);
+  }, [refreshPrices]);
 
   // Lightweight retry/backoff helper
   async function fetchJsonWithRetry(input: RequestInfo | URL, init?: RequestInit, retries = 3, baseDelayMs = 400) {
@@ -810,7 +810,6 @@ export function AtlasClient() {
         toast.success("LP baseline ready");
       } else if (kind === "arbitrage") {
         // Arbitrage opportunity simulation
-        const sol = prices.SOL ?? 0;
         setQuote({ 
           kind, 
           strategy: "Cross-DEX Arbitrage",

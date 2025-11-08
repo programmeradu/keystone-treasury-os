@@ -14,7 +14,7 @@ import {
 import { 
   TOKEN_PROGRAM_ID
 } from '@solana/spl-token';
-// @ts-ignore - Type export issue with @solana/spl-token 0.4.x
+// @ts-ignore - Type export issue with @solana/spl-token 0.4.x - functions exist at runtime but missing in type definitions
 import { getAssociatedTokenAddressSync, getAccount } from '@solana/spl-token';
 
 // RPC Connection
