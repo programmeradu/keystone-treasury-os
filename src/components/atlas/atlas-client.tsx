@@ -30,6 +30,7 @@ import { MEVScanner } from "@/components/atlas/MEVScanner";
 import { RiskDashboard } from "@/components/atlas/RiskDashboard";
 import { NotificationSettings } from "@/components/atlas/NotificationSettings";
 import { Watchlist } from "@/components/atlas/Watchlist";
+import { TransactionTimeMachine } from "@/components/atlas/TransactionTimeMachine";
 
 // Jupiter core mints (mainnet)
 const MINTS = {
@@ -1777,6 +1778,9 @@ export function AtlasClient() {
 
                 {/* ⭐ Watchlist - NEW */}
                 <Watchlist />
+
+                {/* ⏰ Transaction Time Machine - NEW */}
+                <TransactionTimeMachine />
 
                 {/* 🔔 Notification Settings - NEW */}
                 <NotificationSettings />

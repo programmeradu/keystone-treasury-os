@@ -17,6 +17,7 @@ While competitors build better dashboards, we're eliminating the need for them e
     - 🔔 Notification Settings - Configurable alerts for opportunities
     - ⭐ Persistent Watchlist - Track favorite tokens across sessions
     - 🔄 Auto-Refresh - Market data updates every 60 seconds
+    - ⏰ **Transaction Time Machine** - Historical "what-if" analysis for strategies
 - The ChainFlow Oracle (Core Tech Demo)
   - A focused demo of our AI-powered engine, showing how natural language can simulate complex treasury flows.
   - Oracle Link: https://keystone.stauniverse.tech/oracle
