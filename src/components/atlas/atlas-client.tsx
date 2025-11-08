@@ -29,6 +29,7 @@ import { DCABotCard } from "@/components/atlas/DCABotCard";
 import { MEVScanner } from "@/components/atlas/MEVScanner";
 import { RiskDashboard } from "@/components/atlas/RiskDashboard";
 import { NotificationSettings } from "@/components/atlas/NotificationSettings";
+import { Watchlist } from "@/components/atlas/Watchlist";
 
 // Jupiter core mints (mainnet)
 const MINTS = {
@@ -1774,6 +1775,9 @@ export function AtlasClient() {
 
                 {/* 🛡️ Unified Risk Dashboard - NEW */}
                 <RiskDashboard walletAddress={publicKey?.toBase58()} />
+
+                {/* ⭐ Watchlist - NEW */}
+                <Watchlist />
 
                 {/* 🔔 Notification Settings - NEW */}
                 <NotificationSettings />
