@@ -17,9 +17,14 @@ While competitors build better dashboards, we're eliminating the need for them e
     - 🔔 Notification Settings - Configurable alerts for opportunities
     - ⭐ Persistent Watchlist - Track favorite tokens across sessions
     - 🔄 Auto-Refresh - Market data updates every 60 seconds
-    - ⏰ **Transaction Time Machine** - Historical "what-if" analysis for strategies
-    - 📋 **Copy My Wallet** - Clone successful portfolios with one click
-    - ⚡ **Fee Saver** - Bundle transactions to save 50-90% on fees
+    - ⏰ **Transaction Time Machine** - Historical "what-if" analysis for strategies (with execution API)
+    - 📋 **Copy My Wallet** - Clone successful portfolios with one click (with execution API)
+    - ⚡ **Fee Saver** - Bundle transactions to save 50-90% on fees (with execution API)
+  - **Execution Infrastructure:**
+    - `/api/atlas/time-machine` - Execute historical strategy analysis
+    - `/api/atlas/copy-wallet` - Analyze and execute portfolio cloning
+    - `/api/atlas/fee-saver` - Analyze and execute transaction bundling
+    - Production-ready executor library with Jupiter integration
 - The ChainFlow Oracle (Core Tech Demo)
   - A focused demo of our AI-powered engine, showing how natural language can simulate complex treasury flows.
   - Oracle Link: https://keystone.stauniverse.tech/oracle
