@@ -12,10 +12,10 @@ import {
   VersionedTransaction
 } from '@solana/web3.js';
 import { 
-  getAssociatedTokenAddressSync,
-  getAccount,
   TOKEN_PROGRAM_ID
 } from '@solana/spl-token';
+// @ts-ignore - Type export issue with @solana/spl-token 0.4.x
+import { getAssociatedTokenAddressSync, getAccount } from '@solana/spl-token';
 
 // RPC Connection
 let connection: Connection | null = null;
