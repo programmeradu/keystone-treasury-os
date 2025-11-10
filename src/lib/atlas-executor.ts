@@ -31,8 +31,8 @@ export async function executeTimeMachineAnalysis(
   daysAgo: number
 ): Promise<TimeMachineAnalysis | null> {
   try {
-    // Fetch current SOL price
-    const priceResponse = await fetch('/api/jupiter/price?ids=SOL');
+    // Fetch current SOL price directly from Jupiter
+    const priceResponse = await fetch('https://api.jup.ag/price/v2?ids=SOL');
     const priceData = await priceResponse.json();
     const currentSOLPrice = priceData?.data?.SOL?.price || 0;
 
@@ -131,15 +131,8 @@ export async function executeCopyWalletAnalysis(
   userBalance: number
 ): Promise<CopyWalletPlan | null> {
   try {
-    // Fetch wallet holdings via Helius
-    const response = await fetch(`/api/helius/das/token-accounts?owner=${targetAddress}`);
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch wallet data');
-    }
-
-    // Fetch price data
-    const priceResponse = await fetch('/api/jupiter/price?ids=SOL,USDC,BONK,JUP');
+    // Fetch price data directly from Jupiter
+    const priceResponse = await fetch('https://api.jup.ag/price/v2?ids=SOL,USDC,BONK,JUP');
     const priceData = await priceResponse.json();
 
     // Process holdings (simplified - in production parse Helius response)
