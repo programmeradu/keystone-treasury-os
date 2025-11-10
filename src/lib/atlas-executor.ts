@@ -1,10 +1,20 @@
 /**
  * Atlas Tool Execution Functions
  * Handles execution for Transaction Time Machine, Copy My Wallet, and Fee Saver
+ * 
+ * Note: This file is designed to work in edge runtime, so avoid Node.js-only imports
  */
 
-import { Connection, PublicKey, Transaction, VersionedTransaction } from '@solana/web3.js';
-import { getJupiterQuote, executeSwap, simulateSwap } from './jupiter-executor';
+// Stub for executeSwap - actual execution happens client-side
+// This is just for type compatibility
+async function executeSwap(params: any): Promise<any> {
+  // This function should not be called in edge runtime
+  // It's a placeholder for type compatibility
+  return {
+    success: false,
+    error: 'executeSwap must be called from client-side with wallet adapter'
+  };
+}
 
 // ============================================
 // TRANSACTION TIME MACHINE EXECUTION
@@ -452,14 +462,16 @@ export async function executeTransactionBundle(
 
 /**
  * Validate wallet address
+ * Simple validation for Solana addresses (base58, 32-44 chars)
  */
 export function isValidSolanaAddress(address: string): boolean {
-  try {
-    new PublicKey(address);
-    return true;
-  } catch {
+  if (!address || typeof address !== 'string') {
     return false;
   }
+  
+  // Solana addresses are base58 encoded and typically 32-44 characters
+  const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+  return base58Regex.test(address);
 }
 
 /**
