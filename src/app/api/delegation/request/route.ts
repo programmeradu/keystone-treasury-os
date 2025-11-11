@@ -83,7 +83,14 @@ export async function POST(request: Request) {
     const decimals = parsedData.parsed.info.decimals;
 
     // Convert amount to smallest units
-    const amountInSmallestUnits = Math.floor(amount * Math.pow(10, decimals));
+    // Validate amount precision and range
+    if (amount * Math.pow(10, decimals) > Number.MAX_SAFE_INTEGER) {
+      return NextResponse.json({
+        success: false,
+        error: 'Amount too large for safe calculation'
+      }, { status: 400 });
+    }
+    const amountInSmallestUnits = BigInt(Math.floor(amount * Math.pow(10, decimals)));
 
     // Create approval instruction (v0.4.x standard instruction)
     const approveInstruction = createApproveInstruction(
