@@ -73,7 +73,14 @@ export async function POST(request: Request) {
     // Get token info to determine decimals
     const connection = getConnection();
     const mintInfo = await connection.getParsedAccountInfo(tokenMintPubkey);
-    const decimals = (mintInfo.value?.data as any)?.parsed?.info?.decimals || 9;
+    const parsedData = mintInfo.value?.data as any;
+    if (!parsedData?.parsed?.info || typeof parsedData.parsed.info.decimals !== 'number') {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid token mint: unable to retrieve token decimals'
+      }, { status: 400 });
+    }
+    const decimals = parsedData.parsed.info.decimals;
 
     // Convert amount to smallest units
     const amountInSmallestUnits = Math.floor(amount * Math.pow(10, decimals));
