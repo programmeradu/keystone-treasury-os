@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { executeTimeMachineAnalysis } from '@/lib/atlas-executor';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/atlas/time-machine

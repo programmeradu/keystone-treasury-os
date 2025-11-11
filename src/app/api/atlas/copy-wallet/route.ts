@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { executeCopyWalletAnalysis, executeCopyWalletTransactions, isValidSolanaAddress } from '@/lib/atlas-executor';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/atlas/copy-wallet
