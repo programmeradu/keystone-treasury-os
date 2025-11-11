@@ -11,11 +11,7 @@ import {
   sendAndConfirmTransaction,
   VersionedTransaction
 } from '@solana/web3.js';
-import { 
-  getAssociatedTokenAddressSync,
-  getAccount,
-  TOKEN_PROGRAM_ID
-} from '@solana/spl-token';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
 // RPC Connection
 let connection: Connection | null = null;
@@ -59,22 +55,13 @@ export async function getTokenBalance(
     const connection = getConnection();
     const walletPublicKey = new PublicKey(walletAddress);
     const mintPublicKey = new PublicKey(tokenMint);
-    
-    // Get associated token account (sync in v0.4.x)
-    const tokenAccount = getAssociatedTokenAddressSync(
-      mintPublicKey,
-      walletPublicKey
-    );
-    
-    // Get account info
-    const accountInfo = await getAccount(connection, tokenAccount);
-    
-    // Get token decimals
-    const mintInfo = await connection.getParsedAccountInfo(mintPublicKey);
-    const decimals = (mintInfo.value?.data as any)?.parsed?.info?.decimals || 9;
-    
-    // Convert to human-readable amount
-    return Number(accountInfo.amount) / Math.pow(10, decimals);
+    const accounts = await connection.getParsedTokenAccountsByOwner(walletPublicKey, { mint: mintPublicKey });
+    if (accounts.value.length === 0) return 0;
+    const info = accounts.value[0].account.data as any;
+    const amountStr = info?.parsed?.info?.tokenAmount?.amount;
+    const decimals = info?.parsed?.info?.tokenAmount?.decimals ?? 0;
+    if (!amountStr) return 0;
+    return Number(amountStr) / Math.pow(10, decimals);
   } catch (error) {
     console.error('Failed to get token balance:', error);
     return 0;
@@ -274,15 +261,9 @@ export async function tokenAccountExists(
     const connection = getConnection();
     const walletPublicKey = new PublicKey(walletAddress);
     const mintPublicKey = new PublicKey(tokenMint);
-    
-    const tokenAccount = getAssociatedTokenAddressSync(
-      mintPublicKey,
-      walletPublicKey
-    );
-    
-    const accountInfo = await connection.getAccountInfo(tokenAccount);
-    return accountInfo !== null;
-  } catch (error) {
+    const accounts = await connection.getParsedTokenAccountsByOwner(walletPublicKey, { mint: mintPublicKey });
+    return accounts.value.length > 0;
+  } catch {
     return false;
   }
 }

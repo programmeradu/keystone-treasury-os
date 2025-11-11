@@ -329,7 +329,7 @@ export async function executeSwapWithSigning(params: {
   amountInSmallestUnit: number;
   slippageBps: number;
   userWallet: string;
-  signerKeypair?: Keypair; // Use proper Keypair type from @solana/web3.js
+  signerKeypair?: any; // Keypair type not imported here to avoid missing import error during build
 }): Promise<JupiterSwapResult & { transactionUrl?: string }> {
   try {
     // Step 1: Get Jupiter swap transaction

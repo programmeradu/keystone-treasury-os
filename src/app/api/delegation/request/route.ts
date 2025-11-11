@@ -6,11 +6,9 @@
  */
 
 import { NextResponse } from 'next/server';
-import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
-import { 
-  createApproveInstruction,
-  getAssociatedTokenAddressSync,
-  TOKEN_PROGRAM_ID 
+import { PublicKey, TransactionInstruction } from '@solana/web3.js';
+import {
+  TOKEN_PROGRAM_ID
 } from '@solana/spl-token';
 import { getConnection } from '@/lib/solana-rpc';
 
@@ -64,14 +62,18 @@ export async function POST(request: Request) {
     const tokenMintPubkey = new PublicKey(tokenMint);
     const delegateWallet = new PublicKey(delegationWalletKey);
 
-    // Get user's token account (sync in v0.4.x)
-    const userTokenAccount = getAssociatedTokenAddressSync(
-      tokenMintPubkey,
-      userWallet
-    );
+    // Fetch user's existing token account for this mint
+    const connection = getConnection();
+    const tokenAccounts = await connection.getParsedTokenAccountsByOwner(userWallet, { mint: tokenMintPubkey });
+    if (tokenAccounts.value.length === 0) {
+      return NextResponse.json({
+        success: false,
+        error: 'No token account found for this mint. Ensure you hold the token (an associated token account must exist).'
+      }, { status: 400 });
+    }
+    const userTokenAccount = tokenAccounts.value[0].pubkey;
 
     // Get token info to determine decimals
-    const connection = getConnection();
     const mintInfo = await connection.getParsedAccountInfo(tokenMintPubkey);
     const parsedData = mintInfo.value?.data as any;
     if (!parsedData?.parsed?.info || typeof parsedData.parsed.info.decimals !== 'number') {
@@ -92,15 +94,22 @@ export async function POST(request: Request) {
     }
     const amountInSmallestUnits = BigInt(Math.floor(amount * Math.pow(10, decimals)));
 
-    // Create approval instruction (v0.4.x standard instruction)
-    const approveInstruction = createApproveInstruction(
-      userTokenAccount,        // Token account to delegate from
-      delegateWallet,          // Delegate (our server wallet)
-      userWallet,              // Owner (user's wallet - will sign)
-      BigInt(amountInSmallestUnits), // Amount to approve
-      [],                      // Multi-signers (none for user wallets)
-      TOKEN_PROGRAM_ID
-    );
+    // Manually construct SPL Token Approve instruction (discriminator = 4)
+    const amountBig = amountInSmallestUnits;
+    const data = Buffer.alloc(1 + 8);
+    data.writeUInt8(4, 0); // Approve instruction code
+    for (let i = 0; i < 8; i++) {
+      data[1 + i] = Number((amountBig >> BigInt(8 * i)) & BigInt(0xff));
+    }
+    const approveInstruction = new TransactionInstruction({
+      programId: TOKEN_PROGRAM_ID,
+      keys: [
+        { pubkey: userTokenAccount, isSigner: false, isWritable: true },
+        { pubkey: delegateWallet, isSigner: false, isWritable: false },
+        { pubkey: userWallet, isSigner: true, isWritable: false }
+      ],
+      data
+    });
 
     // Get recent blockhash
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
@@ -117,7 +126,7 @@ export async function POST(request: Request) {
         tokenAccount: userTokenAccount.toBase58(),
         delegateWallet: delegationWalletKey,
         amount,
-        amountInSmallestUnits,
+  amountInSmallestUnits: amountInSmallestUnits.toString(),
         decimals,
         expiryDays,
         expiryTimestamp
@@ -125,7 +134,7 @@ export async function POST(request: Request) {
       transaction: {
         instruction: {
           programId: approveInstruction.programId.toBase58(),
-          keys: approveInstruction.keys.map(k => ({
+          keys: approveInstruction.keys.map((k: { pubkey: PublicKey; isSigner: boolean; isWritable: boolean }) => ({
             pubkey: k.pubkey.toBase58(),
             isSigner: k.isSigner,
             isWritable: k.isWritable
