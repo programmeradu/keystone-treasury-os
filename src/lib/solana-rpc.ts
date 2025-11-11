@@ -43,8 +43,8 @@ export async function getSolBalance(walletAddress: string): Promise<number> {
     // Convert lamports to SOL
     return balance / 1e9;
   } catch (error) {
-    console.error('Failed to get SOL balance:', error);
-    return 0;
+console.error('Failed to get SOL balance:', error);
+throw new Error(`Unable to fetch SOL balance: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
