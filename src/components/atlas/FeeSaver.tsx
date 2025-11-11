@@ -69,24 +69,20 @@ export function FeeSaver() {
       // For demonstration, we'll simulate detecting some bundleable transactions
       // In production, you'd integrate with wallet transaction history or mempool
 
-      // Simulate detecting transactions (mock data for demonstration)
-      const mockTransactions: TransactionInfo[] = [
-        {
-          id: "tx1",
-          description: "Swap SOL → USDC",
-          estimatedFee: 0.000005,
-        },
-        {
-          id: "tx2",
-          description: "Stake with Marinade",
-          estimatedFee: 0.000005,
-        },
-        {
-          id: "tx3",
-          description: "Transfer to wallet",
-          estimatedFee: 0.000005,
-        },
-      ];
+      // Get actual pending transactions from wallet or RPC
+      const recentSignatures = await connection.getSignaturesForAddress(publicKey, { limit: 50 });
+      const pendingTxs = await Promise.all(
+        recentSignatures
+          .filter(sig => sig.confirmationStatus === null)
+          .map(async sig => {
+            const tx = await connection.getTransaction(sig.signature);
+            return {
+              id: sig.signature,
+              description: await parseTransactionDescription(tx),
+              estimatedFee: tx?.meta?.fee ? tx.meta.fee / LAMPORTS_PER_SOL : 0.000005
+            };
+          })
+      );
 
       // Calculate fees
       const totalIndividualFees = mockTransactions.reduce(
