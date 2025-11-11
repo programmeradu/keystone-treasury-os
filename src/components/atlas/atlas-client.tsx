@@ -146,7 +146,7 @@ const pctChange = (arr: number[]) => {
   return (last - first) / first * 100;
 };
 
-function AtlasClientCore() {
+export function AtlasClient() {
   const { connection } = useConnection();
   const { publicKey, sendTransaction, disconnect } = useWallet();
   const router = useRouter();
@@ -2005,18 +2005,6 @@ function AtlasClientCore() {
       </form>
     </div>);
 
-}
-
-// Wrapped version with Solana providers for dynamic import  
-export function AtlasClient() {
-  // Import here to avoid SSR issues
-  const { SolanaProviders } = require("@/components/providers/solana-provider");
-  
-  return (
-    <SolanaProviders>
-      <AtlasClientCore />
-    </SolanaProviders>
-  );
 }
 
 export default AtlasClient;

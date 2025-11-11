@@ -1,4 +1,5 @@
-import { AtlasWrapper } from "@/components/atlas/atlas-wrapper";
+import { SolanaProviders } from "@/components/providers/solana-provider";
+import { AtlasClient } from "@/components/atlas/atlas-client";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,9 @@ export default async function SolanaAtlasPage({ searchParams }: { searchParams?:
       }}
     >
       <div className="relative z-10 min-h-dvh p-4 md:p-6">
-        <AtlasWrapper />
+        <SolanaProviders>
+          <AtlasClient />
+        </SolanaProviders>
       </div>
     </div>
   );
