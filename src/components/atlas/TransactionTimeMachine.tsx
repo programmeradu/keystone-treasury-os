@@ -64,7 +64,10 @@ export function TransactionTimeMachine() {
       // Calculate historical price (approximation based on current price)
       // In a real implementation, you would fetch actual historical data
       // For now, we'll simulate by applying a random variance
-      const historicalPrice = currentPrice * (0.85 + Math.random() * 0.3); // ±15% variance
+      // Use a deterministic seed based on days for consistent results
+      const seed = (days * 12345) % 1000000;
+      const variance = (seed / 1000000) * 0.3 + 0.85; // Convert to 0.85-1.15 range
+      const historicalPrice = currentPrice * variance;
 
       // Calculate HODL returns
       const hodlReturns = amount * currentPrice - amount * historicalPrice;
