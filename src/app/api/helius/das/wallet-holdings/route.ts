@@ -123,6 +123,6 @@ export async function GET(req: NextRequest) {
       }
     );
   } catch (e: any) {
-    return new Response(JSON.stringify({ error: e?.message || String(e) }), { status: 500 });
+    return new Response(JSON.stringify({ error: "Failed to fetch wallet holdings" }), { status: 500 });
   }
 }
