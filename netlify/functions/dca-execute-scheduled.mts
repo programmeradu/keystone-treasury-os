@@ -8,9 +8,9 @@
 import type { Config } from "@netlify/functions";
 import { createClient } from '@libsql/client';
 import { drizzle } from 'drizzle-orm/libsql';
-import * as schema from '../../src/db/schema';
+import * as schema from '../../../src/db/schema';
 import { eq, and, lte } from "drizzle-orm";
-import { getJupiterQuote } from '../../src/lib/jupiter-executor';
+import { getJupiterQuote } from '../../../src/lib/jupiter-executor';
 
 const { dcaBots, dcaExecutions } = schema;
 
