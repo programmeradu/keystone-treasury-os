@@ -27,6 +27,9 @@ import { JupiterSwapCard } from "@/components/atlas/JupiterSwapCard";
 import { RugPullDetector } from "@/components/atlas/RugPullDetector";
 import { DCABotCard } from "@/components/atlas/DCABotCard";
 import { MEVScanner } from "@/components/atlas/MEVScanner";
+import { TransactionTimeMachine } from "@/components/atlas/TransactionTimeMachine";
+import { CopyMyWallet } from "@/components/atlas/CopyMyWallet";
+import { FeeSaver } from "@/components/atlas/FeeSaver";
 
 // Jupiter core mints (mainnet)
 const MINTS = {
@@ -1601,6 +1604,15 @@ export function AtlasClient() {
 
                 {/* 🎯 MEV Opportunity Scanner - NEW */}
                 <MEVScanner />
+
+                {/* ⏰ Transaction Time Machine */}
+                <TransactionTimeMachine />
+
+                {/* 📋 Copy My Wallet */}
+                <CopyMyWallet />
+
+                {/* ⚡ Fee Saver */}
+                <FeeSaver />
               </div>
             </TabsContent>
 
