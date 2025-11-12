@@ -61,41 +61,45 @@ export function FeeSaver() {
     setAnalysis(null);
 
     try {
-      // In a real implementation, this would:
-      // 1. Scan the wallet's recent transactions
-      // 2. Check for pending/queued transactions
-      // 3. Analyze which ones can be bundled
+      const address = publicKey.toBase58();
       
-      // For demonstration, we'll simulate detecting some bundleable transactions
-      // In production, you'd integrate with wallet transaction history or mempool
+      // Call the real transaction bundle analysis API
+      const response = await fetch(
+        `/api/solana/transaction-bundle?address=${address}&limit=50`,
+        { cache: "no-store" }
+      );
 
-      // Get actual pending transactions from wallet or RPC
-      const recentSignatures = await connection.getSignaturesForAddress(publicKey, { limit: 50 });
-      // Placeholder mock transactions until real parsing implemented
-      const mockTransactions: TransactionInfo[] = [
-        { id: 'tx1', description: 'Swap SOL -> USDC', estimatedFee: 0.000005 },
-        { id: 'tx2', description: 'Transfer USDC to vault', estimatedFee: 0.000005 },
-        { id: 'tx3', description: 'Stake SOL', estimatedFee: 0.000005 }
-      ];
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to analyze transactions");
+      }
 
-      const totalIndividualFees = mockTransactions.reduce((sum, tx) => sum + tx.estimatedFee, 0);
+      const data = await response.json();
 
-      // Bundled fee is approximately one transaction fee
-      const bundledFee = 0.000005;
-      
-      const savings = totalIndividualFees - bundledFee;
-      const savingsPercent = (savings / totalIndividualFees) * 100;
+      if (!data.bundleableTransactions || data.bundleableTransactions.length === 0) {
+        setError(data.message || "No bundleable transactions found");
+        toast.info("No bundling opportunities", {
+          description: data.message || "Keep making transactions to identify patterns",
+        });
+        return;
+      }
+
+      const transactions: TransactionInfo[] = data.bundleableTransactions.map((tx: any) => ({
+        id: tx.id,
+        description: tx.description,
+        estimatedFee: tx.estimatedFee,
+      }));
 
       setAnalysis({
-        individualTransactions: mockTransactions,
-        totalIndividualFees,
-        bundledFee,
-        savings,
-        savingsPercent,
+        individualTransactions: transactions,
+        totalIndividualFees: data.totalIndividualFees,
+        bundledFee: data.bundledFee,
+        savings: data.savings,
+        savingsPercent: data.savingsPercent,
       });
 
       toast.success("Analysis complete", {
-        description: `Found ${mockTransactions.length} bundleable transactions`,
+        description: `Found ${transactions.length} bundleable transactions`,
       });
     } catch (e: any) {
       setError(e?.message || "Failed to analyze transactions");

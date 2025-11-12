@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
       if (!token) {
         return Response.json({ error: "Missing GITHUB_TOKEN on server" }, { status: 500 });
       }
-      const mdl = model || "openai/gpt-4o";
+      const mdl = model || "gpt-4";
       try {
         // Use the official GitHub Models Azure Inference base URL
         const client = new OpenAI({ baseURL: "https://models.inference.ai.azure.com", apiKey: token });

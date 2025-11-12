@@ -62,13 +62,27 @@ export async function GET(req: Request) {
     // Get cross-DEX prices for multiple tokens - FREE, no API key needed!
     const opportunities: any[] = [];
 
-    // Token mints to scan
+    // Expanded token list for more variety
     const tokens = [
       { mint: "So11111111111111111111111111111111111111112", symbol: "SOL" },
       { mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", symbol: "BONK" },
       { mint: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN", symbol: "JUP" },
       { mint: "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs", symbol: "ORCA" },
+      { mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", symbol: "USDC" },
+      { mint: "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So", symbol: "mSOL" },
+      { mint: "7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj", symbol: "stSOL" },
+      { mint: "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3", symbol: "PYTH" },
+      { mint: "rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof", symbol: "RNDR" },
+      { mint: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm", symbol: "WIF" },
+      { mint: "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL", symbol: "JTO" },
+      { mint: "Comp4ssDzXcLeu2MnLuGNNFC4cmLPMng8qWHPvzAMU1h", symbol: "COMP" },
+      { mint: "MEW1gQWJ3nEXg2qgERiKu7FAFj79PHvQVREQUzScPP5", symbol: "MEW" },
     ];
+
+    // Track seen opportunities to avoid duplicates
+    // Use token symbol + DEX pair to create unique key
+    const seen = new Set<string>();
+    const tokensSeen = new Map<string, number>(); // Track how many times each token appears
 
     // Scan each token for cross-DEX arbitrage opportunities
     for (const token of tokens) {
@@ -115,12 +129,26 @@ export async function GET(req: Request) {
             const profitPercent = Math.abs((price2 - price1) / price1 * 100);
 
             if (profitPercent >= minProfit) {
+              // Limit each token to max 2 opportunities for variety
+              const tokenCount = tokensSeen.get(token.symbol) || 0;
+              if (tokenCount >= 2) {
+                continue; // Skip this token, already have enough opportunities
+              }
+
               const buyDex = price1 < price2 ? pair1.dexId : pair2.dexId;
               const sellDex = price1 < price2 ? pair2.dexId : pair1.dexId;
               const buyPrice = Math.min(price1, price2);
               const sellPrice = Math.max(price1, price2);
               const buyPair = price1 < price2 ? pair1 : pair2;
               const sellPair = price1 < price2 ? pair2 : pair1;
+
+              // Create unique key to avoid duplicates (same token + same DEX pair)
+              const uniqueKey = `${token.symbol}-${buyDex}-${sellDex}`;
+              if (seen.has(uniqueKey)) {
+                continue; // Skip duplicate
+              }
+              seen.add(uniqueKey);
+              tokensSeen.set(token.symbol, tokenCount + 1);
 
               // Validate with Jupiter Quote API for actual executable price
               let jupiterValidated = false;
@@ -200,21 +228,31 @@ export async function GET(req: Request) {
 
     // Sort by profit potential and confidence
     opportunities.sort((a, b) => {
+      // Prioritize verified opportunities
       if (a.verified !== b.verified) return a.verified ? -1 : 1;
+      // Then by profit percentage
       return parseFloat(b.profitPercent) - parseFloat(a.profitPercent);
     });
 
     const verifiedCount = opportunities.filter(o => o.verified).length;
+    
+    // Return dynamic number of opportunities (not always 10)
+    // Show between 3-15 opportunities based on what's actually found
+    const minResults = 3; // At least 3 if available
+    const maxResults = 15; // Cap at 15 for UI performance
+    const actualResults = Math.min(Math.max(opportunities.length, minResults), maxResults);
 
     return NextResponse.json({
-      opportunities: opportunities.slice(0, 10), // Top 10 opportunities
+      opportunities: opportunities.slice(0, actualResults),
       scannedAt: Date.now(),
       nextScanIn: 5,
       source: "dexscreener + jupiter",
       stats: {
         total: opportunities.length,
+        displayed: actualResults,
         verified: verifiedCount,
         unverified: opportunities.length - verifiedCount,
+        tokensScanned: tokens.length,
       }
     }, { status: 200 });
 

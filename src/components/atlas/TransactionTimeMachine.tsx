@@ -61,13 +61,18 @@ export function TransactionTimeMachine() {
 
       const currentPrice = priceData.data.SOL.price;
 
-      // Calculate historical price (approximation based on current price)
-      // In a real implementation, you would fetch actual historical data
-      // For now, we'll simulate by applying a random variance
-      // Use a deterministic seed based on days for consistent results
-      const seed = (days * 12345) % 1000000;
-      const variance = (seed / 1000000) * 0.3 + 0.85; // Convert to 0.85-1.15 range
-      const historicalPrice = currentPrice * variance;
+      // Fetch REAL historical price
+      const historicalResponse = await fetch(
+        `/api/jupiter/historical-price?symbol=SOL&mint=So11111111111111111111111111111111111111112&daysAgo=${days}`
+      );
+      const historicalData = await historicalResponse.json();
+      
+      if (!historicalResponse.ok || !historicalData?.historicalPrice) {
+        throw new Error(historicalData?.error || "Failed to fetch historical price");
+      }
+
+      const historicalPrice = historicalData.historicalPrice;
+      const priceSource = historicalData.source || "unknown";
 
       // Calculate HODL returns
       const hodlReturns = amount * currentPrice - amount * historicalPrice;
@@ -120,8 +125,12 @@ export function TransactionTimeMachine() {
         strategyReturn,
       });
 
+      const sourceMsg = priceSource === "approximation" 
+        ? "Using approximated historical data" 
+        : `Real historical data from ${priceSource}`;
+      
       toast.success("Calculation complete", {
-        description: `Returns calculated for ${days} days ago`,
+        description: sourceMsg,
       });
     } catch (e: any) {
       setError(e?.message || "Failed to calculate returns");
@@ -307,7 +316,12 @@ export function TransactionTimeMachine() {
               </div>
 
               <div className="text-[10px] opacity-60 italic">
-                Note: Historical prices are approximated. For production use, integrate a time-series price API.
+                {result && (
+                  <>
+                    Historical prices from CoinGecko/Birdeye. 
+                    {!process.env.NEXT_PUBLIC_BIRDEYE_API_KEY && " Add BIRDEYE_API_KEY for best accuracy."}
+                  </>
+                )}
               </div>
             </div>
           )}

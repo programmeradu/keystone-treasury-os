@@ -198,9 +198,13 @@ export function AtlasClient() {
 
     switch (tool_id) {
       case "navigate_to_tab":
-        if (parameters.tab) {
-          handleTabChange(parameters.tab);
-          toast.info(`Navigated to ${parameters.tab} tab.`);
+        if (parameters.tab_id) {
+          handleTabChange(parameters.tab_id);
+          setTimeout(() => {
+            const elementId = parameters.tab_id === 'lab' ? 'strategy-lab' : 'quests-content';
+            document.getElementById(elementId)?.scrollIntoView({ behavior: 'smooth' });
+            toast.info(`Navigated to the ${parameters.tab_id} tab.`);
+          }, 100);
         }
         break;
 
