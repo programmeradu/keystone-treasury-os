@@ -59,22 +59,39 @@ export function CopyMyWallet() {
 
     try {
       // Fetch wallet holdings from Helius DAS API
-      const response = await fetch(`/api/helius/das/wallet-holdings?address=${address}`);
-      
-      if (!response.ok) {
-        throw new Error("Failed to fetch wallet holdings");
+      let url = `/api/helius/das/wallet-holdings?address=${address}`;
+      try {
+        if (typeof window !== "undefined") {
+          const pageMock = new URL(window.location.href).searchParams.get("mock");
+          if (String(pageMock || "").toLowerCase() === "true") url += "&mock=true";
+        }
+      } catch {}
+      const response = await fetch(url);
+
+      const raw = await response.text();
+      let data: any = null;
+      if (raw && raw.length > 0) {
+        try {
+          data = JSON.parse(raw);
+        } catch (parseErr) {
+          console.error("CopyMyWallet: failed to parse response", raw, parseErr);
+          throw new Error("Invalid JSON from wallet holdings API");
+        }
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        const bodyMsg = data?.error || raw || response.statusText;
+        console.error("CopyMyWallet API error:", response.status, bodyMsg);
+        throw new Error(bodyMsg || "Failed to fetch wallet holdings");
+      }
 
-      // Parse the response - assuming it returns token holdings
+      // Parse the response - try several shapes for robustness
       const holdings: TokenHolding[] = [];
       let totalValue = 0;
+      const tokens = data?.holdings || data?.result || data?.items || data?.tokens || [];
 
-      // Get token prices for all holdings
-      const tokens = data.holdings || data.result || [];
-      
       if (!Array.isArray(tokens) || tokens.length === 0) {
+        console.error("CopyMyWallet: no tokens found", { url, data, raw });
         setError("No tokens found in this wallet");
         setLoading(false);
         return;

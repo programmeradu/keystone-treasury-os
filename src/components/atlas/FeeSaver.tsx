@@ -64,13 +64,16 @@ export function FeeSaver() {
       const address = publicKey.toBase58();
       
       // Call the real transaction bundle analysis API
-      const response = await fetch(
-        `/api/solana/transaction-bundle?address=${address}&limit=50`,
-        { cache: "no-store" }
-      );
+      let url = `/api/solana/transaction-bundle?address=${address}&limit=50`;
+      try {
+        if (typeof window !== "undefined") {
+          const pageMock = new URL(window.location.href).searchParams.get("mock");
+          if (String(pageMock || "").toLowerCase() === "true") url += "&mock=true";
+        }
+      } catch {}
+      const response = await fetch(url, { cache: "no-store" });
 
       // Safely parse JSON: some upstream/network errors may return an empty body
-      // which would throw "Unexpected end of JSON input" when calling response.json().
       const raw = await response.text();
       let data: any = null;
       if (raw && raw.length > 0) {
@@ -83,11 +86,13 @@ export function FeeSaver() {
       }
 
       if (!response.ok) {
-        const errMsg = data?.error || response.statusText || "Failed to analyze transactions";
+        const errMsg = data?.error || raw || response.statusText || "Failed to analyze transactions";
+        console.error("transaction-bundle API error:", response.status, errMsg, { url });
         throw new Error(errMsg);
       }
 
       if (!data) {
+        console.error("transaction-bundle: empty response", { url });
         throw new Error("Empty response from analysis API");
       }
 

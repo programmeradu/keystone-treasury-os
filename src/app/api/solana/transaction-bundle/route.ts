@@ -26,9 +26,10 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Invalid Solana address" }, { status: 400 });
     }
 
-    // Mock mode for testing
-    const mockMode = String(process.env.MOCK_MODE || "").toLowerCase() === "true";
-    if (mockMode) {
+  // Mock mode for testing (env OR ?mock=true)
+  const mockMode = String(process.env.MOCK_MODE || "").toLowerCase() === "true";
+  const mockParam = String(searchParams.get("mock") || "").toLowerCase() === "true";
+  if (mockMode || mockParam) {
       return NextResponse.json({
         address,
         bundleableTransactions: [

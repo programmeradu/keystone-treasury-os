@@ -18,7 +18,8 @@ export async function GET(req: NextRequest) {
   }
 
   // Mock mode: return deterministic token holdings for testing
-  if (mockMode && !apiKey) {
+  const mockParam = String(searchParams.get("mock") || "").toLowerCase() === "true";
+  if ((mockMode || mockParam) && !apiKey) {
     const mockHoldings = [
       {
         mint: "So11111111111111111111111111111111111111112",
