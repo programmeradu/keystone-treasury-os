@@ -5,6 +5,11 @@ const LOADER = path.resolve(__dirname, 'src/visual-edits/component-tagger-loader
 const enableVisualEdits = String(process.env.VISUAL_EDITS_ENABLED || "").toLowerCase() === "true";
 
 const nextConfig: NextConfig = {
+  // Reduce build memory footprint in constrained environments
+  swcMinify: false,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   images: {
     remotePatterns: [
       {
