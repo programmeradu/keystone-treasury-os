@@ -23,6 +23,7 @@ import {
   DropdownMenuItem } from
 "@/components/ui/dropdown-menu";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useAtlasCommand } from "@/hooks/use-atlas-command";
 import dynamic from "next/dynamic";
 // Dynamically load heavier client-only Atlas widgets to reduce initial build/SSR memory footprint.
 // Each component is already "use client"; disabling SSR avoids bundling their large deps during the
@@ -37,6 +38,7 @@ const MEVScanner = dynamic(() => import("@/components/atlas/MEVScanner").then(m 
 const TransactionTimeMachine = dynamic(() => import("@/components/atlas/TransactionTimeMachine").then(m => (m as any).default || (m as any).TransactionTimeMachine), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
 const CopyMyWallet = dynamic(() => import("@/components/atlas/CopyMyWallet").then(m => (m as any).default || (m as any).CopyMyWallet), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
 const FeeSaver = dynamic(() => import("@/components/atlas/FeeSaver").then(m => (m as any).default || (m as any).FeeSaver), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
+const CreateDCABotModal = dynamic(() => import("@/components/atlas/CreateDCABotModal").then(m => (m as any).default || (m as any).CreateDCABotModal), { ssr: false });
 
 // Jupiter core mints (mainnet)
 const MINTS = {
@@ -157,6 +159,7 @@ export function AtlasClient() {
   const searchParams = useSearchParams();
   const isClay = (searchParams?.get("style") || "") === "clay";
   const { setVisible } = useWalletModal();
+  const { dispatch, lastCommand } = useAtlasCommand();
 
   const [solBalance, setSolBalance] = useState<number | null>(null);
   const [prices, setPrices] = useState<Record<string, number>>({});
@@ -182,6 +185,115 @@ export function AtlasClient() {
   const [compassError, setCompassError] = useState<string | null>(null);
   const [compassData, setCompassData] = useState<any | null>(null);
   const [selectedAirdropId, setSelectedAirdropId] = useState<string | null>(null);
+
+  // Modal States
+  const [isCreateDcaOpen, setCreateDcaOpen] = useState(false);
+
+  // Command handler effect
+  useEffect(() => {
+    if (!lastCommand) return;
+
+    const { tool_id, parameters } = lastCommand;
+    console.log("Handling command:", tool_id, parameters);
+
+    switch (tool_id) {
+      case "navigate_to_tab":
+        if (parameters.tab) {
+          handleTabChange(parameters.tab);
+          toast.info(`Navigated to ${parameters.tab} tab.`);
+        }
+        break;
+
+      case "scan_airdrops":
+        handleTabChange("quests");
+        setTimeout(() => {
+          scanAirdrops();
+          document.getElementById('airdrop-compass')?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+        toast.info("Scanning for airdrops...");
+        break;
+
+      case "swap_tokens":
+        handleTabChange("quests"); // Jupiter is on the quests tab
+        setTimeout(() => {
+            tryInitiateJupiterSwap({
+                amount: parameters.amount,
+                inputMint: MINTS.SOL, // Assuming SOL for now
+                outputMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" // Assuming USDC
+            });
+            document.getElementById('jupiter-integrated-card')?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+        break;
+
+      case "stake_sol":
+        handleTabChange("lab");
+        setKind("stake_marinade");
+        if (parameters.amount) {
+          setAmountSol(parameters.amount);
+        }
+        setTimeout(() => {
+            simulate();
+            document.getElementById('strategy-lab')?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+        break;
+      
+      case "provide_liquidity":
+        handleTabChange("lab");
+        setKind("lp_sol_usdc");
+        if (parameters.amount) {
+            setAmountSol(parameters.amount);
+        }
+        setTimeout(() => {
+            simulate();
+            document.getElementById('strategy-lab')?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+        break;
+
+      case "view_holder_insights":
+        handleTabChange("quests");
+        if (parameters.mint_address) {
+          setMintInput(parameters.mint_address);
+          setTimeout(() => {
+            fetchHolderInsights();
+            document.getElementById('holder-insights-card')?.scrollIntoView({ behavior: 'smooth' });
+          }, 100);
+        }
+        break;
+
+      case "scan_mev":
+        handleTabChange("quests");
+        setTimeout(() => {
+            document.getElementById('mev-scanner-card')?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+        toast.info("MEV Scanner is now in view.");
+        break;
+
+      case "create_dca_bot":
+        setCreateDcaOpen(true);
+        break;
+
+      case "open_time_machine":
+        handleTabChange("quests");
+        // Future: pass signature to the component
+        setTimeout(() => {
+            document.getElementById('transaction-time-machine-card')?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+        break;
+        
+      case "copy_my_wallet":
+        handleTabChange("quests");
+         // Future: pass address to the component
+        setTimeout(() => {
+            document.getElementById('copy-my-wallet-card')?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+        break;
+
+      default:
+        toast.error("Sorry, I didn't understand that command.");
+        break;
+    }
+  }, [lastCommand]);
+
 
   // Helper: build a few realistic heuristic airdrops when scan returns sparse results
   function buildHeuristicAirdrops(addr: string, sol: number | null) {
@@ -313,37 +425,38 @@ export function AtlasClient() {
   }, [theme]);
   const toggleTheme = () => setTheme((t) => t === 'dark' ? 'light' : 'dark');
 
-  // Bottom command bar
   const [cmdText, setCmdText] = useState("");
-  const [cmdTool, setCmdTool] = useState<'auto' | 'stake' | 'swap' | 'lp'>("auto");
+  const [cmdLoading, setCmdLoading] = useState(false);
+
   const handleBottomSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const text = cmdText.trim();
     if (!text) return;
 
-    // Quick NLP: Quests intents (e.g., "scan my wallet for airdrops")
-    const lower = text.toLowerCase();
-    const wantsAirdrops = /(scan|check|find|show|discover).*air\s?-?\s?drops?|airdrop/.test(lower) || /airdrops?/.test(lower);
-    if (wantsAirdrops) {
-      setActiveTab('quests');
-      setCmdText("");
-      setTimeout(() => {
-        scanAirdrops();
-        document.getElementById('airdrop-compass')?.scrollIntoView({ behavior: 'smooth' });
-      }, 50);
-      return;
-    }
+    setCmdLoading(true);
+    try {
+      const response = await fetch("/api/ai/parse-atlas-command", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
 
-    // Default: Strategy Lab intents
-    setActiveTab('lab');
-    setNlpText(cmdTool === 'auto' ? text : `${cmdTool} ${text}`);
-    setCmdText("");
-    // allow tab render, then parse/simulate
-    setTimeout(() => {
-      nlpInputRef.current?.focus();
-      handleParse();
-      document.getElementById('strategy-lab')?.scrollIntoView({ behavior: 'smooth' });
-    }, 50);
+      if (!response.ok) {
+        throw new Error("Failed to parse command");
+      }
+
+      const command = await response.json();
+      if (command && command.tool_id) {
+        dispatch(command);
+      } else {
+        toast.error("Sorry, I couldn't understand that command.");
+      }
+    } catch (error: any) {
+      toast.error("Error processing command", { description: error.message });
+    } finally {
+      setCmdLoading(false);
+      setCmdText("");
+    }
   };
 
   // Manual refresh for Market Snapshot
@@ -1353,12 +1466,12 @@ export function AtlasClient() {
                 </div>
 
                 {/* KeyStone Swap (Jupiter Plugin) */}
-                <div className="h-full">
+                <div className="h-full" id="jupiter-integrated-card">
                   <JupiterSwapCard />
                 </div>
 
                 {/* Holder Insights */}
-                <div className="h-full">
+                <div className="h-full" id="holder-insights-card">
                   <Card className="atlas-card relative overflow-hidden h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)] min-h-[360px]">
                     <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
                     <CardHeader className="pb-2 flex flex-col gap-2">
@@ -1610,13 +1723,13 @@ export function AtlasClient() {
                 <DCABotCard />
 
                 {/* 🎯 MEV Opportunity Scanner - NEW */}
-                <MEVScanner />
+                <div id="mev-scanner-card"><MEVScanner /></div>
 
                 {/* ⏰ Transaction Time Machine */}
-                <TransactionTimeMachine />
+                <div id="transaction-time-machine-card"><TransactionTimeMachine /></div>
 
                 {/* 📋 Copy My Wallet */}
-                <CopyMyWallet />
+                <div id="copy-my-wallet-card"><CopyMyWallet /></div>
 
                 {/* ⚡ Fee Saver */}
                 <FeeSaver />
@@ -1728,23 +1841,9 @@ export function AtlasClient() {
         </div>
       </main>
 
-      {/* Floating bottom command bar */}
       <form onSubmit={handleBottomSubmit} className="fixed inset-x-0 bottom-4 z-50">
         <div className="mx-auto max-w-3xl px-4">
           <div className="flex items-center gap-2 rounded-full bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/90 shadow-lg px-2 py-1 border border-border/50">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="ghost" className="h-8 px-3 rounded-full text-xs">
-                  {cmdTool === "auto" ? "Auto" : cmdTool.toUpperCase()}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-36">
-                <DropdownMenuItem onClick={() => setCmdTool("auto")}>Auto</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setCmdTool("stake")}>Stake</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setCmdTool("swap")}>Swap</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setCmdTool("lp")}>LP</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
             <Input
               value={cmdText}
               onChange={(e) => setCmdText(e.target.value)}
@@ -1752,12 +1851,13 @@ export function AtlasClient() {
               className="h-8 flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
               aria-label="Atlas command" />
 
-            <Button type="submit" size="sm" className="h-8 rounded-full">
-              Go
+            <Button type="submit" size="icon" className="h-8 w-8 rounded-full" disabled={cmdLoading}>
+              {cmdLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
             </Button>
           </div>
         </div>
       </form>
+      <CreateDCABotModal isOpen={isCreateDcaOpen} onClose={() => setCreateDcaOpen(false)} />
     </div>);
 
 }

@@ -51,6 +51,31 @@ export const JupiterSwapCard = () => {
             moduleColor: "transparent"
           }
         });
+
+        // Inject light-mode contrast fixes & softer sizing overrides once mounted
+        try {
+          const styleId = "jupiter-swap-override";
+          if (!document.getElementById(styleId)) {
+            const st = document.createElement("style");
+            st.id = styleId;
+            st.textContent = `
+              /* Jupiter plugin light mode overrides */
+              :root:not(.dark) #${containerId} * { color: var(--foreground) !important; }
+              :root:not(.dark) #${containerId} .terminal-root,
+              :root:not(.dark) #${containerId} [class*="container"],
+              :root:not(.dark) #${containerId} [class*="module"],
+              :root:not(.dark) #${containerId} [class*="swap"],
+              :root:not(.dark) #${containerId} [class*="box"] {
+                background: color-mix(in oklch, var(--color-card) 92%, transparent) !important;
+              }
+              #${containerId} button { border-radius: var(--radius-md) !important; }
+              #${containerId} [class*="input"], #${containerId} input { background: color-mix(in oklch, var(--color-card) 85%, transparent) !important; }
+              /* Reduce any overly white layer opacity */
+              :root:not(.dark) #${containerId} [style*="rgba(255, 255, 255"] { backdrop-filter: saturate(1.05) blur(4px); }
+            `;
+            document.head.appendChild(st);
+          }
+        } catch {}
       } catch (e) {
 
         // No-op; widget will simply not render
@@ -82,8 +107,8 @@ export const JupiterSwapCard = () => {
     <Card className="atlas-card relative overflow-hidden h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)] min-h-[300px]">
       <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
       <CardContent className="pt-0 pb-0">
-        {/* Fixed height container; plugin fills and stays clipped within card */}
-        <div className="h-[372px] md:h-[392px] w-full rounded-lg overflow-hidden bg-transparent relative">
+        {/* Fixed height container; plugin fills and stays clipped within card; scale slightly to reclaim earlier visual density */}
+        <div className="h-[360px] md:h-[372px] w-full rounded-lg overflow-hidden bg-transparent relative origin-top scale-[0.985]">
           <div id={containerId} className="bg-transparent !w-full !h-full" />
         </div>
       </CardContent>
