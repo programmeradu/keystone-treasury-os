@@ -11,6 +11,8 @@ import { Loader2, Bot, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface CreateDCABotModalProps {
+  isOpen?: boolean;
+  onClose?: () => void;
   onBotCreated?: () => void;
 }
 
@@ -31,8 +33,11 @@ const FREQUENCIES = [
   { value: "monthly", label: "Monthly", description: "Execute once per month" },
 ];
 
-export function CreateDCABotModal({ onBotCreated }: CreateDCABotModalProps) {
+export function CreateDCABotModal({ isOpen, onClose, onBotCreated }: CreateDCABotModalProps) {
+  // Local open state is used when the component is uncontrolled.
   const [open, setOpen] = useState(false);
+  const isControlled = typeof isOpen === "boolean";
+  const openState = isControlled ? isOpen : open;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   
@@ -131,13 +136,22 @@ export function CreateDCABotModal({ onBotCreated }: CreateDCABotModalProps) {
   const frequencyInfo = FREQUENCIES.find(f => f.value === frequency);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="w-full">
-          <Bot className="h-4 w-4 mr-2" />
-          + Create New Bot
-        </Button>
-      </DialogTrigger>
+      <Dialog open={openState} onOpenChange={(val) => {
+        // If uncontrolled, update local state
+        if (!isControlled) setOpen(val);
+        // If dialog is being closed, notify parent
+        if (!val && onClose) onClose();
+      }}>
+      {/* Only render the trigger when uncontrolled to avoid duplicate open controls
+          Parent components that control the modal via `isOpen` should provide their own trigger. */}
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button size="sm" variant="outline" className="w-full">
+            <Bot className="h-4 w-4 mr-2" />
+            + Create New Bot
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
