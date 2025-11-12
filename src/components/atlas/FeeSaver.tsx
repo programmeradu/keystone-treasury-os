@@ -69,12 +69,27 @@ export function FeeSaver() {
         { cache: "no-store" }
       );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to analyze transactions");
+      // Safely parse JSON: some upstream/network errors may return an empty body
+      // which would throw "Unexpected end of JSON input" when calling response.json().
+      const raw = await response.text();
+      let data: any = null;
+      if (raw && raw.length > 0) {
+        try {
+          data = JSON.parse(raw);
+        } catch (parseErr) {
+          console.error("Failed to parse JSON from /api/solana/transaction-bundle:", raw, parseErr);
+          throw new Error("Invalid JSON response from analysis API");
+        }
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        const errMsg = data?.error || response.statusText || "Failed to analyze transactions";
+        throw new Error(errMsg);
+      }
+
+      if (!data) {
+        throw new Error("Empty response from analysis API");
+      }
 
       if (!data.bundleableTransactions || data.bundleableTransactions.length === 0) {
         setError(data.message || "No bundleable transactions found");
