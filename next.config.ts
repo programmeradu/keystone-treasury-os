@@ -5,8 +5,9 @@ const LOADER = path.resolve(__dirname, 'src/visual-edits/component-tagger-loader
 const enableVisualEdits = String(process.env.VISUAL_EDITS_ENABLED || "").toLowerCase() === "true";
 
 const nextConfig: NextConfig = {
-  // Reduce build memory footprint in constrained environments
-  swcMinify: false,
+  // swcMinify is deprecated in Next.js 15; minification is always enabled.
+  // Removed to silence warning. If you need to temporarily disable minification
+  // for debugging, set NEXT_DISABLE_SWC_MINIFY=1 (internal) or use a custom build step.
   eslint: {
     ignoreDuringBuilds: true,
   },

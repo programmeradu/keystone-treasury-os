@@ -23,13 +23,20 @@ import {
   DropdownMenuItem } from
 "@/components/ui/dropdown-menu";
 import { useRouter, useSearchParams } from "next/navigation";
-import { JupiterSwapCard } from "@/components/atlas/JupiterSwapCard";
-import { RugPullDetector } from "@/components/atlas/RugPullDetector";
-import { DCABotCard } from "@/components/atlas/DCABotCard";
-import { MEVScanner } from "@/components/atlas/MEVScanner";
-import { TransactionTimeMachine } from "@/components/atlas/TransactionTimeMachine";
-import { CopyMyWallet } from "@/components/atlas/CopyMyWallet";
-import { FeeSaver } from "@/components/atlas/FeeSaver";
+import dynamic from "next/dynamic";
+// Dynamically load heavier client-only Atlas widgets to reduce initial build/SSR memory footprint.
+// Each component is already "use client"; disabling SSR avoids bundling their large deps during the
+// server build phase which previously hit memory SIGTERM.
+const JupiterSwapCard = dynamic(() => import("@/components/atlas/JupiterSwapCard").then(m => (m as any).default || (m as any).JupiterSwapCard), {
+  ssr: false,
+  loading: () => <div className="atlas-card relative overflow-hidden min-h-[300px] flex items-center justify-center text-xs opacity-60">Loading swap…</div>
+});
+const RugPullDetector = dynamic(() => import("@/components/atlas/RugPullDetector").then(m => (m as any).default || (m as any).RugPullDetector), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
+const DCABotCard = dynamic(() => import("@/components/atlas/DCABotCard").then(m => (m as any).default || (m as any).DCABotCard), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
+const MEVScanner = dynamic(() => import("@/components/atlas/MEVScanner").then(m => (m as any).default || (m as any).MEVScanner), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
+const TransactionTimeMachine = dynamic(() => import("@/components/atlas/TransactionTimeMachine").then(m => (m as any).default || (m as any).TransactionTimeMachine), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
+const CopyMyWallet = dynamic(() => import("@/components/atlas/CopyMyWallet").then(m => (m as any).default || (m as any).CopyMyWallet), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
+const FeeSaver = dynamic(() => import("@/components/atlas/FeeSaver").then(m => (m as any).default || (m as any).FeeSaver), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
 
 // Jupiter core mints (mainnet)
 const MINTS = {

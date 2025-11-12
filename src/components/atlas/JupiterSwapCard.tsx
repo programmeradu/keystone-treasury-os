@@ -79,11 +79,11 @@ export const JupiterSwapCard = () => {
   }, [endpoint, setVisible, walletCtx]);
 
   return (
-    <Card style={{ overflow: "visible" }} className="atlas-card relative overflow-visible h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)] min-h-[300px]">
+    <Card className="atlas-card relative overflow-hidden h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)] min-h-[300px]">
       <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
-      <CardContent className="pt-0 pb-0 -mb-2">
-        {/* Fixed height container; plugin fills and keeps card skin */}
-        <div className="h-[372px] md:h-[392px] -mt-1 w-full rounded-lg overflow-visible bg-transparent origin-top scale-[0.985] md:scale-100">
+      <CardContent className="pt-0 pb-0">
+        {/* Fixed height container; plugin fills and stays clipped within card */}
+        <div className="h-[372px] md:h-[392px] w-full rounded-lg overflow-hidden bg-transparent relative">
           <div id={containerId} className="bg-transparent !w-full !h-full" />
         </div>
       </CardContent>
