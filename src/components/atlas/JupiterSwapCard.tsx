@@ -45,7 +45,8 @@ export const JupiterSwapCard = () => {
           colorProps: {
             primaryColor: getComputedStyle(document.documentElement).getPropertyValue("--primary").trim() || "#111",
             backgroundColor: "transparent",
-            primaryTextColor: getComputedStyle(document.documentElement).getPropertyValue("--foreground").trim() || "#fff",
+            // Prefer the site's foreground variable, but fall back to a dark color (not white)
+            primaryTextColor: getComputedStyle(document.documentElement).getPropertyValue("--foreground").trim() || "#111",
             warningColor: "#fbbf24",
             interactiveColor: "transparent",
             moduleColor: "transparent"
@@ -60,18 +61,25 @@ export const JupiterSwapCard = () => {
             st.id = styleId;
             st.textContent = `
               /* Jupiter plugin light mode overrides */
-              :root:not(.dark) #${containerId} * { color: var(--foreground) !important; }
+              /* Force darker readable text in light mode */
+              :root:not(.dark) #${containerId} *,
+              :root:not(.dark) #${containerId} [class*="text"],
+              :root:not(.dark) #${containerId} [class*="label"] { color: #0f1724 !important; }
+
               :root:not(.dark) #${containerId} .terminal-root,
               :root:not(.dark) #${containerId} [class*="container"],
               :root:not(.dark) #${containerId} [class*="module"],
               :root:not(.dark) #${containerId} [class*="swap"],
               :root:not(.dark) #${containerId} [class*="box"] {
-                background: color-mix(in oklch, var(--color-card) 92%, transparent) !important;
+                /* Slightly deepen background to improve contrast against white text */
+                background: color-mix(in oklch, var(--color-card) 88%, #000 12%) !important;
               }
-              #${containerId} button { border-radius: var(--radius-md) !important; }
-              #${containerId} [class*="input"], #${containerId} input { background: color-mix(in oklch, var(--color-card) 85%, transparent) !important; }
-              /* Reduce any overly white layer opacity */
-              :root:not(.dark) #${containerId} [style*="rgba(255, 255, 255"] { backdrop-filter: saturate(1.05) blur(4px); }
+              #${containerId} button { border-radius: var(--radius-md) !important; font-weight:600 !important; }
+              #${containerId} [class*="input"], #${containerId} input { background: color-mix(in oklch, var(--color-card) 80%, #000 20%) !important; color:#0f1724 !important }
+              /* Reduce any overly white layer opacity and soften blur */
+              :root:not(.dark) #${containerId} [style*="rgba(255, 255, 255"] { backdrop-filter: saturate(1.05) blur(2px); opacity:0.98 }
+              /* Improve label/button contrast */
+              :root:not(.dark) #${containerId} .jup-primary, :root:not(.dark) #${containerId} .jup-action { color: #ffffff !important; background: var(--primary) !important }
             `;
             document.head.appendChild(st);
           }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { ComponentType } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey, LAMPORTS_PER_SOL, VersionedTransaction, Transaction } from "@solana/web3.js";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
@@ -38,7 +39,13 @@ const MEVScanner = dynamic(() => import("@/components/atlas/MEVScanner").then(m 
 const TransactionTimeMachine = dynamic(() => import("@/components/atlas/TransactionTimeMachine").then(m => (m as any).default || (m as any).TransactionTimeMachine), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
 const CopyMyWallet = dynamic(() => import("@/components/atlas/CopyMyWallet").then(m => (m as any).default || (m as any).CopyMyWallet), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
 const FeeSaver = dynamic(() => import("@/components/atlas/FeeSaver").then(m => (m as any).default || (m as any).FeeSaver), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
-const CreateDCABotModal = dynamic(() => import("@/components/atlas/CreateDCABotModal").then(m => (m as any).default || (m as any).CreateDCABotModal), { ssr: false });
+const CreateDCABotModal = dynamic<ComponentType<{ isOpen?: boolean; onClose?: () => void }>>(() => import("@/components/atlas/CreateDCABotModal").then(m => (m as any).default || (m as any).CreateDCABotModal), { ssr: false });
+
+// Wrapper to help TypeScript understand the dynamic component accepts these props
+function CreateDCABotModalWrapper(props: { isOpen?: boolean; onClose?: () => void }) {
+  const C = CreateDCABotModal as unknown as ComponentType<{ isOpen?: boolean; onClose?: () => void }>;
+  return <C {...props} />;
+}
 
 // Jupiter core mints (mainnet)
 const MINTS = {
@@ -1861,7 +1868,7 @@ export function AtlasClient() {
           </div>
         </div>
       </form>
-      <CreateDCABotModal isOpen={isCreateDcaOpen} onClose={() => setCreateDcaOpen(false)} />
+  <CreateDCABotModalWrapper isOpen={isCreateDcaOpen} onClose={() => setCreateDcaOpen(false)} />
     </div>);
 
 }
