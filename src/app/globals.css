@@ -345,6 +345,73 @@
     transition: border-color 160ms ease, box-shadow 200ms ease, transform 120ms ease;
   }
   .atlas-tile:hover { transform: translateY(-1px); border-color: oklch(1 0 0 / 0.18); box-shadow: 0 8px 24px -16px oklch(0 0 0 / 0.4); }
+
+  /* Modern transparent scrollbar styling (opt-in via class) */
+  .scrollbar-modern {
+    scrollbar-width: thin; /* Firefox */
+    --thumb-fx: color-mix(in oklch, var(--color-foreground) 35%, transparent);
+    scrollbar-color: var(--thumb-fx) transparent;
+  }
+  .scrollbar-modern::-webkit-scrollbar {
+    width: 8px;
+  }
+  .scrollbar-modern::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-modern::-webkit-scrollbar-thumb {
+    background: oklch(0 0 0 / 0.22);
+    border-radius: 999px;
+    border: 2px solid transparent; /* Creates inner padding ring */
+    background-clip: content-box;
+    transition: background 160ms ease, opacity 160ms ease;
+  }
+  .scrollbar-modern::-webkit-scrollbar-thumb:hover {
+    background: oklch(0 0 0 / 0.32);
+  }
+  .dark .scrollbar-modern::-webkit-scrollbar-thumb {
+    background: oklch(1 0 0 / 0.18);
+  }
+  .dark .scrollbar-modern::-webkit-scrollbar-thumb:hover {
+    background: oklch(1 0 0 / 0.28);
+  }
+
+  /* Auto-hide until scroll or hover; also upgrades thumb to a subtle accent gradient */
+  .scrollbar-autohide { scrollbar-color: transparent transparent; }
+  .scrollbar-autohide::-webkit-scrollbar-thumb { background: transparent; }
+  .scrollbar-autohide.is-scrolling,
+  .scrollbar-autohide:hover {
+    scrollbar-color: color-mix(in oklch, var(--color-accent) 55%, var(--color-foreground)) transparent;
+  }
+  .scrollbar-autohide.is-scrolling::-webkit-scrollbar-thumb,
+  .scrollbar-autohide:hover::-webkit-scrollbar-thumb {
+    background: linear-gradient(
+      to bottom,
+      color-mix(in oklch, var(--color-accent) 70%, transparent),
+      color-mix(in oklch, var(--color-foreground) 30%, transparent)
+    );
+  }
+
+  /* Fully hidden scrollbar variant */
+  .scrollbar-none { scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+
+  /* Scroll overflow hint shadows (apply on a wrapper) */
+  .overflow-shadows { position: relative; }
+  .overflow-shadows::before,
+  .overflow-shadows::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0;
+    height: 14px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 160ms ease;
+    z-index: 1;
+  }
+  .overflow-shadows::before { top: 0; background: linear-gradient(to bottom, color-mix(in oklch, var(--background) 85%, transparent), transparent); }
+  .overflow-shadows::after { bottom: 0; background: linear-gradient(to top, color-mix(in oklch, var(--background) 85%, transparent), transparent); }
+  .overflow-shadows.has-top-shadow::before { opacity: 1; }
+  .overflow-shadows.has-bottom-shadow::after { opacity: 1; }
 }
 
 /* Hide Next.js error overlay portal */
