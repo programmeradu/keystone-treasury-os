@@ -112,9 +112,9 @@ export const JupiterSwapCard = () => {
   }, [endpoint, setVisible, walletCtx]);
 
   return (
-    <Card className="atlas-card relative overflow-hidden h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)] min-h-[300px]">
+    <Card className="atlas-card relative overflow-hidden h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)] min-h-[360px]">
       <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
-      <CardContent className="atlas-card-content pt-0 pb-0 flex-1 flex flex-col">
+      <CardContent className="atlas-card-content pt-0 pb-0 flex-1 flex flex-col min-h-0">
         {/* Full height container for Jupiter swap widget with proper sizing */}
         <div className="flex-1 min-h-0 w-full rounded-lg overflow-hidden bg-transparent relative">
           <div id={containerId} className="bg-transparent !w-full !h-full" />

@@ -26,6 +26,20 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAtlasCommand } from "@/hooks/use-atlas-command";
 import dynamic from "next/dynamic";
+import {
+  IconAirDropScout,
+  IconStrategyLab,
+  IconTokenSwap,
+  IconMarketPulse,
+  IconHolderAnalytics,
+  IconMEVDetector,
+  IconTxExplorer,
+  IconDCAScheduler,
+  IconTokenAuditor,
+  IconWalletCopy,
+  IconFeeOptimizer,
+  IconPortfolioBalancer,
+} from "@/components/ui/icons";
 // Dynamically load heavier client-only Atlas widgets to reduce initial build/SSR memory footprint.
 // Each component is already "use client"; disabling SSR avoids bundling their large deps during the
 // server build phase which previously hit memory SIGTERM.
@@ -83,48 +97,8 @@ function GlyphAtlas({ className = "h-4 w-4" }: {className?: string;}) {
 
 }
 
-// Bespoke section glyphs
-function GlyphCompass({ className = "h-3.5 w-3.5" }: {className?: string;}) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden>
-      <defs>
-        <linearGradient id="gc" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="currentColor" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="currentColor" stopOpacity="0.5" />
-        </linearGradient>
-      </defs>
-      <circle cx="12" cy="12" r="9" fill="none" stroke="url(#gc)" strokeWidth="1.2" />
-      <path d="M9 15l3-8 3 8-3-1z" fill="currentColor" opacity="0.9" />
-    </svg>);
-
-}
-
-function GlyphLab({ className = "h-3.5 w-3.5" }: {className?: string;}) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden>
-      <path d="M9 3h6M10 3v5l-4 8a4 4 0 004 4h4a4 4 0 004-4l-4-8V3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M8 16c1.2-1 3.8-1 5 0 1.2 1 3.8 1 5 0" fill="none" stroke="currentColor" strokeOpacity="0.4" strokeWidth="1.2" />
-    </svg>);
-
-}
-
-function GlyphMarket({ className = "h-3.5 w-3.5" }: {className?: string;}) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden>
-      <path d="M3 17l5-5 4 3 6-8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-      <circle cx="18" cy="7" r="1.5" fill="currentColor" />
-    </svg>);
-
-}
-
-function GlyphStream({ className = "h-3.5 w-3.5" }: {className?: string;}) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden>
-      <rect x="3" y="6" width="18" height="12" rx="2" fill="none" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M5 15l3-3 3 2 3-4 2 2" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>);
-
-}
+// Bespoke section glyphs - REPLACED BY CUSTOM ICON SYSTEM
+// See src/components/ui/icons/ for new implementations
 
 // Premium inline sparkline (no libs)
 function Sparkline({ data, width = 120, height = 28, className = "" }: {data: number[];width?: number;height?: number;className?: string;}) {
@@ -1237,7 +1211,7 @@ export function AtlasClient() {
                 <div className="hidden sm:flex items-center gap-1.5">
                   {solBalance != null ? (
                     <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/60 px-2 py-0.5 text-[11px]">
-                      <GlyphMarket className="h-3 w-3" />
+                      <IconMarketPulse className="h-3 w-3" />
                       <span>{solBalance.toFixed(3)} SOL</span>
                     </span>
                   ) : (
@@ -1300,10 +1274,10 @@ export function AtlasClient() {
           <Tabs defaultValue="quests" value={activeTab} onValueChange={handleTabChange}>
             <TabsList className="relative z-50 mx-auto -mt-5 md:-mt-6 w-max rounded-full bg-muted/60 p-0.5 !h-8 grid grid-cols-2 gap-0.5">
               <TabsTrigger value="quests" className="h-7 px-3 text-[12px] rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm cursor-pointer w-full justify-center">
-                <span className="flex items-center gap-1.5"><GlyphCompass /><span>Quests</span></span>
+                <span className="flex items-center gap-1.5"><IconAirDropScout className="h-3.5 w-3.5" /><span>Quests</span></span>
               </TabsTrigger>
               <TabsTrigger value="lab" className="h-7 px-3 text-[12px] rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm cursor-pointer w-full justify-center">
-                <span className="flex items-center gap-1.5"><GlyphLab /><span>Strategy Lab</span></span>
+                <span className="flex items-center gap-1.5"><IconStrategyLab className="h-3.5 w-3.5" /><span>Strategy Lab</span></span>
               </TabsTrigger>
             </TabsList>
 
@@ -1318,7 +1292,7 @@ export function AtlasClient() {
                     <CardHeader className="pb-2 flex flex-col gap-2">
                       <div className="flex h-8 items-center justify-between gap-2">
                         <CardTitle className="text-sm leading-none">
-                          <span className="flex items-center gap-2"><GlyphCompass /><span>Airdrop Compass</span></span>
+                          <span className="flex items-center gap-2"><IconAirDropScout className="h-4 w-4" /><span>Airdrop Scout</span></span>
                         </CardTitle>
                         <div className="flex items-center gap-2 shrink-0">
                           <Button
@@ -1443,7 +1417,7 @@ export function AtlasClient() {
                     <CardHeader className="pb-2 flex flex-col gap-2">
                       <div className="flex h-8 items-center justify-between gap-2">
                         <CardTitle className="text-sm leading-none">
-                          <span className="flex items-center gap-2"><GlyphCompass /><span>Speculative Opportunities</span></span>
+                          <span className="flex items-center gap-2"><IconAirDropScout className="h-4 w-4" /><span>Speculative Opportunities</span></span>
                         </CardTitle>
                         <div className="flex items-center gap-2 shrink-0">
                           <Badge variant="secondary" className="h-6 px-2 text-[10px] rounded-md leading-none">Source: airdrops.io</Badge>
@@ -1482,7 +1456,7 @@ export function AtlasClient() {
                 </div>
 
                 {/* KeyStone Swap (Jupiter Plugin) */}
-                <div className="h-full" id="jupiter-integrated-card">
+                <div className="h-full min-h-[360px]" id="jupiter-integrated-card">
                   <JupiterSwapCard />
                 </div>
 
@@ -1492,7 +1466,7 @@ export function AtlasClient() {
                     <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
                     <CardHeader className="pb-2 flex flex-col gap-2">
                       <CardTitle className="text-sm leading-none">
-                        <span className="flex items-center gap-2"><GlyphLab /><span>Holder Insights</span></span>
+                        <span className="flex items-center gap-2"><IconHolderAnalytics className="h-4 w-4" /><span>Holder Analytics</span></span>
                       </CardTitle>
                       <div className="text-xs opacity-70">Paste a token mint to view holder distribution and stats from Moralis and Helius.</div>
                     </CardHeader>
@@ -1500,7 +1474,7 @@ export function AtlasClient() {
                       <div className="flex items-center gap-2">
                         <Input value={mintInput} onChange={(e) => setMintInput(e.target.value)} placeholder="Token mint (e.g., EPjF...USDC)" className="h-9" />
                         <Button size="sm" onClick={fetchHolderInsights} disabled={holderLoading}>
-                          {holderLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <span className="flex items-center gap-1.5"><GlyphCompass className="h-3.5 w-3.5" /><span>Fetch</span></span>}
+                          {holderLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <span className="flex items-center gap-1.5"><IconHolderAnalytics className="h-3.5 w-3.5" /><span>Fetch</span></span>}
                         </Button>
                       </div>
                       {holderError && <Alert variant="destructive"><AlertDescription>{holderError}</AlertDescription></Alert>}
@@ -1584,7 +1558,7 @@ export function AtlasClient() {
                     <CardHeader className="pb-2 pt-1 flex items-center justify-between gap-2 relative">
                       <span className="pointer-events-none absolute inset-x-3 -top-px h-px bg-[linear-gradient(to_right,transparent,theme(colors.border),transparent)] opacity-60" />
                       <CardTitle className="text-sm leading-none">
-                        <span className="flex items-center gap-2"><GlyphMarket /><span>Market Snapshot</span></span>
+                        <span className="flex items-center gap-2"><IconMarketPulse className="h-4 w-4" /><span>Market Pulse</span></span>
                       </CardTitle>
                       <div className="flex items-center gap-2">
                         <Button
@@ -1780,7 +1754,7 @@ export function AtlasClient() {
                 <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm">
-                    <span className="flex items-center gap-2"><GlyphLab /><span>Strategy Lab</span></span>
+                    <span className="flex items-center gap-2"><IconStrategyLab className="h-4 w-4" /><span>Strategy Lab</span></span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="atlas-card-content pt-0 space-y-3">
