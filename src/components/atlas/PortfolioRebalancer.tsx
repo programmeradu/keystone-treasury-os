@@ -312,7 +312,7 @@ export function PortfolioRebalancer() {
 
         <CardHeader className="pb-2 flex flex-col gap-2">
           <div className="flex h-8 items-center justify-between gap-2">
-            <CardTitle className="text-sm leading-none">
+            <CardTitle className="text-sm leading-none whitespace-nowrap">
               <span className="flex items-center gap-2">
                 <IconPortfolioBalancer className="h-4 w-4" />
                 <span>Portfolio Balancer</span>

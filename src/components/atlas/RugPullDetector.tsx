@@ -71,7 +71,7 @@ export function RugPullDetector() {
         <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
         <CardHeader className="pb-2 flex flex-col gap-2">
           <div className="flex h-8 items-center justify-between gap-2">
-            <CardTitle className="text-sm leading-none">
+            <CardTitle className="text-sm leading-none whitespace-nowrap">
               <span className="flex items-center gap-2">
                 <IconTokenAuditor className="h-4 w-4" />
                 <span>Token Auditor</span>

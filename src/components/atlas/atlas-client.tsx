@@ -1274,10 +1274,10 @@ export function AtlasClient() {
           <Tabs defaultValue="quests" value={activeTab} onValueChange={handleTabChange}>
             <TabsList className="relative z-50 mx-auto -mt-5 md:-mt-6 w-max rounded-full bg-muted/60 p-0.5 !h-8 grid grid-cols-2 gap-0.5">
               <TabsTrigger value="quests" className="h-7 px-3 text-[12px] rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm cursor-pointer w-full justify-center">
-                <span className="flex items-center gap-1.5"><IconAirDropScout className="h-3.5 w-3.5" /><span>Quests</span></span>
+                <span className="flex items-center gap-1.5 whitespace-nowrap"><IconAirDropScout className="h-3.5 w-3.5" /><span>Quests</span></span>
               </TabsTrigger>
               <TabsTrigger value="lab" className="h-7 px-3 text-[12px] rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm cursor-pointer w-full justify-center">
-                <span className="flex items-center gap-1.5"><IconStrategyLab className="h-3.5 w-3.5" /><span>Strategy Lab</span></span>
+                <span className="flex items-center gap-1.5 whitespace-nowrap"><IconStrategyLab className="h-3.5 w-3.5" /><span>Strategy Lab</span></span>
               </TabsTrigger>
             </TabsList>
 
@@ -1291,7 +1291,7 @@ export function AtlasClient() {
                     <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
                     <CardHeader className="pb-2 flex flex-col gap-2">
                       <div className="flex h-8 items-center justify-between gap-2">
-                        <CardTitle className="text-sm leading-none">
+                        <CardTitle className="text-sm leading-none whitespace-nowrap">
                           <span className="flex items-center gap-2"><IconAirDropScout className="h-4 w-4" /><span>Airdrop Scout</span></span>
                         </CardTitle>
                         <div className="flex items-center gap-2 shrink-0">
@@ -1416,8 +1416,8 @@ export function AtlasClient() {
                     <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
                     <CardHeader className="pb-2 flex flex-col gap-2">
                       <div className="flex h-8 items-center justify-between gap-2">
-                        <CardTitle className="text-sm leading-none">
-                          <span className="flex items-center gap-2"><IconAirDropScout className="h-4 w-4" /><span>Speculative Opportunities</span></span>
+                        <CardTitle className="text-sm leading-none whitespace-nowrap">
+                          <span className="flex items-center gap-2"><IconAirDropScout className="h-4 w-4" /><span>Opportunities</span></span>
                         </CardTitle>
                         <div className="flex items-center gap-2 shrink-0">
                           <Badge variant="secondary" className="h-6 px-2 text-[10px] rounded-md leading-none">Source: airdrops.io</Badge>
@@ -1465,7 +1465,7 @@ export function AtlasClient() {
                   <Card className="atlas-card relative overflow-hidden h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)] min-h-[360px]">
                     <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
                     <CardHeader className="pb-2 flex flex-col gap-2">
-                      <CardTitle className="text-sm leading-none">
+                      <CardTitle className="text-sm leading-none whitespace-nowrap">
                         <span className="flex items-center gap-2"><IconHolderAnalytics className="h-4 w-4" /><span>Holder Analytics</span></span>
                       </CardTitle>
                       <div className="text-xs opacity-70">Paste a token mint to view holder distribution and stats from Moralis and Helius.</div>
