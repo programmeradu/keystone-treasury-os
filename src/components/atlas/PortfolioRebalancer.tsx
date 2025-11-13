@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, TrendingUp, ArrowDown, DollarSign, Zap, AlertTriangle, Percent } from "lucide-react";
 import { toast } from "sonner";
+import { IconPortfolioBalancer } from "@/components/ui/icons";
 
 interface TokenHolding {
   mint: string;
@@ -313,8 +314,8 @@ export function PortfolioRebalancer() {
           <div className="flex h-8 items-center justify-between gap-2">
             <CardTitle className="text-sm leading-none">
               <span className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                <span>💰 Portfolio Rebalancer</span>
+                <IconPortfolioBalancer className="h-4 w-4" />
+                <span>Portfolio Balancer</span>
               </span>
             </CardTitle>
             <Badge variant="secondary" className="h-6 px-2 text-[10px] rounded-md leading-none">

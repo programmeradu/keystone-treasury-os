@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, Clock, TrendingUp, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { IconTxExplorer } from "@/components/ui/icons";
 
 type StrategyType = "stake" | "swap" | "lp";
 
@@ -164,8 +165,8 @@ export function TransactionTimeMachine() {
           <div className="flex h-8 items-center justify-between gap-2">
             <CardTitle className="text-sm leading-none">
               <span className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                <span>Transaction Time Machine</span>
+                <IconTxExplorer className="h-4 w-4" />
+                <span>Tx Explorer</span>
               </span>
             </CardTitle>
             <Badge variant="secondary" className="h-6 px-2 text-[10px] rounded-md leading-none">

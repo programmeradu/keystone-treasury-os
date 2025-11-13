@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, Bot, Play, Pause, TrendingUp, TrendingDown, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { CreateDCABotModal } from "./CreateDCABotModal";
+import { IconDCAScheduler } from "@/components/ui/icons";
 
 export function DCABotCard() {
   const [loading, setLoading] = useState(false);
@@ -94,8 +95,8 @@ export function DCABotCard() {
           <div className="flex h-8 items-center justify-between gap-2">
             <CardTitle className="text-sm leading-none">
               <span className="flex items-center gap-2">
-                <Bot className="h-4 w-4" />
-                <span>🤖 Auto-DCA Bots</span>
+                <IconDCAScheduler className="h-4 w-4" />
+                <span>DCA Scheduler</span>
               </span>
             </CardTitle>
             <div className="flex items-center gap-2">

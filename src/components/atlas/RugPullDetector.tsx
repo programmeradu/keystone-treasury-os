@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, Shield, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { IconTokenAuditor } from "@/components/ui/icons";
 
 export function RugPullDetector() {
   const [mintInput, setMintInput] = useState("");
@@ -72,8 +73,8 @@ export function RugPullDetector() {
           <div className="flex h-8 items-center justify-between gap-2">
             <CardTitle className="text-sm leading-none">
               <span className="flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                <span>🏴‍☠️ Rug Pull Detector</span>
+                <IconTokenAuditor className="h-4 w-4" />
+                <span>Token Auditor</span>
               </span>
             </CardTitle>
             <Badge variant="secondary" className="h-6 px-2 text-[10px] rounded-md leading-none">

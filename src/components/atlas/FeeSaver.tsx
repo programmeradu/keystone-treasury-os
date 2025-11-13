@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, Zap, AlertCircle, TrendingDown } from "lucide-react";
 import { toast } from "sonner";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { IconFeeOptimizer } from "@/components/ui/icons";
 
 interface TransactionInfo {
   id: string;
@@ -199,8 +200,8 @@ export function FeeSaver() {
           <div className="flex h-8 items-center justify-between gap-2">
             <CardTitle className="text-sm leading-none">
               <span className="flex items-center gap-2">
-                <Zap className="h-4 w-4" />
-                <span>Fee Saver</span>
+                <IconFeeOptimizer className="h-4 w-4" />
+                <span>Fee Optimizer</span>
               </span>
             </CardTitle>
             <Badge variant="secondary" className="h-6 px-2 text-[10px] rounded-md leading-none">
