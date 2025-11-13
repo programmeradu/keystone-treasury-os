@@ -212,7 +212,7 @@ export function FeeSaver() {
           </div>
         </CardHeader>
 
-        <CardContent className="pt-0 space-y-4">
+        <CardContent className="atlas-card-content pt-0 space-y-4">
           {!publicKey && (
             <Alert>
               <AlertCircle className="h-4 w-4" />

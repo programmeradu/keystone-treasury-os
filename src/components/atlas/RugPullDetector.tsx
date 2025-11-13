@@ -84,7 +84,7 @@ export function RugPullDetector() {
             Scan any Solana token for rug risk red flags before you buy.
           </div>
         </CardHeader>
-        <CardContent className="pt-0 space-y-3">
+        <CardContent className="atlas-card-content pt-0 space-y-3">
           <div className="flex items-center gap-2">
             <Input
               value={mintInput}

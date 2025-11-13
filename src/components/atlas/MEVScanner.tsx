@@ -145,7 +145,7 @@ export function MEVScanner() {
             Real-time arbitrage & MEV opportunities across Solana DEXs.
           </div>
         </CardHeader>
-        <CardContent className="pt-0 space-y-3">
+        <CardContent className="atlas-card-content pt-0 space-y-3">
           {loading && opportunities.length === 0 && (
             <div className="space-y-2">
               <Skeleton className="h-4 w-40" />

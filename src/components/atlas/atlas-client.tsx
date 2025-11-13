@@ -403,6 +403,7 @@ export function AtlasClient() {
   const [holderLoading, setHolderLoading] = useState(false);
   const [moralisStats, setMoralisStats] = useState<any | null>(null);
   const [dasCount, setDasCount] = useState<number | null>(null);
+  const [dasData, setDasData] = useState<any | null>(null);
   const [holderError, setHolderError] = useState<string | null>(null);
 
   // NEW: Live OHLCV (SSE)
@@ -643,14 +644,17 @@ export function AtlasClient() {
     setHolderError(null);
     setMoralisStats(null);
     setDasCount(null);
+    setDasData(null);
     try {
       // Moralis
       const mJson = await fetchJsonWithRetry(`/api/moralis/solana/holders/${mint}/stats`, { cache: "no-store" });
       setMoralisStats(mJson);
       // Helius DAS
       const hJson = await fetchJsonWithRetry(`/api/helius/das/token-accounts?mint=${mint}`, { cache: "no-store" });
-      const list = (hJson as any)?.result || (hJson as any)?.data || (hJson as any)?.items || [];
+      const list = (hJson as any)?.result || (hJson as any)?.data || (hJson as any)?.token_accounts || [];
       setDasCount(Array.isArray(list) ? list.length : typeof (hJson as any)?.total === "number" ? (hJson as any).total : null);
+      // Store full Helius data for display
+      setDasData(Array.isArray(list) ? list : []);
     } catch (e: any) {
       setHolderError(e?.message || String(e));
     } finally {
@@ -1333,7 +1337,7 @@ export function AtlasClient() {
                       <div className="text-xs opacity-70">Connect your wallet to scan for eligible and potential airdrops.</div>
                       }
                     </CardHeader>
-                    <CardContent className="pt-0 space-y-4">
+                    <CardContent className="atlas-card-content pt-0 space-y-4">
                       {compassLoading &&
                       <div className="space-y-2">
                           <Skeleton className="h-4 w-40" />
@@ -1347,57 +1351,57 @@ export function AtlasClient() {
                       }
 
                       {compassData &&
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 h-full">
                           {/* Airdrop list */}
-                          <div className="md:col-span-1 space-y-2 min-w-0 max-h-72 overflow-y-auto pr-1">
+                          <div className="lg:col-span-1 space-y-2 min-w-0 max-h-96 overflow-y-auto pr-2 pb-2">
                             <div className="text-xs font-medium opacity-80">Detected Airdrops</div>
                             {(compassData.eligibleNow || []).map((a: any) =>
                           <button
                             key={a.id}
                             onClick={() => setSelectedAirdropId(a.id)}
-                            className={`relative overflow-hidden w-full text-left rounded-md p-2 text-xs bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 transition-colors hover:shadow-[0_6px_18px_-12px_rgba(0,0,0,0.3)] min-w-0 ${selectedAirdropId === a.id ? "bg-muted/50" : ""}`}>
+                            className={`relative overflow-hidden w-full text-left rounded-md p-2 text-xs bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 transition-all hover:shadow-[0_6px_18px_-12px_rgba(0,0,0,0.3)] ${selectedAirdropId === a.id ? "bg-muted/60 ring-1 ring-accent" : "hover:bg-card/80"}`}>
 
                                 <span className="pointer-events-none absolute -top-8 -right-8 h-16 w-16 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/25%,transparent_70%)]" />
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="font-medium truncate">{a.name}</span>
-                                  <div className="flex items-center gap-1 shrink-0">
+                                <div className="flex items-center justify-between gap-2 min-w-0">
+                                  <span className="font-medium truncate flex-1 min-w-0">{a.name}</span>
+                                  <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
                                     {a.source &&
-                                <Badge variant="secondary" className="text-[10px]">{a.source}</Badge>
+                                <Badge variant="secondary" className="text-[10px] whitespace-nowrap">{a.source}</Badge>
                                 }
-                                    <Badge variant={a.status === "eligible" ? "default" : "secondary"} className="ml-1 text-[10px]">
-                                      {a.status === "eligible" ? "Eligible" : a.status.replace("_", " ")}
+                                    <Badge variant={a.status === "eligible" ? "default" : "secondary"} className="text-[10px] whitespace-nowrap">
+                                      {a.status === "eligible" ? "✓ Eligible" : a.status.replace("_", " ")}
                                     </Badge>
                                   </div>
                                 </div>
-                                <div className="mt-1 opacity-70 break-words">{a.estReward}</div>
+                                <div className="mt-1 text-[11px] opacity-70 truncate">{a.estReward}</div>
                               </button>
                           )}
                           </div>
 
                           {/* Airdrop details */}
-                          <div className="md:col-span-2 min-w-0">
+                          <div className="lg:col-span-2 min-w-0 overflow-y-auto pr-2 pb-2">
                             {(() => {
                             const all = [
                             ...(compassData.eligibleNow || [])];
 
                             const sel = all.find((x: any) => x.id === selectedAirdropId) || all[0];
-                            if (!sel) return <div className="text-xs opacity-70">No eligible airdrops detected for this wallet.</div>;
+                            if (!sel) return <div className="text-xs opacity-70 p-3">No eligible airdrops detected for this wallet.</div>;
                             return (
-                              <div className="space-y-2 text-xs">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <div className="font-medium truncate">{sel.name}</div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                      {sel.source && <Badge variant="secondary">{sel.source}</Badge>}
-                                      <Badge variant={sel.status === "eligible" ? "default" : "secondary"}>{sel.status}</Badge>
+                              <div className="space-y-2 text-xs bg-card/40 rounded-lg p-3">
+                                  <div className="flex items-start justify-between gap-2 flex-wrap">
+                                    <div className="font-medium flex-1 min-w-0 break-words pr-2">{sel.name}</div>
+                                    <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
+                                      {sel.source && <Badge variant="secondary" className="text-[10px] whitespace-nowrap">{sel.source}</Badge>}
+                                      <Badge variant={sel.status === "eligible" ? "default" : "secondary"} className="text-[10px] whitespace-nowrap">{sel.status === "eligible" ? "✓ Eligible" : sel.status}</Badge>
                                       {sel.endsAt &&
-                                    <span className="opacity-70">Ends {new Date(sel.endsAt).toLocaleDateString()}</span>
+                                    <span className="text-[10px] opacity-70 whitespace-nowrap">Ends {new Date(sel.endsAt).toLocaleDateString()}</span>
                                     }
                                     </div>
                                   </div>
-                                  <div className="opacity-80 break-words">{sel.details}</div>
+                                  <div className="opacity-80 break-words text-[11px] leading-relaxed">{sel.details}</div>
                                   <Separator />
-                                  <div className="font-medium">Tasks</div>
-                                  <ul className="space-y-2">
+                                  <div className="font-medium mt-2">Tasks</div>
+                                  <ul className="space-y-1.5">
                                     {sel.tasks?.map((t: any) =>
                                   <li key={t.id} className="relative overflow-hidden flex flex-wrap items-center justify-between gap-2 rounded-md p-2 bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 transition-colors hover:shadow-[0_6px_18px_-12px_rgba(0,0,0,0.3)] min-w-0">
                                         <span className="pointer-events-none absolute -top-8 -right-8 h-16 w-16 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/25%,transparent_70%)]" />
@@ -1447,7 +1451,7 @@ export function AtlasClient() {
                       </div>
                       <div className="text-xs opacity-70">Curated speculative Solana quests. DYOR.</div>
                     </CardHeader>
-                    <CardContent className="pt-0">
+                    <CardContent className="atlas-card-content pt-0">
                       {specLoading &&
                       <div className="space-y-2">
                           <Skeleton className="h-4 w-40" />
@@ -1490,10 +1494,10 @@ export function AtlasClient() {
                       <CardTitle className="text-sm leading-none">
                         <span className="flex items-center gap-2"><GlyphLab /><span>Holder Insights</span></span>
                       </CardTitle>
-                      <div className="text-xs opacity-70">Paste a token mint to view basic holder stats from Moralis and DAS token account count from Helius.</div>
+                      <div className="text-xs opacity-70">Paste a token mint to view holder distribution and stats from Moralis and Helius.</div>
                     </CardHeader>
-                    <CardContent className="pt-0 space-y-3">
-                      <div className="flex items-center gap-2 !w-full !h-full">
+                    <CardContent className="atlas-card-content pt-0 space-y-3">
+                      <div className="flex items-center gap-2">
                         <Input value={mintInput} onChange={(e) => setMintInput(e.target.value)} placeholder="Token mint (e.g., EPjF...USDC)" className="h-9" />
                         <Button size="sm" onClick={fetchHolderInsights} disabled={holderLoading}>
                           {holderLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <span className="flex items-center gap-1.5"><GlyphCompass className="h-3.5 w-3.5" /><span>Fetch</span></span>}
@@ -1501,15 +1505,72 @@ export function AtlasClient() {
                       </div>
                       {holderError && <Alert variant="destructive"><AlertDescription>{holderError}</AlertDescription></Alert>}
                       {(moralisStats || dasCount != null) &&
-                      <div className="grid sm:grid-cols-2 gap-3 text-xs">
-                          <div className="rounded-md p-3 bg-muted/30">
-                            <div className="flex items-center justify-between mb-1"><div className="font-medium">Moralis</div><Badge variant="secondary" className="text-[10px]">Source</Badge></div>
-                            <div className="opacity-80 break-words">{moralisStats ? JSON.stringify(moralisStats).slice(0, 240) + (JSON.stringify(moralisStats).length > 240 ? "…" : "") : "-"}</div>
-                          </div>
-                          <div className="rounded-md p-3 bg-muted/30">
-                            <div className="flex items-center justify-between mb-1"><div className="font-medium">Helius DAS</div><Badge variant="secondary" className="text-[10px]">Source</Badge></div>
-                            <div className="opacity-80">Token accounts: <span className="font-mono">{dasCount != null ? dasCount : "-"}</span></div>
-                          </div>
+                      <div className="space-y-3">
+                          {/* Moralis Stats */}
+                          {moralisStats && (
+                            <div className="rounded-md p-3 bg-muted/30 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div className="font-medium text-xs">Moralis Holders</div>
+                                <Badge variant="secondary" className="text-[10px]">Source</Badge>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                {moralisStats?.holders != null && (
+                                  <div className="rounded p-2 bg-card/40">
+                                    <div className="text-[11px] opacity-70">Total Holders</div>
+                                    <div className="font-mono font-bold text-sm">{(moralisStats.holders || 0).toLocaleString()}</div>
+                                  </div>
+                                )}
+                                {moralisStats?.topHoldersSample && Array.isArray(moralisStats.topHoldersSample) && moralisStats.topHoldersSample.length > 0 && (
+                                  <div className="rounded p-2 bg-card/40">
+                                    <div className="text-[11px] opacity-70">Top Holder %</div>
+                                    <div className="font-mono font-bold text-sm">{(moralisStats.topHoldersSample[0]?.percent || 0).toFixed(2)}%</div>
+                                  </div>
+                                )}
+                              </div>
+                              {moralisStats?.topHoldersSample && Array.isArray(moralisStats.topHoldersSample) && moralisStats.topHoldersSample.length > 0 && (
+                                <div className="rounded p-2 bg-card/40 space-y-1">
+                                  <div className="text-[10px] font-medium opacity-80">Top Holders</div>
+                                  {moralisStats.topHoldersSample.slice(0, 3).map((holder: any, idx: number) => (
+                                    <div key={idx} className="text-[10px] flex items-center justify-between opacity-70">
+                                      <span className="font-mono truncate">{holder.address?.slice(0, 8)}...{holder.address?.slice(-4)}</span>
+                                      <span className="text-amber-400 font-mono">{holder.percent?.toFixed(2)}%</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
+                          {/* Helius DAS Stats */}
+                          {dasCount != null && (
+                            <div className="rounded-md p-3 bg-muted/30 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div className="font-medium text-xs">Helius Token Accounts</div>
+                                <Badge variant="secondary" className="text-[10px]">DAS API</Badge>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div className="rounded p-2 bg-card/40">
+                                  <div className="text-[11px] opacity-70">Token Accounts</div>
+                                  <div className="font-mono font-bold text-sm">{dasCount.toLocaleString()}</div>
+                                </div>
+                                <div className="rounded p-2 bg-card/40">
+                                  <div className="text-[11px] opacity-70">Distribution</div>
+                                  <div className="font-mono font-bold text-sm text-emerald-400">{dasCount > 1000 ? "✓ Healthy" : dasCount > 100 ? "⚠ Fair" : "✗ Risky"}</div>
+                                </div>
+                              </div>
+                              {dasData && Array.isArray(dasData) && dasData.length > 0 && (
+                                <div className="rounded p-2 bg-card/40 space-y-1">
+                                  <div className="text-[10px] font-medium opacity-80">Sample Holders</div>
+                                  {dasData.slice(0, 3).map((account: any, idx: number) => (
+                                    <div key={idx} className="text-[10px] flex items-center justify-between opacity-70">
+                                      <span className="font-mono truncate">{account.owner?.slice(0, 8)}...{account.owner?.slice(-4)}</span>
+                                      <span className="text-purple-400 font-mono">{((account.amount || 0) / Math.pow(10, account.decimals || 0)).toFixed(2)} tokens</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       }
                     </CardContent>
@@ -1550,7 +1611,7 @@ export function AtlasClient() {
                         ) : null}
                       </div>
                     </CardHeader>
-                    <CardContent className="pt-0">
+                    <CardContent className="atlas-card-content pt-0">
                       <div className="grid grid-cols-2 gap-3 text-xs">
                         <div className="relative overflow-hidden rounded-md bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 p-3 transition-colors group">
                           <span className="pointer-events-none absolute -top-8 -right-8 h-16 w-16 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/25%,transparent_70%)]" />
@@ -1722,7 +1783,7 @@ export function AtlasClient() {
                     <span className="flex items-center gap-2"><GlyphLab /><span>Strategy Lab</span></span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-0 space-y-3">
+                <CardContent className="atlas-card-content pt-0 space-y-3">
                   {/* NLP Command Bar */}
                   <div className="flex items-center gap-2">
                     <Input

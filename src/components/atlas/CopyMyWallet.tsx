@@ -236,7 +236,7 @@ export function CopyMyWallet() {
           </div>
         </CardHeader>
 
-        <CardContent className="pt-0 space-y-4">
+        <CardContent className="atlas-card-content pt-0 space-y-4">
           {/* Wallet Input */}
           <div className="space-y-2">
             <label className="text-xs opacity-70">Wallet Address</label>

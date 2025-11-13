@@ -177,7 +177,7 @@ export function TransactionTimeMachine() {
           </div>
         </CardHeader>
 
-        <CardContent className="pt-0 space-y-4">
+        <CardContent className="atlas-card-content pt-0 space-y-4">
           {/* Strategy Selection */}
           <div className="space-y-2">
             <div className="text-xs font-medium opacity-80">Strategy</div>
@@ -318,8 +318,7 @@ export function TransactionTimeMachine() {
               <div className="text-[10px] opacity-60 italic">
                 {result && (
                   <>
-                    Historical prices from CoinGecko/Birdeye. 
-                    {!process.env.NEXT_PUBLIC_BIRDEYE_API_KEY && " Add BIRDEYE_API_KEY for best accuracy."}
+                    Historical prices from CoinGecko/Birdeye.
                   </>
                 )}
               </div>

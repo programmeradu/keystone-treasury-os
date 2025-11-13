@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, TrendingUp, ArrowDown, DollarSign, Zap, AlertTriangle } from "lucide-react";
+import { Loader2, TrendingUp, ArrowDown, DollarSign, Zap, AlertTriangle, Percent } from "lucide-react";
 import { toast } from "sonner";
 
 interface TokenHolding {
@@ -16,6 +16,9 @@ interface TokenHolding {
   amount: number;
   valueUSD: number;
   decimals: number;
+  costBasis?: number;
+  purchaseDate?: number;
+  transactions?: any[];
 }
 
 interface AllocationTarget {
@@ -39,6 +42,29 @@ interface RebalanceCalculation {
   projectedDrift: number;
 }
 
+interface TaxAnalysis {
+  capitalGains: {
+    shortTerm: number;
+    longTerm: number;
+    total: number;
+  };
+  washSaleRisks: Array<{
+    symbol: string;
+    riskLevel: string;
+    message: string;
+  }>;
+  taxLossHarvestingOpportunities: Array<{
+    symbol: string;
+    loss: number;
+    recommendation: string;
+  }>;
+  rebalanceTaxImpact: {
+    estimatedTaxLiability: number;
+    taxableEvents: number;
+    taxOptimizedStrategy?: string;
+  };
+}
+
 export function PortfolioRebalancer() {
   const [walletAddress, setWalletAddress] = useState("");
   const [loading, setLoading] = useState(false);
@@ -47,6 +73,8 @@ export function PortfolioRebalancer() {
   const [currentHoldings, setCurrentHoldings] = useState<TokenHolding[]>([]);
   const [allocations, setAllocations] = useState<AllocationTarget[]>([]);
   const [rebalanceResult, setRebalanceResult] = useState<RebalanceCalculation | null>(null);
+  const [taxAnalysis, setTaxAnalysis] = useState<TaxAnalysis | null>(null);
+  const [showTaxDetails, setShowTaxDetails] = useState(false);
 
   const isValidSolanaAddress = (address: string): boolean => {
     if (!address || address.length < 32 || address.length > 44) return false;
@@ -100,13 +128,36 @@ export function PortfolioRebalancer() {
         return;
       }
 
-      const holdings: TokenHolding[] = tokens.map((t: any) => ({
-        mint: t.mint || t.address,
-        symbol: t.symbol || "UNKNOWN",
-        amount: t.amount || 0,
-        valueUSD: t.valueUSD || 0,
-        decimals: t.decimals || 9,
-      }));
+      // First, try to fetch prices for all tokens
+      const mints = tokens.map((t: any) => t.mint || t.address).filter(Boolean);
+      let priceMap: Record<string, number> = {};
+      
+      if (mints.length > 0) {
+        try {
+          const priceRes = await fetch("/api/price?mints=" + mints.join(","));
+          if (priceRes.ok) {
+            const priceData = await priceRes.json();
+            priceMap = priceData.prices || {};
+          }
+        } catch (priceErr) {
+          console.warn("Price fetch failed:", priceErr);
+        }
+      }
+
+      const holdings: TokenHolding[] = tokens.map((t: any) => {
+        const mint = t.mint || t.address;
+        const price = priceMap[mint] || 0;
+        const decimals = t.decimals || 9;
+        const amount = (Number(t.amount || t.balance || 0) / Math.pow(10, decimals));
+        const valueUSD = amount * price;
+        return {
+          mint,
+          symbol: t.symbol || "UNKNOWN",
+          amount,
+          valueUSD,
+          decimals,
+        };
+      });
 
       setCurrentHoldings(holdings);
       // Pre-populate allocations with current holdings proportionally
@@ -149,6 +200,7 @@ export function PortfolioRebalancer() {
     setError(null);
 
     try {
+      // Calculate rebalance
       const response = await fetch("/api/solana/rebalance-calculator", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -166,6 +218,22 @@ export function PortfolioRebalancer() {
       }
 
       setRebalanceResult(data);
+
+      // Calculate tax impact
+      const taxResponse = await fetch("/api/solana/tax-analysis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          holdings: currentHoldings,
+          rebalanceTrades: data.trades,
+        }),
+      });
+
+      const taxData = await taxResponse.json();
+      if (taxResponse.ok) {
+        setTaxAnalysis(taxData);
+      }
+
       toast.success(`Rebalance plan ready: ${data.trades.length} trades, save ${data.totalGasSavings.toFixed(2)} SOL`);
     } catch (e: any) {
       const msg = e.message || String(e);
@@ -229,7 +297,7 @@ export function PortfolioRebalancer() {
           </div>
         </CardHeader>
 
-        <CardContent className="pt-0 space-y-3 overflow-y-auto flex-1">
+        <CardContent className="atlas-card-content pt-0 space-y-3">
           {/* Wallet Input */}
           <div className="flex items-center gap-2">
             <Input
@@ -380,6 +448,114 @@ export function PortfolioRebalancer() {
                   <span className="font-mono">{rebalanceResult.projectedDrift.toFixed(2)}%</span>
                 </div>
               </div>
+
+              {/* Tax Analysis */}
+              {taxAnalysis && (
+                <div className="border-t pt-2 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium text-xs flex items-center gap-2">
+                      <Percent className="h-3 w-3" />
+                      Tax Analysis
+                    </div>
+                    <button
+                      onClick={() => setShowTaxDetails(!showTaxDetails)}
+                      className="text-[10px] opacity-70 hover:opacity-100"
+                    >
+                      {showTaxDetails ? "Hide" : "Show"}
+                    </button>
+                  </div>
+
+                  {/* Tax Summary Cards */}
+                  <div className="grid grid-cols-2 gap-1">
+                    {/* Capital Gains */}
+                    <div className="rounded-md p-2 bg-blue-500/10 border border-blue-500/20">
+                      <div className="text-[10px] opacity-70">Est. Tax Liability</div>
+                      <div className="text-sm font-bold text-blue-400">
+                        ${taxAnalysis.rebalanceTaxImpact.estimatedTaxLiability.toFixed(2)}
+                      </div>
+                    </div>
+
+                    {/* Taxable Events */}
+                    <div className="rounded-md p-2 bg-amber-500/10 border border-amber-500/20">
+                      <div className="text-[10px] opacity-70">Taxable Events</div>
+                      <div className="text-sm font-bold text-amber-400">
+                        {taxAnalysis.rebalanceTaxImpact.taxableEvents}
+                      </div>
+                    </div>
+
+                    {/* Short-term Gains */}
+                    <div className="rounded-md p-2 bg-red-500/10 border border-red-500/20">
+                      <div className="text-[10px] opacity-70">Short-term Gains</div>
+                      <div className="text-sm font-bold text-red-400">
+                        ${taxAnalysis.capitalGains.shortTerm.toFixed(2)}
+                      </div>
+                    </div>
+
+                    {/* Long-term Gains */}
+                    <div className="rounded-md p-2 bg-emerald-500/10 border border-emerald-500/20">
+                      <div className="text-[10px] opacity-70">Long-term Gains</div>
+                      <div className="text-sm font-bold text-emerald-400">
+                        ${taxAnalysis.capitalGains.longTerm.toFixed(2)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tax Strategy Recommendation */}
+                  {taxAnalysis.rebalanceTaxImpact.taxOptimizedStrategy && (
+                    <div className="rounded-md p-2 bg-purple-500/10 border border-purple-500/20">
+                      <div className="text-[10px] font-medium text-purple-300 mb-1">💡 Tax Optimization</div>
+                      <div className="text-[10px] text-purple-200">
+                        {taxAnalysis.rebalanceTaxImpact.taxOptimizedStrategy}
+                      </div>
+                    </div>
+                  )}
+
+                  {showTaxDetails && (
+                    <div className="space-y-2">
+                      {/* Wash Sale Warnings */}
+                      {taxAnalysis.washSaleRisks.length > 0 && (
+                        <div className="space-y-1">
+                          <div className="text-[10px] font-medium">⚠️ Wash Sale Risks</div>
+                          {taxAnalysis.washSaleRisks.map((risk, idx) => (
+                            <div
+                              key={idx}
+                              className={`text-[10px] rounded-md p-2 border ${
+                                risk.riskLevel === "high"
+                                  ? "bg-red-500/10 border-red-500/20"
+                                  : "bg-amber-500/10 border-amber-500/20"
+                              }`}
+                            >
+                              <div className="font-medium">{risk.symbol}</div>
+                              <div className="opacity-80">{risk.message}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Tax Loss Harvesting Opportunities */}
+                      {taxAnalysis.taxLossHarvestingOpportunities.length > 0 && (
+                        <div className="space-y-1">
+                          <div className="text-[10px] font-medium">🌱 Tax Loss Harvesting</div>
+                          {taxAnalysis.taxLossHarvestingOpportunities.map((opp, idx) => (
+                            <div
+                              key={idx}
+                              className="text-[10px] rounded-md p-2 bg-emerald-500/10 border border-emerald-500/20"
+                            >
+                              <div className="flex justify-between items-center mb-1">
+                                <div className="font-medium">{opp.symbol}</div>
+                                <div className="font-mono text-emerald-400">
+                                  Loss: ${opp.loss.toFixed(2)}
+                                </div>
+                              </div>
+                              <div className="opacity-80">{opp.recommendation}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="flex gap-2 pt-2">

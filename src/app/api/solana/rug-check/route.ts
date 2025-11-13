@@ -133,11 +133,17 @@ export async function GET(req: Request) {
     }
 
     // Age check (tokens < 7 days are higher risk)
-    const createdAt = metadata.result?.created_at || Date.now();
-    const ageInDays = (Date.now() - createdAt) / (1000 * 60 * 60 * 24);
-    if (ageInDays < 7) {
+    let createdAt = metadata.result?.created_at;
+    // Handle timestamp conversion (might be in seconds or milliseconds)
+    if (typeof createdAt === 'number' && createdAt > 0) {
+      if (createdAt < 10000000000) createdAt = createdAt * 1000; // Convert seconds to ms
+    } else {
+      createdAt = Date.now();
+    }
+    const ageInDays = Math.max(0, (Date.now() - createdAt) / (1000 * 60 * 60 * 24));
+    if (ageInDays < 7 && ageInDays > 0) {
       riskScore += 20;
-      flags.push({ type: "warning", message: `Token is very new (${ageInDays.toFixed(0)} days old)`, severity: "medium" });
+      flags.push({ type: "warning", message: `Token is very new (${ageInDays.toFixed(1)} days old)`, severity: "medium" });
     }
 
     // ===== TOKEN LAUNCH PREPAREDNESS CHECKS =====
