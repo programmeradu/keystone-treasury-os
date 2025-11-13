@@ -10,22 +10,6 @@ export async function GET(
   }
 
   const apiKey = process.env.MORALIS_API_KEY;
-  const mockMode = String(process.env.MOCK_MODE || "").toLowerCase() === "true";
-
-  // Mock mode: return deterministic holder stats when no API key is provided
-  if (mockMode && !apiKey) {
-    const mock = {
-      address,
-      holders: 12345,
-      topHoldersSample: [
-        { address: "MockHolder1111111111111111111111111111111", balance: 1_000_000, percent: 5.1 },
-        { address: "MockHolder2222222222222222222222222222222", balance: 750_000, percent: 3.2 },
-      ],
-      updatedAt: Date.now(),
-      note: "MOCK_MODE: synthetic Moralis holder stats",
-    };
-    return NextResponse.json(mock, { status: 200, headers: { "Cache-Control": "no-store" } });
-  }
 
   if (!apiKey) {
     return NextResponse.json({ error: "MORALIS_API_KEY not configured" }, { status: 500 });

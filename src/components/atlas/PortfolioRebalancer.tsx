@@ -134,10 +134,39 @@ export function PortfolioRebalancer() {
       
       if (mints.length > 0) {
         try {
-          const priceRes = await fetch("/api/price?mints=" + mints.join(","));
-          if (priceRes.ok) {
-            const priceData = await priceRes.json();
-            priceMap = priceData.prices || {};
+          // Use CoinGecko API to get prices by token addresses (Solana blockchain)
+          const coingeckoIds = mints.map((mint: string) => {
+            // Map known Solana token mints to CoinGecko IDs
+            const knownTokens: Record<string, string> = {
+              "So11111111111111111111111111111111111111112": "solana",
+              "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": "usd-coin",
+              "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So": "marinade-staked-sol",
+              "orcaEKTdK7LKz57chssaukiYmUTRziToVqKHKn3J4e": "orca",
+              "SRMuApVgqbCGJuG5yvVGdgwVSRwhhHsnWhvzomqs3GA": "serum",
+            };
+            return knownTokens[mint] || null;
+          }).filter(Boolean);
+          
+          if (coingeckoIds.length > 0) {
+            const priceUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoIds.join(",")}&vs_currencies=usd`;
+            const priceRes = await fetch(priceUrl, { cache: "no-store" });
+            if (priceRes.ok) {
+              const priceDataFromCG = await priceRes.json();
+              // Map back from CoinGecko IDs to mints
+              const cgIdToMint: Record<string, string> = {};
+              const knownTokensReverse: Record<string, string> = {
+                "solana": "So11111111111111111111111111111111111111112",
+                "usd-coin": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                "marinade-staked-sol": "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+                "orca": "orcaEKTdK7LKz57chssaukiYmUTRziToVqKHKn3J4e",
+                "serum": "SRMuApVgqbCGJuG5yvVGdgwVSRwhhHsnWhvzomqs3GA",
+              };
+              for (const [cgId, mint] of Object.entries(knownTokensReverse)) {
+                if (priceDataFromCG[cgId]?.usd) {
+                  priceMap[mint] = priceDataFromCG[cgId].usd;
+                }
+              }
+            }
           }
         } catch (priceErr) {
           console.warn("Price fetch failed:", priceErr);

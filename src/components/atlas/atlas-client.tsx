@@ -1403,18 +1403,18 @@ export function AtlasClient() {
                                   <div className="font-medium mt-2">Tasks</div>
                                   <ul className="space-y-1.5">
                                     {sel.tasks?.map((t: any) =>
-                                  <li key={t.id} className="relative overflow-hidden flex flex-wrap items-center justify-between gap-2 rounded-md p-2 bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 transition-colors hover:shadow-[0_6px_18px_-12px_rgba(0,0,0,0.3)] min-w-0">
+                                  <li key={t.id} className="relative overflow-hidden flex flex-wrap items-center justify-between gap-1.5 rounded-md p-1.5 bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 transition-colors hover:shadow-[0_6px_18px_-12px_rgba(0,0,0,0.3)] min-w-0">
                                         <span className="pointer-events-none absolute -top-8 -right-8 h-16 w-16 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/25%,transparent_70%)]" />
-                                        <div className="flex flex-col min-w-0">
-                                          <span className="break-words">{t.label}</span>
-                                          {t.venue && <span className="text-[10px] opacity-60">Venue: {t.venue}</span>}
+                                        <div className="flex flex-col min-w-0 text-[10px]">
+                                          <span className="break-words leading-tight">{t.label}</span>
+                                          {t.venue && <span className="text-[9px] opacity-60">@ {t.venue}</span>}
                                         </div>
-                                        <div className="flex items-center gap-2 shrink-0">
-                                          <Button size="sm" variant="secondary" onClick={() => handleSimulateTask(t)}>
-                                            <span className="flex items-center gap-1.5"><GlyphCompass className="h-3.5 w-3.5" /><span>Simulate</span></span>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          <Button size="sm" variant="secondary" onClick={() => handleSimulateTask(t)} title="Simulate task" className="h-5 px-1.5 text-[9px]">
+                                            Sim
                                           </Button>
-                                          <Button size="sm" onClick={() => handleExecuteTask(t)}>
-                                            Execute
+                                          <Button size="sm" onClick={() => handleExecuteTask(t)} title="Execute task" className="h-5 px-1.5 text-[9px]">
+                                            Run
                                           </Button>
                                         </div>
                                       </li>

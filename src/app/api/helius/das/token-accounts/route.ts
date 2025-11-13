@@ -6,7 +6,6 @@ export const dynamic = "force-dynamic";
 // Docs: https://docs.helius.dev/compression-and-das-api/digital-asset-standard-das-api/gettokenaccounts
 export async function GET(req: NextRequest) {
   const apiKey = process.env.HELIUS_API_KEY;
-  const mockMode = String(process.env.MOCK_MODE || "").toLowerCase() === "true";
 
   const { searchParams } = new URL(req.url);
   const mint = searchParams.get("mint");
@@ -16,30 +15,6 @@ export async function GET(req: NextRequest) {
 
   if (!mint) {
     return new Response(JSON.stringify({ error: "mint is required" }), { status: 400 });
-  }
-
-  // Mock mode: return a lightweight, deterministic payload for CI/testing without secrets
-  if (mockMode && !apiKey) {
-    const now = Date.now();
-    const count = Math.min(5, Math.max(1, Math.floor(limit / 20) || 3));
-    const token_accounts = Array.from({ length: count }).map((_, i) => ({
-      id: `${mint}-${i + 1}`,
-      owner: owner || `MockOwner${i + 1}`,
-      mint,
-      amount: (i + 1) * 1000,
-      decimals: 6,
-      updated_at: now - i * 1000,
-    }));
-    return new Response(
-      JSON.stringify({ total: 42, limit, cursor: null, token_accounts }),
-      {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "no-store",
-        },
-      }
-    );
   }
 
   if (!apiKey) {
