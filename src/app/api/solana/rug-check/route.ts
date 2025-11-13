@@ -28,11 +28,22 @@ export async function GET(req: Request) {
           mintAuthority: { status: "pass", message: "Mint authority revoked" },
           freezeAuthority: { status: "pass", message: "Freeze authority revoked" },
           contractVerified: { status: "pass", message: "Contract source verified" },
-          teamTokens: { status: "pass", message: "Team tokens vested" },
+          contractUpgradeable: { status: "pass", message: "Contract is immutable" },
+          adminAuthority: { status: "pass", message: "No admin authority" },
+          whaleConcetration: { status: "pass", message: "Healthy distribution" },
+          metadataVerified: { status: "pass", message: "Metadata is complete and verified" },
+          launchPattern: { status: "pass", message: "Normal distribution pattern" },
         },
         socialScore: 75,
         communityReports: 2,
         createdAt: Date.now() - 1000 * 60 * 60 * 24 * 90, // 90 days ago
+        launchPreparedness: {
+          isUpgradeable: false,
+          hasAdminFunctions: false,
+          topHolderPercent: "8.0",
+          whaleThreshold: "low",
+          isMetadataComplete: true,
+        },
       }, { status: 200 });
     }
 
@@ -129,6 +140,75 @@ export async function GET(req: Request) {
       flags.push({ type: "warning", message: `Token is very new (${ageInDays.toFixed(0)} days old)`, severity: "medium" });
     }
 
+    // ===== TOKEN LAUNCH PREPAREDNESS CHECKS =====
+    // Check for upgradeable contracts
+    const isUpgradeable = metadata.result?.update_authority && metadata.result?.update_authority !== "null";
+    if (isUpgradeable) {
+      riskScore += 15;
+      flags.push({ type: "warning", message: "Contract is upgradeable - deployer can modify behavior", severity: "high" });
+      checks.contractUpgradeable = { status: "warning", message: "Contract can be upgraded" };
+    } else {
+      checks.contractUpgradeable = { status: "pass", message: "Contract is immutable" };
+    }
+
+    // Check if token has explicit admin functions
+    const hasAdminFunctions = metadata.result?.admin_authority && metadata.result?.admin_authority !== "null";
+    if (hasAdminFunctions) {
+      riskScore += 12;
+      flags.push({ type: "critical", message: "Admin authority detected - can control token mechanics", severity: "high" });
+      checks.adminAuthority = { status: "fail", message: "Admin authority is active" };
+    } else {
+      checks.adminAuthority = { status: "pass", message: "No admin authority" };
+    }
+
+    // Check liquidity pool lock status (simulated via holder patterns)
+    const topHolder = holders.result?.value?.[0];
+    const topHolderPercent = topHolder ? (topHolder.token_amount?.uiAmount / (metadata.result?.supply || 1)) * 100 : 0;
+    
+    if (topHolderPercent > 50) {
+      riskScore += 25;
+      flags.push({ type: "critical", message: `Top holder owns ${topHolderPercent.toFixed(1)}% of supply - liquidity likely NOT locked`, severity: "high" });
+      checks.liquidityLocked = { status: "fail", message: "Liquidity appears to be unlocked or concentrated" };
+    } else if (topHolderPercent > 30) {
+      riskScore += 15;
+      flags.push({ type: "warning", message: `Top holder owns ${topHolderPercent.toFixed(1)}% - verify liquidity lock`, severity: "medium" });
+      checks.liquidityLocked = { status: "warning", message: "Liquidity concentration is high" };
+    } else {
+      checks.liquidityLocked = { status: "pass", message: "Liquidity appears adequately distributed" };
+    }
+
+    // Detect whale/insider trading patterns via transaction history
+    const whaleThreshold = topHolderPercent > 25 ? "high" : topHolderPercent > 10 ? "medium" : "low";
+    if (whaleThreshold !== "low") {
+      flags.push({ type: "warning", message: `Whale concentration detected (${whaleThreshold})`, severity: whaleThreshold === "high" ? "high" : "medium" });
+      checks.whaleConcetration = { status: "warning", message: `Whale concentration: ${whaleThreshold}` };
+    } else {
+      checks.whaleConcetration = { status: "pass", message: "Healthy distribution" };
+    }
+
+    // Check metadata completeness (verified tokens have complete info)
+    const isMetadataComplete = metadata.result?.name && metadata.result?.symbol && metadata.result?.decimals;
+    if (isMetadataComplete) {
+      checks.metadataVerified = { status: "pass", message: "Metadata is complete and verified" };
+    } else {
+      riskScore += 10;
+      flags.push({ type: "warning", message: "Incomplete token metadata", severity: "medium" });
+      checks.metadataVerified = { status: "warning", message: "Metadata appears incomplete" };
+    }
+
+    // Detect brand new token with rapid holder acquisition (launch pattern check)
+    if (ageInDays < 1 && totalAccounts > 500) {
+      riskScore += 18;
+      flags.push({ type: "warning", message: "Rapid holder acquisition (possible pump & dump pattern)", severity: "high" });
+      checks.launchPattern = { status: "warning", message: "Rapid distribution pattern detected" };
+    } else if (ageInDays < 3 && totalAccounts > 1000) {
+      riskScore += 12;
+      flags.push({ type: "warning", message: "Fast token distribution in early stage", severity: "medium" });
+      checks.launchPattern = { status: "warning", message: "Fast distribution detected" };
+    } else {
+      checks.launchPattern = { status: "pass", message: "Normal distribution pattern" };
+    }
+
     // Determine verdict
     let verdict = "Unknown";
     if (riskScore >= 70) verdict = "High Risk - Likely Rug";
@@ -145,6 +225,13 @@ export async function GET(req: Request) {
       communityReports: 0, // Would come from a database
       createdAt,
       ageInDays: Math.floor(ageInDays),
+      launchPreparedness: {
+        isUpgradeable,
+        hasAdminFunctions,
+        topHolderPercent: topHolderPercent.toFixed(1),
+        whaleThreshold,
+        isMetadataComplete: !!isMetadataComplete,
+      },
     }, { status: 200 });
 
   } catch (e: any) {

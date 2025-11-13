@@ -39,6 +39,7 @@ const MEVScanner = dynamic(() => import("@/components/atlas/MEVScanner").then(m 
 const TransactionTimeMachine = dynamic(() => import("@/components/atlas/TransactionTimeMachine").then(m => (m as any).default || (m as any).TransactionTimeMachine), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
 const CopyMyWallet = dynamic(() => import("@/components/atlas/CopyMyWallet").then(m => (m as any).default || (m as any).CopyMyWallet), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
 const FeeSaver = dynamic(() => import("@/components/atlas/FeeSaver").then(m => (m as any).default || (m as any).FeeSaver), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
+const PortfolioRebalancer = dynamic(() => import("@/components/atlas/PortfolioRebalancer").then(m => (m as any).default || (m as any).PortfolioRebalancer), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
 const CreateDCABotModal = dynamic<ComponentType<{ isOpen?: boolean; onClose?: () => void }>>(() => import("@/components/atlas/CreateDCABotModal").then(m => (m as any).default || (m as any).CreateDCABotModal), { ssr: false });
 
 // Wrapper to help TypeScript understand the dynamic component accepts these props
@@ -1687,48 +1688,13 @@ export function AtlasClient() {
                   </Card>
                 </div>
 
-                {/* Live OHLCV */}
-                <div className="h-full">
-                  <Card className="atlas-card relative overflow-hidden h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)] min-h-[360px]">
-                    <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
-                    <CardHeader className="pb-2 flex flex-col gap-2 relative">
-                      <span className="pointer-events-none absolute inset-x-3 -top-px h-px bg-[linear-gradient(to_right,transparent,theme(colors.border),transparent)] opacity-60" />
-                      <div className="flex h-8 items-center justify-between gap-2">
-                        <CardTitle className="text-sm leading-none">
-                          <span className="flex items-center gap-2"><GlyphStream /><span>Live OHLCV (Stream)</span></span>
-                        </CardTitle>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <Badge variant="secondary" className="h-6 px-2 text-[10px] rounded-md leading-none">Bitquery</Badge>
-                          <Button size="sm" variant="secondary" className="h-6 px-2 text-[11px] rounded-md active:scale-[0.98] transition-transform" onClick={() => setOhlcvActive((v) => !v)}>
-                             {ohlcvActive ? "Stop" : "Start"}
-                           </Button>
-                        </div>
-                      </div>
-                      <div className="text-xs opacity-70">Streams synthetic candles for SOL every 5s via server-sent events.</div>
-                    </CardHeader>
-                    <CardContent className="pt-0 text-xs">
-                      {ohlcvActive ?
-                      lastCandle ?
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            <div>O: <span className="font-mono">{lastCandle.o?.toFixed?.(4) ?? lastCandle.o}</span></div>
-                            <div>H: <span className="font-mono">{lastCandle.h?.toFixed?.(4) ?? lastCandle.h}</span></div>
-                            <div>L: <span className="font-mono">{lastCandle.l?.toFixed?.(4) ?? lastCandle.l}</span></div>
-                            <div>C: <span className="font-mono">{lastCandle.c?.toFixed?.(4) ?? lastCandle.c}</span></div>
-                            <div>V: <span className="font-mono">{lastCandle.v}</span></div>
-                            <div>T: <span className="font-mono">{new Date(lastCandle.t).toLocaleTimeString()}</span></div>
-                          </div> :
 
-                      <div className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Waiting for first candle…</div> :
-
-
-                      <div className="opacity-70">Click Start to begin streaming.</div>
-                      }
-                    </CardContent>
-                  </Card>
-                </div>
 
                 {/* 🏴‍☠️ Rug Pull Detector - NEW */}
                 <RugPullDetector />
+
+                {/* 💰 Portfolio Rebalancer - NEW */}
+                <PortfolioRebalancer />
 
                 {/* 🤖 Auto-DCA Bot Builder - NEW */}
                 <DCABotCard />

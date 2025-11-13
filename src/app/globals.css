@@ -418,3 +418,39 @@
 nextjs-portal {
   display: none !important;
 }
+
+/* Sonner toast notifications - white text and icons */
+[data-sonner-toast] {
+  color: white !important;
+}
+[data-sonner-toast] * {
+  color: white !important;
+}
+[data-sonner-toast] svg {
+  color: white !important;
+  stroke: white !important;
+  fill: white !important;
+}
+[data-sonner-toast] [data-icon] {
+  color: white !important;
+}
+.sonner-toast {
+  color: white !important;
+}
+.sonner-toast * {
+  color: white !important;
+}
+.sonner-toast svg {
+  color: white !important;
+  stroke: white !important;
+  fill: white !important;
+}
+.sonner-toast-title {
+  color: white !important;
+}
+.sonner-toast-description {
+  color: white !important;
+}
+.sonner-toast-icon {
+  color: white !important;
+}

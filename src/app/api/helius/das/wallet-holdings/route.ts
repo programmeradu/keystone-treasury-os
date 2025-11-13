@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { Connection, PublicKey } from "@solana/web3.js";
 
 export const dynamic = "force-dynamic";
 
@@ -101,7 +102,7 @@ export async function GET(req: NextRequest) {
 
     // Parse the response to extract token holdings
     const items = data?.result?.items || [];
-    const holdings = items
+    let holdings = items
       .filter((item: any) => item.interface === "FungibleToken" || item.interface === "FungibleAsset")
       .map((item: any) => ({
         mint: item.id,
@@ -112,6 +113,40 @@ export async function GET(req: NextRequest) {
         amount: item.token_info?.balance || "0",
         decimals: item.token_info?.decimals || 9,
       }));
+
+    // If Helius returned no holdings (sometimes happens), attempt a lightweight RPC fallback
+    if ((!holdings || holdings.length === 0) && address) {
+      try {
+        const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+        const connection = new Connection(rpcUrl, "confirmed");
+        const pub = new PublicKey(address);
+
+        // Fetch parsed token accounts (lightweight) - this returns native SOL as well as SPL tokens
+        const resp = await connection.getParsedTokenAccountsByOwner(pub, { programId: new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQmcysN5TqGKddxih") });
+        const parsed = resp.value || [];
+        const rpcHoldings = parsed.map((p) => {
+          const info: any = p.account.data?.parsed?.info || {};
+          const mint = info?.mint || p.pubkey?.toBase58() || null;
+          const tokenAmount = info?.tokenAmount || {};
+          return {
+            mint,
+            symbol: info?.meta?.symbol || tokenAmount?.uiAmountString ? undefined : undefined,
+            name: info?.meta?.name || "Unknown",
+            address: mint,
+            balance: tokenAmount?.amount || tokenAmount?.uiAmountString || "0",
+            amount: tokenAmount?.amount || tokenAmount?.uiAmountString || "0",
+            decimals: tokenAmount?.decimals || 0,
+          };
+        }).filter(Boolean);
+
+        if (rpcHoldings.length) {
+          holdings = rpcHoldings;
+        }
+      } catch (rpcErr) {
+        // swallow; we'll return whatever holdings we have (likely empty)
+        console.error("Helius fallback RPC failed:", rpcErr);
+      }
+    }
 
     return new Response(
       JSON.stringify({ holdings, total: holdings.length }),

@@ -52,6 +52,14 @@ export const ATLAS_TOOL_MANIFEST = `
     }
   },
   {
+    "tool_id": "portfolio_rebalancer",
+    "description": "Rebalance your portfolio to target allocations with minimal fees using optimal swap routing.",
+    "parameters": {
+        "wallet_address": "Your Solana wallet address.",
+        "target_allocations": "Target allocation percentages for each token (e.g., {SOL: 50, USDC: 30, JUP: 20})"
+    }
+  },
+  {
     "tool_id": "transaction_time_machine",
     "description": "Look up and analyze a past transaction.",
     "parameters": {

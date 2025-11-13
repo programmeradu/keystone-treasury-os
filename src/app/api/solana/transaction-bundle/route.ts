@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const address = searchParams.get("address");
-    const limit = parseInt(searchParams.get("limit") || "50");
+  const limit = Math.max(1, parseInt(searchParams.get("limit") || "50"));
 
     if (!address) {
       return NextResponse.json({ error: "Missing address parameter" }, { status: 400 });
@@ -93,10 +93,11 @@ export async function GET(req: Request) {
     const bundleableTransactions: any[] = [];
     const transactionPatterns = new Map<string, number>();
 
-    // Fetch details for recent transactions
-    const recentTxs = signatures.slice(0, 10); // Analyze last 10 transactions
-    
-    for (const sig of recentTxs) {
+  // Short-term safeguard: analyze at most 5 transactions to avoid serverless timeouts
+  const analyzeCount = Math.min(5, limit || 5);
+  const recentTxs = signatures.slice(0, analyzeCount);
+
+  for (const sig of recentTxs) {
       try {
         const txDetails = await connection.getTransaction(sig.signature, {
           maxSupportedTransactionVersion: 0,

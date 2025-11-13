@@ -189,6 +189,41 @@ export function RugPullDetector() {
                   <div className="text-xl font-bold">{result.socialScore}/100</div>
                 </div>
               )}
+
+              {/* Token Launch Preparedness */}
+              {result.launchPreparedness && (
+                <div className="space-y-2 border-t pt-3">
+                  <div className="font-medium text-xs flex items-center gap-2">
+                    <span>🚀 Launch Preparedness</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div className="rounded-md p-2 bg-card/60">
+                      <div className="opacity-70">Upgradeable</div>
+                      <div className="font-mono font-medium">
+                        {result.launchPreparedness.isUpgradeable ? "⚠️ Yes" : "✓ No"}
+                      </div>
+                    </div>
+                    <div className="rounded-md p-2 bg-card/60">
+                      <div className="opacity-70">Admin Functions</div>
+                      <div className="font-mono font-medium">
+                        {result.launchPreparedness.hasAdminFunctions ? "⚠️ Yes" : "✓ No"}
+                      </div>
+                    </div>
+                    <div className="rounded-md p-2 bg-card/60">
+                      <div className="opacity-70">Top Holder</div>
+                      <div className="font-mono font-medium">{result.launchPreparedness.topHolderPercent}%</div>
+                    </div>
+                    <div className="rounded-md p-2 bg-card/60">
+                      <div className="opacity-70">Whale Risk</div>
+                      <div className="font-mono font-medium capitalize">
+                        {result.launchPreparedness.whaleThreshold === "high" && "🔴 High"}
+                        {result.launchPreparedness.whaleThreshold === "medium" && "🟡 Medium"}
+                        {result.launchPreparedness.whaleThreshold === "low" && "🟢 Low"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
