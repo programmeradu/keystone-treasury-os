@@ -1,12 +1,14 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Play, RotateCcw } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, Play, RotateCcw, Bot, Terminal } from "lucide-react";
+import { AgentDashboard } from "@/components/AgentDashboard";
 
 type RunStep = {
   index: number;
@@ -27,6 +29,7 @@ type RunResponse = {
 };
 
 export const KeystoneApp: React.FC = () => {
+  const [mode, setMode] = React.useState<"agents" | "command">("agents");
   const [prompt, setPrompt] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -73,13 +76,60 @@ export const KeystoneApp: React.FC = () => {
     }
   };
 
+  // Show AgentDashboard in agents mode
+  if (mode === "agents") {
+    return (
+      <div className="space-y-6">
+        {/* Mode Switcher */}
+        <div className="px-4 md:px-6 pt-4">
+          <div className="flex items-center gap-2">
+            <Tabs value="agents" onValueChange={(v) => setMode(v as "agents" | "command")}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="agents" className="flex items-center gap-2">
+                  <Bot className="w-4 h-4" />
+                  <span className="hidden sm:inline">Autonomous Agents</span>
+                  <span className="sm:hidden">Agents</span>
+                </TabsTrigger>
+                <TabsTrigger value="command" className="flex items-center gap-2">
+                  <Terminal className="w-4 h-4" />
+                  <span className="hidden sm:inline">Command Layer</span>
+                  <span className="sm:hidden">Command</span>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </div>
+        <AgentDashboard />
+      </div>
+    );
+  }
+
+  // Show Command Layer in command mode
   return (
     <div className="min-h-[calc(100dvh-0px)] w-full bg-gradient-to-b from-background to-muted/40">
       <div className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
+        {/* Mode Switcher */}
+        <div className="mb-8">
+          <Tabs value="command" onValueChange={(v) => setMode(v as "agents" | "command")}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="agents" className="flex items-center gap-2">
+                <Bot className="w-4 h-4" />
+                <span className="hidden sm:inline">Autonomous Agents</span>
+                <span className="sm:hidden">Agents</span>
+              </TabsTrigger>
+              <TabsTrigger value="command" className="flex items-center gap-2">
+                <Terminal className="w-4 h-4" />
+                <span className="hidden sm:inline">Command Layer</span>
+                <span className="sm:hidden">Command</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
         <header className="mb-8 sm:mb-10">
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">KeyStone Command Layer</h1>
           <p className="mt-2 text-sm sm:text-base text-muted-foreground">
-            Describe a treasury operation in natural language. We’ll infer a deterministic plan and execute step-by-step.
+            Describe a treasury operation in natural language. We'll infer a deterministic plan and execute step-by-step.
           </p>
         </header>
 
