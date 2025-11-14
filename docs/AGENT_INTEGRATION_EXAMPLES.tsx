@@ -3,6 +3,7 @@
 
 import { AgentExecutor } from "@/components/AgentExecutor";
 import { useWallet } from "@solana/wallet-adapter-react";
+import type { PublicKey } from "@solana/web3.js";
 import { useState } from "react";
 
 /**
@@ -103,7 +104,7 @@ export function EnhancedJupiterTool() {
     return <AgentJupiterSwap wallet={publicKey} />;
   }
 
-  return <TraditionalJupiterSwap wallet={publicKey} />;
+  return publicKey ? <TraditionalJupiterSwap wallet={publicKey} /> : null;
 }
 
 /**
@@ -116,7 +117,7 @@ function AgentJupiterSwap({ wallet }: { wallet: PublicKey }) {
 
   const handleSwap = async (inputMint: string, outputMint: string, amount: number) => {
     try {
-      const result = await execute("swap_token", {
+      const result = await execute("swap_token" as any, {
         inputMint,
         outputMint,
         amount,
@@ -155,7 +156,7 @@ import { ExecutionStatus } from "@/lib/agents";
 export function AutoRebalanceStrategy() {
   const { publicKey } = useWallet();
   const { execute, progress, status } = useAgent({
-    userPublicKey: publicKey,
+    userPublicKey: publicKey ?? undefined,
     onProgress: (p) => console.log(`Progress: ${p}%`),
     onStatusChange: (s) => console.log(`Status: ${s}`)
   });
@@ -163,20 +164,20 @@ export function AutoRebalanceStrategy() {
   const autoRebalance = async () => {
     try {
       // Step 1: Analyze current holdings
-      const currentState = await execute("analyze_token_safety", {
+      const currentState = await execute("analyze_token_safety" as any, {
         tokenMint: "So11111111111111111111111111111111111111112"
       });
 
       // Step 2: If safe, analyze portfolio risk
       if (currentState.result?.riskLevel !== "high_risk") {
-        const riskAnalysis = await execute("detect_mev", {
+        const riskAnalysis = await execute("detect_mev" as any, {
           walletAddress: publicKey!.toBase58(),
           lookbackMinutes: 60
         });
 
         // Step 3: Based on analysis, execute rebalance
         if (riskAnalysis.result?.opportunities) {
-          await execute("rebalance_portfolio", {
+          await execute("rebalance_portfolio" as any, {
             currentAllocations: { SOL: 0.5, USDC: 0.5 },
             targetAllocations: { SOL: 0.6, USDC: 0.4 },
             rebalanceType: "weighted"
@@ -219,7 +220,7 @@ interface StrategyStep {
 
 export function StrategyBuilder() {
   const { publicKey } = useWallet();
-  const { execute } = useAgent({ userPublicKey: publicKey });
+  const { execute } = useAgent({ userPublicKey: publicKey ?? undefined });
   const [steps, setSteps] = useState<StrategyStep[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
 
@@ -276,7 +277,7 @@ export function ExecutionMonitor() {
   const [executions, setExecutions] = useState<any[]>([]);
 
   const { execute } = useAgent({
-    userPublicKey: publicKey,
+    userPublicKey: publicKey ?? undefined,
     onStatusChange: (status) => {
       // Update executions list
       console.log("Status changed:", status);
