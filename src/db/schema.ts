@@ -117,3 +117,73 @@ export const dcaExecutions = sqliteTable('dca_executions', {
   statusIdx: index('dca_executions_status_idx').on(table.status),
   executedAtIdx: index('dca_executions_executed_at_idx').on(table.executedAt),
 }));
+
+// Agent Execution History
+export const agentExecutions = sqliteTable('agent_executions', {
+  id: text('id').primaryKey(), // exec_abc123xyz
+  userId: text('user_id').notNull(), // User identifier (wallet address)
+  walletAddress: text('wallet_address').notNull(), // User's wallet public key
+  strategy: text('strategy').notNull(), // Strategy type: swap_token, rebalance_portfolio, etc.
+  status: text('status').notNull(), // PENDING, RUNNING, SUCCESS, FAILED, CANCELLED
+  progress: integer('progress').notNull().default(0), // 0-100
+  
+  // Input and output
+  input: text('input', { mode: 'json' }).notNull(), // Input parameters
+  result: text('result', { mode: 'json' }), // Execution result
+  error: text('error'), // Error message if failed
+  
+  // Execution details
+  estimatedGas: real('estimated_gas'), // Estimated SOL cost
+  actualGas: real('actual_gas'), // Actual SOL cost
+  transactionSignature: text('transaction_signature'), // Solana tx signature
+  
+  // Approval workflow
+  approvalRequired: integer('approval_required', { mode: 'boolean' }).notNull().default(false),
+  approvalId: text('approval_id'), // Reference to approval if needed
+  approvedAt: integer('approved_at'), // When user approved
+  
+  // Metadata
+  duration: integer('duration'), // Execution time in milliseconds
+  retryCount: integer('retry_count').notNull().default(0),
+  steps: text('steps', { mode: 'json' }), // Array of execution steps
+  
+  createdAt: integer('created_at').notNull(),
+  startedAt: integer('started_at'),
+  completedAt: integer('completed_at'),
+  updatedAt: integer('updated_at').notNull(),
+}, (table) => ({
+  userIdx: index('agent_executions_user_idx').on(table.userId),
+  walletIdx: index('agent_executions_wallet_idx').on(table.walletAddress),
+  strategyIdx: index('agent_executions_strategy_idx').on(table.strategy),
+  statusIdx: index('agent_executions_status_idx').on(table.status),
+  createdAtIdx: index('agent_executions_created_at_idx').on(table.createdAt),
+}));
+
+// Agent Approvals
+export const agentApprovals = sqliteTable('agent_approvals', {
+  id: text('id').primaryKey(), // approval_abc123xyz
+  executionId: text('execution_id').notNull().references(() => agentExecutions.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull(),
+  walletAddress: text('wallet_address').notNull(),
+  
+  // Approval details
+  message: text('message').notNull(), // What user is approving
+  details: text('details', { mode: 'json' }), // Transaction details
+  estimatedFee: real('estimated_fee'), // Estimated fee in SOL
+  riskLevel: text('risk_level'), // low, medium, high
+  
+  // Response
+  approved: integer('approved', { mode: 'boolean' }), // null = pending, true = approved, false = rejected
+  signature: text('signature'), // User's signature
+  rejectionReason: text('rejection_reason'),
+  
+  // Metadata
+  expiresAt: integer('expires_at').notNull(), // Approval expires
+  respondedAt: integer('responded_at'),
+  createdAt: integer('created_at').notNull(),
+}, (table) => ({
+  executionIdx: index('agent_approvals_execution_idx').on(table.executionId),
+  userIdx: index('agent_approvals_user_idx').on(table.userId),
+  approvedIdx: index('agent_approvals_approved_idx').on(table.approved),
+  expiresAtIdx: index('agent_approvals_expires_at_idx').on(table.expiresAt),
+}));
