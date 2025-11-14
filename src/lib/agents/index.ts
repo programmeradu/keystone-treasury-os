@@ -8,6 +8,7 @@ export { TransactionAgent } from "./transaction-agent";
 export { LookupAgent } from "./lookup-agent";
 export { AnalysisAgent } from "./analysis-agent";
 export { BuilderAgent } from "./builder-agent";
+export { ExecutionCoordinator } from "./coordinator";
 
 // Re-export common types
 export type {
