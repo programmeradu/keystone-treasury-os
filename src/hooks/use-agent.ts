@@ -2,8 +2,6 @@ import { useState, useCallback } from "react";
 import { PublicKey, VersionedTransaction } from "@solana/web3.js";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { ExecutionStatus, StrategyType } from "@/lib/agents";
-import RealTransactionService from "@/lib/wallet/real-transaction-service";
-import JupiterService from "@/lib/wallet/jupiter-service";
 
 interface UseAgentOptions {
   userPublicKey?: PublicKey;
