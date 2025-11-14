@@ -5,6 +5,7 @@ import ErrorReporter from "@/components/ErrorReporter";
 import Script from "next/script";
 import { Web3Providers } from "@/components/providers/web3-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { ToastContainer } from "@/components/ToastContainer";
 
 export const metadata: Metadata = {
   title: "KeyStone — The Command Layer for Treasury Management",
@@ -51,6 +52,7 @@ export default function RootLayout({
         <VisualEditsMessenger />
         {/* Global toast portal */}
         <Toaster position="top-right" richColors closeButton />
+        <ToastContainer />
       </body>
     </html>
   );

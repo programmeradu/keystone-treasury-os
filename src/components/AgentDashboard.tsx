@@ -8,8 +8,10 @@ import { AgentExecutor } from "@/components/AgentExecutor";
 import { ExecutionHistory } from "@/components/ExecutionHistory";
 import { ExecutionDashboard } from "@/components/ExecutionDashboard";
 import { ApprovalDialog, ApprovalRequestItem } from "@/components/ApprovalDialog";
-import { AlertCircle, BarChart3, Zap, Clock } from "lucide-react";
+import { StrategyTemplates } from "@/components/StrategyTemplates";
+import { AlertCircle, BarChart3, Zap, Clock, Zap as Lightning } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { toastNotifications } from "@/lib/toast-notifications";
 
 interface PendingApproval {
   id: string;
@@ -196,7 +198,11 @@ export const AgentDashboard = () => {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-slate-800 border border-slate-700">
+          <TabsList className="grid w-full grid-cols-5 bg-slate-800 border border-slate-700">
+            <TabsTrigger value="templates">
+              <Lightning className="w-4 h-4 mr-2" />
+              Templates
+            </TabsTrigger>
             <TabsTrigger value="execute">Execute</TabsTrigger>
             <TabsTrigger value="dashboard">Monitor</TabsTrigger>
             <TabsTrigger value="history">History</TabsTrigger>
@@ -210,11 +216,25 @@ export const AgentDashboard = () => {
             )}
           </TabsList>
 
+          {/* Strategy Templates Tab */}
+          <TabsContent value="templates" className="space-y-6">
+            <StrategyTemplates
+              onTemplateSelect={(template, inputs) => {
+                toastNotifications.executionStarted(template.name);
+                // Execute the template
+                console.log("Executing template:", template.name, inputs);
+                // Switch to monitor tab to watch execution
+                setActiveTab("dashboard");
+              }}
+            />
+          </TabsContent>
+
           {/* Execute Tab */}
           <TabsContent value="execute" className="space-y-6">
             <AgentExecutor
               walletPublicKey={publicKey}
               onSuccess={(result) => {
+                toastNotifications.executionSuccess("Strategy", "Execution completed successfully");
                 console.log("Execution successful:", result);
                 // Trigger stats refresh
                 setStats(prev => ({
@@ -222,7 +242,10 @@ export const AgentDashboard = () => {
                   totalExecutions: prev.totalExecutions + 1
                 }));
               }}
-              onError={(error) => console.error("Execution error:", error)}
+              onError={(error) => {
+                toastNotifications.executionFailed("Strategy", error);
+                console.error("Execution error:", error);
+              }}
             />
           </TabsContent>
 
