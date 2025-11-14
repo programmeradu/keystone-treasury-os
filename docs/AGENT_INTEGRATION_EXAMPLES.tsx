@@ -23,7 +23,7 @@ export function DashboardWithAgents() {
       {/* Add agent system */}
       <div className="lg:col-span-1">
         <AgentExecutor
-          walletPublicKey={publicKey}
+          walletPublicKey={publicKey ?? undefined}
           onSuccess={(result) => {
             setAgentResult(result);
             setAgentError(null);
@@ -59,7 +59,7 @@ export function AgentsPage() {
         <div>
           <h2 className="text-2xl font-bold text-white mb-4">Execute Strategy</h2>
           <AgentExecutor
-            walletPublicKey={publicKey}
+            walletPublicKey={publicKey ?? undefined}
             onSuccess={(result) => {
               setAgents([result, ...agents]);
             }}
