@@ -13,6 +13,13 @@ import { AlertCircle, BarChart3, Zap, Clock, Zap as Lightning } from "lucide-rea
 import { Badge } from "@/components/ui/badge";
 import { toastNotifications } from "@/lib/toast-notifications";
 
+/**
+ * Phase 4 LLM Integration:
+ * - AgentExecutor now includes LLM planning layer
+ * - LLMApprovalDialog shows AI reasoning before execution
+ * - Natural language input supported alongside direct execution
+ */
+
 interface PendingApproval {
   id: string;
   message: string;
