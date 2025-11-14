@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { 
   Connection, 
   VersionedTransaction, 
@@ -41,6 +42,7 @@ type TokenKey = keyof typeof TOKENS;
 
 export default function WorkingSwap() {
   const wallet = useWallet();
+  const { setVisible } = useWalletModal();
   const { connected, publicKey, signTransaction } = wallet;
   const [mounted, setMounted] = useState(false);
   const [inputAmount, setInputAmount] = useState('10');
@@ -216,10 +218,7 @@ export default function WorkingSwap() {
               {/* Wallet Connection Button */}
               {!connected && (
                 <button
-                  onClick={() => {
-                    const btn = document.querySelector('[data-wallet]') as HTMLButtonElement;
-                    btn?.click();
-                  }}
+                  onClick={() => setVisible(true)}
                   className="w-full mb-6 flex items-center justify-center gap-3 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-cyan-500/30"
                 >
                   <Wallet2 className="w-5 h-5" />
@@ -449,9 +448,6 @@ export default function WorkingSwap() {
           </div>
         </div>
       </div>
-
-      {/* Wallet Button (Hidden for Adapter) */}
-      <div data-wallet className="hidden" />
     </div>
   );
 }
