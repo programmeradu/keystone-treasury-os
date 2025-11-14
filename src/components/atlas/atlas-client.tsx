@@ -1439,15 +1439,17 @@ export function AtlasClient() {
                       }
                       <div className="grid md:grid-cols-2 gap-3">
                         {specItems.slice(0, 8).map((it: any, i: number) =>
-                        <a key={`${it.url || it.title}-${i}`} href={it.url} target="_blank" rel="noopener noreferrer" className="relative overflow-hidden block rounded-md p-2 text-xs bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 transition-colors hover:shadow-[0_6px_18px_-12px_rgba(0,0,0,0.3)]">
+                        <a key={`${it.url || it.title}-${i}`} href={it.url} target="_blank" rel="noopener noreferrer" className="relative overflow-hidden block rounded-md p-2 text-xs bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 transition-colors hover:shadow-[0_6px_18px_-12px_rgba(0,0,0,0.3)]" title={it.title || it.project || "Untitled"}>
                             <span className="pointer-events-none absolute -top-8 -right-8 h-16 w-16 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/25%,transparent_70%)]" />
-                            <div className="flex items-center justify-between">
-                              <div className="font-medium truncate">{it.title || it.project || "Untitled"}</div>
-                              <div className="flex items-center gap-1">
-                                <Badge variant="secondary" className="text-[10px]">airdrops.io</Badge>
+                            <div className="flex flex-col gap-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2 min-w-0">
+                                <div className="font-medium line-clamp-2 flex-1 min-w-0">{it.title || it.project || "Untitled"}</div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <Badge variant="secondary" className="text-[10px] whitespace-nowrap">airdrops.io</Badge>
+                                </div>
                               </div>
+                              {it.summary && <div className="opacity-70 line-clamp-2 text-[10px]">{it.summary}</div>}
                             </div>
-                            {it.summary && <div className="opacity-70 mt-1 line-clamp-2">{it.summary}</div>}
                           </a>
                         )}
                       </div>
@@ -1472,7 +1474,7 @@ export function AtlasClient() {
                     </CardHeader>
                     <CardContent className="atlas-card-content pt-0 space-y-3">
                       <div className="flex items-center gap-2">
-                        <Input value={mintInput} onChange={(e) => setMintInput(e.target.value)} placeholder="Token mint (e.g., EPjF...USDC)" className="h-9" />
+                        <Input value={mintInput} onChange={(e) => setMintInput(e.target.value)} placeholder="Token mint (e.g., EPjF...USDC)" className="h-9 font-mono text-xs" title={mintInput} />
                         <Button size="sm" onClick={fetchHolderInsights} disabled={holderLoading}>
                           {holderLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <span className="flex items-center gap-1.5"><IconHolderAnalytics className="h-3.5 w-3.5" /><span>Fetch</span></span>}
                         </Button>

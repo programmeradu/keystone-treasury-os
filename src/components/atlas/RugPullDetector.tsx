@@ -62,6 +62,7 @@ export function RugPullDetector() {
   const getStatusIcon = (status: string) => {
     if (status === "pass") return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
     if (status === "fail") return <XCircle className="h-4 w-4 text-red-500" />;
+    if (status === "warning") return <AlertTriangle className="h-4 w-4 text-amber-500" />;
     return <AlertTriangle className="h-4 w-4 text-amber-500" />;
   };
 
@@ -91,7 +92,8 @@ export function RugPullDetector() {
               value={mintInput}
               onChange={(e) => setMintInput(e.target.value)}
               placeholder="Token mint address (e.g., EPjF...)"
-              className="h-9"
+              className="h-9 font-mono text-xs"
+              title={mintInput}
               onKeyDown={(e) => e.key === "Enter" && checkToken()}
             />
             <Button size="sm" onClick={checkToken} disabled={loading}>

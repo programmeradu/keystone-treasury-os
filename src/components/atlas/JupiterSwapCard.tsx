@@ -89,26 +89,42 @@ export const JupiterSwapCard = () => {
         // No-op; widget will simply not render
       }};
 
+    // Handle ESC key to close Jupiter modal
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        // Try to close Jupiter modal if it exists
+        const modal = document.querySelector('[role="dialog"]');
+        if (modal) {
+          const closeBtn = modal.querySelector('button[aria-label*="close"], button[aria-label*="Close"]');
+          if (closeBtn instanceof HTMLButtonElement) {
+            closeBtn.click();
+          }
+        }
+      }
+    };
+
     // If already loaded, init immediately
     if ((window as any)?.Jupiter) {
       initJup();
-      return;
+    } else {
+      // Otherwise inject script once
+      const id = "jupiter-plugin-script";
+      if (!document.getElementById(id)) {
+        const s = document.createElement("script");
+        s.id = id;
+        s.src = "https://terminal.jup.ag/main-v2.js"; // Terminal is now Plugin; CDN kept for compatibility
+        s.async = true;
+        s.onload = initJup;
+        document.body.appendChild(s);
+      } else {
+        // If script tag exists but window.Jupiter not ready yet, wait a tick
+        const t = setTimeout(initJup, 50);
+        return () => clearTimeout(t);
+      }
     }
 
-    // Otherwise inject script once
-    const id = "jupiter-plugin-script";
-    if (!document.getElementById(id)) {
-      const s = document.createElement("script");
-      s.id = id;
-      s.src = "https://terminal.jup.ag/main-v2.js"; // Terminal is now Plugin; CDN kept for compatibility
-      s.async = true;
-      s.onload = initJup;
-      document.body.appendChild(s);
-    } else {
-      // If script tag exists but window.Jupiter not ready yet, wait a tick
-      const t = setTimeout(initJup, 50);
-      return () => clearTimeout(t);
-    }
+    document.addEventListener("keydown", handleEscKey);
+    return () => document.removeEventListener("keydown", handleEscKey);
   }, [endpoint, setVisible, walletCtx]);
 
   return (
