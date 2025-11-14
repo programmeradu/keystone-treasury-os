@@ -138,11 +138,11 @@ export function DCABotCard() {
           {/* Summary Card */}
           {summary && (
             <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="rounded-md p-3 bg-muted/30">
+              <div className="rounded-md">
                 <div className="opacity-70">Total Invested</div>
                 <div className="text-lg font-bold">${summary.totalInvested?.toLocaleString()}</div>
               </div>
-              <div className="rounded-md p-3 bg-muted/30">
+              <div className="rounded-md">
                 <div className="opacity-70">Current Value</div>
                 <div className="text-lg font-bold flex items-center gap-2">
                   ${summary.totalValue?.toLocaleString()}

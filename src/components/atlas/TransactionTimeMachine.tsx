@@ -277,7 +277,7 @@ export function TransactionTimeMachine() {
 
           {result && !loading && (
             <div className="space-y-3 text-xs">
-              <div className="rounded-md border p-3 bg-muted/30 space-y-2">
+              <div className="rounded-md space-y-2">
                 <div className="font-medium text-sm mb-2">Price Data</div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
@@ -291,7 +291,7 @@ export function TransactionTimeMachine() {
                 </div>
               </div>
 
-              <div className="rounded-md border p-3 bg-muted/30 space-y-2">
+              <div className="rounded-md space-y-2">
                 <div className="font-medium text-sm mb-2">Returns Analysis</div>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">

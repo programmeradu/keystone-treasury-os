@@ -279,7 +279,7 @@ export function FeeSaver() {
 
                   {/* Cost Comparison */}
                   <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div className="rounded-md border p-3 bg-muted/30">
+                    <div className="rounded-md">
                       <div className="opacity-70 mb-1">Individual Fees</div>
                       <div className="font-mono text-sm line-through opacity-60">
                         {formatCurrency(analysis.totalIndividualFees * solPrice)}
@@ -288,7 +288,7 @@ export function FeeSaver() {
                         {formatSOL(analysis.totalIndividualFees)}
                       </div>
                     </div>
-                    <div className="rounded-md border p-3 bg-muted/30">
+                    <div className="rounded-md">
                       <div className="opacity-70 mb-1">Bundled Fee</div>
                       <div className="font-mono text-sm text-emerald-500">
                         {formatCurrency(analysis.bundledFee * solPrice)}

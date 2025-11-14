@@ -180,7 +180,7 @@ export function RugPullDetector() {
 
               {/* Community Score */}
               {result.socialScore != null && (
-                <div className="flex items-center justify-between rounded-md p-3 bg-muted/30">
+                <div className="flex items-center justify-between">
                   <div>
                     <div className="font-medium">Community Trust Score</div>
                     <div className="text-[11px] opacity-70">

@@ -464,7 +464,7 @@ export function PortfolioRebalancer() {
               </div>
 
               {/* Summary */}
-              <div className="text-[10px] rounded-md p-2 bg-muted/30 space-y-1">
+              <div className="text-[10px] rounded-md space-y-1">
                 <div className="flex justify-between">
                   <span>Total Gas Cost:</span>
                   <span className="font-mono">{rebalanceResult.totalRebalanceGasCost.toFixed(4)} SOL</span>

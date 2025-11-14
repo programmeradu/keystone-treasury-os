@@ -233,11 +233,9 @@ export function MEVScanner() {
             <div className="text-xs opacity-70 text-center py-4">No MEV opportunities found right now. Market is efficient!</div>
           )}
 
-          <Alert>
-            <AlertDescription className="text-[11px]">
-              <strong>Note:</strong> MEV opportunities are time-sensitive. Actual execution may differ due to slippage and gas costs.
-            </AlertDescription>
-          </Alert>
+          <div className="text-[10px] opacity-60 text-center mt-2">
+            Note: MEV opportunities are time-sensitive. Execution may differ due to slippage and gas costs.
+          </div>
         </CardContent>
       </Card>
     </div>

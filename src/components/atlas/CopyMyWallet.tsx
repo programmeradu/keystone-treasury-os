@@ -283,7 +283,7 @@ export function CopyMyWallet() {
           {portfolio && !loading && (
             <div className="space-y-3">
               {/* Total Value */}
-              <div className="rounded-md border p-3 bg-muted/30">
+              <div className="rounded-md">
                 <div className="text-xs opacity-70 mb-1">Total Portfolio Value</div>
                 <div className="text-2xl font-bold font-mono">
                   {formatCurrency(portfolio.totalValue)}

@@ -1482,7 +1482,7 @@ export function AtlasClient() {
                       <div className="space-y-3">
                           {/* Moralis Stats */}
                           {moralisStats && (
-                            <div className="rounded-md p-3 bg-muted/30 space-y-2">
+                            <div className="rounded-md space-y-2">
                               <div className="flex items-center justify-between">
                                 <div className="font-medium text-xs">Moralis Holders</div>
                                 <Badge variant="secondary" className="text-[10px]">Source</Badge>
@@ -1517,7 +1517,7 @@ export function AtlasClient() {
                           
                           {/* Helius DAS Stats */}
                           {dasCount != null && (
-                            <div className="rounded-md p-3 bg-muted/30 space-y-2">
+                            <div className="rounded-md space-y-2">
                               <div className="flex items-center justify-between">
                                 <div className="font-medium text-xs">Helius Token Accounts</div>
                                 <Badge variant="secondary" className="text-[10px]">DAS API</Badge>
@@ -1801,8 +1801,8 @@ export function AtlasClient() {
                   }
 
                   {quote && kind === "swap_jupiter" &&
-                  <div className="text-xs rounded-md border p-3 bg-muted/30">
-                      <div className="mb-1 font-medium">Jupiter Quote</div>
+                  <div className="text-xs rounded-md">
+                      <div className="mb-2 font-medium text-xs">Jupiter Quote</div>
                       {quote?.data ?
                     <div className="grid sm:grid-cols-2 gap-2">
                           <div>Best AMM: <span className="font-mono">{quote.data.routePlan?.[0]?.swapInfo?.ammKey || "-"}</span></div>
@@ -1822,8 +1822,8 @@ export function AtlasClient() {
                   }
 
                   {quote && kind === "stake_marinade" &&
-                  <div className="text-xs rounded-md border p-3 bg-muted/30">
-                      <div className="mb-1 font-medium">Staking Projection</div>
+                  <div className="text-xs rounded-md">
+                      <div className="mb-2 font-medium text-xs">Staking Projection</div>
                       <div>Baseline APY (network inflation): <span className="font-mono">{inflationApy?.toFixed(2)}%</span></div>
                       <div>Amount: <span className="font-mono">{amountSol} SOL</span></div>
                       <div>12m yield (simple): <span className="font-mono">{inflationApy != null ? (amountSol * (inflationApy / 100)).toFixed(3) : "-"} SOL</span></div>
@@ -1837,8 +1837,8 @@ export function AtlasClient() {
                   }
 
                   {quote && kind === "lp_sol_usdc" &&
-                  <div className="text-xs rounded-md border p-3 bg-muted/30">
-                      <div className="mb-1 font-medium">LP Baseline</div>
+                  <div className="text-xs rounded-md">
+                      <div className="mb-2 font-medium text-xs">LP Baseline</div>
                       <div>Prices — SOL: ${prices.SOL?.toFixed(2) ?? "-"} · USDC: $1.00</div>
                       <div className="mt-1 text-[10px] opacity-70">Fetch exact APY in target vault UI; Atlas will add direct vault integrations next.</div>
                     </div>
