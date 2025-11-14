@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useToastStore, type Toast } from '@/lib/toast-notifications';
-import { X, CheckCircle, AlertCircle, Info, XCircle } from 'lucide-react';
+import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -13,7 +13,7 @@ export function ToastContainer() {
   const { toasts, removeToast } = useToastStore();
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 space-y-2 pointer-events-none">
+    <div className="fixed bottom-4 right-4 z-50 space-y-3 pointer-events-none">
       {toasts.map((toast) => (
         <ToastItem
           key={toast.id}
@@ -22,6 +22,44 @@ export function ToastContainer() {
         />
       ))}
     </div>
+  );
+}
+
+/**
+ * Custom Icons for Toasts
+ */
+function SuccessIcon() {
+  return (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ErrorIcon() {
+  return (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 8v4M12 16h.01" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function WarningIcon() {
+  return (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 2L2 20h20L12 2Z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 9v4M12 17h.01" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function InfoIcon() {
+  return (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 16v-4M12 8h.01" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -40,32 +78,28 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
     switch (type) {
       case 'success':
         return {
-          bg: 'bg-emerald-900/95 border-emerald-700',
-          icon: <CheckCircle className="w-5 h-5 text-emerald-400" />,
-          title: 'text-emerald-100',
-          message: 'text-emerald-200',
+          bg: 'bg-slate-900 border-slate-700',
+          icon: <SuccessIcon />,
+          iconColor: 'text-emerald-400',
         };
       case 'error':
         return {
-          bg: 'bg-red-900/95 border-red-700',
-          icon: <XCircle className="w-5 h-5 text-red-400" />,
-          title: 'text-red-100',
-          message: 'text-red-200',
+          bg: 'bg-slate-900 border-slate-700',
+          icon: <ErrorIcon />,
+          iconColor: 'text-red-400',
         };
       case 'warning':
         return {
-          bg: 'bg-amber-900/95 border-amber-700',
-          icon: <AlertCircle className="w-5 h-5 text-amber-400" />,
-          title: 'text-amber-100',
-          message: 'text-amber-200',
+          bg: 'bg-slate-900 border-slate-700',
+          icon: <WarningIcon />,
+          iconColor: 'text-amber-400',
         };
       case 'info':
       default:
         return {
-          bg: 'bg-blue-900/95 border-blue-700',
-          icon: <Info className="w-5 h-5 text-blue-400" />,
-          title: 'text-blue-100',
-          message: 'text-blue-200',
+          bg: 'bg-slate-900 border-slate-700',
+          icon: <InfoIcon />,
+          iconColor: 'text-blue-400',
         };
     }
   };
@@ -75,17 +109,19 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   return (
     <div
       className={cn(
-        'pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-lg border backdrop-blur-sm shadow-lg animate-in fade-in slide-in-from-right-2 duration-300',
+        'pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-lg border backdrop-blur-sm shadow-lg animate-in fade-in slide-in-from-right-2 duration-300 max-w-sm',
         styles.bg
       )}
     >
       {/* Icon */}
-      <div className="flex-shrink-0 mt-0.5">{styles.icon}</div>
+      <div className={cn('flex-shrink-0 mt-0.5', styles.iconColor)}>
+        {styles.icon}
+      </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <p className={cn('font-semibold text-sm', styles.title)}>{toast.title}</p>
-        <p className={cn('text-xs mt-0.5', styles.message)}>{toast.message}</p>
+        <p className="font-semibold text-sm text-white">{toast.title}</p>
+        <p className="text-xs text-slate-300 mt-0.5">{toast.message}</p>
 
         {/* Action Button */}
         {toast.action && (
@@ -94,7 +130,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
               toast.action?.onClick();
               onClose();
             }}
-            className="mt-2 text-xs font-medium hover:underline opacity-80 hover:opacity-100 transition-opacity"
+            className="mt-2 text-xs font-medium text-white hover:text-slate-100 opacity-80 hover:opacity-100 transition-opacity"
           >
             {toast.action.label}
           </button>
@@ -104,7 +140,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
       {/* Close Button */}
       <button
         onClick={onClose}
-        className="flex-shrink-0 text-slate-400 hover:text-slate-200 transition-colors mt-0.5"
+        className="flex-shrink-0 text-slate-500 hover:text-white transition-colors mt-0.5"
         aria-label="Close notification"
       >
         <X className="w-4 h-4" />

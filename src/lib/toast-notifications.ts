@@ -76,7 +76,7 @@ export const toastNotifications = {
     useToastStore.getState().addToast({
       type: 'info',
       title: 'Execution Started',
-      message: `Executing ${strategy}...`,
+      message: `${strategy} is now running`,
       duration: 3000,
     });
   },
@@ -86,7 +86,7 @@ export const toastNotifications = {
     if ([25, 50, 75].includes(progress)) {
       useToastStore.getState().addToast({
         type: 'info',
-        title: 'In Progress',
+        title: 'Execution in Progress',
         message: `${strategy}: ${progress}% complete`,
         duration: 2000,
       });
@@ -96,7 +96,7 @@ export const toastNotifications = {
   executionSuccess: (strategy: string, details?: string) => {
     useToastStore.getState().addToast({
       type: 'success',
-      title: '✓ Execution Successful',
+      title: 'Execution Successful',
       message: `${strategy} completed successfully${details ? ': ' + details : ''}`,
       duration: 5000,
     });
@@ -105,8 +105,8 @@ export const toastNotifications = {
   executionFailed: (strategy: string, error: string) => {
     useToastStore.getState().addToast({
       type: 'error',
-      title: '✗ Execution Failed',
-      message: `${strategy} failed: ${error}`,
+      title: 'Execution Failed',
+      message: `${strategy}: ${error}`,
       duration: 8000,
     });
   },
@@ -126,7 +126,7 @@ export const toastNotifications = {
   approvalRequested: (strategy: string) => {
     useToastStore.getState().addToast({
       type: 'warning',
-      title: '⚠️ Approval Needed',
+      title: 'Approval Required',
       message: `Please approve the ${strategy} transaction in your wallet`,
       duration: 0, // Persistent until dismissed
     });
@@ -135,7 +135,7 @@ export const toastNotifications = {
   approvalApproved: (strategy: string) => {
     useToastStore.getState().addToast({
       type: 'success',
-      title: '✓ Approved',
+      title: 'Approved',
       message: `${strategy} transaction approved`,
       duration: 3000,
     });
@@ -144,7 +144,7 @@ export const toastNotifications = {
   approvalRejected: (strategy: string) => {
     useToastStore.getState().addToast({
       type: 'error',
-      title: '✗ Rejected',
+      title: 'Rejected',
       message: `${strategy} transaction was rejected`,
       duration: 4000,
     });
@@ -154,7 +154,7 @@ export const toastNotifications = {
     useToastStore.getState().addToast({
       type: 'warning',
       title: 'Approval Expired',
-      message: `${strategy} approval expired. Please try again.`,
+      message: `${strategy} approval window expired. Please try again.`,
       duration: 5000,
     });
   },
@@ -166,7 +166,7 @@ export const toastNotifications = {
     useToastStore.getState().addToast({
       type: 'info',
       title: 'Simulating Transaction',
-      message: `${strategy} simulation in progress...`,
+      message: `${strategy} simulation is running...`,
       duration: 2000,
     });
   },
@@ -186,7 +186,7 @@ export const toastNotifications = {
   blockchainConfirmed: (txHash?: string) => {
     useToastStore.getState().addToast({
       type: 'success',
-      title: '✓ Confirmed on Blockchain',
+      title: 'Confirmed on Blockchain',
       message: `Transaction confirmed${txHash ? ': ' + txHash.slice(0, 8) + '...' : ''}`,
       duration: 5000,
     });
@@ -226,7 +226,7 @@ export const toastNotifications = {
     const riskLevel = riskScore >= 75 ? 'Low' : riskScore >= 50 ? 'Medium' : 'High';
     useToastStore.getState().addToast({
       type: riskScore >= 75 ? 'success' : 'warning',
-      title: `${tokenSymbol} Safety Analysis`,
+      title: `${tokenSymbol} Safety Analysis Complete`,
       message: `Risk Level: ${riskLevel} (Score: ${riskScore}/100)`,
       duration: 5000,
     });
@@ -247,7 +247,7 @@ export const toastNotifications = {
   rebalanceComplete: (changes: string[]) => {
     useToastStore.getState().addToast({
       type: 'success',
-      title: '✓ Rebalance Complete',
+      title: 'Rebalance Complete',
       message: changes.join(', '),
       duration: 5000,
     });
