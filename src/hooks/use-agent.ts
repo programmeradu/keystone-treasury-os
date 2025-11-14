@@ -29,9 +29,6 @@ export function useAgent(options: UseAgentOptions = {}) {
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<ExecutionStatus | null>(null);
 
-  const transactionService = new RealTransactionService();
-  const jupiterService = new JupiterService();
-
   /**
    * Execute a strategy
    */
@@ -50,7 +47,8 @@ export function useAgent(options: UseAgentOptions = {}) {
       try {
         const userPubKey = options.userPublicKey || wallet.publicKey;
 
-        // Step 1: Call agent API to prepare strategy
+        // Call agent API to execute strategy
+        setProgress(50);
         const response = await fetch("/api/agentic", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -69,87 +67,10 @@ export function useAgent(options: UseAgentOptions = {}) {
         const data: AgentExecutionResult = await response.json();
         setExecutionId(data.executionId);
         setStatus(data.status);
-        setProgress(data.progress);
+        setProgress(100);
         setResult(data.result);
 
         options.onStatusChange?.(data.status);
-
-        // Step 2: If approval required, show wallet dialog and sign
-        if (data.status === ExecutionStatus.APPROVAL_REQUIRED && data.result?.swap_result) {
-          if (!wallet.signTransaction) {
-            throw new Error("Wallet does not support signing");
-          }
-
-          setProgress(75);
-          setStatus(ExecutionStatus.EXECUTING);
-
-          try {
-            // Get the swap quote and build transaction
-            const swapQuote = data.result.swap_quote;
-            const swapResult = data.result.swap_result;
-
-            // Get swap instructions from Jupiter
-            const swapInstructions = await jupiterService.getSwapInstructions(
-              swapQuote,
-              userPubKey!
-            );
-
-            // Parse the transaction
-            const swappedTx = await jupiterService.parseSwapTransaction(swapInstructions.swapTransaction);
-
-            // Build versioned transaction
-            const tx = await transactionService.buildTransaction(
-              swappedTx.instructions,
-              userPubKey!
-            );
-
-            // Sign with wallet
-            const signedTx = await wallet.signTransaction!(tx as VersionedTransaction);
-
-            // Send transaction
-            setProgress(85);
-            const signature = await transactionService.sendTransaction(signedTx, userPubKey ?? undefined);
-
-            // Wait for confirmation
-            setProgress(95);
-            const confirmationResult = await transactionService.waitForConfirmation(signature);
-
-            // Update result
-            setProgress(100);
-            setStatus(ExecutionStatus.SUCCESS);
-            setResult({
-              ...data.result,
-              transactionSignature: confirmationResult.signature,
-              confirmationStatus: confirmationResult.status,
-              fee: confirmationResult.fee
-            });
-
-            return {
-              executionId: data.executionId,
-              status: ExecutionStatus.SUCCESS,
-              progress: 100,
-              result: {
-                ...data.result,
-                transactionSignature: confirmationResult.signature,
-                confirmationStatus: confirmationResult.status,
-                fee: confirmationResult.fee
-              }
-            };
-          } catch (signError: any) {
-            setStatus(ExecutionStatus.FAILED);
-            setError(signError.message);
-            throw signError;
-          }
-        }
-
-        // Poll for updates if still executing
-        if (
-          data.status !== ExecutionStatus.SUCCESS &&
-          data.status !== ExecutionStatus.FAILED &&
-          data.status !== ExecutionStatus.CANCELLED
-        ) {
-          pollStatus(data.executionId);
-        }
 
         return data;
       } catch (err: any) {
@@ -160,7 +81,7 @@ export function useAgent(options: UseAgentOptions = {}) {
         setLoading(false);
       }
     },
-    [options, wallet, transactionService, jupiterService]
+    [options, wallet]
   );
 
   /**
