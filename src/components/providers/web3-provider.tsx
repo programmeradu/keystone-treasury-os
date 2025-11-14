@@ -55,7 +55,7 @@ const rkTheme = lightTheme({
 export function Web3Providers({ children }: { children: ReactNode }) {
   const apiKey = process.env.NEXT_PUBLIC_CDP_API_KEY;
 
-  // Solana wallets
+  // Solana wallets - only initialize if needed
   const solanaWallets = [
     new PhantomWalletAdapter(),
     new SolflareWalletAdapter(),
@@ -63,7 +63,7 @@ export function Web3Providers({ children }: { children: ReactNode }) {
   ];
 
   return (
-    <WalletProvider wallets={solanaWallets} autoConnect>
+    <WalletProvider wallets={solanaWallets} autoConnect={false}>
       <WalletModalProvider>
         <WagmiProvider config={rainbowConfig}>
           <QueryClientProvider client={queryClient}>

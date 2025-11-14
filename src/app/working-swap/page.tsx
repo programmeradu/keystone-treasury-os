@@ -60,6 +60,11 @@ export default function WorkingSwap() {
     setMounted(true);
   }, []);
 
+  // Don't try to fetch quote on mount - only when user clicks button
+  useEffect(() => {
+    if (!mounted) return;
+  }, [mounted]);
+
   const fetchQuote = useCallback(async () => {
     if (!connected || !publicKey) {
       setError('Please connect your wallet');
@@ -179,9 +184,7 @@ export default function WorkingSwap() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 flex items-center justify-center">
-        <div className="text-slate-400">Loading...</div>
-      </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950" />
     );
   }
 
