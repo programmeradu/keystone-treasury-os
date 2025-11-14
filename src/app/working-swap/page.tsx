@@ -91,7 +91,8 @@ export default function WorkingSwap() {
       setTimeout(() => setStatusMessage(''), 2000);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to get quote';
-      setError(message);
+      console.error('Quote fetch error:', err);
+      setError(`${message} - Make sure you have network access to Jupiter API`);
       setProgress(0);
       setStatusMessage('');
     }
@@ -163,7 +164,8 @@ export default function WorkingSwap() {
       setTimeout(() => setStatusMessage(''), 3000);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Swap failed';
-      setError(message);
+      console.error('Swap execution error:', err);
+      setError(`${message} - Check network connectivity and RPC availability`);
       setProgress(0);
       setStatusMessage('');
     }
@@ -443,6 +445,9 @@ export default function WorkingSwap() {
                 <p>✓ Live Solana blockchain execution</p>
                 <p>✓ Actual wallet signing</p>
                 <p>✓ On-chain confirmation tracking</p>
+                <p className="text-slate-500 text-xs mt-3 pt-3 border-t border-slate-700">
+                  <strong>Network:</strong> Requires external network access to Jupiter API and Solana RPC. If you see "ERR_NAME_NOT_RESOLVED", ensure your environment has internet access.
+                </p>
               </div>
             </div>
           </div>
