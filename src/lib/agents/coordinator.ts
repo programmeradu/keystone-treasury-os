@@ -145,7 +145,7 @@ export class ExecutionCoordinator {
   }
 
   /**
-   * Execute swap strategy
+   * Execute swap strategy - REAL Jupiter integration
    */
   private async executeSwap(
     context: ExecutionContext,
@@ -155,69 +155,79 @@ export class ExecutionCoordinator {
     this.updateProgress(context);
 
     try {
-      // Step 1: Get metadata (Lookup Agent)
+      // Step 1: Get token metadata
       this.log(context.executionId, "Fetching token metadata...");
       const inMetadata = await this.lookupAgent.executeAgent(context, {
         action: "resolve_token_metadata",
-        params: { mint: input.inMint }
+        params: { mint: input.inputMint || input.inMint }
       });
       const outMetadata = await this.lookupAgent.executeAgent(context, {
         action: "resolve_token_metadata",
-        params: { mint: input.outMint }
+        params: { mint: input.outputMint || input.outMint }
       });
 
-      context.progress = 20;
+      context.progress = 15;
       this.updateProgress(context);
 
-      // Step 2: Get prices
-      this.log(context.executionId, "Fetching prices...");
+      // Step 2: Get real prices from Jupiter
+      this.log(context.executionId, "Fetching real prices...");
       const prices = await this.lookupAgent.executeAgent(context, {
         action: "fetch_token_prices",
-        params: { mints: [input.inMint, input.outMint] }
+        params: { mints: [input.inputMint || input.inMint, input.outputMint || input.outMint] }
       });
 
-      context.progress = 40;
+      context.progress = 30;
       this.updateProgress(context);
 
-      // Step 3: Calculate route (Builder Agent)
-      this.log(context.executionId, "Calculating optimal route...");
-      const route = await this.builderAgent.executeAgent(context, {
+      // Step 3: Get real quote from Jupiter
+      this.log(context.executionId, "Getting Jupiter quote...");
+      const quote = await this.builderAgent.executeAgent(context, {
         action: "calculate_swap_route",
         params: {
-          inMint: input.inMint,
-          outMint: input.outMint,
+          inMint: input.inputMint || input.inMint,
+          outMint: input.outputMint || input.outMint,
           amount: input.amount,
-          slippage: input.slippage
+          slippage: input.slippage || 0.5
         }
       });
 
-      context.progress = 60;
+      context.progress = 50;
       this.updateProgress(context);
 
-      // Step 4: Build instructions
-      this.log(context.executionId, "Building swap instructions...");
-      const instructions = await this.builderAgent.executeAgent(context, {
+      // Store quote for later use
+      context.data.swap_quote = quote;
+
+      // Step 4: Get swap instructions from Jupiter
+      this.log(context.executionId, "Building real swap transaction...");
+      const swapInstructions = await this.builderAgent.executeAgent(context, {
         action: "build_swap_instructions",
-        params: { quote: route }
+        params: { quote }
       });
 
-      context.progress = 80;
+      context.progress = 70;
       this.updateProgress(context);
 
-      // Step 5: Simulate (Transaction Agent)
-      this.log(context.executionId, "Simulating transaction...");
-      const simResult = await this.transactionAgent.executeAgent(context, {
-        transaction: null,
-        instructions: instructions.instructions,
-        simulateOnly: true
-      });
-
-      context.progress = 100;
-      context.state = ExecutionStatus.SUCCESS;
+      // Step 5: Ready for signing (don't simulate yet, let wallet do that)
+      context.approvalRequired = true;
+      context.state = ExecutionStatus.APPROVAL_REQUIRED;
       this.updateProgress(context);
 
-      this.log(context.executionId, `Swap ready: ${simResult.estimatedFee} SOL fees`);
+      this.log(context.executionId, `Swap prepared: ${quote.outAmountWithSlippage} output with ${quote.priceImpactPct}% price impact`);
+      
+      // Return data for wallet to display
+      context.data.swap_result = {
+        inputMint: input.inputMint || input.inMint,
+        outputMint: input.outputMint || input.outMint,
+        inAmount: quote.inAmount,
+        outAmount: quote.outAmount,
+        outAmountWithSlippage: quote.outAmountWithSlippage,
+        priceImpact: quote.priceImpactPct,
+        instructions: swapInstructions.instructions,
+        ready: true,
+        requiresApproval: true
+      };
     } catch (error: any) {
+      this.log(context.executionId, `Swap failed: ${error.message}`);
       throw error;
     }
   }

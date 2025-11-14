@@ -1,6 +1,9 @@
 import { useState, useCallback } from "react";
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, VersionedTransaction } from "@solana/web3.js";
+import { useWallet } from "@solana/wallet-adapter-react";
 import { ExecutionStatus, StrategyType } from "@/lib/agents";
+import RealTransactionService from "@/lib/wallet/real-transaction-service";
+import JupiterService from "@/lib/wallet/jupiter-service";
 
 interface UseAgentOptions {
   userPublicKey?: PublicKey;
@@ -17,9 +20,10 @@ interface AgentExecutionResult {
 }
 
 /**
- * Hook for executing strategies via the agent API
+ * Hook for executing strategies via the agent API with real wallet signing
  */
 export function useAgent(options: UseAgentOptions = {}) {
+  const wallet = useWallet();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [executionId, setExecutionId] = useState<string | null>(null);
@@ -27,23 +31,35 @@ export function useAgent(options: UseAgentOptions = {}) {
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<ExecutionStatus | null>(null);
 
+  const transactionService = new RealTransactionService();
+  const jupiterService = new JupiterService();
+
   /**
    * Execute a strategy
    */
   const execute = useCallback(
     async (strategy: StrategyType, input: any) => {
+      if (!options.userPublicKey && !wallet.publicKey) {
+        const msg = "Wallet not connected";
+        setError(msg);
+        throw new Error(msg);
+      }
+
       setLoading(true);
       setError(null);
       setProgress(0);
 
       try {
+        const userPubKey = options.userPublicKey || wallet.publicKey;
+
+        // Step 1: Call agent API to prepare strategy
         const response = await fetch("/api/agentic", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             strategy,
             input,
-            userPublicKey: options.userPublicKey?.toBase58()
+            userPublicKey: userPubKey?.toBase58()
           })
         });
 
@@ -59,6 +75,74 @@ export function useAgent(options: UseAgentOptions = {}) {
         setResult(data.result);
 
         options.onStatusChange?.(data.status);
+
+        // Step 2: If approval required, show wallet dialog and sign
+        if (data.status === ExecutionStatus.APPROVAL_REQUIRED && data.result?.swap_result) {
+          if (!wallet.signTransaction) {
+            throw new Error("Wallet does not support signing");
+          }
+
+          setProgress(75);
+          setStatus(ExecutionStatus.EXECUTING);
+
+          try {
+            // Get the swap quote and build transaction
+            const swapQuote = data.result.swap_quote;
+            const swapResult = data.result.swap_result;
+
+            // Get swap instructions from Jupiter
+            const swapInstructions = await jupiterService.getSwapInstructions(
+              swapQuote,
+              userPubKey!
+            );
+
+            // Parse the transaction
+            const swappedTx = await jupiterService.parseSwapTransaction(swapInstructions.swapTransaction);
+
+            // Build versioned transaction
+            const tx = await transactionService.buildTransaction(
+              swappedTx.instructions,
+              userPubKey!
+            );
+
+            // Sign with wallet
+            const signedTx = await wallet.signTransaction!(tx as VersionedTransaction);
+
+            // Send transaction
+            setProgress(85);
+            const signature = await transactionService.sendTransaction(signedTx, userPubKey ?? undefined);
+
+            // Wait for confirmation
+            setProgress(95);
+            const confirmationResult = await transactionService.waitForConfirmation(signature);
+
+            // Update result
+            setProgress(100);
+            setStatus(ExecutionStatus.SUCCESS);
+            setResult({
+              ...data.result,
+              transactionSignature: confirmationResult.signature,
+              confirmationStatus: confirmationResult.status,
+              fee: confirmationResult.fee
+            });
+
+            return {
+              executionId: data.executionId,
+              status: ExecutionStatus.SUCCESS,
+              progress: 100,
+              result: {
+                ...data.result,
+                transactionSignature: confirmationResult.signature,
+                confirmationStatus: confirmationResult.status,
+                fee: confirmationResult.fee
+              }
+            };
+          } catch (signError: any) {
+            setStatus(ExecutionStatus.FAILED);
+            setError(signError.message);
+            throw signError;
+          }
+        }
 
         // Poll for updates if still executing
         if (
@@ -78,7 +162,7 @@ export function useAgent(options: UseAgentOptions = {}) {
         setLoading(false);
       }
     },
-    [options]
+    [options, wallet, transactionService, jupiterService]
   );
 
   /**
@@ -237,3 +321,4 @@ export function useAgent(options: UseAgentOptions = {}) {
 }
 
 export type { UseAgentOptions, AgentExecutionResult };
+
