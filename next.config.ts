@@ -23,21 +23,26 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  experimental: {
+    // Fix cross-origin warnings during development
+    allowedDevOrigins: ['192.168.227.1:3000'],
+  },
   // Remove potentially problematic outputFileTracingRoot for Netlify
   // outputFileTracingRoot: path.resolve(__dirname, '../../'),
   
+  // Disabled visual-edits loader to prevent restart loop
   // Enable the visual-edits component tagger loader only when explicitly requested
-  ...(enableVisualEdits
-    ? {
-        turbopack: {
-          rules: {
-            "*.{jsx,tsx}": {
-              loaders: [LOADER],
-            },
-          },
-        },
-      }
-    : {}),
+  // ...(enableVisualEdits
+  //   ? {
+  //       turbopack: {
+  //         rules: {
+  //           "*.{jsx,tsx}": {
+  //             loaders: [LOADER],
+  //           },
+  //         },
+  //       },
+  //     }
+  //   : {}),
 };
 
 export default nextConfig;

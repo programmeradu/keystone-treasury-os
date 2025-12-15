@@ -41,8 +41,6 @@ export default function RootLayout({
           data-debug="true"
           data-custom-data='{"appName": "YourApp", "version": "1.0.0", "greeting": "hi"}'
         />
-        {/* Puter.js SDK (client-side only) */}
-        <Script src="https://js.puter.com/v2/" strategy="afterInteractive" />
         {/* Jupiter Plugin script - load after hydration inside body to prevent head SSR/CSR mismatch */}
         <Script
           src="https://plugin.jup.ag/plugin-v1.js"
