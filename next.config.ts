@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   experimental: {
-    allowedDevOrigins: ['192.168.227.1:3000'],
+    // allowedDevOrigins: ['192.168.227.1:3000'],
   },
   webpack: (config, { isServer }) => {
     if (!isServer && process.env.VISUAL_EDITS_ENABLED) {

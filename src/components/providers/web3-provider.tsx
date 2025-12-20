@@ -9,15 +9,17 @@ import "@coinbase/onchainkit/styles.css";
 // RainbowKit
 import "@rainbow-me/rainbowkit/styles.css";
 import { RainbowKitProvider, getDefaultConfig, lightTheme } from "@rainbow-me/rainbowkit";
+import { LiveblocksProvider } from "@liveblocks/react";
 // Solana Wallet Adapter
-import { WalletProvider } from "@solana/wallet-adapter-react";
+import { WalletProvider, ConnectionProvider } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
+import { clusterApiUrl } from "@solana/web3.js";
 import {
-  PhantomWalletAdapter,
   SolflareWalletAdapter,
   TorusWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
 import "@solana/wallet-adapter-react-ui/styles.css";
+import { useMemo } from "react";
 
 const chains = [mainnet, base, arbitrum, polygon, bsc] as const;
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
@@ -35,11 +37,11 @@ const fallbackConfig = createConfig({
 
 const rainbowConfig = projectId
   ? getDefaultConfig({
-      appName: "KeyStone",
-      projectId,
-      chains,
-      ssr: true,
-    })
+    appName: "KeyStone",
+    projectId,
+    chains,
+    ssr: true,
+  })
   : fallbackConfig;
 
 const queryClient = new QueryClient();
@@ -57,36 +59,41 @@ export function Web3Providers({ children }: { children: ReactNode }) {
 
   // Solana wallets - only initialize if needed
   const solanaWallets = [
-    new PhantomWalletAdapter(),
     new SolflareWalletAdapter(),
     new TorusWalletAdapter(),
   ];
 
+  const endpoint = useMemo(() => clusterApiUrl("devnet"), []);
+
   return (
-    <WalletProvider wallets={solanaWallets} autoConnect={false}>
-      <WalletModalProvider>
-        <WagmiProvider config={rainbowConfig}>
-          <QueryClientProvider client={queryClient}>
-            {projectId ? (
-              <RainbowKitProvider theme={rkTheme} modalSize="compact">
-                {apiKey ? (
-                  <OnchainKitProvider apiKey={apiKey} chain={base}>{children}</OnchainKitProvider>
+    <LiveblocksProvider publicApiKey={process.env.NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY || "pk_dev_placeholder"}>
+      <ConnectionProvider endpoint={endpoint}>
+        <WalletProvider wallets={solanaWallets} autoConnect={false}>
+          <WalletModalProvider>
+            <WagmiProvider config={rainbowConfig}>
+              <QueryClientProvider client={queryClient}>
+                {projectId ? (
+                  <RainbowKitProvider theme={rkTheme} modalSize="compact">
+                    {apiKey ? (
+                      <OnchainKitProvider apiKey={apiKey} chain={base}>{children}</OnchainKitProvider>
+                    ) : (
+                      children
+                    )}
+                  </RainbowKitProvider>
                 ) : (
-                  children
+                  <>
+                    {apiKey ? (
+                      <OnchainKitProvider apiKey={apiKey} chain={base}>{children}</OnchainKitProvider>
+                    ) : (
+                      children
+                    )}
+                  </>
                 )}
-              </RainbowKitProvider>
-            ) : (
-              <>
-                {apiKey ? (
-                  <OnchainKitProvider apiKey={apiKey} chain={base}>{children}</OnchainKitProvider>
-                ) : (
-                  children
-                )}
-              </>
-            )}
-          </QueryClientProvider>
-        </WagmiProvider>
-      </WalletModalProvider>
-    </WalletProvider>
+              </QueryClientProvider>
+            </WagmiProvider>
+          </WalletModalProvider>
+        </WalletProvider>
+      </ConnectionProvider>
+    </LiveblocksProvider>
   );
 }

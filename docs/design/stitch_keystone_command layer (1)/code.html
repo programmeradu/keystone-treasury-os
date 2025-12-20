@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Keystone Command Bar</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Noto+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0dccf2",
+                        "background-light": "#f5f8f8",
+                        "background-dark": "#101f22",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "body": ["Noto Sans", "sans-serif"],
+                    },
+                    boxShadow: {
+                        'neon': '0 0 20px rgba(13, 204, 242, 0.15)',
+                        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #283639;
+            border-radius: 3px;
+        }
+        
+        .glass-panel {
+            background: rgba(16, 31, 34, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .cursor-blink {
+            display: inline-block;
+            width: 2px;
+            height: 1.2em;
+            background-color: #0dccf2;
+            vertical-align: middle;
+            margin-left: 2px;
+            box-shadow: 0 0 8px #0dccf2;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark min-h-screen flex flex-col font-display overflow-hidden">
+<!-- Background Layer (Blurred Dashboard) -->
+<div class="absolute inset-0 z-0">
+<!-- Overlay for darkness -->
+<div class="absolute inset-0 bg-[#05080a]/80 z-10"></div>
+<!-- Blurred abstract background simulating the app behind -->
+<img alt="Abstract digital financial data visualization background" class="w-full h-full object-cover filter blur-[8px] opacity-40" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBMjRKentfwNyU4SmYy_HaJ5JO2I7ZX8LUZej_sbEYgIiQBVZ6knL3FfWx33d0R6Efg1u42aeP9Da9nWpRJvGR6IIbGzzMIywMzgiFY1sWmIYnxc44Cm8iKDsFporCAKPvw0BCTKhSgWDzZ5XlBtZaKVbJanSMviytaFNRQ461s_NJqWvFx8A3yY0do1nnvHXqdPvJkNtXMMPvYixQMR3kndOR2Dn9C-V0TwIV2rznl2InLLP7N50TJANshjMLy16e5EZ1TgeZi4QI"/>
+</div>
+<!-- Main Content Layer -->
+<div class="relative z-20 flex-1 flex items-center justify-center px-4 w-full">
+<!-- Command Interface Container -->
+<div class="w-full max-w-[800px] flex flex-col gap-4 animate-in fade-in zoom-in duration-300">
+<!-- Command Bar Input -->
+<div class="glass-panel rounded-2xl p-1 shadow-neon ring-1 ring-primary/30">
+<div class="flex items-center w-full h-16 px-4">
+<!-- Leading Icon -->
+<div class="flex items-center justify-center text-primary mr-4">
+<span class="material-symbols-outlined text-3xl">terminal</span>
+</div>
+<!-- Input Area (Simulated for visual control) -->
+<div class="flex-1 flex items-center text-xl md:text-2xl font-medium text-white tracking-wide overflow-hidden whitespace-nowrap">
+<span class="opacity-90">Swap 50k USDC to SOL and distinct to validators</span>
+<span class="cursor-blink"></span>
+</div>
+<!-- Trailing Action -->
+<div class="flex items-center gap-3 ml-4">
+<div class="hidden md:flex h-7 px-2 items-center justify-center rounded bg-white/10 border border-white/5 text-xs text-[#9cb5ba] font-mono">
+                            ESC
+                        </div>
+<button class="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary transition-colors border border-primary/20">
+<span class="material-symbols-outlined">auto_awesome</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Suggestion / Preview Card -->
+<div class="glass-panel rounded-2xl overflow-hidden shadow-glass mt-2 border-t border-white/10">
+<!-- Header -->
+<div class="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-white/5">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[#9cb5ba] text-lg">schema</span>
+<p class="text-[#9cb5ba] text-xs font-bold tracking-wider uppercase">Plan Preview</p>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></span>
+<span class="text-xs text-white/60 font-medium">Valid Path</span>
+</div>
+</div>
+<!-- List Items -->
+<div class="flex flex-col">
+<!-- Item 1: Jupiter Swap -->
+<div class="group flex items-center gap-4 px-6 py-4 hover:bg-white/5 transition-colors border-b border-white/5 cursor-default">
+<!-- Icon Box -->
+<div class="flex items-center justify-center shrink-0 w-12 h-12 rounded-xl bg-[#283639] text-white border border-white/5 group-hover:border-primary/30 group-hover:shadow-[0_0_15px_rgba(13,204,242,0.1)] transition-all">
+<span class="material-symbols-outlined">currency_exchange</span>
+</div>
+<!-- Content -->
+<div class="flex flex-col justify-center flex-1 min-w-0">
+<div class="flex items-center gap-2">
+<p class="text-white text-base font-semibold leading-normal">Jupiter Swap</p>
+<span class="bg-[#283639] text-[#9cb5ba] text-[10px] px-1.5 py-0.5 rounded font-mono border border-white/5">DEX</span>
+</div>
+<div class="flex items-center gap-2 text-sm text-[#9cb5ba] mt-0.5 font-mono">
+<span>50,000 USDC</span>
+<span class="material-symbols-outlined text-xs">arrow_right_alt</span>
+<span class="text-white">485 SOL</span>
+</div>
+</div>
+<!-- Status -->
+<div class="shrink-0 flex flex-col items-end gap-1">
+<div class="text-green-400 flex items-center justify-center drop-shadow-[0_0_8px_rgba(74,222,128,0.4)]">
+<span class="material-symbols-outlined filled">check_circle</span>
+</div>
+<span class="text-[10px] text-green-400/80 font-medium tracking-wide">VERIFIED</span>
+</div>
+</div>
+<!-- Item 2: Stake -->
+<div class="group flex items-center gap-4 px-6 py-4 hover:bg-white/5 transition-colors border-b border-white/5 cursor-default">
+<div class="flex items-center justify-center shrink-0 w-12 h-12 rounded-xl bg-[#283639] text-white border border-white/5 group-hover:border-primary/30 group-hover:shadow-[0_0_15px_rgba(13,204,242,0.1)] transition-all">
+<span class="material-symbols-outlined">layers</span>
+</div>
+<div class="flex flex-col justify-center flex-1 min-w-0">
+<div class="flex items-center gap-2">
+<p class="text-white text-base font-semibold leading-normal">Liquid Stake</p>
+<span class="bg-[#283639] text-[#9cb5ba] text-[10px] px-1.5 py-0.5 rounded font-mono border border-white/5">JITO</span>
+</div>
+<div class="flex items-center gap-2 text-sm text-[#9cb5ba] mt-0.5 font-mono">
+<span>485 SOL</span>
+<span class="material-symbols-outlined text-xs">arrow_right_alt</span>
+<span class="text-white">JitoSOL</span>
+</div>
+</div>
+<div class="shrink-0 flex flex-col items-end gap-1">
+<div class="text-green-400 flex items-center justify-center drop-shadow-[0_0_8px_rgba(74,222,128,0.4)]">
+<span class="material-symbols-outlined filled">check_circle</span>
+</div>
+<span class="text-[10px] text-green-400/80 font-medium tracking-wide">VERIFIED</span>
+</div>
+</div>
+<!-- Item 3: Simulate -->
+<div class="group flex items-center gap-4 px-6 py-4 bg-primary/5 hover:bg-primary/10 transition-colors cursor-default border-l-2 border-l-primary">
+<div class="flex items-center justify-center shrink-0 w-12 h-12 rounded-xl bg-primary/20 text-primary border border-primary/20 shadow-[0_0_15px_rgba(13,204,242,0.15)]">
+<span class="material-symbols-outlined">analytics</span>
+</div>
+<div class="flex flex-col justify-center flex-1 min-w-0">
+<p class="text-white text-base font-semibold leading-normal">Simulate Outcome</p>
+<p class="text-primary text-sm font-medium leading-normal mt-0.5 drop-shadow-[0_0_5px_rgba(13,204,242,0.5)]">
+                                Success (+7.2% projected APY)
+                            </p>
+</div>
+<div class="shrink-0 flex flex-col items-end gap-1">
+<div class="text-primary flex items-center justify-center drop-shadow-[0_0_8px_rgba(13,204,242,0.5)]">
+<span class="material-symbols-outlined filled">verified</span>
+</div>
+<span class="text-[10px] text-primary/80 font-medium tracking-wide">READY</span>
+</div>
+</div>
+</div>
+<!-- Footer Actions -->
+<div class="px-6 py-4 bg-[#0d1214]/50 border-t border-white/5 flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[#9cb5ba] text-sm">info</span>
+<span class="text-[#9cb5ba] text-xs">Gas fees estimated at 0.00005 SOL</span>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-4 py-2 rounded-lg text-sm font-medium text-white hover:bg-white/10 transition-colors">Edit</button>
+<button class="group relative px-6 py-2 rounded-lg bg-primary hover:bg-primary/90 text-background-dark font-bold text-sm transition-all shadow-[0_0_20px_rgba(13,204,242,0.3)] hover:shadow-[0_0_30px_rgba(13,204,242,0.5)] flex items-center gap-2">
+<span>Execute Plan</span>
+<span class="bg-black/20 rounded px-1.5 py-0.5 text-[10px] font-mono group-hover:bg-black/10 transition-colors">↵</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</body></html>

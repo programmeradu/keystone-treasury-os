@@ -63,6 +63,7 @@
 /* Updated: 2025-09-24T17:35:39.324Z */
 /* Updated: 2025-09-24T17:19:52.444Z */
 /* Updated: 2025-09-24T17:19:37.738Z */
+@import url('https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL@20..48,100..700,0..1');
 @import "tailwindcss";
 @import "tw-animate-css";
@@ -127,7 +128,6 @@
 }
 
 :root {
-  --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -143,40 +143,28 @@
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: oklch(0.87 0 0);
+  --radius: 0.5rem;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
 
-  /* Jupiter Plugin theme (light) */
-  --jupiter-plugin-primary: 26, 115, 95; /* teal aligned with theme greens */
-  --jupiter-plugin-background: 255, 255, 255;
-  --jupiter-plugin-primaryText: 20, 23, 28; /* near foreground */
-  --jupiter-plugin-warning: 251, 191, 36; /* amber-400 */
-  --jupiter-plugin-interactive: 33, 42, 54; /* dark slate for buttons */
-  --jupiter-plugin-module: 243, 245, 247; /* subtle panels */
+  --font-sans: 'Spline Sans', sans-serif;
 }
 
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
+  --card: oklch(0.145 0 0);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
+  --popover: oklch(0.145 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
+  --primary: oklch(0.985 0 0);
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
@@ -184,37 +172,90 @@
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
+
+  /* Default sidebar for non-dashboard pages if needed */
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+}
 
-  /* Jupiter Plugin theme (dark) */
-  --jupiter-plugin-primary: 108, 226, 188; /* bright teal for dark bg */
-  --jupiter-plugin-background: 18, 22, 28; /* close to card/bg */
-  --jupiter-plugin-primaryText: 232, 249, 255;
-  --jupiter-plugin-warning: 251, 191, 36;
-  --jupiter-plugin-interactive: 40, 48, 61;
-  --jupiter-plugin-module: 28, 34, 44;
+/* Scoped Theme for /app Dashboard */
+.dashboard-theme {
+  --font-sans: 'Spline Sans', sans-serif;
+  --radius: 1rem;
+
+  /* Palette from Design Code */
+  --color-primary: #36e27b;
+  /* Neon Green */
+  --color-accent-orange: #ff5b39;
+  --color-charcoal: #0B0C10;
+  --color-glass-dark: rgba(31, 40, 51, 0.4);
+  --color-glass-border: rgba(255, 255, 255, 0.08);
+  --color-text-secondary: #9eb7a8;
+
+  /* Tailwind 4 Mappings */
+  --background: #0B0C10;
+  --foreground: #ffffff;
+
+  --card: rgba(31, 40, 51, 0.4);
+  --card-foreground: #ffffff;
+
+  --popover: #0B0C10;
+  --popover-foreground: #ffffff;
+
+  --primary: #36e27b;
+  --primary-foreground: #0B0C10;
+
+  --secondary: rgba(255, 255, 255, 0.05);
+  --secondary-foreground: #ffffff;
+
+  --muted: rgba(255, 255, 255, 0.05);
+  --muted-foreground: #9eb7a8;
+
+  --accent: rgba(255, 255, 255, 0.05);
+  --accent-foreground: #ffffff;
+
+  --destructive: #ff5b39;
+  --destructive-foreground: #ffffff;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: #36e27b;
+
+  --radius-lg: 1.5rem;
+  --radius-xl: 2rem;
+  --radius-2xl: 2.5rem;
+
+  --sidebar: #0f1115;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #36e27b;
+  --sidebar-primary-foreground: #0B0C10;
+  --sidebar-accent: rgba(255, 255, 255, 0.05);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #36e27b;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -234,16 +275,19 @@
     transform: translateY(0);
     transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
   }
+
   [data-style="clay"] button:hover {
     transform: translateY(-1px);
     box-shadow: var(--clay-shadow-hover);
     filter: saturate(1.05);
   }
+
   [data-style="clay"] button:active {
     transform: translateY(2px);
     box-shadow: var(--clay-shadow-active);
     filter: saturate(1.02);
   }
+
   [data-style="clay"] button:focus-visible {
     outline: 3px solid var(--ring);
     outline-offset: 2px;
@@ -257,18 +301,21 @@
   [data-style="clay"] .rounded-full {
     border-radius: var(--clay-radius) !important;
   }
+
   [data-style="clay"] .rounded-md,
   [data-style="clay"] .rounded-lg,
   [data-style="clay"] .rounded-xl {
     box-shadow: 0 8px 0 oklch(0.6 0 0 / 0.18), 0 1px 0 oklch(1 0 0 / 0.25) inset;
     transition: transform 120ms ease, box-shadow 120ms ease;
   }
+
   [data-style="clay"] .rounded-md:hover,
   [data-style="clay"] .rounded-lg:hover,
   [data-style="clay"] .rounded-xl:hover {
     transform: translateY(-1px);
     box-shadow: 0 10px 0 oklch(0.6 0 0 / 0.2), 0 1.5px 0 oklch(1 0 0 / 0.28) inset;
   }
+
   [data-style="clay"] .rounded-md:active,
   [data-style="clay"] .rounded-lg:active,
   [data-style="clay"] .rounded-xl:active {
@@ -284,6 +331,7 @@
     box-shadow: 0 4px 0 oklch(0.6 0 0 / 0.16), 0 1px 0 oklch(1 0 0 / 0.2) inset;
     transition: transform 120ms ease, box-shadow 120ms ease;
   }
+
   [data-style="clay"] input:focus,
   [data-style="clay"] select:focus,
   [data-style="clay"] textarea:focus {
@@ -308,11 +356,13 @@
     transition: transform 160ms ease, box-shadow 200ms ease, border-color 160ms ease;
     box-shadow: 0 10px 30px -18px oklch(0 0 0 / 0.35);
   }
+
   .atlas-card:hover {
     transform: translateY(-2px);
     border-color: oklch(1 0 0 / 0.18);
     box-shadow: 0 14px 40px -18px oklch(0 0 0 / 0.45);
   }
+
   .atlas-card::before {
     content: "";
     position: absolute;
@@ -323,6 +373,7 @@
     opacity: 0.6;
     pointer-events: none;
   }
+
   .atlas-card::after {
     content: "";
     position: absolute;
@@ -335,6 +386,7 @@
     opacity: 0.18;
     pointer-events: none;
   }
+
   /* Make inner tiles (small list items) match the card sleek look */
   .atlas-tile {
     position: relative;
@@ -344,74 +396,115 @@
     background: color-mix(in oklch, var(--color-card) 85%, transparent);
     transition: border-color 160ms ease, box-shadow 200ms ease, transform 120ms ease;
   }
-  .atlas-tile:hover { transform: translateY(-1px); border-color: oklch(1 0 0 / 0.18); box-shadow: 0 8px 24px -16px oklch(0 0 0 / 0.4); }
+
+  .atlas-tile:hover {
+    transform: translateY(-1px);
+    border-color: oklch(1 0 0 / 0.18);
+    box-shadow: 0 8px 24px -16px oklch(0 0 0 / 0.4);
+  }
 
   /* Modern transparent scrollbar styling (opt-in via class) */
   .scrollbar-modern {
-    scrollbar-width: thin; /* Firefox */
+    scrollbar-width: thin;
+    /* Firefox */
     --thumb-fx: color-mix(in oklch, var(--color-foreground) 35%, transparent);
     scrollbar-color: var(--thumb-fx) transparent;
   }
+
   .scrollbar-modern::-webkit-scrollbar {
     width: 8px;
   }
+
   .scrollbar-modern::-webkit-scrollbar-track {
     background: transparent;
   }
+
   .scrollbar-modern::-webkit-scrollbar-thumb {
     background: oklch(0 0 0 / 0.22);
     border-radius: 999px;
-    border: 2px solid transparent; /* Creates inner padding ring */
+    border: 2px solid transparent;
+    /* Creates inner padding ring */
     background-clip: content-box;
     transition: background 160ms ease, opacity 160ms ease;
   }
+
   .scrollbar-modern::-webkit-scrollbar-thumb:hover {
     background: oklch(0 0 0 / 0.32);
   }
+
   .dark .scrollbar-modern::-webkit-scrollbar-thumb {
     background: oklch(1 0 0 / 0.18);
   }
+
   .dark .scrollbar-modern::-webkit-scrollbar-thumb:hover {
     background: oklch(1 0 0 / 0.28);
   }
 
   /* Auto-hide until scroll or hover; also upgrades thumb to a subtle accent gradient */
-  .scrollbar-autohide { scrollbar-color: transparent transparent; }
-  .scrollbar-autohide::-webkit-scrollbar-thumb { background: transparent; }
+  .scrollbar-autohide {
+    scrollbar-color: transparent transparent;
+  }
+
+  .scrollbar-autohide::-webkit-scrollbar-thumb {
+    background: transparent;
+  }
+
   .scrollbar-autohide.is-scrolling,
   .scrollbar-autohide:hover {
     scrollbar-color: color-mix(in oklch, var(--color-accent) 55%, var(--color-foreground)) transparent;
   }
+
   .scrollbar-autohide.is-scrolling::-webkit-scrollbar-thumb,
   .scrollbar-autohide:hover::-webkit-scrollbar-thumb {
-    background: linear-gradient(
-      to bottom,
-      color-mix(in oklch, var(--color-accent) 70%, transparent),
-      color-mix(in oklch, var(--color-foreground) 30%, transparent)
-    );
+    background: linear-gradient(to bottom,
+        color-mix(in oklch, var(--color-accent) 70%, transparent),
+        color-mix(in oklch, var(--color-foreground) 30%, transparent));
   }
 
   /* Fully hidden scrollbar variant */
-  .scrollbar-none { scrollbar-width: none; }
-  .scrollbar-none::-webkit-scrollbar { display: none; }
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 
   /* Scroll overflow hint shadows (apply on a wrapper) */
-  .overflow-shadows { position: relative; }
+  .overflow-shadows {
+    position: relative;
+  }
+
   .overflow-shadows::before,
   .overflow-shadows::after {
     content: "";
     position: absolute;
-    left: 0; right: 0;
+    left: 0;
+    right: 0;
     height: 14px;
     pointer-events: none;
     opacity: 0;
     transition: opacity 160ms ease;
     z-index: 1;
   }
-  .overflow-shadows::before { top: 0; background: linear-gradient(to bottom, color-mix(in oklch, var(--background) 85%, transparent), transparent); }
-  .overflow-shadows::after { bottom: 0; background: linear-gradient(to top, color-mix(in oklch, var(--background) 85%, transparent), transparent); }
-  .overflow-shadows.has-top-shadow::before { opacity: 1; }
-  .overflow-shadows.has-bottom-shadow::after { opacity: 1; }
+
+  .overflow-shadows::before {
+    top: 0;
+    background: linear-gradient(to bottom, color-mix(in oklch, var(--background) 85%, transparent), transparent);
+  }
+
+  .overflow-shadows::after {
+    bottom: 0;
+    background: linear-gradient(to top, color-mix(in oklch, var(--background) 85%, transparent), transparent);
+  }
+
+  .overflow-shadows.has-top-shadow::before {
+    opacity: 1;
+  }
+
+  .overflow-shadows.has-bottom-shadow::after {
+    opacity: 1;
+  }
 }
 
 /* Hide Next.js error overlay portal */
@@ -423,34 +516,43 @@ nextjs-portal {
 [data-sonner-toast] {
   color: white !important;
 }
+
 [data-sonner-toast] * {
   color: white !important;
 }
+
 [data-sonner-toast] svg {
   color: white !important;
   stroke: white !important;
   fill: white !important;
 }
+
 [data-sonner-toast] [data-icon] {
   color: white !important;
 }
+
 .sonner-toast {
   color: white !important;
 }
+
 .sonner-toast * {
   color: white !important;
 }
+
 .sonner-toast svg {
   color: white !important;
   stroke: white !important;
   fill: white !important;
 }
+
 .sonner-toast-title {
   color: white !important;
 }
+
 .sonner-toast-description {
   color: white !important;
 }
+
 .sonner-toast-icon {
   color: white !important;
 }

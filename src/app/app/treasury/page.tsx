@@ -119,29 +119,28 @@ export default function AppPortalPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-screen bg-[#0B0C10] overflow-hidden">
-      {/* Dashboard Header (Consolidated) */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-[#0B0C10]/50 backdrop-blur-md z-10">
+    <>
+      {/* Header (Top Bar) - Consolidated */}
+      <header className="flex items-center justify-between px-6 py-4 z-10 border-b border-white/5 bg-[#0B0C10]/50 backdrop-blur-md">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-[#36e27b] shadow-[0_0_8px_#36e27b]" />
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#9eb7a8]">Keystone OS // Primary Node</span>
           </div>
           <div className="flex items-center gap-3">
-            <h1 className="text-lg font-bold tracking-tight text-white uppercase">Dashboard</h1>
+            <h1 className="text-lg font-bold tracking-tight text-white uppercase">Treasury Management</h1>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <button className="p-2 rounded-lg hover:bg-white/5 text-[#9eb7a8] transition-colors relative">
-            <Bell size={18} />
-            <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-[#36e27b]" />
-          </button>
 
+        <div className="flex items-center gap-4">
           <button className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1F2833]/40 border border-white/5 hover:bg-white/5 transition-colors">
             <div className="w-1.5 h-1.5 rounded-full bg-[#36e27b] shadow-[0_0_8px_rgba(54,226,123,0.5)]" />
             <span className="text-xs font-medium text-white">Devnet</span>
+            <ChevronDown size={12} className="text-[#9eb7a8]" />
           </button>
+
+          <div className="w-px h-6 bg-white/5 mx-1" />
 
           <Suspense fallback={<div className="h-8 w-24 bg-white/5 animate-pulse rounded-full" />}>
             <CollaborativeHeader />
@@ -150,11 +149,16 @@ export default function AppPortalPage() {
           <div className="w-px h-6 bg-white/5 mx-1" />
 
           <WalletButton />
+
+          <button className="relative w-8 h-8 rounded-full bg-[#1F2833]/40 border border-white/5 flex items-center justify-center hover:bg-white/5 transition-colors group">
+            <Bell size={14} className="text-[#9eb7a8] group-hover:text-white transition-colors" />
+            <div className="absolute top-2 right-2.5 w-1.5 h-1.5 bg-[#ff5b39] rounded-full border border-[#0B0C10]" />
+          </button>
         </div>
       </header>
 
+      {/* Bento Grid Content - Ultra Compact */}
       <div className="flex-1 p-6 pt-4 overflow-y-auto custom-scrollbar">
-
         <div className="grid grid-cols-1 lg:grid-cols-3 grid-rows-[minmax(200px,auto)_auto] gap-4 max-w-[1600px] mx-auto pb-6">
 
           {/* 1. Total Treasury Card (Compact) */}
@@ -240,6 +244,6 @@ export default function AppPortalPage() {
 
         </div>
       </div>
-    </div>
+    </>
   );
 }

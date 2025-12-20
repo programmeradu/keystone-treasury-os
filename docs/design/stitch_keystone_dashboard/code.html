@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Keystone Dashboard</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#36e27b",
+                        "accent-orange": "#ff5b39",
+                        "charcoal": "#0B0C10",
+                        "glass-dark": "rgba(31, 40, 51, 0.4)",
+                        "glass-border": "rgba(255, 255, 255, 0.08)",
+                        "text-secondary": "#9eb7a8",
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "1rem", "lg": "1.5rem", "xl": "2rem", "2xl": "2.5rem", "full": "9999px"},
+                    boxShadow: {
+                        "neon": "0 0 20px rgba(54, 226, 123, 0.15), 0 0 10px rgba(54, 226, 123, 0.1)",
+                        "neon-strong": "0 0 25px rgba(54, 226, 123, 0.4)",
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for a premium feel */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0B0C10; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1F2833; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #29382f; 
+        }
+
+        .glass-panel {
+            background: rgba(31, 40, 51, 0.4);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .text-glow {
+            text-shadow: 0 0 20px rgba(54, 226, 123, 0.3);
+        }
+        
+        .grid-bg-pattern {
+            background-size: 40px 40px;
+            background-image:
+                linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        }
+
+        /* Animation for the payroll flow */
+        @keyframes flow {
+            0% { stroke-dashoffset: 24; }
+            100% { stroke-dashoffset: 0; }
+        }
+        .animate-flow {
+            animation: flow 1s linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-charcoal text-white font-display overflow-x-hidden selection:bg-primary selection:text-charcoal h-screen flex">
+<!-- Side Navigation (Slim Rail) -->
+<nav class="hidden md:flex flex-col items-center w-24 h-full py-8 border-r border-glass-border bg-[#0f1115] z-50">
+<!-- Logo Icon -->
+<div class="mb-10 w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-[#25a85c] flex items-center justify-center shadow-neon">
+<span class="material-symbols-outlined text-charcoal" style="font-size: 28px;">diamond</span>
+</div>
+<!-- Nav Items -->
+<div class="flex flex-col gap-6 w-full px-4">
+<button class="group flex flex-col items-center justify-center gap-1 w-full aspect-square rounded-2xl bg-glass-dark hover:bg-primary/20 transition-all duration-300 text-primary border border-primary/20">
+<span class="material-symbols-outlined filled">account_balance_wallet</span>
+</button>
+<button class="group flex flex-col items-center justify-center gap-1 w-full aspect-square rounded-2xl hover:bg-white/5 transition-all duration-300 text-text-secondary hover:text-white">
+<span class="material-symbols-outlined">pie_chart</span>
+</button>
+<button class="group flex flex-col items-center justify-center gap-1 w-full aspect-square rounded-2xl hover:bg-white/5 transition-all duration-300 text-text-secondary hover:text-white">
+<span class="material-symbols-outlined">group</span>
+</button>
+<button class="group flex flex-col items-center justify-center gap-1 w-full aspect-square rounded-2xl hover:bg-white/5 transition-all duration-300 text-text-secondary hover:text-white">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+<div class="mt-auto mb-4">
+<div class="w-10 h-10 rounded-full bg-cover bg-center border-2 border-glass-border" data-alt="User profile avatar gradient" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD8oqNG9FIQdyLABNz8g25KreD7KbsBc97g7VkOahSbz-oVUDArZGO7o0NEM3kdx-HcJ-wyKCG1YjUAKgAkxJsmudgLBiJvpYF4WwYLT_InFvMCmoChK4c9HL5yMQhP0Yv--iVgD3BmeHECEE9lRpr1TsK6APLA_9WbaIpmYzhngCr_6_Cd8QSPXaqkopThEj5XX5JhwutubjGUtNJnniX53kpkUnqgMPq3siwUBBUbcjwtEcgFLwU-5GNOQZ-9vZpgHvlsrgCYDXA')"></div>
+</div>
+</nav>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col h-full relative overflow-hidden">
+<!-- Background Ambient Glow -->
+<div class="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-primary/5 rounded-full blur-[120px] pointer-events-none"></div>
+<div class="absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[120px] pointer-events-none"></div>
+<div class="absolute inset-0 grid-bg-pattern opacity-30 pointer-events-none"></div>
+<!-- Header -->
+<header class="flex items-center justify-between px-8 py-6 z-10">
+<div class="flex flex-col">
+<h1 class="text-2xl font-bold tracking-tight text-white">Dashboard</h1>
+<p class="text-sm text-text-secondary">Welcome back, Keystone Admin</p>
+</div>
+<div class="flex items-center gap-4">
+<button class="flex items-center gap-2 px-4 py-2 rounded-full bg-glass-dark border border-glass-border hover:bg-white/5 transition-colors">
+<div class="w-2 h-2 rounded-full bg-primary shadow-neon"></div>
+<span class="text-sm font-medium">Solana Mainnet</span>
+<span class="material-symbols-outlined text-sm text-text-secondary">expand_more</span>
+</button>
+<button class="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-charcoal font-bold text-sm shadow-neon hover:bg-[#4ff590] transition-colors">
+<span class="material-symbols-outlined" style="font-size: 20px;">wallet</span>
+<span>0x8a...4b2</span>
+</button>
+<button class="relative w-10 h-10 rounded-full bg-glass-dark border border-glass-border flex items-center justify-center hover:bg-white/5 transition-colors">
+<span class="material-symbols-outlined text-text-secondary">notifications</span>
+<div class="absolute top-2 right-2.5 w-2 h-2 bg-accent-orange rounded-full border border-charcoal"></div>
+</button>
+</div>
+</header>
+<!-- Bento Grid Layout -->
+<div class="flex-1 p-8 pt-2 overflow-y-auto">
+<div class="grid grid-cols-1 lg:grid-cols-3 grid-rows-auto lg:grid-rows-[minmax(300px,auto)_minmax(300px,auto)] gap-6 max-w-[1600px] mx-auto h-full pb-8">
+<!-- 1. Total Treasury Card (Large, Top Left) -->
+<div class="lg:col-span-2 glass-panel rounded-3xl p-8 relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-8 opacity-50 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-4xl text-primary/20">account_balance</span>
+</div>
+<div class="flex flex-col h-full justify-between relative z-10">
+<div class="flex flex-col gap-2">
+<h2 class="text-text-secondary uppercase tracking-widest text-xs font-semibold">Total Treasury Value</h2>
+<div class="flex items-end gap-4">
+<span class="text-5xl md:text-7xl font-bold text-white tracking-tighter text-glow">$14,250,592</span>
+<div class="flex items-center gap-1 mb-2 px-2 py-1 rounded-lg bg-primary/10 border border-primary/20">
+<span class="material-symbols-outlined text-primary text-sm">trending_up</span>
+<span class="text-primary text-sm font-bold">+12.5%</span>
+</div>
+</div>
+</div>
+<!-- Sparkline Chart Area -->
+<div class="w-full h-48 mt-auto relative">
+<!-- Gradient definition in SVG -->
+<svg class="w-full h-full overflow-visible" preserveaspectratio="none" viewbox="0 0 800 200">
+<defs>
+<lineargradient id="gradientArea" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#36e27b" stop-opacity="0.2"></stop>
+<stop offset="100%" stop-color="#36e27b" stop-opacity="0"></stop>
+</lineargradient>
+<filter height="140%" id="glow" width="140%" x="-20%" y="-20%">
+<fegaussianblur result="coloredBlur" stddeviation="4"></fegaussianblur>
+<femerge>
+<femergenode in="coloredBlur"></femergenode>
+<femergenode in="SourceGraphic"></femergenode>
+</femerge>
+</filter>
+</defs>
+<path d="M0 150 C 100 140, 150 180, 200 120 S 300 40, 400 90 S 550 160, 650 60 S 750 20, 800 50 L 800 200 L 0 200 Z" fill="url(#gradientArea)"></path>
+<path d="M0 150 C 100 140, 150 180, 200 120 S 300 40, 400 90 S 550 160, 650 60 S 750 20, 800 50" fill="none" filter="url(#glow)" stroke="#36e27b" stroke-linecap="round" stroke-width="3"></path>
+</svg>
+</div>
+</div>
+</div>
+<!-- 2. Yield Optimizer (Medium, Top Right) -->
+<div class="lg:col-span-1 glass-panel rounded-3xl p-8 flex flex-col items-center justify-between relative">
+<div class="absolute top-6 left-6 flex flex-col gap-1">
+<h2 class="text-text-secondary uppercase tracking-widest text-xs font-semibold">Yield Optimizer</h2>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+<span class="text-xs font-medium text-white">Strategy: Delta Neutral</span>
+</div>
+</div>
+<!-- Radial Dial -->
+<div class="relative w-48 h-48 mt-8 flex items-center justify-center">
+<svg class="w-full h-full transform -rotate-90">
+<!-- Background Circle -->
+<circle cx="96" cy="96" fill="transparent" r="80" stroke="#1c232b" stroke-width="12"></circle>
+<!-- Progress Circle (Approx 75%) -->
+<circle class="drop-shadow-[0_0_10px_rgba(54,226,123,0.5)]" cx="96" cy="96" fill="transparent" r="80" stroke="#36e27b" stroke-dasharray="502" stroke-dashoffset="125" stroke-linecap="round" stroke-width="12"></circle>
+</svg>
+<div class="absolute flex flex-col items-center">
+<span class="text-4xl font-bold text-white">8.4%</span>
+<span class="text-sm text-text-secondary">APY</span>
+</div>
+</div>
+<button class="mt-4 flex items-center gap-2 px-4 py-2 bg-[#1c2e24] border border-[#2d4a3a] rounded-full text-primary text-sm font-bold shadow-neon hover:bg-[#233b2e] transition-colors w-full justify-center">
+<span class="material-symbols-outlined text-lg">autorenew</span>
+                        Auto-Compound Active
+                     </button>
+</div>
+<!-- 3. Payroll Stream Visualizer (Wide, Bottom Left) -->
+<div class="lg:col-span-2 glass-panel rounded-3xl p-8 flex flex-col relative overflow-hidden">
+<div class="flex justify-between items-start mb-6 z-10">
+<div>
+<h2 class="text-text-secondary uppercase tracking-widest text-xs font-semibold mb-1">Payroll Streams</h2>
+<p class="text-xl font-bold text-white">4,500 USDC <span class="text-text-secondary text-sm font-normal">/ month flowing</span></p>
+</div>
+<button class="p-2 rounded-full hover:bg-white/5 transition-colors text-text-secondary">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+<!-- Visualizer Container -->
+<div class="flex-1 flex items-center justify-between relative px-4">
+<!-- Wallet Source -->
+<div class="relative z-10">
+<div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-charcoal to-[#1F2833] border border-glass-border flex items-center justify-center shadow-lg">
+<span class="material-symbols-outlined text-primary text-3xl">account_balance_wallet</span>
+</div>
+<div class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-text-secondary whitespace-nowrap">Treasury</div>
+</div>
+<!-- Fluid Lines SVG -->
+<div class="absolute inset-0 top-[35%] w-full h-full pointer-events-none">
+<svg class="w-full h-full" preserveaspectratio="none">
+<path class="animate-flow" d="M 80 15 C 200 15, 200 40, 400 40" fill="none" stroke="url(#streamGrad1)" stroke-dasharray="4 4" stroke-width="2"></path>
+<path class="animate-flow" d="M 80 15 C 200 15, 200 -10, 400 -10" fill="none" stroke="url(#streamGrad2)" stroke-dasharray="4 4" stroke-width="2" style="animation-duration: 1.5s; animation-delay: 0.2s;"></path>
+<path class="animate-flow" d="M 80 15 C 200 15, 200 65, 400 65" fill="none" stroke="url(#streamGrad3)" stroke-dasharray="4 4" stroke-width="2" style="animation-duration: 1.2s; animation-delay: 0.5s;"></path>
+<defs>
+<lineargradient id="streamGrad1" x1="0" x2="1" y1="0" y2="0">
+<stop offset="0%" stop-color="#36e27b" stop-opacity="0.8"></stop>
+<stop offset="100%" stop-color="#36e27b" stop-opacity="0.1"></stop>
+</lineargradient>
+<lineargradient id="streamGrad2" x1="0" x2="1" y1="0" y2="0">
+<stop offset="0%" stop-color="#36e27b" stop-opacity="0.8"></stop>
+<stop offset="100%" stop-color="#36e27b" stop-opacity="0.1"></stop>
+</lineargradient>
+<lineargradient id="streamGrad3" x1="0" x2="1" y1="0" y2="0">
+<stop offset="0%" stop-color="#36e27b" stop-opacity="0.8"></stop>
+<stop offset="100%" stop-color="#36e27b" stop-opacity="0.1"></stop>
+</lineargradient>
+</defs>
+</svg>
+</div>
+<!-- User Avatars Destination -->
+<div class="flex flex-col gap-3 z-10 mr-8">
+<div class="flex items-center gap-3 p-2 pr-4 rounded-full bg-[#151a21] border border-glass-border hover:border-primary/50 transition-colors cursor-pointer w-48">
+<div class="w-8 h-8 rounded-full bg-cover bg-center" data-alt="User avatar 1" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBjvx1YcRujS-LXQ7RkkQljpUnl28fgyb-BHEROqmUgRUi2Kpj12xMcaIwogG2yHXi0JDgbg0y4O1wKdtZI42DJdHZxIT6ppGyol6Pv5O7S52B-gxG9mhM8r8AUVfbFqsI5kcbqYXPXaoqH0mMA9qR4NubPEfqg3mLBep6lUVdwlR1mLAC8X6yTWuROSwqFlP6DAqBoZJ_EBZNOC72DAw-uFq1nYuhcVLIt2_y-SV_MGE6BYni3a2Npn2wI2PqDtcscnj5bX4kxA54')"></div>
+<div class="flex flex-col">
+<span class="text-xs font-bold text-white">Alex Dev</span>
+<span class="text-[10px] text-text-secondary">Streaming...</span>
+</div>
+<span class="ml-auto text-xs text-primary font-mono">2.5k</span>
+</div>
+<div class="flex items-center gap-3 p-2 pr-4 rounded-full bg-[#151a21] border border-glass-border hover:border-primary/50 transition-colors cursor-pointer w-48 ml-8">
+<div class="w-8 h-8 rounded-full bg-cover bg-center" data-alt="User avatar 2" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA2ln-tR_uhTPb2aWKiKeoc3UOzaJ883B2YscGrycXi4Z5RMKQgF4avciCyQPvDiyWMSz2189SzYYHgPbr-V6P0tDsRgOa4W7A3N6k7VCc44ac5X_xW9lMbk65nakHXpnzkvZFBSBlW1kKz2DbG8SwtW6WAXWnvx1oe2t-6LNHnqn9k_0rxXrtglb1yy5xpD4QGidJHhxq3E5Qw_DZaYxsAsbV35e_aoa0l9ImIY3Y77k5ZszYyFjFeT8HIcH8z9kGltAua7R6H8zc')"></div>
+<div class="flex flex-col">
+<span class="text-xs font-bold text-white">Sarah Ops</span>
+<span class="text-[10px] text-text-secondary">Streaming...</span>
+</div>
+<span class="ml-auto text-xs text-primary font-mono">1.2k</span>
+</div>
+<div class="flex items-center gap-3 p-2 pr-4 rounded-full bg-[#151a21] border border-glass-border hover:border-primary/50 transition-colors cursor-pointer w-48">
+<div class="w-8 h-8 rounded-full bg-cover bg-center" data-alt="User avatar 3" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuC1xhbi94eXq7sShBvO6cmikEpISX8ogBxi8SJtpzXvxog3aoBBcAzCDM_ca865RfS1oCFLfTuCVbA4Y0wM11a2A6mwZ9t3_RARh8Zpp2mu4-1zEBxaVgEIh1j7BH-G-xqfHvIdF1FeQ3chKNiw1B7hkUp1CX7_aw8JON1jRiqvvNZH-Eh_F2yrz6oQgU7R3aguADWD5YPo8vmzhUpWkxloVeeovsFwfJs9CjCmSANv39L_YeOiIMn_nYtOGI1IdsLBWQVoQTKosRs')"></div>
+<div class="flex flex-col">
+<span class="text-xs font-bold text-white">Design DAO</span>
+<span class="text-[10px] text-text-secondary">Streaming...</span>
+</div>
+<span class="ml-auto text-xs text-primary font-mono">800</span>
+</div>
+</div>
+</div>
+</div>
+<!-- 4. Action Items (Tall, Bottom Right) -->
+<div class="lg:col-span-1 glass-panel rounded-3xl p-0 overflow-hidden flex flex-col">
+<div class="p-6 border-b border-glass-border flex justify-between items-center bg-[#151a21]/50">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-white">verified_user</span>
+<h2 class="text-white font-bold text-base">Action Items</h2>
+</div>
+<div class="w-2 h-2 rounded-full bg-accent-orange shadow-[0_0_10px_#ff5b39]"></div>
+</div>
+<div class="p-4 flex flex-col gap-2 overflow-y-auto flex-1">
+<!-- Item 1 -->
+<div class="group p-4 rounded-2xl bg-[#1c232b] border border-transparent hover:border-glass-border hover:bg-[#232c36] transition-all cursor-pointer">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<div class="bg-accent-orange/10 text-accent-orange p-1 rounded-md">
+<span class="material-symbols-outlined text-sm">warning</span>
+</div>
+<span class="text-xs font-bold text-accent-orange uppercase tracking-wide">Signature Req</span>
+</div>
+<span class="text-xs text-text-secondary">2m ago</span>
+</div>
+<h3 class="text-sm font-semibold text-white mb-1">Grant for Dev Guild</h3>
+<p class="text-xs text-text-secondary mb-3">5,000 USDC • 2/3 Signed</p>
+<div class="flex items-center gap-1">
+<div class="h-1 w-full bg-gray-700 rounded-full overflow-hidden">
+<div class="h-full bg-accent-orange w-2/3"></div>
+</div>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="group p-4 rounded-2xl bg-[#1c232b] border border-transparent hover:border-glass-border hover:bg-[#232c36] transition-all cursor-pointer">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<div class="bg-primary/10 text-primary p-1 rounded-md">
+<span class="material-symbols-outlined text-sm">dns</span>
+</div>
+<span class="text-xs font-bold text-primary uppercase tracking-wide">Infrastructure</span>
+</div>
+<span class="text-xs text-text-secondary">1h ago</span>
+</div>
+<h3 class="text-sm font-semibold text-white mb-1">AWS Server Costs</h3>
+<p class="text-xs text-text-secondary">200.00 USDC</p>
+</div>
+<!-- Item 3 -->
+<div class="group p-4 rounded-2xl bg-[#1c232b] border border-transparent hover:border-glass-border hover:bg-[#232c36] transition-all cursor-pointer">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<div class="bg-blue-500/10 text-blue-400 p-1 rounded-md">
+<span class="material-symbols-outlined text-sm">swap_horiz</span>
+</div>
+<span class="text-xs font-bold text-blue-400 uppercase tracking-wide">Swap</span>
+</div>
+<span class="text-xs text-text-secondary">4h ago</span>
+</div>
+<h3 class="text-sm font-semibold text-white mb-1">SOL -&gt; USDC</h3>
+<p class="text-xs text-text-secondary">Confirm Rate</p>
+</div>
+</div>
+<button class="m-4 mt-0 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-sm font-medium text-white transition-colors border border-glass-border">
+                        View All Transactions
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // No JS logic added as per instructions, only Tailwind and static HTML/CSS.
+    </script>
+</body></html>

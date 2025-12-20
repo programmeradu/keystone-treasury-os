@@ -12,27 +12,34 @@
 import Groq from "groq-sdk";
 import OpenAI from "openai";
 
-export interface StrategyPlan {
+export interface ActionItem {
   operation: string;
   parameters: Record<string, any>;
+}
+
+export interface StrategyPlan {
+  actions: ActionItem[];
   reasoning: string;
   warnings: string[];
   estimatedOutcome: string;
   confidence?: "high" | "medium" | "low";
+  isChain?: boolean;
 }
 
-type LLMProvider = "groq" | "github";
+type LLMProvider = "openai" | "groq" | "github";
 
 /**
  * Get the best available LLM provider
  */
 function getProvider(): LLMProvider {
-  // Prefer Groq (fast, free tier)
+  // Prefer OpenAI (User provided key)
+  if (process.env.OPENAI_API_KEY) return "openai";
+  // Fall back to Groq (fast, free tier)
   if (process.env.GROQ_API_KEY) return "groq";
   // Fall back to GitHub Models
   if (process.env.GITHUB_TOKEN) return "github";
-  // Default to Groq (with warning)
-  return "groq";
+  // Default to OpenAI (will throw error if no key, but reasonable default)
+  return "openai";
 }
 
 /**
@@ -51,7 +58,7 @@ export async function planStrategy(
   provider?: LLMProvider
 ): Promise<StrategyPlan> {
   const selectedProvider = provider || getProvider();
-  
+
   const systemPrompt = `You are a professional crypto portfolio advisor. Your job is to understand user requests
 and create structured execution plans for deterministic agents.
 
@@ -59,24 +66,43 @@ IMPORTANT: Only plan, do NOT execute. You plan, agents execute.
 
 Return ONLY valid JSON (no markdown, no explanation before/after):
 {
-  "operation": "swap|stake|rebalance|dca|analyze",
-  "parameters": {
-    "description of parameters"
-  },
+  "actions": [
+    {
+      "operation": "swap|transfer|stake|rebalance|navigate|refresh|ui_query|governance_list|governance_approve|governance_execute|external_balance|bridge|yield_deposit|yield_withdraw|monitor",
+      "parameters": { "description of parameters" }
+    }
+  ],
   "reasoning": "Explain why this strategy addresses user's request",
   "warnings": ["List of risks or warnings"],
   "estimatedOutcome": "What the user can expect after execution",
-  "confidence": "high|medium|low"
+  "confidence": "high|medium|low",
+  "isChain": true
 }
 
 Operations:
 - "swap": Direct token swap via Jupiter (parameters: inputToken, outputToken, amount)
+- "transfer": Send tokens or SOL to a recipient (parameters: recipient, token, amount)
 - "stake": Stake SOL with validator or Marinade (parameters: amount, provider)
+- "bridge": Move assets across chains (parameters: sourceChain, destinationChain, token, amount)
+- "yield_deposit": Deposit assets into a lending protocol (parameters: protocol, token, amount)
+- "yield_withdraw": Withdraw assets from a lending protocol (parameters: protocol, token, amount)
+- "monitor": Set a persistent alert or rule (parameters: type ["PRICE"|"BALANCE"], target, operator [">"|"<"], value).
+- "plugin_register": Add a new protocol to Keystone (parameters: name, programId, description, operations [{name, description, parameters}]). Use this when user says "Register/Learn protocol X".
+- "navigate": Move to a different page in Keystone (parameters: path). Target paths: "/app" (Dashboard), "/app/team", "/app/settings", "/app/analytics".
+- "refresh": Sync the vault data and update the dashboard.
+- "ui_query": Answer questions about the user's current data (parameters: query).
+- "governance_list": List all pending team proposals and their status.
+- "governance_approve": Sign/Approve a specific team proposal (parameters: proposalIndex).
+- "governance_execute": Execute/Finalize a fully signed proposal (parameters: proposalIndex).
+- "external_balance": Check the SOL balance of any external wallet address (parameters: address).
 - "rebalance": Rebalance portfolio to target allocations (parameters: targetAllocations {})
-- "dca": Dollar-cost averaging (parameters: inMint, outMint, amount, frequency)
-- "analyze": Analyze token safety before trading (parameters: mint)
 
-Be specific. If user says "reduce risk", suggest actual allocation percentages.
+God-Mode Ability:
+You can learn ANY new protocol seamlessly using the "Infinite Discovery Stack":
+1. Use **Tavily** if you only have a name and need to find the official documentation URL.
+2. Use **r.jina.ai/[URL]** for instant markdown conversion of a specific documentation page.
+3. Use **Firecrawl** if a single page is insufficient (e.g., complex GitBooks) to recursively crawl the entire site for all technical instructions.
+Action: First "plugin_register" the learned capabilities, then execute.
 For rebalance, always include a targetAllocations object like: { "SOL": 50, "USDC": 30, "JUP": 20 }`;
 
   const userPrompt = `User request: "${userRequest}"
@@ -91,7 +117,23 @@ Create an execution plan. Return ONLY JSON, no markdown.`;
   try {
     let responseText = "";
 
-    if (selectedProvider === "groq") {
+    if (selectedProvider === "openai") {
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
+
+      const client = new OpenAI({ apiKey });
+      const message = await client.chat.completions.create({
+        model: "gpt-4o",
+        max_tokens: 1024,
+        temperature: 0.3,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ]
+      });
+      responseText = message.choices[0]?.message?.content || "";
+
+    } else if (selectedProvider === "groq") {
       const apiKey = process.env.GROQ_API_KEY;
       if (!apiKey) {
         throw new Error("GROQ_API_KEY not configured");
@@ -171,7 +213,7 @@ Create an execution plan. Return ONLY JSON, no markdown.`;
     const plan = JSON.parse(jsonText) as StrategyPlan;
 
     // Validate required fields
-    if (!plan.operation || !plan.parameters || !plan.reasoning || !plan.warnings || !plan.estimatedOutcome) {
+    if (!plan.actions || !plan.reasoning || !plan.warnings || !plan.estimatedOutcome) {
       throw new Error("Invalid plan structure from LLM");
     }
 
@@ -212,7 +254,23 @@ What strategies should I consider? (2-3 specific recommendations)`;
   try {
     let responseText = "";
 
-    if (selectedProvider === "groq") {
+    if (selectedProvider === "openai") {
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
+
+      const client = new OpenAI({ apiKey });
+      const message = await client.chat.completions.create({
+        model: "gpt-4o",
+        max_tokens: 512,
+        temperature: 0.5,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ]
+      });
+      responseText = message.choices[0]?.message?.content || "";
+
+    } else if (selectedProvider === "groq") {
       const apiKey = process.env.GROQ_API_KEY;
       if (!apiKey) throw new Error("GROQ_API_KEY not configured");
 
@@ -277,8 +335,7 @@ export async function validateStrategy(
   const systemPrompt = `You are a security validator. Check if a planned operation is reasonable.
 Return JSON only: { "valid": true/false, "reason": "explanation if invalid" }`;
 
-  const userPrompt = `Planned operation: ${plan.operation}
-Parameters: ${JSON.stringify(plan.parameters)}
+  const userPrompt = `Planned workflow: ${JSON.stringify(plan.actions)}
 Current portfolio: ${JSON.stringify(walletState.portfolio)}
 
 Is this plan reasonable and safe?`;
@@ -286,7 +343,23 @@ Is this plan reasonable and safe?`;
   try {
     let responseText = "";
 
-    if (selectedProvider === "groq") {
+    if (selectedProvider === "openai") {
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
+
+      const client = new OpenAI({ apiKey });
+      const message = await client.chat.completions.create({
+        model: "gpt-4o",
+        max_tokens: 256,
+        temperature: 0.2,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ]
+      });
+      responseText = message.choices[0]?.message?.content || "";
+
+    } else if (selectedProvider === "groq") {
       const apiKey = process.env.GROQ_API_KEY;
       if (!apiKey) throw new Error("GROQ_API_KEY not configured");
 
