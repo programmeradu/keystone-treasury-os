@@ -1,9 +1,10 @@
-"use client";
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useOthers, useSelf, useBroadcastEvent, useEventListener } from "@/liveblocks.config";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Users, Shield, Zap, MessageSquare, Activity, Send, CheckCircle2, Play } from "lucide-react";
+import {
+    Users, Shield, Zap, MessageSquare, Activity, Send, CheckCircle2, Play,
+    ScanFace, Fingerprint, Radio, Siren, Globe, Lock, Cpu, Signal, Wifi
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CollaborativeChat } from "@/components/CollaborativeChat";
 import { useSquadsMultisig } from "@/hooks/useSquadsMultisig";
@@ -21,7 +22,7 @@ export default function TeamPage() {
     const [vaultAddress, setVaultAddress] = useState("");
 
     return (
-        <div className="flex-1 flex flex-col h-screen bg-[#0B0C10] overflow-hidden">
+        <div className="flex-1 flex flex-col h-screen bg-[#0B0C10] overflow-hidden font-mono">
             {/* Team Header (Consolidated) */}
             <header className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-[#0B0C10]/50 backdrop-blur-md z-10">
                 <div className="flex flex-col gap-1">
@@ -51,8 +52,8 @@ export default function TeamPage() {
                 </div>
             </header>
 
-            <div className="flex-1 p-8 overflow-y-auto custom-scrollbar bg-[#0B0C10]">
-                <div className="max-w-7xl mx-auto space-y-8">
+            <div className="flex-1 p-6 overflow-y-auto custom-scrollbar bg-[#0B0C10]">
+                <div className="max-w-[1600px] mx-auto space-y-6">
                     {/* Compact Section Header */}
                     <div className="flex items-center justify-between">
                         <div>
@@ -64,21 +65,25 @@ export default function TeamPage() {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* Main Grid: Team Members */}
+                        {/* Main Grid: Team Members & History */}
                         <div className="lg:col-span-2 space-y-6">
-                            <div className="bg-[#0f1115] border border-white/5 rounded-2xl p-6 glass-morphism">
-                                <div className="flex items-center justify-between mb-6">
-                                    <h3 className="text-white font-bold uppercase tracking-tighter flex items-center gap-2">
-                                        <Users size={16} className="text-[#36e27b]" />
+
+                            {/* 1. Active Operatives (Polished Grid) */}
+                            <div className="bg-[#0f1115] border border-white/5 rounded-2xl p-6 relative overflow-hidden group">
+                                <div className="absolute inset-0 bg-[linear-gradient(rgba(54,226,123,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(54,226,123,0.02)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none" />
+
+                                <div className="relative z-10 mb-6 flex items-center justify-between">
+                                    <h3 className="text-white font-bold uppercase tracking-widest flex items-center gap-2 text-xs">
+                                        <ScanFace size={16} className="text-[#36e27b]" />
                                         Active Operatives
                                     </h3>
                                     <div className="flex -space-x-2">
-                                        <Avatar className="h-6 w-6 ring-2 ring-[#0B0C10]">
+                                        <Avatar className="h-6 w-6 ring-2 ring-[#0B0C10] grayscale transition-all hover:grayscale-0">
                                             <AvatarImage src={getAvatarUrl(self?.info?.name || "ME")} />
                                             <AvatarFallback>ME</AvatarFallback>
                                         </Avatar>
                                         {others.map(o => (
-                                            <Avatar key={o.connectionId} className="h-6 w-6 ring-2 ring-[#0B0C10]">
+                                            <Avatar key={o.connectionId} className="h-6 w-6 ring-2 ring-[#0B0C10] grayscale transition-all hover:grayscale-0">
                                                 <AvatarImage src={getAvatarUrl(o.info?.name || "Collaborator")} />
                                                 <AvatarFallback>?</AvatarFallback>
                                             </Avatar>
@@ -86,7 +91,7 @@ export default function TeamPage() {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
                                     {/* Self */}
                                     <MemberCard
                                         name={self?.info?.name || "You"}
@@ -120,45 +125,51 @@ export default function TeamPage() {
                                 </div>
                             </div>
 
-                            {/* Activity Log */}
-                            <div className="bg-[#0f1115] border border-white/5 rounded-2xl p-6 glass-morphism">
-                                <h3 className="text-white font-bold mb-4 uppercase tracking-tighter flex items-center gap-2">
-                                    <Activity size={16} className="text-[#36e27b]" />
-                                    Command History
-                                </h3>
-                                <div className="space-y-4">
+                            {/* 2. Command History (Terminal Style) */}
+                            <div className="bg-[#0f1115] border border-white/5 rounded-2xl p-0 overflow-hidden flex flex-col min-h-[300px]">
+                                <div className="p-4 border-b border-white/5 bg-[#0B0C10]/50 flex items-center justify-between">
+                                    <h3 className="text-white font-bold uppercase tracking-widest flex items-center gap-2 text-xs">
+                                        <TerminalSquare size={16} className="text-[#36e27b]" />
+                                        Tactical Log
+                                    </h3>
+                                    <span className="text-[10px] text-[#9eb7a8] font-mono">LIVE FEED // AES-256</span>
+                                </div>
+                                <div className="p-4 space-y-2 font-mono text-xs flex-1">
                                     <ActivityItem
                                         user="Neural Agent 01"
                                         action="SIMULATED TRANSACTION"
                                         target="Jupiter Swap: 10 SOL -> USDC"
-                                        time="2 mins ago"
+                                        time="02:42:12"
                                     />
                                     <ActivityItem
                                         user="You"
                                         action="UPDATED TREASURY"
                                         target="New Vault Linked"
-                                        time="10 mins ago"
+                                        time="02:30:05"
                                     />
+                                    <ActivityItem
+                                        user="Neural Agent 01"
+                                        action="RISK SCAN"
+                                        target="Liquidity Check: PASSED"
+                                        time="02:15:00"
+                                    />
+                                    <div className="flex items-center gap-2 opacity-50 pt-2">
+                                        <span className="text-[#36e27b] animate-pulse">_</span>
+                                        <span className="italic text-[#9eb7a8]">Awaiting new signals...</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Sidebar: Coordination */}
+                        {/* Sidebar: War Room & Neural Uplink */}
                         <div className="space-y-6">
                             <WarRoom vaultAddress={vaultAddress} />
 
                             {/* Collaborative Chat */}
                             <CollaborativeChat />
 
-                            {/* Role Overview */}
-                            <div className="bg-[#0f1115] border border-white/5 rounded-2xl p-6 glass-morphism">
-                                <h3 className="text-white font-bold mb-4 uppercase tracking-tighter">Permissions</h3>
-                                <div className="space-y-3">
-                                    <PermissionItem icon={Shield} label="Admin Control" active />
-                                    <PermissionItem icon={Zap} label="Fast Execution" active />
-                                    <PermissionItem icon={MessageSquare} label="Governance Voting" active />
-                                </div>
-                            </div>
+                            {/* Neural Uplink (Replaces Permissions) */}
+                            <NeuralUplink />
                         </div>
                     </div>
                 </div>
@@ -195,43 +206,46 @@ function WarRoom({ vaultAddress }: { vaultAddress: string }) {
     };
 
     return (
-        <div className="bg-[#0f1115] border border-white/5 rounded-2xl p-6 glass-morphism border-l-4 border-[#36e27b] relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-2">
+        <div className="bg-[#0f1115] border border-white/5 rounded-2xl p-6 relative overflow-hidden group">
+            {/* Diagonal Stripes Warning Pattern */}
+            <div className="absolute top-0 left-0 w-full h-1 bg-[repeating-linear-gradient(45deg,#36e27b,#36e27b_10px,transparent_10px,transparent_20px)] opacity-50" />
+
+            <div className="absolute top-4 right-4">
                 <div className="w-1.5 h-1.5 rounded-full bg-[#36e27b] animate-pulse shadow-[0_0_8px_#36e27b]" />
             </div>
 
-            <h3 className="text-white font-bold mb-2 uppercase tracking-tighter flex items-center gap-2">
-                <Shield size={16} className="text-[#36e27b]" />
+            <h3 className="text-white font-bold mb-1 uppercase tracking-widest flex items-center gap-2 text-xs">
+                <Siren size={16} className="text-[#36e27b]" />
                 War Room
             </h3>
-            <p className="text-[#9eb7a8] text-[10px] uppercase font-bold tracking-widest mb-4">Live Governance Feed</p>
+            <p className="text-[#9eb7a8] text-[9px] uppercase font-bold tracking-widest mb-6 border-b border-white/5 pb-2">DEFCON 4 // Live Governance</p>
 
             <div className="space-y-4">
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-8 gap-4">
                         <div className="w-8 h-8 border-2 border-[#36e27b] border-t-transparent rounded-full animate-spin" />
-                        <span className="text-[10px] text-[#9eb7a8] uppercase font-black">Synchronizing Proposals...</span>
+                        <span className="text-[10px] text-[#9eb7a8] uppercase font-black">Syncing...</span>
                     </div>
                 ) : !vaultAddress ? (
-                    <div className="p-4 bg-black/40 rounded-xl border border-white/5 text-center">
+                    <div className="p-4 bg-black/40 rounded-xl border border-dashed border-white/10 text-center">
                         <p className="text-[10px] text-[#9eb7a8] uppercase font-black">Sync a Vault to access War Room</p>
                     </div>
                 ) : proposals.length === 0 ? (
-                    <div className="p-4 bg-black/40 rounded-xl border border-white/5 text-center">
-                        <p className="text-[10px] text-[#9eb7a8] uppercase font-black">No active transactions at threshold</p>
+                    <div className="p-4 bg-black/40 rounded-xl border border-dashed border-white/10 text-center">
+                        <p className="text-[10px] text-[#9eb7a8] uppercase font-black">No Active Proposals</p>
                     </div>
                 ) : (
                     proposals.map((p) => (
                         <motion.div
                             key={p.index}
                             layout
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="p-4 bg-black/60 rounded-xl border border-[#36e27b]/20 space-y-3"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="p-3 bg-black/60 rounded border-l-2 border-[#36e27b] space-y-2 hover:bg-white/5 transition-colors"
                         >
                             <div className="flex items-center justify-between">
-                                <span className="text-xs font-black text-white">Proposal #{p.index}</span>
-                                <span className={`text-[9px] uppercase font-black px-2 py-0.5 rounded ${p.status === 'Active' ? 'bg-[#36e27b]/20 text-[#36e27b]' : 'bg-white/5 text-[#9eb7a8]'}`}>
+                                <span className="text-xs font-black text-white font-mono">PROP-#{p.index}</span>
+                                <span className={`text-[9px] uppercase font-black px-1.5 py-0.5 rounded ${p.status === 'Active' ? 'bg-[#36e27b]/20 text-[#36e27b]' : 'bg-white/5 text-[#9eb7a8]'}`}>
                                     {p.status}
                                 </span>
                             </div>
@@ -243,20 +257,20 @@ function WarRoom({ vaultAddress }: { vaultAddress: string }) {
                                         style={{ width: `${(p.signatures / p.threshold) * 100}%` }}
                                     />
                                 </div>
-                                <span className="text-[10px] text-[#36e27b] font-bold">{p.signatures}/{p.threshold}</span>
+                                <span className="text-[9px] text-[#36e27b] font-mono">{p.signatures}/{p.threshold}</span>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-2 gap-2 pt-1">
                                 <Button
-                                    className="h-8 bg-white/5 hover:bg-white/10 text-white text-[10px] font-bold uppercase gap-2"
+                                    className="h-7 bg-white/5 hover:bg-white/10 text-white text-[9px] font-bold uppercase gap-2 border border-white/5"
                                     onClick={() => handleSimulate(p.index)}
                                     disabled={simulating === p.index}
                                 >
                                     <Play size={10} className={simulating === p.index ? "animate-pulse" : ""} />
-                                    {simulating === p.index ? "Running..." : "Simulate"}
+                                    {simulating === p.index ? "..." : "Sim"}
                                 </Button>
                                 <Button
-                                    className="h-8 bg-[#36e27b] hover:bg-[#25a85c] text-black text-[10px] font-bold uppercase gap-2"
+                                    className="h-7 bg-[#36e27b] hover:bg-[#25a85c] text-black text-[9px] font-bold uppercase gap-2"
                                     onClick={() => signProposal(p.index)}
                                 >
                                     <CheckCircle2 size={10} />
@@ -273,11 +287,14 @@ function WarRoom({ vaultAddress }: { vaultAddress: string }) {
 
 function MemberCard({ name, role, status, isSelf, avatar, color }: any) {
     return (
-        <div className="p-4 bg-black/40 border border-white/5 rounded-xl flex items-center gap-4 hover:border-[#36e27b]/30 transition-all group">
+        <div className="p-3 bg-black/40 border border-white/5 rounded-lg flex items-center gap-4 hover:border-[#36e27b]/50 transition-all group relative overflow-hidden">
+            {/* Holographic Corner */}
+            <div className="absolute top-0 right-0 w-8 h-8 bg-gradient-to-bl from-[#36e27b]/10 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />
+
             <div className="relative">
-                <Avatar className="h-10 w-10 ring-1 ring-white/10 ring-offset-2 ring-offset-[#0B0C10]">
+                <Avatar className="h-10 w-10 ring-1 ring-white/10 ring-offset-1 ring-offset-[#0B0C10]">
                     <AvatarImage src={avatar} />
-                    <AvatarFallback className="text-xs font-bold" style={{ backgroundColor: `${color}22`, color: color }}>
+                    <AvatarFallback className="text-xs font-bold font-mono" style={{ backgroundColor: `${color}22`, color: color }}>
                         {name.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                 </Avatar>
@@ -287,8 +304,11 @@ function MemberCard({ name, role, status, isSelf, avatar, color }: any) {
                 />
             </div>
             <div>
-                <h4 className="text-sm font-bold text-white group-hover:text-[#36e27b] transition-colors">{name} {isSelf && "(You)"}</h4>
-                <p className="text-[10px] text-[#9eb7a8] uppercase tracking-tighter font-semibold">{role}</p>
+                <h4 className="text-xs font-bold text-white group-hover:text-[#36e27b] transition-colors font-mono tracking-tight">{name} {isSelf && "(You)"}</h4>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                    <Fingerprint size={10} className="text-[#9eb7a8]" />
+                    <p className="text-[9px] text-[#9eb7a8] uppercase tracking-wider font-semibold">{role}</p>
+                </div>
             </div>
         </div>
     );
@@ -296,29 +316,95 @@ function MemberCard({ name, role, status, isSelf, avatar, color }: any) {
 
 function ActivityItem({ user, action, target, time }: any) {
     return (
-        <div className="flex gap-4 p-3 rounded-lg hover:bg-white/5 transition-colors">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#36e27b] mt-1.5" />
-            <div className="flex-1">
-                <div className="flex items-center justify-between mb-0.5">
+        <div className="flex gap-4 p-2 rounded hover:bg-white/5 transition-colors group">
+            <span className="text-[10px] text-[#36e27b] font-mono opacity-50 group-hover:opacity-100 min-w-[50px]">{time}</span>
+            <div className="flex-1 border-l border-white/5 pl-4 relative">
+                <div className="absolute left-[-1px] top-[6px] w-2 h-px bg-[#36e27b] opacity-0 group-hover:opacity-100" />
+                <div className="flex flex-col">
                     <span className="text-[10px] text-white font-bold">{user}</span>
-                    <span className="text-[9px] text-[#9eb7a8] uppercase font-black">{time}</span>
+                    <p className="text-[10px] text-[#9eb7a8] uppercase tracking-tight">
+                        <span className="text-[#36e27b] font-bold">{action}</span> <span className="text-white/30 px-1">//</span> {target}
+                    </p>
                 </div>
-                <p className="text-[10px] text-[#9eb7a8] uppercase tracking-tighter font-bold">
-                    <span className="text-[#36e27b]">{action}</span> // {target}
-                </p>
             </div>
         </div>
     );
 }
 
-function PermissionItem({ icon: Icon, label, active }: any) {
+function NeuralUplink() {
+    const [latency, setLatency] = useState(12);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setLatency(prev => Math.max(8, Math.min(45, prev + (Math.random() * 10 - 5))));
+        }, 1000);
+        return () => clearInterval(interval);
+    }, []);
+
     return (
-        <div className={`flex items-center justify-between p-2 rounded-lg ${active ? 'bg-[#36e27b]/5 border border-[#36e27b]/10' : 'opacity-40'}`}>
-            <div className="flex items-center gap-2">
-                <Icon size={12} className={active ? "text-[#36e27b]" : "text-[#9eb7a8]"} />
-                <span className="text-[10px] font-bold text-white uppercase">{label}</span>
+        <div className="bg-[#0f1115] border border-white/5 rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between min-h-[160px]">
+            <div className="flex items-center justify-between mb-4 z-10">
+                <h3 className="text-white font-bold uppercase tracking-widest flex items-center gap-2 text-xs">
+                    <Radio size={16} className="text-[#36e27b]" />
+                    Neural Uplink
+                </h3>
+                <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#36e27b] animate-pulse" />
+                    <span className="text-[9px] font-mono text-[#36e27b]">CONNECTED</span>
+                </div>
             </div>
-            {active && <Zap size={10} className="text-[#36e27b] fill-[#36e27b]" />}
+
+            <div className="flex-1 flex items-end justify-between gap-1 h-12 mb-4 opacity-50">
+                {[...Array(20)].map((_, i) => (
+                    <div
+                        key={i}
+                        className="w-full bg-[#36e27b]"
+                        style={{
+                            height: `${Math.random() * 100}%`,
+                            animation: `pulse 0.5s infinite ${i * 0.05}s`
+                        }}
+                    />
+                ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 z-10 border-t border-white/5 pt-3">
+                <div>
+                    <span className="text-[9px] text-[#9eb7a8] uppercase block mb-1">Encryption</span>
+                    <div className="flex items-center gap-1 text-white text-[10px] font-mono font-bold">
+                        <Lock size={10} className="text-[#36e27b]" />
+                        AES-256-GCM
+                    </div>
+                </div>
+                <div className="text-right">
+                    <span className="text-[9px] text-[#9eb7a8] uppercase block mb-1">Latency</span>
+                    <div className="flex items-center justify-end gap-1 text-white text-[10px] font-mono font-bold">
+                        <Wifi size={10} className="text-[#36e27b]" />
+                        {latency.toFixed(0)}ms
+                    </div>
+                </div>
+            </div>
         </div>
     );
+}
+
+// Helper for icon
+function TerminalSquare({ size, className }: any) {
+    return (
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={className}
+        >
+            <path d="m7 11 2-2-2-2" />
+            <path d="M11 13h4" />
+            <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+        </svg>
+    )
 }

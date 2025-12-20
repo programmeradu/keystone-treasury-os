@@ -105,54 +105,10 @@ export default function SettingsPage() {
             <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
                 <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Main Column */}
-                    <div className="lg:col-span-2 space-y-8">
-
-                        {/* Agent Personas Section */}
-                        <section className="bg-[#0F1115] border border-white/5 rounded-2xl p-6 relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-                                <Cpu size={120} />
-                            </div>
-                            <div className="flex items-center gap-3 mb-6 relative z-10">
-                                <div className="w-10 h-10 rounded-xl bg-[#36e27b]/10 flex items-center justify-center text-[#36e27b] border border-[#36e27b]/20 shadow-[0_0_15px_rgba(54,226,123,0.1)]">
-                                    <Cpu size={20} />
-                                </div>
-                                <div>
-                                    <h2 className="text-lg font-bold text-white uppercase tracking-tight">Agent Neural Weights</h2>
-                                    <p className="text-xs text-[#9eb7a8]">Configure autonomous behavior and risk thresholds.</p>
-                                </div>
-                            </div>
-                            <RiskProfileSelector />
-                        </section>
-
-                        {/* Security Section */}
-                        <section className="bg-[#0F1115] border border-white/5 rounded-2xl p-6 relative overflow-hidden">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 border border-blue-500/20">
-                                    <Gavel size={20} />
-                                </div>
-                                <div>
-                                    <h2 className="text-lg font-bold text-white uppercase tracking-tight">Multisig Governance</h2>
-                                    <p className="text-xs text-[#9eb7a8]">Manage signers, thresholds, and timelocks.</p>
-                                </div>
-                            </div>
-                            <div className="rounded-xl bg-black/40 border border-white/5 p-8 flex flex-col items-center justify-center text-center space-y-4">
-                                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-2">
-                                    <Gavel size={32} className="text-[#9eb7a8] opacity-50" />
-                                </div>
-                                <div className="max-w-sm">
-                                    <h3 className="text-sm font-bold text-white mb-1">Squads v4 Integration Active</h3>
-                                    <p className="text-[#9eb7a8] text-xs leading-relaxed">
-                                        Vault policies are immutable and managed directly via the Squads Protocol on-chain.
-                                    </p>
-                                </div>
-                                <button className="px-5 py-2.5 rounded-lg bg-[#36e27b] hover:bg-[#25a85c] text-[#0B0C10] text-xs font-bold transition-all flex items-center gap-2">
-                                    View On-Chain Policy <ExternalIcon />
-                                </button>
-                            </div>
-                        </section>
-
+                    {/* Main Column */}
+                    <div className="lg:col-span-2">
+                        {renderContent()}
                     </div>
-
                     {/* Sidebar Column */}
                     <div className="space-y-6">
                         {/* Account Settings */}
@@ -227,8 +183,12 @@ export default function SettingsPage() {
 function SettingsItem({ icon: Icon, label, badge, active, onClick }: any) {
     return (
         <button
-            onClick={onClick}
-            className={`w-full flex items-center justify-between p-3 rounded-lg hover:bg-white/5 text-left group transition-all duration-200 ${active ? 'bg-white/5' : ''}`}
+            type="button"
+            onClick={(e) => {
+                e.preventDefault();
+                onClick();
+            }}
+            className={`w-full flex items-center justify-between p-3 rounded-lg hover:bg-white/5 text-left group transition-all duration-200 cursor-pointer relative z-10 ${active ? 'bg-white/5' : ''}`}
         >
             <div className="flex items-center gap-3">
                 <Icon size={16} className={`transition-colors ${active ? 'text-white' : 'text-[#9eb7a8] group-hover:text-white'}`} />
@@ -256,3 +216,4 @@ function ExternalIcon() {
         </svg>
     )
 }
+

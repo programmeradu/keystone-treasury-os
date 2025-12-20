@@ -12,6 +12,9 @@ import { Button } from "@/components/ui/button";
 import { VaultTable } from "@/components/VaultTable";
 import { TreasuryChart } from "@/components/TreasuryChart";
 import { CollaborativeHeader } from "@/components/CollaborativeHeader";
+import { AgentCommandCenter } from "@/components/dashboard/AgentCommandCenter";
+import { RiskRadar } from "@/components/dashboard/RiskRadar";
+import { VaultAssetsCompact } from "@/components/dashboard/VaultAssetsCompact";
 import { Suspense } from "react";
 
 // Define locally or import from types
@@ -221,21 +224,22 @@ export default function AppPortalPage() {
             </div>
           </div>
 
-          {/* 3. Vault Assets Table (Bottom Wide & Compact) */}
-          <div className="lg:col-span-3 rounded-2xl bg-[#1F2833]/30 backdrop-blur-xl border border-white/5 p-6 relative overflow-hidden min-h-[300px]">
-            <div className="flex justify-between items-center mb-4 z-10 relative">
-              <div className="flex items-center gap-4">
-                <div>
-                  <h2 className="text-[#9eb7a8] uppercase tracking-widest text-[10px] font-semibold mb-0.5">Vault Assets</h2>
-                  <p className="text-sm font-bold text-white">{tokens.length} Active Positions</p>
-                </div>
-              </div>
-              <button className="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-[#9eb7a8] border border-transparent hover:border-white/5">
-                <RefreshCw size={14} />
-              </button>
+          {/* 3. Visionary Dashboard Row (3-Column Grid) */}
+          <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4 min-h-[300px]">
+            {/* 3.1 Agent Command Layer */}
+            <div className="h-full">
+              <AgentCommandCenter />
             </div>
 
-            <VaultTable tokens={tokens} />
+            {/* 3.2 Risk Radar */}
+            <div className="h-full">
+              <RiskRadar />
+            </div>
+
+            {/* 3.3 Asset List (Data) */}
+            <div className="h-full">
+              <VaultAssetsCompact tokens={tokens} />
+            </div>
           </div>
 
         </div>
