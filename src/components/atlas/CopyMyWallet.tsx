@@ -66,7 +66,7 @@ export function CopyMyWallet() {
           const pageMock = new URL(window.location.href).searchParams.get("mock");
           if (String(pageMock || "").toLowerCase() === "true") url += "&mock=true";
         }
-      } catch {}
+      } catch { }
       const response = await fetch(url);
 
       const raw = await response.text();
@@ -100,7 +100,7 @@ export function CopyMyWallet() {
 
       // Extract token mints for price fetching
       const mints = tokens.map((t: any) => t.mint || t.address).filter(Boolean).join(",");
-      
+
       let priceData: any = {};
       if (mints) {
         const priceResponse = await fetch(`/api/jupiter/price?mints=${encodeURIComponent(mints)}`);
@@ -117,10 +117,10 @@ export function CopyMyWallet() {
         const amount = parseFloat(token.amount || token.balance || 0);
         const decimals = token.decimals || 9;
         const adjustedAmount = amount / Math.pow(10, decimals);
-        
+
         const price = priceData[mint]?.price || 0;
         const valueUSD = adjustedAmount * price;
-        
+
         holdings.push({
           token: mint,
           symbol: symbol,
@@ -191,7 +191,7 @@ export function CopyMyWallet() {
 
   const handleCopyPortfolio = () => {
     const plan = generateTransactionPlan();
-    
+
     if (!plan) {
       toast.error("No portfolio to copy");
       return;
@@ -219,7 +219,7 @@ export function CopyMyWallet() {
     <div className="h-full">
       <Card className="atlas-card relative overflow-hidden h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)] min-h-[360px]">
         <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
-        
+
         <CardHeader className="pb-2 flex flex-col gap-2">
           <div className="flex h-8 items-center justify-between gap-2">
             <CardTitle className="text-sm leading-none whitespace-nowrap">
@@ -321,7 +321,7 @@ export function CopyMyWallet() {
                       className="relative overflow-hidden rounded-md p-2 text-xs bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 transition-colors hover:shadow-[0_6px_18px_-12px_rgba(0,0,0,0.3)]"
                     >
                       <span className="pointer-events-none absolute -top-8 -right-8 h-16 w-16 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/25%,transparent_70%)]" />
-                      
+
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{holding.symbol}</span>
@@ -333,11 +333,11 @@ export function CopyMyWallet() {
                           {formatCurrency(holding.valueUSD)}
                         </div>
                       </div>
-                      
+
                       <div className="opacity-70 text-[10px] font-mono truncate">
                         {holding.amount.toFixed(6)} tokens
                       </div>
-                      
+
                       {/* Allocation Bar */}
                       <div className="mt-1.5 h-1 bg-muted/30 rounded-full overflow-hidden">
                         <div

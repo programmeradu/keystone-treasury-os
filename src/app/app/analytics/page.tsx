@@ -6,6 +6,7 @@ import { SquadsClient } from "@/lib/squads";
 import { PortfolioDonut } from "@/components/charts/PortfolioDonut";
 import { ValueStreamChart } from "@/components/charts/ValueStreamChart";
 import { PredictiveRunway } from "@/components/analytics/PredictiveRunway";
+import { MarketSentiment } from "@/components/analytics/MarketSentiment";
 import { RefreshCw, TrendingUp, ShieldAlert, BarChart3 } from "lucide-react";
 import { WalletButton } from "@/components/WalletButton";
 import { CollaborativeHeader } from "@/components/CollaborativeHeader";
@@ -119,7 +120,7 @@ export default function AnalyticsPage() {
                         </div>
                     </div>
 
-                    {/* Asset Allocation Donut */}
+                    {/* Asset Allocation Donut (Moved Up) */}
                     <div className="md:col-span-2 lg:col-span-2 rounded-2xl bg-[#1F2833]/30 border border-white/5 p-6 backdrop-blur-xl">
                         <span className="text-[10px] text-[#9eb7a8] uppercase tracking-widest font-semibold block mb-4">Allocation Mix</span>
                         <PortfolioDonut data={allocationData.length > 0 ? allocationData : [{ name: "Empty", value: 100 }]} />
@@ -135,6 +136,16 @@ export default function AnalyticsPage() {
                                 </div>
                             ))}
                         </div>
+                    </div>
+
+                    {/* Predictive Runway (Phase 15 - Future) */}
+                    <div className="md:col-span-4 lg:col-span-4">
+                        <PredictiveRunway />
+                    </div>
+
+                    {/* Market Sentiment (New Intelligent Card) */}
+                    <div className="md:col-span-2 lg:col-span-2">
+                        <MarketSentiment />
                     </div>
 
                     {/* Risk Metrics Row */}

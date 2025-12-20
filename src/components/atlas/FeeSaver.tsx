@@ -63,7 +63,7 @@ export function FeeSaver() {
 
     try {
       const address = publicKey.toBase58();
-      
+
       // Call the real transaction bundle analysis API
       let url = `/api/solana/transaction-bundle?address=${address}&limit=50`;
       try {
@@ -71,7 +71,7 @@ export function FeeSaver() {
           const pageMock = new URL(window.location.href).searchParams.get("mock");
           if (String(pageMock || "").toLowerCase() === "true") url += "&mock=true";
         }
-      } catch {}
+      } catch { }
       const response = await fetch(url, { cache: "no-store" });
 
       // Safely parse JSON: some upstream/network errors may return an empty body
@@ -139,7 +139,7 @@ export function FeeSaver() {
     }
 
     setBundling(true);
-    
+
     try {
       // In a real implementation, this would:
       // 1. Collect all the pending transaction instructions
@@ -195,7 +195,7 @@ export function FeeSaver() {
     <div className="h-full">
       <Card className="atlas-card relative overflow-hidden h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)] min-h-[360px]">
         <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
-        
+
         <CardHeader className="pb-2 flex flex-col gap-2">
           <div className="flex h-8 items-center justify-between gap-2">
             <CardTitle className="text-sm leading-none whitespace-nowrap">
@@ -311,7 +311,7 @@ export function FeeSaver() {
                           className="relative overflow-hidden rounded-md p-2 text-xs bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40"
                         >
                           <span className="pointer-events-none absolute -top-8 -right-8 h-16 w-16 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/25%,transparent_70%)]" />
-                          
+
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <span className="opacity-60">{index + 1}.</span>

@@ -38,7 +38,7 @@ export const CollaborativeChat = () => {
         <div className="flex flex-col h-[400px] bg-[#0f1115] border border-white/5 rounded-2xl overflow-hidden glass-morphism">
             {/* Header */}
             <div className="p-4 border-b border-white/5 flex items-center justify-between">
-                <h3 className="text-white font-bold uppercase tracking-tighter italic flex items-center gap-2">
+                <h3 className="text-white font-bold uppercase tracking-tighter flex items-center gap-2">
                     <MessageSquare size={16} className="text-[#36e27b]" />
                     Team Comms
                 </h3>

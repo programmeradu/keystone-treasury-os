@@ -17,15 +17,16 @@ import {
   CheckCircle2,
   Terminal,
   Telescope,
-  Loader2 } from
-"lucide-react";
+  Loader2
+} from
+  "lucide-react";
 import TreasurySimulator from "@/components/TreasurySimulator";
 import { useAccount } from "wagmi";
 
 export const HomeClient = () => {
   // Unified 4K real-photo background for the entire page
   const bgUnified =
-  "https://slelguoygbfzlpylpxfs.supabase.co/storage/v1/object/public/project-uploads/839a9d0f-c8ea-4ee9-aa5d-ded18c4cf0d9/generated_images/ultra-high-resolution-4k-landing-page-ba-e163bb04-20250928041253.jpg?";
+    "https://slelguoygbfzlpylpxfs.supabase.co/storage/v1/object/public/project-uploads/839a9d0f-c8ea-4ee9-aa5d-ded18c4cf0d9/generated_images/ultra-high-resolution-4k-landing-page-ba-e163bb04-20250928041253.jpg?";
 
   return (
     <div
@@ -64,15 +65,15 @@ function Header() {
   useEffect(() => {
     const ids = ["content", "features", "showcase", "use-cases", "contact"];
     const sections = ids.
-    map((id) => document.getElementById(id)).
-    filter(Boolean) as HTMLElement[];
+      map((id) => document.getElementById(id)).
+      filter(Boolean) as HTMLElement[];
 
     const observer = new IntersectionObserver(
       (entries) => {
         // pick the entry nearest to top that's intersecting
         const visible = entries.
-        filter((e) => e.isIntersecting).
-        sort((a, b) => a.boundingClientRect.top > b.boundingClientRect.top ? 1 : -1);
+          filter((e) => e.isIntersecting).
+          sort((a, b) => a.boundingClientRect.top > b.boundingClientRect.top ? 1 : -1);
         if (visible[0]?.target?.id) {
           setActive(`#${visible[0].target.id}`);
         }
@@ -85,7 +86,7 @@ function Header() {
   }, []);
 
   const baseLink =
-  "font-semibold opacity-95 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-sm";
+    "font-semibold opacity-95 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-sm";
   const activeLink = "opacity-100 text-foreground border-b-2 border-foreground/60 pb-0.5";
 
   return (
@@ -109,7 +110,7 @@ function Header() {
           <Button size="sm" asChild>
             <a href="#contact" aria-label="Request access to Keystone">Request Access</a>
           </Button>
-          
+
         </div>
       </div>
       {/* Mobile nav */}
@@ -164,7 +165,7 @@ function HeroSection() {
 
 }
 
-function Stat({ label, value }: {label: string;value: string;}) {
+function Stat({ label, value }: { label: string; value: string; }) {
   return (
     <div className="rounded-md border border-border/70 bg-background/70 px-3 py-2">
       <div className="text-sm font-medium">{value}</div>
@@ -175,26 +176,26 @@ function Stat({ label, value }: {label: string;value: string;}) {
 
 function FeaturesSection() {
   const items = [
-  {
-    icon: Bot,
-    title: "Natural Language Ops",
-    desc: "Execute swaps, bridges, staking, and multi-sig flows with one prompt."
-  },
-  {
-    icon: ShieldCheck,
-    title: "Secure by Design",
-    desc: "Policy-driven limits, approvals, and best-in-class key management."
-  },
-  {
-    icon: Layers,
-    title: "Composable Workflows",
-    desc: "Chain steps together and reuse them as named playbooks across teams."
-  },
-  {
-    icon: Zap,
-    title: "Real-time Execution",
-    desc: "Low-latency routing and on-chain confirmations surfaced instantly."
-  }];
+    {
+      icon: Bot,
+      title: "Natural Language Ops",
+      desc: "Execute swaps, bridges, staking, and multi-sig flows with one prompt."
+    },
+    {
+      icon: ShieldCheck,
+      title: "Secure by Design",
+      desc: "Policy-driven limits, approvals, and best-in-class key management."
+    },
+    {
+      icon: Layers,
+      title: "Composable Workflows",
+      desc: "Chain steps together and reuse them as named playbooks across teams."
+    },
+    {
+      icon: Zap,
+      title: "Real-time Execution",
+      desc: "Low-latency routing and on-chain confirmations surfaced instantly."
+    }];
 
 
   return (
@@ -208,7 +209,7 @@ function FeaturesSection() {
         </div>
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {items.map((f) =>
-          <Card key={f.title} className="border-border/70 bg-background/70 transition-colors hover:bg-background/80 hover:border-border supports-[backdrop-filter]:backdrop-blur-sm">
+            <Card key={f.title} className="border-border/70 bg-background/70 transition-colors hover:bg-background/80 hover:border-border supports-[backdrop-filter]:backdrop-blur-sm">
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-2">
                   <f.icon className="h-4 w-4" />
@@ -252,11 +253,11 @@ function SolanaAtlasSection() {
             });
           }
         }
-      } catch {}
+      } catch { }
     }
     run();
     const id = setInterval(run, 30000);
-    return () => {abort = true;clearInterval(id);};
+    return () => { abort = true; clearInterval(id); };
   }, []);
 
   return (
@@ -280,7 +281,7 @@ function SolanaAtlasSection() {
                 style={{ backgroundImage: `url(${atlasCover})` }} />
 
               {/* overlay removed for a clear image */}
-              
+
               <div className="absolute bottom-2 right-2 rounded-md bg-background/80 px-2 py-1 text-xs font-medium">
                 Open Atlas →
               </div>
@@ -331,18 +332,18 @@ function SolanaAtlasSection() {
               {/* Sparkline */}
               <div className="mt-3 h-16 rounded-md border border-border/70 bg-background/60 p-1">
                 {solSeries.length >= 2 ?
-                <svg viewBox="0 0 100 32" className="h-full w-full">
+                  <svg viewBox="0 0 100 32" className="h-full w-full">
                     {(() => {
-                    const min = Math.min(...solSeries);
-                    const max = Math.max(...solSeries);
-                    const span = max - min || 1;
-                    const pts = solSeries.map((v, i) => {
-                      const x = i / (solSeries.length - 1) * 100;
-                      const y = 32 - (v - min) / span * 30 - 1; // padding 1px
-                      return `${x},${y}`;
-                    }).join(" ");
-                    return (
-                      <>
+                      const min = Math.min(...solSeries);
+                      const max = Math.max(...solSeries);
+                      const span = max - min || 1;
+                      const pts = solSeries.map((v, i) => {
+                        const x = i / (solSeries.length - 1) * 100;
+                        const y = 32 - (v - min) / span * 30 - 1; // padding 1px
+                        return `${x},${y}`;
+                      }).join(" ");
+                      return (
+                        <>
                           <polyline points={pts} fill="none" stroke="currentColor" strokeOpacity="0.9" strokeWidth="1.2" />
                           {/* gradient fill under line */}
                           <defs>
@@ -352,17 +353,17 @@ function SolanaAtlasSection() {
                             </linearGradient>
                           </defs>
                           <path
-                          d={`M0,32 L ${pts.replace(/ /g, ' L ')} L100,32 Z`}
-                          fill="url(#solGrad)"
-                          opacity="0.6" />
+                            d={`M0,32 L ${pts.replace(/ /g, ' L ')} L100,32 Z`}
+                            fill="url(#solGrad)"
+                            opacity="0.6" />
 
                         </>
-                    );
+                      );
 
-                  })()}
+                    })()}
                   </svg> :
 
-                <div className="h-full w-full grid place-items-center text-[11px] opacity-60">Loading trend…</div>
+                  <div className="h-full w-full grid place-items-center text-[11px] opacity-60">Loading trend…</div>
                 }
               </div>
             </CardContent>
@@ -412,7 +413,7 @@ export function ShowcaseSection() {
   const [toolResult, setToolResult] = useState<any>(null);
   const [toolError, setToolError] = useState<string | null>(null);
   // Intent Preview (debounced parser)
-  const [intentPreview, setIntentPreview] = useState<null | {intent?: string;steps?: any[];references?: any[];}>(null);
+  const [intentPreview, setIntentPreview] = useState<null | { intent?: string; steps?: any[]; references?: any[]; }>(null);
   const [parseLoading, setParseLoading] = useState(false);
   // Mini Solana Atlas widget prices
   const [solPrice, setSolPrice] = useState<number | null>(null);
@@ -441,7 +442,7 @@ export function ShowcaseSection() {
 
   // Debounced parse for intent preview
   useEffect(() => {
-    if (!command || command.trim().length < 3) {setIntentPreview(null);return;}
+    if (!command || command.trim().length < 3) { setIntentPreview(null); return; }
     let alive = true;
     const id = setTimeout(async () => {
       try {
@@ -453,15 +454,15 @@ export function ShowcaseSection() {
         });
         const data = await res.json();
         if (!alive) return;
-        if (res.ok) setIntentPreview({ intent: data?.intent, steps: data?.steps, references: data?.references });else
-        setIntentPreview(null);
+        if (res.ok) setIntentPreview({ intent: data?.intent, steps: data?.steps, references: data?.references }); else
+          setIntentPreview(null);
       } catch {
         if (alive) setIntentPreview(null);
       } finally {
         if (alive) setParseLoading(false);
       }
     }, 300);
-    return () => {alive = false;clearTimeout(id);};
+    return () => { alive = false; clearTimeout(id); };
   }, [command]);
 
   // Fetch mini Solana Atlas prices (SOL & mSOL) for the homepage widget
@@ -477,11 +478,11 @@ export function ShowcaseSection() {
           if (typeof sol === "number") setSolPrice(sol);
           if (typeof msol === "number") setMsolPrice(msol);
         }
-      } catch {}
+      } catch { }
     }
     run();
     const id = setInterval(run, 30000);
-    return () => {abort = true;clearInterval(id);};
+    return () => { abort = true; clearInterval(id); };
   }, []);
 
   // Helper: sanitize and condense AI text (dedupe, keep markdown for bold)
@@ -491,9 +492,9 @@ export function ShowcaseSection() {
     let text = String(input).replace(/\r\n?/g, "\n").trim();
     // Dedupe by paragraph blocks (case-insensitive)
     const paras = text.
-    split(/\n\n+/).
-    map((p) => p.trim()).
-    filter(Boolean);
+      split(/\n\n+/).
+      map((p) => p.trim()).
+      filter(Boolean);
     const seen = new Set<string>();
     const uniqueParas = paras.filter((p) => {
       const key = p.replace(/\s+/g, " ").toLowerCase();
@@ -523,7 +524,7 @@ export function ShowcaseSection() {
 
   // Typewriter effect for AI insight
   useEffect(() => {
-    if (!aiInsight) {setAiTyped("");setIsTyping(false);return;}
+    if (!aiInsight) { setAiTyped(""); setIsTyping(false); return; }
     setAiTyped("");
     setIsTyping(true);
     const full = aiInsight;
@@ -612,12 +613,12 @@ export function ShowcaseSection() {
             ? data.stepTexts
             : Array.isArray(data.steps)
               ? data.steps
-                  .map((s: any) =>
-                    typeof s === "string"
-                      ? s
-                      : (s?.summary || (s?.type ? String(s.type) : ""))
-                  )
-                  .filter(Boolean)
+                .map((s: any) =>
+                  typeof s === "string"
+                    ? s
+                    : (s?.summary || (s?.type ? String(s.type) : ""))
+                )
+                .filter(Boolean)
               : [];
 
           // Dedupe and trim planner steps to avoid repeated paragraphs
@@ -658,7 +659,7 @@ export function ShowcaseSection() {
           const dec = parseInt(j.result, 16);
           if (!Number.isNaN(dec)) setLatestBlock(String(dec));
         }
-      } catch {}
+      } catch { }
 
       // Background: fetch gas price and compute USD estimate
       try {
@@ -686,7 +687,7 @@ export function ShowcaseSection() {
             }
           }
         }
-      } catch {}
+      } catch { }
 
       // Background: fetch ETH price (USD) via price proxy
       try {
@@ -699,7 +700,7 @@ export function ShowcaseSection() {
           const formatted = typeof price === "number" ? price.toFixed(2) : Number(price).toFixed(2);
           setEthPrice(`$${formatted}`);
         }
-      } catch {}
+      } catch { }
 
       // Background: AI insight via ai/text (Puter.js if configured, else Pollinations)
       try {
@@ -721,7 +722,7 @@ export function ShowcaseSection() {
         // Pollinations thumbnail for visual punch
         const thumbPrompt = encodeURIComponent(trimmed || "Keystone operation plan, minimal, black and white, 4k");
         setAiImageUrl(`https://image.pollinations.ai/prompt/${thumbPrompt}`);
-      } catch {}
+      } catch { }
 
       // Mark policy as pass (lightweight demo policy)
       setPolicyPass(true);
@@ -741,7 +742,7 @@ export function ShowcaseSection() {
           const ej = await ensRes.json();
           if (ensRes.ok && ej?.data) setEnsRecord(ej.data);
         }
-      } catch {}
+      } catch { }
 
       // Background: Quote route (swap or bridge) and yield ideas
       try {
@@ -785,7 +786,7 @@ export function ShowcaseSection() {
                 setRouteQuote(uj.data);
                 setRouteError(null);
               }
-            } catch {}
+            } catch { }
           }
 
           // yields on destination
@@ -813,7 +814,7 @@ export function ShowcaseSection() {
                 setRouteQuote(uj.data);
                 setRouteError(null);
               }
-            } catch {}
+            } catch { }
           }
 
           // yields for buy side on ethereum
@@ -865,16 +866,16 @@ export function ShowcaseSection() {
   }
 
   const examples = [
-  "Swap 250k USDC to ETH on the cheapest route and send to treasury",
-  "Bridge 50k USDC from Arbitrum to Base, then stake in Aave",
-  "Distribute 1.2 ETH to team multisig and set weekly limit"];
+    "Swap 250k USDC to ETH on the cheapest route and send to treasury",
+    "Bridge 50k USDC from Arbitrum to Base, then stake in Aave",
+    "Distribute 1.2 ETH to team multisig and set weekly limit"];
 
 
   const tools = [
-  { id: "gas" as const, label: "Gas Estimator" },
-  { id: "yield" as const, label: "Yield Scanner" },
-  { id: "bridge" as const, label: "Bridge Finder" },
-  { id: "swap" as const, label: "Swap Router" }];
+    { id: "gas" as const, label: "Gas Estimator" },
+    { id: "yield" as const, label: "Yield Scanner" },
+    { id: "bridge" as const, label: "Bridge Finder" },
+    { id: "swap" as const, label: "Swap Router" }];
 
 
   return (
@@ -893,7 +894,7 @@ export function ShowcaseSection() {
               <div className="flex items-center gap-2">
                 <Terminal className="h-4 w-4 opacity-70" />
                 {selectedTool &&
-                <Badge variant="secondary" className="shrink-0">{tools.find((t) => t.id === selectedTool)?.label}</Badge>
+                  <Badge variant="secondary" className="shrink-0">{tools.find((t) => t.id === selectedTool)?.label}</Badge>
                 }
                 <Input
                   value={command}
@@ -906,42 +907,41 @@ export function ShowcaseSection() {
                   spellCheck={false} />
                 <Button type="button" onClick={handleExecuteClick} size="sm" className="shrink-0" disabled={!command.trim() || loading || toolLoading} aria-disabled={!command.trim() || loading || toolLoading} aria-busy={loading || toolLoading}>
                   {loading || toolLoading ?
-                  <span className="inline-flex items-center gap-2">
+                    <span className="inline-flex items-center gap-2">
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       Executing…
                     </span> :
 
-                  "Execute"
+                    "Execute"
                   }
                 </Button>
               </div>
               {/* Intent Preview */}
               {intentPreview?.intent &&
-              <div className="flex flex-wrap items-center gap-2 text-[11px] opacity-80">
+                <div className="flex flex-wrap items-center gap-2 text-[11px] opacity-80">
                   <span className="rounded border border-border/70 bg-background/60 px-2 py-0.5">Intent: <span className="font-medium">{intentPreview.intent}</span></span>
                   {(intentPreview.steps || []).slice(0, 6).map((st: any, i: number) =>
-                <span key={i} className="rounded border border-border/70 bg-background/60 px-2 py-0.5">{st?.type || st?.title || "step"}</span>
-                )}
+                    <span key={i} className="rounded border border-border/70 bg-background/60 px-2 py-0.5">{st?.type || st?.title || "step"}</span>
+                  )}
                   {parseLoading && <span className="inline-flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> parsing…</span>}
                 </div>
               }
               <p id="command-help" className="sr-only">Type a treasury instruction and press Enter to execute. Try the examples below.</p>
               <div className="flex flex-wrap gap-2 text-xs">
                 {examples.map((ex) =>
-                <button
-                  key={ex}
-                  type="button"
-                  onClick={() => {
-                    setCommand(ex);
-                    setSubmitted(null);
-                  }}
-                  className={`${
-                  command === ex ?
-                  "bg-foreground/5 border-foreground/30" :
-                  "bg-background/60 border-border/70"} rounded-md border px-2 py-1 text-left hover:bg-background/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`
-                  }
-                  aria-pressed={command === ex}
-                  aria-label={`Use example: ${ex}`}>
+                  <button
+                    key={ex}
+                    type="button"
+                    onClick={() => {
+                      setCommand(ex);
+                      setSubmitted(null);
+                    }}
+                    className={`${command === ex ?
+                        "bg-foreground/5 border-foreground/30" :
+                        "bg-background/60 border-border/70"} rounded-md border px-2 py-1 text-left hover:bg-background/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`
+                    }
+                    aria-pressed={command === ex}
+                    aria-label={`Use example: ${ex}`}>
 
                     {ex}
                   </button>
@@ -950,23 +950,23 @@ export function ShowcaseSection() {
               {/* Tool tray */}
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 {tools.map((t) =>
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setSelectedTool(t.id)}
-                  className={`${selectedTool === t.id ? "bg-foreground/5 border-foreground/30" : "bg-background/60 border-border/70"} rounded-md border px-2 py-1 hover:bg-background/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
-                  aria-pressed={selectedTool === t.id}
-                  aria-label={`Select tool: ${t.label}`}>
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setSelectedTool(t.id)}
+                    className={`${selectedTool === t.id ? "bg-foreground/5 border-foreground/30" : "bg-background/60 border-border/70"} rounded-md border px-2 py-1 hover:bg-background/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+                    aria-pressed={selectedTool === t.id}
+                    aria-label={`Select tool: ${t.label}`}>
 
                     {t.label}
                   </button>
                 )}
                 {selectedTool &&
-                <button
-                  type="button"
-                  onClick={() => setSelectedTool(null)}
-                  className="ml-1 rounded-md border border-border/70 px-2 py-1 hover:bg-background/80"
-                  aria-label="Clear selected tool">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTool(null)}
+                    className="ml-1 rounded-md border border-border/70 px-2 py-1 hover:bg-background/80"
+                    aria-label="Clear selected tool">
 
                     Clear
                   </button>
@@ -1007,11 +1007,11 @@ export function ShowcaseSection() {
                   <ul className="space-y-2 text-xs opacity-90" aria-live="polite" aria-atomic="true">
                     {steps.length === 0 && <li className="opacity-70">Waiting for command…</li>}
                     {steps.map((s, i) =>
-                    <li key={i} className="flex items-start gap-2">
+                      <li key={i} className="flex items-start gap-2">
                         <CheckCircle2 className="mt-0.5 h-4 w-4 text-foreground/80" />
                         <span
-                        className="whitespace-pre-wrap"
-                        dangerouslySetInnerHTML={{ __html: mdToSafeHtml(s) }} />
+                          className="whitespace-pre-wrap"
+                          dangerouslySetInnerHTML={{ __html: mdToSafeHtml(s) }} />
 
                       </li>
                     )}
@@ -1032,50 +1032,50 @@ export function ShowcaseSection() {
                     {latestBlock && <li className="opacity-90">Ethereum latest block: {latestBlock}</li>}
                     {ethPrice && <li className="opacity-90">ETH price (USD): {ethPrice}</li>}
                     {typeof gasPriceGwei === "number" &&
-                    <li className="opacity-90">Gas price: {gasPriceGwei.toFixed(2)} gwei</li>
+                      <li className="opacity-90">Gas price: {gasPriceGwei.toFixed(2)} gwei</li>
                     }
                     {typeof gasUsdPer100k === "number" &&
-                    <li className="opacity-90">Gas est (100k): ${gasUsdPer100k.toFixed(2)}</li>
+                      <li className="opacity-90">Gas est (100k): ${gasUsdPer100k.toFixed(2)}</li>
                     }
                     {ensRecord &&
-                    <li className="opacity-90">
+                      <li className="opacity-90">
                         ENS: {ensRecord.name} → <span className="font-mono break-all">{ensRecord.address}</span>
                       </li>
                     }
                   </ul>
 
                   {toolLoading &&
-                  <div className="mt-3 rounded-md border border-border/70 bg-background/70 p-2">
+                    <div className="mt-3 rounded-md border border-border/70 bg-background/70 p-2">
                       <div className="mb-1 text-[10px] uppercase tracking-wide opacity-60">{tools.find((t) => t.id === selectedTool)?.label} Result</div>
                       <div className="text-xs opacity-80 inline-flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…</div>
                     </div>
                   }
                   {toolError &&
-                  <div className="mt-3 rounded-md border border-border/70 bg-background/70 p-2 text-[11px] opacity-80">{toolError}</div>
+                    <div className="mt-3 rounded-md border border-border/70 bg-background/70 p-2 text-[11px] opacity-80">{toolError}</div>
                   }
                   {toolResult &&
-                  <div className="mt-3 rounded-md border border-border/70 bg-background/70 p-2">
+                    <div className="mt-3 rounded-md border border-border/70 bg-background/70 p-2">
                       <div className="mb-1 text-[10px] uppercase tracking-wide opacity-60">{tools.find((t) => t.id === selectedTool)?.label} Result</div>
                       <div className="font-medium">{toolResult.summary}</div>
                       {Array.isArray(toolResult?.references) && toolResult.references.length > 0 &&
-                    <div className="text-[11px] opacity-80 flex flex-wrap gap-2">
+                        <div className="text-[11px] opacity-80 flex flex-wrap gap-2">
                           {toolResult.references.map((ref: any, idx: number) => {
-                        const href = typeof ref === "string" ? ref : ref?.url;
-                        const label = typeof ref === "string" ? ref.replace(/^https?:\/\//, "") : ref?.label || ref?.url;
-                        return href ?
-                        <a key={idx} href={href} target={/^https?:\/\//.test(href) ? "_blank" : undefined} rel={/^https?:\/\//.test(href) ? "noreferrer" : undefined} className="underline hover:opacity-90">
+                            const href = typeof ref === "string" ? ref : ref?.url;
+                            const label = typeof ref === "string" ? ref.replace(/^https?:\/\//, "") : ref?.label || ref?.url;
+                            return href ?
+                              <a key={idx} href={href} target={/^https?:\/\//.test(href) ? "_blank" : undefined} rel={/^https?:\/\//.test(href) ? "noreferrer" : undefined} className="underline hover:opacity-90">
                                 {label}
                               </a> :
 
-                        <span key={idx}>{label}</span>;
+                              <span key={idx}>{label}</span>;
 
-                      })}
+                          })}
                         </div>
-                    }
+                      }
                     </div>
                   }
                   {policyPass &&
-                  <div className="mt-3 rounded-md border border-border/70 bg-background/70 p-2">
+                    <div className="mt-3 rounded-md border border-border/70 bg-background/70 p-2">
                       <div className="flex items-center gap-2 text-xs">
                         <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
                         <span className="font-medium">Policy Check: PASS</span>
@@ -1086,26 +1086,26 @@ export function ShowcaseSection() {
 
                   {/* Magic: AI Insight */}
                   {aiInsight &&
-                  <div className="mt-3 rounded-md border border-border/70 bg-background/70 p-2">
+                    <div className="mt-3 rounded-md border border-border/70 bg-background/70 p-2">
                       <div className="mb-1 text-[10px] uppercase tracking-wide opacity-60">AI Insight {aiProvider ? `· ${aiProvider}` : ""}</div>
                       {isTyping ?
-                    <div className="text-xs whitespace-pre-wrap" aria-live="polite" aria-atomic="true">
+                        <div className="text-xs whitespace-pre-wrap" aria-live="polite" aria-atomic="true">
                           {aiTyped}
                           <span className="opacity-50">▍</span>
                         </div> :
 
-                    <div className="text-xs" dangerouslySetInnerHTML={{ __html: aiInsightHtml }} />
-                    }
+                        <div className="text-xs" dangerouslySetInnerHTML={{ __html: aiInsightHtml }} />
+                      }
                       {aiImageUrl &&
-                    <div className="mt-2">
+                        <div className="mt-2">
                           <img
-                        src={aiImageUrl}
-                        alt="AI storyboard"
-                        className="h-16 w-28 object-cover rounded border border-border/70"
-                        loading="lazy" />
+                            src={aiImageUrl}
+                            alt="AI storyboard"
+                            className="h-16 w-28 object-cover rounded border border-border/70"
+                            loading="lazy" />
 
                         </div>
-                    }
+                      }
                     </div>
                   }
 
@@ -1140,53 +1140,53 @@ export function ShowcaseSection() {
 
                   {/* Magic: Route Preview */}
                   {routeQuote &&
-                  <div className="mt-3 rounded-md border border-border/70 bg-background/70 p-2">
+                    <div className="mt-3 rounded-md border border-border/70 bg-background/70 p-2">
                       <div className="mb-1 text-[10px] uppercase tracking-wide opacity-60">Best Route</div>
                       <div className="text-xs grid grid-cols-2 gap-2">
                         {routeQuote.provider && <div>Provider: <span className="font-medium">{routeQuote.provider}</span></div>}
                         {routeQuote.bridge && <div>Bridge: <span className="font-medium">{routeQuote.bridge}</span></div>}
                         {routeQuote.estimatedDuration &&
-                      <div>ETA: <span className="font-medium">{Math.round(Number(routeQuote.estimatedDuration) / 60)} min</span></div>
-                      }
+                          <div>ETA: <span className="font-medium">{Math.round(Number(routeQuote.estimatedDuration) / 60)} min</span></div>
+                        }
                         {routeQuote.toAmount &&
-                      <div>To Amount: <span className="font-mono">{String(routeQuote.toAmount)}</span></div>
-                      }
+                          <div>To Amount: <span className="font-mono">{String(routeQuote.toAmount)}</span></div>
+                        }
                         {routeQuote.price &&
-                      <div>Price: <span className="font-mono">{String(routeQuote.price)}</span></div>
-                      }
+                          <div>Price: <span className="font-mono">{String(routeQuote.price)}</span></div>
+                        }
                         {routeQuote.savings?.amount &&
-                      <div className="col-span-2">
+                          <div className="col-span-2">
                             Savings vs next best: <span className="font-mono">{routeQuote.savings.amount}</span>
                             {typeof routeQuote.savings.percent === "number" &&
-                        <span className="ml-1 text-[11px] opacity-80">({routeQuote.savings.percent}%)</span>
-                        }
+                              <span className="ml-1 text-[11px] opacity-80">({routeQuote.savings.percent}%)</span>
+                            }
                           </div>
-                      }
+                        }
                         {routeQuote.nextBest &&
-                      <div className="col-span-2 text-[11px] opacity-80">Next best: {routeQuote.nextBest.bridge || "-"} · To Amount: <span className="font-mono">{String(routeQuote.nextBest.toAmount || "-")}</span></div>
-                      }
+                          <div className="col-span-2 text-[11px] opacity-80">Next best: {routeQuote.nextBest.bridge || "-"} · To Amount: <span className="font-mono">{String(routeQuote.nextBest.toAmount || "-")}</span></div>
+                        }
                       </div>
                     </div>
                   }
                   {routeError &&
-                  <div className="mt-3 rounded-md border border-border/70 bg-background/70 p-2 text-[11px] opacity-80">{routeError}</div>
+                    <div className="mt-3 rounded-md border border-border/70 bg-background/70 p-2 text-[11px] opacity-80">{routeError}</div>
                   }
 
                   {/* Magic: Yield Ideas */}
                   {yieldPools && yieldPools.length > 0 &&
-                  <div className="mt-3 rounded-md border border-border/70 bg-background/70 p-2">
+                    <div className="mt-3 rounded-md border border-border/70 bg-background/70 p-2">
                       <div className="mb-1 text-[10px] uppercase tracking-wide opacity-60">Yield Opportunities</div>
                       <ul className="space-y-1 text-xs">
                         {yieldPools.map((p, i) =>
-                      <li key={i} className="flex items-center justify-between gap-3">
+                          <li key={i} className="flex items-center justify-between gap-3">
                             <span className="truncate">{p.project} · {p.chain} · {p.symbol}</span>
                             {typeof p.apy === "number" ?
-                        <span className="font-mono">{p.apy > 200 ? "200%+" : `${p.apy.toFixed(2)}%`}</span> :
+                              <span className="font-mono">{p.apy > 200 ? "200%+" : `${p.apy.toFixed(2)}%`}</span> :
 
-                        <span className="font-mono">{p.apy}</span>
-                        }
+                              <span className="font-mono">{p.apy}</span>
+                            }
                           </li>
-                      )}
+                        )}
                       </ul>
                     </div>
                   }
@@ -1198,7 +1198,7 @@ export function ShowcaseSection() {
 
         {/* Treasury Simulator */}
         {submitted &&
-        <TreasurySimulator command={submitted} loading={loading} />
+          <TreasurySimulator command={submitted} loading={loading} />
         }
       </div>
     </section>);

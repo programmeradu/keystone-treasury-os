@@ -55,7 +55,7 @@ export function TransactionTimeMachine() {
       // Fetch current SOL price
       const priceResponse = await fetch("/api/jupiter/price?ids=SOL");
       const priceData = await priceResponse.json();
-      
+
       if (!priceResponse.ok || !priceData?.data?.SOL?.price) {
         throw new Error("Failed to fetch current SOL price");
       }
@@ -67,7 +67,7 @@ export function TransactionTimeMachine() {
         `/api/jupiter/historical-price?symbol=SOL&mint=So11111111111111111111111111111111111111112&daysAgo=${days}`
       );
       const historicalData = await historicalResponse.json();
-      
+
       if (!historicalResponse.ok || !historicalData?.historicalPrice) {
         throw new Error(historicalData?.error || "Failed to fetch historical price");
       }
@@ -126,10 +126,10 @@ export function TransactionTimeMachine() {
         strategyReturn,
       });
 
-      const sourceMsg = priceSource === "approximation" 
-        ? "Using approximated historical data" 
+      const sourceMsg = priceSource === "approximation"
+        ? "Using approximated historical data"
         : `Real historical data from ${priceSource}`;
-      
+
       toast.success("Calculation complete", {
         description: sourceMsg,
       });
@@ -160,7 +160,7 @@ export function TransactionTimeMachine() {
     <div className="h-full">
       <Card className="atlas-card relative overflow-hidden h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)] min-h-[360px]">
         <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
-        
+
         <CardHeader className="pb-2 flex flex-col gap-2">
           <div className="flex h-8 items-center justify-between gap-2">
             <CardTitle className="text-sm leading-none whitespace-nowrap">
