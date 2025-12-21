@@ -18,6 +18,11 @@ This roadmap outlines the evolution of Keystone.
 ## Phase 8: Command Chaining (Workflow Engine) [DONE]
 *Goal: Execute complex, multi-step business logic from one prompt.*
 - [x] **Sequential Plans:** "Swap, then Bridge, then Stake" handled as one atomic workflow.
+- **Action Items**: [NEW] A tactical task list for pending treasury operations.
+    - **Visuals**: Matches the `code.html` reference precisely.
+    - **Header**: "Action Items" with a pulsing alert status.
+    - **List Items**: Includes "Signature Req" with progress bars, "Infrastructure" costs, and "Swap" rate confirmations.
+    - **Interactivity**: Subtle hover states and status animations.
 - [x] **Workflow UI:** Step-by-step verification before execution.
 
 ## Phase 9: Strategic Intelligence & Automation [DONE]

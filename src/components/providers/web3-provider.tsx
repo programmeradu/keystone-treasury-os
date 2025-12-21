@@ -20,6 +20,10 @@ import {
 } from "@solana/wallet-adapter-wallets";
 import "@solana/wallet-adapter-react-ui/styles.css";
 import { useMemo } from "react";
+import { VaultProvider } from "@/lib/contexts/VaultContext";
+import { NetworkProvider, useNetwork } from "@/lib/contexts/NetworkContext";
+
+
 
 const chains = [mainnet, base, arbitrum, polygon, bsc] as const;
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
@@ -55,6 +59,15 @@ const rkTheme = lightTheme({
 });
 
 export function Web3Providers({ children }: { children: ReactNode }) {
+  return (
+    <NetworkProvider>
+      <Web3ProvidersContent>{children}</Web3ProvidersContent>
+    </NetworkProvider>
+  );
+}
+
+function Web3ProvidersContent({ children }: { children: ReactNode }) {
+  const { endpoint } = useNetwork();
   const apiKey = process.env.NEXT_PUBLIC_CDP_API_KEY;
 
   // Solana wallets - only initialize if needed
@@ -63,34 +76,34 @@ export function Web3Providers({ children }: { children: ReactNode }) {
     new TorusWalletAdapter(),
   ];
 
-  const endpoint = useMemo(() => clusterApiUrl("devnet"), []);
-
   return (
     <LiveblocksProvider publicApiKey={process.env.NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY || "pk_dev_placeholder"}>
       <ConnectionProvider endpoint={endpoint}>
         <WalletProvider wallets={solanaWallets} autoConnect={false}>
           <WalletModalProvider>
-            <WagmiProvider config={rainbowConfig}>
-              <QueryClientProvider client={queryClient}>
-                {projectId ? (
-                  <RainbowKitProvider theme={rkTheme} modalSize="compact">
-                    {apiKey ? (
-                      <OnchainKitProvider apiKey={apiKey} chain={base}>{children}</OnchainKitProvider>
-                    ) : (
-                      children
-                    )}
-                  </RainbowKitProvider>
-                ) : (
-                  <>
-                    {apiKey ? (
-                      <OnchainKitProvider apiKey={apiKey} chain={base}>{children}</OnchainKitProvider>
-                    ) : (
-                      children
-                    )}
-                  </>
-                )}
-              </QueryClientProvider>
-            </WagmiProvider>
+            <VaultProvider>
+              <WagmiProvider config={rainbowConfig}>
+                <QueryClientProvider client={queryClient}>
+                  {projectId ? (
+                    <RainbowKitProvider theme={rkTheme} modalSize="compact">
+                      {apiKey ? (
+                        <OnchainKitProvider apiKey={apiKey} chain={base}>{children}</OnchainKitProvider>
+                      ) : (
+                        children
+                      )}
+                    </RainbowKitProvider>
+                  ) : (
+                    <>
+                      {apiKey ? (
+                        <OnchainKitProvider apiKey={apiKey} chain={base}>{children}</OnchainKitProvider>
+                      ) : (
+                        children
+                      )}
+                    </>
+                  )}
+                </QueryClientProvider>
+              </WagmiProvider>
+            </VaultProvider>
           </WalletModalProvider>
         </WalletProvider>
       </ConnectionProvider>

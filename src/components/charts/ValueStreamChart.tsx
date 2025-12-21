@@ -29,7 +29,7 @@ export const ValueStreamChart = ({ data }: ValueStreamChartProps) => {
                     dataKey="date"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: "#9eb7a8", fontSize: 10 }}
+                    tick={{ fill: "var(--dashboard-muted-foreground)", fontSize: 10, fontWeight: 700 }}
                     minTickGap={30}
                 />
                 <YAxis
@@ -38,17 +38,19 @@ export const ValueStreamChart = ({ data }: ValueStreamChartProps) => {
                 />
                 <Tooltip
                     contentStyle={{
-                        backgroundColor: "#1F2833",
-                        border: "1px solid rgba(255,255,255,0.05)",
-                        borderRadius: "8px",
+                        backgroundColor: "var(--dashboard-card)",
+                        border: "1px solid var(--dashboard-border)",
+                        borderRadius: "12px",
                         fontSize: "10px",
-                        color: "#fff",
+                        color: "var(--dashboard-foreground)",
+                        boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
                     }}
+                    itemStyle={{ color: "var(--dashboard-accent)" }}
                 />
                 <Area
                     type="monotone"
                     dataKey="value"
-                    stroke="#36e27b"
+                    stroke="var(--dashboard-accent)"
                     strokeWidth={2}
                     fillOpacity={1}
                     fill="url(#colorValue)"

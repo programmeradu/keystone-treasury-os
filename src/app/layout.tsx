@@ -8,7 +8,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ToastContainer } from "@/components/ToastContainer";
 
 export const metadata: Metadata = {
-  title: "KeyStone — The Command Layer for Treasury Management",
+  title: "KeyStone | The Command Layer for Treasury Management",
   description:
     "Manage your entire Web3 treasury through natural language. KeyStone turns complex, multi-step operations into simple, declarative prompts.",
   icons: {

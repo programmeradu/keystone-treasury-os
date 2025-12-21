@@ -30,20 +30,21 @@ export const PortfolioDonut = ({ data }: PortfolioDonutProps) => {
                     </Pie>
                     <Tooltip
                         contentStyle={{
-                            backgroundColor: "#1F2833",
-                            border: "1px solid rgba(255,255,255,0.05)",
-                            borderRadius: "8px",
+                            backgroundColor: "var(--dashboard-card)",
+                            border: "1px solid var(--dashboard-border)",
+                            borderRadius: "12px",
                             fontSize: "10px",
-                            color: "#fff",
+                            color: "var(--dashboard-foreground)",
+                            boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
                         }}
-                        itemStyle={{ color: "#36e27b" }}
+                        itemStyle={{ color: "var(--dashboard-accent)" }}
                     />
                 </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="text-center">
-                    <span className="text-[10px] text-[#9eb7a8] uppercase tracking-widest block">Assets</span>
-                    <span className="text-sm font-bold text-white">{data.length}</span>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-widest block font-bold">Assets</span>
+                    <span className="text-sm font-black text-foreground">{data.length}</span>
                 </div>
             </div>
         </div>

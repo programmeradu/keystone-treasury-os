@@ -19,8 +19,8 @@ export function TreasuryChart() {
                 <AreaChart data={data}>
                     <defs>
                         <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#36e27b" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#36e27b" stopOpacity={0} />
+                            <stop offset="5%" stopColor="var(--dashboard-accent)" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="var(--dashboard-accent)" stopOpacity={0} />
                         </linearGradient>
                     </defs>
                     <XAxis
@@ -33,18 +33,18 @@ export function TreasuryChart() {
                     />
                     <Tooltip
                         contentStyle={{
-                            backgroundColor: '#0B0C10',
-                            border: '1px solid rgba(255,255,255,0.1)',
+                            backgroundColor: 'var(--dashboard-bg)',
+                            border: '1px solid var(--dashboard-border)',
                             borderRadius: '8px',
                             fontSize: '12px'
                         }}
-                        itemStyle={{ color: '#36e27b' }}
-                        cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
+                        itemStyle={{ color: 'var(--dashboard-accent)' }}
+                        cursor={{ stroke: 'var(--dashboard-border)', strokeWidth: 1 }}
                     />
                     <Area
                         type="monotone"
                         dataKey="value"
-                        stroke="#36e27b"
+                        stroke="var(--dashboard-accent)"
                         strokeWidth={2}
                         fillOpacity={1}
                         fill="url(#colorValue)"

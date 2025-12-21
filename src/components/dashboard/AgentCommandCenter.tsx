@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { Terminal, Cpu, Activity, ShieldCheck, Zap } from "lucide-react";
-import { useAppEvent } from "@/lib/events";
+import { useAppEvent, AppEventBus } from "@/lib/events";
 import { IntentRegistry } from "@/lib/agents/registry";
 
 interface LogEntry {
@@ -16,12 +16,9 @@ export function AgentCommandCenter() {
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-    // Initial simulated boot sequence
+    // Initial boot
     useEffect(() => {
-        addLog("Initializing Keystone Command Layer...", "SYSTEM");
-        setTimeout(() => addLog("Connecting to Solana Devnet [43ms]", "INFO"), 800);
-        setTimeout(() => addLog("Agent Neural Weights loaded.", "SUCCESS"), 1600);
-        setTimeout(() => addLog("Monitoring 12 Active Intents.", "INFO"), 2400);
+        addLog("Keystone Agent Interface Linked.", "SYSTEM");
     }, []);
 
     // Listen to real app events
@@ -30,30 +27,26 @@ export function AgentCommandCenter() {
             addLog(event.payload.message, "WARNING");
         } else if (event.type === "REFRESH_DASHBOARD") {
             addLog("Manual dashboard sync requested.", "INFO");
+        } else if (event.type === "AGENT_COMMAND") {
+            // 1. Log the incoming directive
+            addLog(`Received external directive: "${event.payload.command}"`, "SYSTEM");
+            addLog(`Source: ${event.payload.source || "Unknown"}`, "INFO");
+
+            // 2. ROUTING LOGIC (The Brain)
+            // The Agent interprets the command and triggers the appropriate UI/Action
+            if (event.payload.command.includes("Analyze") || event.payload.command.includes("Deploy")) {
+                setTimeout(() => {
+                    // Instruct the UI to show the strategy modal, which will then trigger the YieldEngine
+                    AppEventBus.emit("SHOW_STRATEGY_MODAL");
+                }, 800);
+            }
+        } else if (event.type === "AGENT_LOG") {
+            // Real-time logs from the Engine
+            // System check for debug
+            // console.log("ACC Received Log:", event.payload);
+            addLog(event.payload.message, event.payload.level || "INFO");
         }
     });
-
-    // Simulated "Liveness" Heartbeat
-    useEffect(() => {
-        const tasks = [
-            "Scanning Squads Protocol for pending txs...",
-            "Verifying multisig thresholds...",
-            "Oracizing price feeds for SOL/USDC...",
-            "Checking rebalance conditions...",
-            "Syncing validator metrics...",
-            "Background simulation: No risks detected."
-        ];
-
-        const interval = setInterval(() => {
-            const randomTask = tasks[Math.floor(Math.random() * tasks.length)];
-            // Only add log occasionally to avoid spam
-            if (Math.random() > 0.6) {
-                addLog(randomTask, "SYSTEM");
-            }
-        }, 4000);
-
-        return () => clearInterval(interval);
-    }, []);
 
     // Auto-scroll to bottom of container ONLY (prevent window jump)
     useEffect(() => {
@@ -80,25 +73,25 @@ export function AgentCommandCenter() {
     };
 
     return (
-        <div className="h-[400px] w-full bg-[#0F1115] border border-white/5 rounded-2xl relative overflow-hidden flex flex-col font-mono text-xs group">
+        <div className="h-[400px] w-full bg-card border border-border rounded-2xl relative overflow-hidden flex flex-col font-mono text-xs group shadow-lg">
             {/* Background Grid */}
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(54,226,123,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(54,226,123,0.02)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none" />
+            <div className="absolute inset-0 bg-[linear-gradient(var(--dashboard-accent-muted)_1px,transparent_1px),linear-gradient(90deg,var(--dashboard-accent-muted)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none opacity-20" />
 
             {/* Header */}
-            <div className="p-4 border-b border-white/5 bg-[#0B0C10]/80 flex items-center justify-between z-10 backdrop-blur-sm shrink-0">
+            <div className="p-4 border-b border-border bg-background/80 flex items-center justify-between z-10 backdrop-blur-sm shrink-0">
                 <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded bg-[#36e27b]/10 flex items-center justify-center border border-[#36e27b]/20 text-[#36e27b]">
+                    <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center border border-primary/20 text-primary">
                         <Terminal size={14} />
                     </div>
                     <div>
-                        <h3 className="font-bold text-white uppercase tracking-wider">Command Layer</h3>
+                        <h3 className="font-bold text-foreground uppercase tracking-wider">Command Layer</h3>
                         <div className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#36e27b] animate-pulse" />
-                            <span className="text-[9px] text-[#9eb7a8]">AGENT ACTIVE</span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                            <span className="text-[9px] text-muted-foreground uppercase tracking-tighter">Agent Active</span>
                         </div>
                     </div>
                 </div>
-                <div className="flex items-center gap-2 text-[#9eb7a8]">
+                <div className="flex items-center gap-2 text-muted-foreground">
                     <Cpu size={14} className="animate-pulse" />
                     <span className="text-[10px]">12ms</span>
                 </div>
@@ -107,18 +100,18 @@ export function AgentCommandCenter() {
             {/* Log Area using custom scrollbar */}
             <div
                 ref={scrollContainerRef}
-                className="flex-1 overflow-y-auto p-4 space-y-1.5 relative z-10 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent hover:scrollbar-thumb-[#36e27b]/20"
+                className="flex-1 overflow-y-auto p-4 space-y-1.5 relative z-10 scrollbar-thin scrollbar-thumb-primary/10 scrollbar-track-transparent hover:scrollbar-thumb-primary/20"
             >
                 {logs.map((log) => (
-                    <div key={log.id} className="flex gap-3 group/line hover:bg-white/5 p-0.5 rounded transition-colors">
-                        <span className="text-white/30 shrink-0 select-none">[{log.timestamp}]</span>
+                    <div key={log.id} className="flex gap-3 group/line hover:bg-primary/5 p-0.5 rounded transition-colors">
+                        <span className="text-foreground/30 shrink-0 select-none">[{log.timestamp}]</span>
                         <span className={`
                             break-all
-                            ${log.type === 'INFO' ? 'text-[#9eb7a8]' : ''}
-                            ${log.type === 'SUCCESS' ? 'text-[#36e27b]' : ''}
+                            ${log.type === 'INFO' ? 'text-muted-foreground' : ''}
+                            ${log.type === 'SUCCESS' ? 'text-primary' : ''}
                             ${log.type === 'WARNING' ? 'text-yellow-500 font-bold' : ''}
                             ${log.type === 'ERROR' ? 'text-red-500 font-bold' : ''}
-                            ${log.type === 'SYSTEM' ? 'text-blue-400' : ''}
+                            ${log.type === 'SYSTEM' ? 'text-blue-500' : ''}
                         `}>
                             {log.type === 'SYSTEM' && '> '}
                             {log.message}
@@ -128,9 +121,9 @@ export function AgentCommandCenter() {
             </div>
 
             {/* Input / Status Bar */}
-            <div className="p-2 border-t border-white/5 bg-[#0B0C10]/50 z-10 shrink-0">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded bg-black/40 border border-white/5 text-white/50">
-                    <span className="text-[#36e27b] animate-pulse">_</span>
+            <div className="p-2 border-t border-border bg-background/50 z-10 shrink-0">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded bg-input border border-border text-foreground/50">
+                    <span className="text-primary animate-pulse">_</span>
                     <span className="italic">Awaiting instructions...</span>
                 </div>
             </div>

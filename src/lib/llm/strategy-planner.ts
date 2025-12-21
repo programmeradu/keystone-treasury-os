@@ -20,6 +20,8 @@ export interface ActionItem {
 export interface StrategyPlan {
   actions: ActionItem[];
   reasoning: string;
+  direct_answer?: string;
+  logs: string[];
   warnings: string[];
   estimatedOutcome: string;
   confidence?: "high" | "medium" | "low";
@@ -68,13 +70,15 @@ Return ONLY valid JSON (no markdown, no explanation before/after):
 {
   "actions": [
     {
-      "operation": "swap|transfer|stake|rebalance|navigate|refresh|ui_query|governance_list|governance_approve|governance_execute|external_balance|bridge|yield_deposit|yield_withdraw|monitor",
-      "parameters": { "description of parameters" }
+      "operation": "...",
+      "parameters": { ... }
     }
   ],
-  "reasoning": "Explain why this strategy addresses user's request",
-  "warnings": ["List of risks or warnings"],
-  "estimatedOutcome": "What the user can expect after execution",
+  "reasoning": "Internal thought process/strategy derivation",
+  "direct_answer": "Direct conversational response to the user's question, if applicable. E.g. 'Your treasury is healthy with $1.2M total value.'",
+  "logs": ["Technical step logs"],
+  "warnings": ["Risks"],
+  "estimatedOutcome": "Outcome",
   "confidence": "high|medium|low",
   "isChain": true
 }
@@ -213,7 +217,7 @@ Create an execution plan. Return ONLY JSON, no markdown.`;
     const plan = JSON.parse(jsonText) as StrategyPlan;
 
     // Validate required fields
-    if (!plan.actions || !plan.reasoning || !plan.warnings || !plan.estimatedOutcome) {
+    if (!plan.actions || !plan.reasoning || !plan.logs || !plan.warnings || !plan.estimatedOutcome) {
       throw new Error("Invalid plan structure from LLM");
     }
 

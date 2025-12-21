@@ -199,56 +199,76 @@
   --font-sans: 'Spline Sans', sans-serif;
   --radius: 1rem;
 
-  /* Palette from Design Code */
-  --color-primary: #36e27b;
-  /* Neon Green */
-  --color-accent-orange: #ff5b39;
-  --color-charcoal: #0B0C10;
-  --color-glass-dark: rgba(31, 40, 51, 0.4);
-  --color-glass-border: rgba(255, 255, 255, 0.08);
-  --color-text-secondary: #9eb7a8;
+  /* Theme-aware variables */
+  --dashboard-bg: #0B0C10;
+  --dashboard-foreground: #ffffff;
+  --dashboard-card: rgba(31, 40, 49, 0.4);
+  --dashboard-card-hover: rgba(45, 55, 66, 0.5);
+  --dashboard-border: rgba(255, 255, 255, 0.08);
+  --dashboard-text-secondary: #9eb7a8;
+  --dashboard-accent: #36e27b;
+  --dashboard-accent-text: #36e27b;
+  --dashboard-accent-muted: rgba(54, 226, 123, 0.1);
+  --dashboard-sidebar: #0f1115;
+  --dashboard-sidebar-active: rgba(54, 226, 123, 0.15);
+  --dashboard-input-bg: rgba(0, 0, 0, 0.4);
 
-  /* Tailwind 4 Mappings */
-  --background: #0B0C10;
-  --foreground: #ffffff;
-
-  --card: rgba(31, 40, 51, 0.4);
-  --card-foreground: #ffffff;
-
-  --popover: #0B0C10;
-  --popover-foreground: #ffffff;
-
-  --primary: #36e27b;
+  /* Legacy Mappings for compatibility */
+  --background: var(--dashboard-bg);
+  --foreground: var(--dashboard-foreground);
+  --card: var(--dashboard-card);
+  --card-foreground: var(--dashboard-foreground);
+  --popover: var(--dashboard-bg);
+  --popover-foreground: var(--dashboard-foreground);
+  --primary: var(--dashboard-accent);
   --primary-foreground: #0B0C10;
-
   --secondary: rgba(255, 255, 255, 0.05);
   --secondary-foreground: #ffffff;
-
   --muted: rgba(255, 255, 255, 0.05);
-  --muted-foreground: #9eb7a8;
-
+  --muted-foreground: var(--dashboard-text-secondary);
   --accent: rgba(255, 255, 255, 0.05);
   --accent-foreground: #ffffff;
-
   --destructive: #ff5b39;
   --destructive-foreground: #ffffff;
-
-  --border: rgba(255, 255, 255, 0.08);
-  --input: rgba(255, 255, 255, 0.08);
-  --ring: #36e27b;
-
-  --radius-lg: 1.5rem;
-  --radius-xl: 2rem;
-  --radius-2xl: 2.5rem;
-
-  --sidebar: #0f1115;
+  --border: var(--dashboard-border);
+  --input: var(--dashboard-input-bg);
+  --ring: var(--dashboard-accent);
+  --sidebar: var(--dashboard-sidebar);
   --sidebar-foreground: #ffffff;
-  --sidebar-primary: #36e27b;
-  --sidebar-primary-foreground: #0B0C10;
-  --sidebar-accent: rgba(255, 255, 255, 0.05);
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-ring: #36e27b;
+}
+
+/* Premium Light Mode Overrides */
+.dashboard-theme[data-theme='light'] {
+  --dashboard-bg: #F8FAFC;
+  /* Slate 50 */
+  --dashboard-foreground: #0F172A;
+  /* Slate 900 */
+  --dashboard-card: #ffffff;
+  --dashboard-card-hover: #F1F5F9;
+  /* Slate 100 */
+  --dashboard-border: #E2E8F0;
+  /* Slate 200 */
+  --dashboard-text-secondary: #64748B;
+  /* Slate 500 */
+  --dashboard-accent: #16A34A;
+  /* Forest Green 600 */
+  --dashboard-accent-text: #15803D;
+  /* Green 700 */
+  --dashboard-accent-muted: rgba(22, 163, 74, 0.1);
+  --dashboard-sidebar: #FFFFFF;
+  --dashboard-sidebar-active: rgba(22, 163, 74, 0.08);
+  --dashboard-input-bg: #F1F5F9;
+
+  --secondary: #F1F5F9;
+  --secondary-foreground: #0F172A;
+  --muted: #F1F5F9;
+  --muted-foreground: var(--dashboard-text-secondary);
+  --accent: #F1F5F9;
+  --accent-foreground: #0F172A;
+  --sidebar-foreground: #0F172A;
+  --popover: #ffffff;
+  --popover-foreground: #0F172A;
+  --primary-foreground: #ffffff;
 }
 
 @layer base {
@@ -609,4 +629,12 @@ nextjs-portal {
   .atlas-card-content {
     max-height: 300px;
   }
+}
+
+/* Hide Liveblocks Branding/Badges */
+[class*="liveblocks"],
+[id*="liveblocks"],
+.lb-badge,
+.lb-root {
+  display: none !important;
 }

@@ -128,13 +128,13 @@ export function CommandBar() {
                 >
                     <button
                         onClick={() => setOpen(true)}
-                        className="flex items-center gap-3 pl-4 pr-3 py-3 rounded-full bg-[#0B0C10]/80 backdrop-blur-xl border border-white/10 shadow-2xl hover:border-[#36e27b]/50 hover:shadow-[0_0_20px_rgba(54,226,123,0.15)] transition-all group"
+                        className="flex items-center gap-3 pl-4 pr-3 py-3 rounded-full bg-background/80 backdrop-blur-xl border border-border shadow-2xl hover:border-primary/50 hover:shadow-[0_0_20px_var(--dashboard-accent-muted)] transition-all group"
                     >
-                        <Sparkles size={16} className="text-[#36e27b]" />
-                        <span className="text-sm font-medium text-[#9eb7a8] group-hover:text-white transition-colors mr-2">
-                            Ask Keystone... {IntentRegistry.getActive().length > 0 && <span className="inline-block w-1 h-1 rounded-full bg-[#36e27b] animate-ping ml-1" title="Agents Active" />}
+                        <Sparkles size={16} className="text-primary" />
+                        <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors mr-2">
+                            Ask Keystone... {IntentRegistry.getActive().length > 0 && <span className="inline-block w-1 h-1 rounded-full bg-primary animate-ping ml-1" title="Agents Active" />}
                         </span>
-                        <div className="flex items-center gap-1 opacity-50 text-[10px] font-mono text-white/50 border-l border-white/10 pl-3">
+                        <div className="flex items-center gap-1 opacity-50 text-[10px] font-mono text-foreground/50 border-l border-border pl-3">
                             <span>⌘</span> K
                         </div>
                     </button>
@@ -157,18 +157,18 @@ export function CommandBar() {
                         animate={{ scale: 1, opacity: 1, y: 0 }}
                         exit={{ scale: 0.95, opacity: 0, y: 20 }}
                         transition={{ type: "spring", stiffness: 350, damping: 25 }}
-                        className="relative w-full max-w-2xl bg-[#0f1115] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+                        className="relative w-full max-w-2xl bg-card border border-border rounded-2xl shadow-2xl overflow-hidden"
                     >
                         {/* Neon Glow Border Effect */}
-                        <div className="absolute inset-0 z-0 pointer-events-none rounded-2xl ring-1 ring-[#36e27b]/20" />
-                        <div className="absolute -inset-0.5 bg-gradient-to-r from-[#36e27b] to-[#25a85c] rounded-2xl blur opacity-20" />
+                        <div className="absolute inset-0 z-0 pointer-events-none rounded-2xl ring-1 ring-primary/20" />
+                        <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-[#25a85c] rounded-2xl blur opacity-20" />
 
                         <div className="relative z-10 flex flex-col">
                             {!plan ? (
                                 /* INPUT STATE */
                                 <>
-                                    <div className="flex items-center px-6 py-5 border-b border-white/5">
-                                        <Sparkles size={20} className={`text-[#36e27b] mr-4 ${loading ? 'animate-spin' : ''}`} />
+                                    <div className="flex items-center px-6 py-5 border-b border-border">
+                                        <Sparkles size={20} className={`text-primary mr-4 ${loading ? 'animate-spin' : ''}`} />
                                         <input
                                             autoFocus
                                             value={input}
@@ -176,18 +176,18 @@ export function CommandBar() {
                                             onKeyDown={(e) => e.key === "Enter" && executeCommand()}
                                             disabled={loading}
                                             placeholder="Describe your intent (e.g., 'Swap 50k USDC to SOL')..."
-                                            className="flex-1 bg-transparent text-lg font-medium text-white placeholder:text-[#9eb7a8]/50 outline-none"
+                                            className="flex-1 bg-transparent text-lg font-medium text-foreground placeholder:text-muted-foreground/50 outline-none"
                                         />
                                     </div>
 
-                                    <div className="px-6 py-3 bg-[#0B0C10]/50 flex items-center justify-between text-[10px] text-[#9eb7a8]">
+                                    <div className="px-6 py-3 bg-muted/50 flex items-center justify-between text-[10px] text-muted-foreground">
                                         <div className="flex items-center gap-2">
-                                            <div className={`w-1.5 h-1.5 rounded-full bg-[#36e27b] ${loading ? 'animate-ping' : 'animate-pulse'}`} />
+                                            <div className={`w-1.5 h-1.5 rounded-full bg-primary ${loading ? 'animate-ping' : 'animate-pulse'}`} />
                                             <span className="font-mono">{loading ? "THINKING..." : "AI AGENT LISTENING"}</span>
                                         </div>
                                         <div className="flex items-center gap-3">
-                                            <span>Press <strong className="text-white">Enter</strong> to execute</span>
-                                            <span><strong className="text-white">Esc</strong> to close</span>
+                                            <span>Press <strong className="text-foreground">Enter</strong> to execute</span>
+                                            <span><strong className="text-foreground">Esc</strong> to close</span>
                                         </div>
                                     </div>
                                 </>
@@ -196,40 +196,40 @@ export function CommandBar() {
                                 <div className="p-6">
                                     <div className="flex items-center justify-between mb-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="p-2 rounded-lg bg-[#36e27b]/10 border border-[#36e27b]/20">
-                                                <Sparkles size={16} className="text-[#36e27b]" />
+                                            <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
+                                                <Sparkles size={16} className="text-primary" />
                                             </div>
                                             <div>
-                                                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Proposed {plan.actions?.length > 1 ? "Workflow" : "Action"}</h3>
-                                                <p className="text-xs text-[#9eb7a8]">{plan.actions?.length || 1} step{plan.actions?.length > 1 ? 's' : ''} prepared</p>
+                                                <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Proposed {plan.actions?.length > 1 ? "Workflow" : "Action"}</h3>
+                                                <p className="text-xs text-muted-foreground">{plan.actions?.length || 1} step{plan.actions?.length > 1 ? 's' : ''} prepared</p>
                                             </div>
                                         </div>
-                                        <div className="px-2 py-1 rounded bg-[#36e27b]/10 border border-[#36e27b]/20 text-[#36e27b] text-[10px] font-mono uppercase">
+                                        <div className="px-2 py-1 rounded bg-primary/10 border border-primary/20 text-primary text-[10px] font-mono uppercase">
                                             {plan.operation}
                                         </div>
                                     </div>
 
                                     <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 mb-4 scrollbar-hide">
                                         {plan.actions?.map((action: any, idx: number) => (
-                                            <div key={idx} className="bg-white/5 rounded-xl p-4 border border-white/5">
-                                                <div className="flex items-center justify-between mb-3 border-b border-white/5 pb-2">
-                                                    <span className="text-[10px] font-bold text-[#36e27b] uppercase tracking-tighter">Step {idx + 1}</span>
-                                                    <span className="px-1.5 py-0.5 rounded bg-white/5 text-[9px] font-mono text-[#9eb7a8] uppercase">{action.operation}</span>
+                                            <div key={idx} className="bg-muted rounded-xl p-4 border border-border">
+                                                <div className="flex items-center justify-between mb-3 border-b border-border pb-2">
+                                                    <span className="text-[10px] font-bold text-primary uppercase tracking-tighter">Step {idx + 1}</span>
+                                                    <span className="px-1.5 py-0.5 rounded bg-background/50 text-[9px] font-mono text-muted-foreground uppercase">{action.operation}</span>
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                                                     {Object.entries(action.parameters || {}).map(([key, value]) => (
                                                         <div key={key}>
-                                                            <span className="text-[9px] text-[#9eb7a8] uppercase block">{key}</span>
-                                                            <span className="text-xs text-white font-mono truncate block">{String(value)}</span>
+                                                            <span className="text-[9px] text-muted-foreground uppercase block">{key}</span>
+                                                            <span className="text-xs text-foreground font-mono truncate block">{String(value)}</span>
                                                         </div>
                                                     ))}
                                                 </div>
                                             </div>
                                         ))}
 
-                                        <div className="bg-white/5 rounded-xl p-4 border border-white/5 border-l-2 border-l-[#36e27b]">
-                                            <span className="text-[10px] text-[#36e27b] uppercase font-bold block mb-1">Agent Strategy</span>
-                                            <p className="text-sm text-white italic leading-relaxed">{plan.estimatedOutcome}</p>
+                                        <div className="bg-muted rounded-xl p-4 border border-border border-l-2 border-l-primary">
+                                            <span className="text-[10px] text-primary uppercase font-bold block mb-1">Agent Strategy</span>
+                                            <p className="text-sm text-foreground italic leading-relaxed">{plan.estimatedOutcome}</p>
                                         </div>
                                     </div>
 
@@ -245,14 +245,14 @@ export function CommandBar() {
                                         <button
                                             onClick={handleConfirm}
                                             disabled={executing}
-                                            className={`flex-1 py-2.5 bg-[#36e27b] text-[#0B0C10] font-bold rounded-lg text-sm hover:scale-[1.02] active:scale-[0.98] transition-all ${executing ? 'opacity-50 cursor-wait' : ''}`}
+                                            className={`flex-1 py-2.5 bg-primary text-primary-foreground font-bold rounded-lg text-sm hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-primary/20 ${executing ? 'opacity-50 cursor-wait' : ''}`}
                                         >
                                             {executing ? "Proposing..." : "Confirm & Execute"}
                                         </button>
                                         <button
                                             onClick={() => setPlan(null)}
                                             disabled={executing}
-                                            className="px-4 py-2.5 bg-white/5 text-white font-medium rounded-lg text-sm hover:bg-white/10 transition-all border border-white/5"
+                                            className="px-4 py-2.5 bg-muted text-foreground font-medium rounded-lg text-sm hover:bg-muted/80 transition-all border border-border"
                                         >
                                             Cancel
                                         </button>

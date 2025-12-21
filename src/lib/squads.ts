@@ -39,18 +39,38 @@ export class SquadsClient {
     }
 
     /**
+     * Helper to determine if an address is a Squads Multisig or standard account.
+     */
+    async resolveVaultAddress(address: string): Promise<PublicKey> {
+        try {
+            const pubkey = new PublicKey(address);
+            const info = await this.connection.getAccountInfo(pubkey);
+
+            // Squads V4 Program ID
+            const SQUADS_V4_PROGRAM_ID = "SQDS4169MvYvC6v3HnQjHeYd3sU0n3MUPfw79vjrE8G";
+
+            if (info && info.owner.toBase58() === SQUADS_V4_PROGRAM_ID) {
+                // It is a Squads multisig, derive the Vault PDA
+                const [vaultPda] = getVaultPda({
+                    multisigPda: pubkey,
+                    index: 0
+                });
+                return vaultPda;
+            }
+            // Standard wallet or other account, use direct address
+            return pubkey;
+        } catch {
+            return new PublicKey(address);
+        }
+    }
+
+    /**
      * Fetches the vault balance (SOL).
      */
     async getVaultBalance(vaultAddress: string): Promise<number> {
         try {
-            const multisigKey = new PublicKey(vaultAddress);
-            // In Squads v4, the "Vault" address that holds funds is a PDA derived from the Multisig account
-            const [vaultPda] = getVaultPda({
-                multisigPda: multisigKey,
-                index: 0
-            });
-
-            const balance = await this.connection.getBalance(vaultPda);
+            const resolvedKey = await this.resolveVaultAddress(vaultAddress);
+            const balance = await this.connection.getBalance(resolvedKey);
             return balance / 1e9; // Convert Lamports to SOL
         } catch (error) {
             console.error("Failed to fetch Vault Balance:", error);
@@ -61,16 +81,12 @@ export class SquadsClient {
     /**
      * Fetches all SPL Token accounts owned by the vault.
      */
-    async getVaultTokens(vaultAddress: string): Promise<{ mint: string; amount: number; decimals: number; symbol?: string }[]> {
+    async getVaultTokens(vaultAddress: string): Promise<{ mint: string; amount: number; decimals: number; symbol?: string; name?: string; logo?: string }[]> {
         try {
-            const multisigKey = new PublicKey(vaultAddress);
-            const [vaultPda] = getVaultPda({
-                multisigPda: multisigKey,
-                index: 0
-            });
+            const resolvedKey = await this.resolveVaultAddress(vaultAddress);
 
-            // Fetch parsed token accounts for the vault owner (PDA)
-            const response = await this.connection.getParsedTokenAccountsByOwner(vaultPda, {
+            // Fetch parsed token accounts for the owner
+            const response = await this.connection.getParsedTokenAccountsByOwner(resolvedKey, {
                 programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"), // TOKEN_PROGRAM_ID
             });
 
@@ -80,8 +96,6 @@ export class SquadsClient {
                     mint: info.mint,
                     amount: info.tokenAmount.uiAmount,
                     decimals: info.tokenAmount.decimals,
-                    // Simple mock symbol resolution for demo (would use Metaplex in Phase 3)
-                    symbol: info.mint === "So11111111111111111111111111111111111111112" ? "WSOL" : "SPL"
                 }
             });
         } catch (error) {
@@ -94,26 +108,66 @@ export class SquadsClient {
      * Fetches token prices from Jupiter API.
      * @param mints Array of token mint addresses
      */
-    async getTokenPrices(mints: string[]): Promise<Record<string, number>> {
+    async getTokenMetadata(mints: string[]): Promise<Record<string, { price: number; symbol?: string; name?: string; logo?: string; change24h?: number }>> {
         if (mints.length === 0) return {};
-        try {
-            // Jupiter Price API v2
-            const ids = mints.join(",");
-            const response = await fetch(`https://api.jup.ag/price/v2?ids=${ids}`);
-            const data = await response.json();
 
-            const prices: Record<string, number> = {};
-            if (data.data) {
-                for (const mint of mints) {
-                    if (data.data[mint]) {
-                        prices[mint] = parseFloat(data.data[mint].price);
-                    }
+        const metadata: Record<string, { price: number; symbol?: string; name?: string; logo?: string; change24h?: number }> = {};
+        // DexScreener allows up to 30 addresses per request
+        const CHUNK_SIZE = 30;
+
+        const chunks = [];
+        for (let i = 0; i < mints.length; i += CHUNK_SIZE) {
+            chunks.push(mints.slice(i, i + CHUNK_SIZE));
+        }
+
+        try {
+            await Promise.all(chunks.map(async (chunk) => {
+                const ids = chunk.join(",");
+                const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${ids}`);
+                if (!response.ok) {
+                    throw new Error(`DexScreener API returned ${response.status}`);
                 }
+                const data = await response.json();
+
+                if (data.pairs) {
+                    // Extract the best price and metadata for each mint in the response
+                    data.pairs.forEach((pair: any) => {
+                        const mint = pair.baseToken.address;
+                        const price = parseFloat(pair.priceUsd);
+                        const change24h = pair.priceChange?.h24 ? parseFloat(pair.priceChange.h24) : 0;
+
+                        // If we have multiple pairs for the same token, take the one with higher liquidity
+                        if (!metadata[mint] || (pair.liquidity?.usd > (metadata[mint] as any)?.liquidity || 0)) {
+                            metadata[mint] = {
+                                price,
+                                symbol: pair.baseToken.symbol,
+                                name: pair.baseToken.name,
+                                logo: pair.info?.imageUrl,
+                                change24h,
+                                ...(pair.liquidity?.usd ? { liquidity: pair.liquidity.usd } as any : {})
+                            };
+                        }
+                    });
+                }
+            }));
+
+            // Special case for SOL if missing
+            const solMint = "So11111111111111111111111111111111111111112";
+            if (!metadata[solMint]) {
+                const solPrice = (metadata as any)[solMint]?.price || 0;
+                metadata[solMint] = {
+                    symbol: "SOL",
+                    name: "Solana",
+                    logo: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
+                    price: solPrice,
+                    change24h: 0
+                };
             }
-            return prices;
+
+            return metadata;
         } catch (error) {
-            console.error("Failed to fetch Token Prices:", error);
-            return {};
+            console.error("Failed to fetch Token Metadata from DexScreener:", error);
+            return metadata;
         }
     }
     /**
@@ -169,6 +223,14 @@ export class SquadsClient {
         console.log(`[Squads] Fetching proposals for ${vaultAddress}`);
         try {
             const multisigKey = new PublicKey(vaultAddress);
+            const info = await this.connection.getAccountInfo(multisigKey);
+            const SQUADS_V4_PROGRAM_ID = "SQDS4169MvYvC6v3HnQjHeYd3sU0n3MUPfw79vjrE8G";
+
+            if (!info || info.owner.toBase58() !== SQUADS_V4_PROGRAM_ID) {
+                console.log("[Squads] Address is not a multisig, skipping proposals.");
+                return [];
+            }
+
             const multisigAccount = await squads.accounts.Multisig.fromAccountAddress(
                 this.connection,
                 multisigKey
