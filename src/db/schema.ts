@@ -126,27 +126,27 @@ export const agentExecutions = sqliteTable('agent_executions', {
   strategy: text('strategy').notNull(), // Strategy type: swap_token, rebalance_portfolio, etc.
   status: text('status').notNull(), // PENDING, RUNNING, SUCCESS, FAILED, CANCELLED
   progress: integer('progress').notNull().default(0), // 0-100
-  
+
   // Input and output
   input: text('input', { mode: 'json' }).notNull(), // Input parameters
   result: text('result', { mode: 'json' }), // Execution result
   error: text('error'), // Error message if failed
-  
+
   // Execution details
   estimatedGas: real('estimated_gas'), // Estimated SOL cost
   actualGas: real('actual_gas'), // Actual SOL cost
   transactionSignature: text('transaction_signature'), // Solana tx signature
-  
+
   // Approval workflow
   approvalRequired: integer('approval_required', { mode: 'boolean' }).notNull().default(false),
   approvalId: text('approval_id'), // Reference to approval if needed
   approvedAt: integer('approved_at'), // When user approved
-  
+
   // Metadata
   duration: integer('duration'), // Execution time in milliseconds
   retryCount: integer('retry_count').notNull().default(0),
   steps: text('steps', { mode: 'json' }), // Array of execution steps
-  
+
   createdAt: integer('created_at').notNull(),
   startedAt: integer('started_at'),
   completedAt: integer('completed_at'),
@@ -165,18 +165,18 @@ export const agentApprovals = sqliteTable('agent_approvals', {
   executionId: text('execution_id').notNull().references(() => agentExecutions.id, { onDelete: 'cascade' }),
   userId: text('user_id').notNull(),
   walletAddress: text('wallet_address').notNull(),
-  
+
   // Approval details
   message: text('message').notNull(), // What user is approving
   details: text('details', { mode: 'json' }), // Transaction details
   estimatedFee: real('estimated_fee'), // Estimated fee in SOL
   riskLevel: text('risk_level'), // low, medium, high
-  
+
   // Response
   approved: integer('approved', { mode: 'boolean' }), // null = pending, true = approved, false = rejected
   signature: text('signature'), // User's signature
   rejectionReason: text('rejection_reason'),
-  
+
   // Metadata
   expiresAt: integer('expires_at').notNull(), // Approval expires
   respondedAt: integer('responded_at'),
@@ -186,4 +186,64 @@ export const agentApprovals = sqliteTable('agent_approvals', {
   userIdx: index('agent_approvals_user_idx').on(table.userId),
   approvedIdx: index('agent_approvals_approved_idx').on(table.approved),
   expiresAtIdx: index('agent_approvals_expires_at_idx').on(table.expiresAt),
+}));
+
+// Marketplace Tables
+
+export const miniApps = sqliteTable('mini_apps', {
+  id: text('id').primaryKey(), // app_abc123
+  name: text('name').notNull(),
+  description: text('description').notNull(),
+  code: text('code', { mode: 'json' }).notNull(), // { files: { ... } }
+  contractCode: text('contract_code'), // Anchor/Rust source
+  programId: text('program_id'), // Deployed program address
+  version: text('version').notNull().default("1.0.0"),
+
+  // Creator
+  creatorWallet: text('creator_wallet').notNull(),
+  creatorShare: real('creator_share').notNull().default(0.8), // 80%
+
+  // Marketplace
+  isPublished: integer('is_published', { mode: 'boolean' }).notNull().default(false),
+  priceUsdc: real('price_usdc').notNull().default(0),
+  category: text('category').notNull().default("utility"),
+  tags: text('tags', { mode: 'json' }), // Array of strings
+
+  // Stats
+  installs: integer('installs').notNull().default(0),
+  rating: real('rating'), // Average rating
+
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+}, (table) => ({
+  creatorIdx: index('mini_apps_creator_idx').on(table.creatorWallet),
+  categoryIdx: index('mini_apps_category_idx').on(table.category),
+  isPublishedIdx: index('mini_apps_is_published_idx').on(table.isPublished),
+}));
+
+export const reviews = sqliteTable('reviews', {
+  id: text('id').primaryKey(),
+  appId: text('app_id').notNull().references(() => miniApps.id, { onDelete: 'cascade' }),
+  reviewerWallet: text('reviewer_wallet').notNull(),
+  rating: integer('rating').notNull(), // 1-5
+  comment: text('comment'),
+  signature: text('signature').notNull(), // Wallet signature for authenticity
+  createdAt: integer('created_at').notNull(),
+}, (table) => ({
+  appIdx: index('reviews_app_idx').on(table.appId),
+  reviewerIdx: index('reviews_reviewer_idx').on(table.reviewerWallet),
+}));
+
+export const purchases = sqliteTable('purchases', {
+  id: text('id').primaryKey(),
+  appId: text('app_id').notNull().references(() => miniApps.id),
+  buyerWallet: text('buyer_wallet').notNull(),
+  txSignature: text('tx_signature').notNull(), // On-chain transaction
+  amountUsdc: real('amount_usdc').notNull(),
+  creatorPayout: real('creator_payout').notNull(),
+  keystoneFee: real('keystone_fee').notNull(),
+  createdAt: integer('created_at').notNull(),
+}, (table) => ({
+  appIdx: index('purchases_app_idx').on(table.appId),
+  buyerIdx: index('purchases_buyer_idx').on(table.buyerWallet),
 }));

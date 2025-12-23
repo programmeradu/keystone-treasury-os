@@ -86,7 +86,7 @@ export function LLMApprovalDialog({
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-slate-200">Operation</h3>
             <div className="px-4 py-3 rounded bg-slate-800 border border-slate-700">
-              <p className="text-white font-medium capitalize">{plan.operation}</p>
+              <p className="text-white font-medium capitalize">{plan.actions?.[0]?.operation || 'Strategy'}</p>
             </div>
           </div>
 
@@ -124,12 +124,12 @@ export function LLMApprovalDialog({
           </div>
 
           {/* Parameters Summary (if complex) */}
-          {Object.keys(plan.parameters).length > 0 && (
+          {plan.actions?.[0]?.parameters && Object.keys(plan.actions[0].parameters).length > 0 && (
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-slate-200">Execution Parameters</h3>
               <div className="px-4 py-3 rounded bg-slate-800 border border-slate-700">
                 <dl className="space-y-2 text-sm">
-                  {Object.entries(plan.parameters)
+                  {Object.entries(plan.actions[0].parameters)
                     .slice(0, 5) // Show first 5 parameters
                     .map(([key, value]) => (
                       <div key={key} className="flex justify-between">

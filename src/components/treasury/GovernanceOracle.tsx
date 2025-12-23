@@ -1,224 +1,158 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import {
-    Gavel,
-    CheckCircle2,
-    XCircle,
-    Clock,
-    Users,
-    BarChart3,
-    ShieldAlert,
-    ExternalLink,
-    Scale,
-    TrendingUp,
-    Zap,
-    Eye
-} from "lucide-react";
-import { useBroadcastEvent, useEventListener, useOthers } from "@/liveblocks.config";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import React from "react";
+import { Clock, ArrowUpRight, Scale, CheckCircle2, AlertCircle, ThumbsUp, ThumbsDown, ExternalLink } from "lucide-react";
 
-interface Proposal {
-    id: string;
-    title: string;
-    status: "ACTIVE" | "PASSED" | "FAILED";
-    endTime: string;
-    votes: { for: string; against: string };
-    quorum: string;
-    description: string;
-}
-
-const PROPOSALS: Proposal[] = [
+const PROPOSALS = [
     {
-        id: "prop_01",
-        title: "KIP-014: Ecosystem Grant Allocation Phase 4",
+        id: "KIP-42",
+        title: "Treasury Diversification: Solayer Strategy",
+        desc: "Allocate 15% of SOL treasury into Solayer pools to capture 8% APY yield and secure network validation.",
+        endsIn: "4H 20M",
         status: "ACTIVE",
-        endTime: "22H_REMAINING",
-        votes: { for: "1.2M", against: "420K" },
-        quorum: "85%",
-        description: "Allocate 200,000 USDC for Q1 ecosystem development grants specifically targeting DeFi infrastructure."
+        votesFor: 72,
+        votesAgainst: 12,
+        myVote: null
     },
     {
-        id: "prop_02",
-        title: "KIP-013: Adjust Stability Fee for Sol-Bridged Assets",
-        status: "PASSED",
-        endTime: "COMPLETED",
-        votes: { for: "4.5M", against: "124K" },
-        quorum: "100%",
-        description: "Permanent reduction of the stability fee from 2.5% to 1.8% for all SOL-collateralized positions."
+        id: "KIP-43",
+        title: "Emergency Multisig Rotation (Signer #4)",
+        desc: "Rotation of signer key #4 due to operational security policy update. New key provided by Ledger HQ.",
+        endsIn: "2D 14H",
+        status: "ACTIVE",
+        votesFor: 98,
+        votesAgainst: 0,
+        myVote: "FOR"
     },
+    {
+        id: "KIP-41",
+        title: "Q1-2025 Grants Program Budget",
+        desc: "Authorization of 500,000 USDC for the Q1 grants wave focusing on infrastructure tooling.",
+        endsIn: "Ended",
+        status: "PASSED",
+        votesFor: 154,
+        votesAgainst: 2,
+        myVote: "FOR"
+    },
+    {
+        id: "KIP-40",
+        title: "Protocol Parameter Update: Fee Switch",
+        desc: "Turn on protocol fee switch for Uniswap integration.",
+        endsIn: "Ended",
+        status: "REJECTED",
+        votesFor: 45,
+        votesAgainst: 112,
+        myVote: null
+    }
 ];
 
 export function GovernanceOracle() {
-    const broadcast = useBroadcastEvent();
-    const others = useOthers();
-    const [simulatingPropId, setSimulatingPropId] = useState<string | null>(null);
-
-    const othersInModule = others.filter(other => (other.presence as any)?.module === "GOVERNANCE");
-
-    useEventListener(({ event }) => {
-        if (event.type === "SIGNAL" && event.payload.type === "GOV_SIM_START") {
-            setSimulatingPropId(event.payload.propId);
-            setTimeout(() => setSimulatingPropId(null), 5000);
-        }
-    });
-
-    const handleSimulate = (propId: string) => {
-        broadcast({
-            type: "SIGNAL",
-            payload: { type: "GOV_SIM_START", propId }
-        });
-        // In real app, this would trigger a backend/on-chain simulation
-    };
-
     return (
-        <div className="flex flex-col gap-8">
-            <div className="flex justify-between items-end">
-                <div>
-                    <h2 className="text-3xl font-black text-foreground uppercase tracking-tighter mb-2">Governance Oracle</h2>
-                    <p className="text-muted-foreground text-sm italic font-mono uppercase tracking-widest text-xs opacity-60">KE_OS // DECENTRALIZED_DECISION_MATRIX</p>
+        <div className="flex flex-col h-full gap-2">
+            {/* 1. Governance Identity Card - Slim Header */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 pt-4 border-b border-zinc-800/50 pb-4 h-auto shrink-0 bg-gradient-to-r from-zinc-900/50 to-transparent">
+                <div className="flex items-center gap-4">
+                    <div className="p-2 rounded-lg bg-zinc-800 text-white"><Scale size={16} /></div>
+                    <div className="flex flex-col">
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Voting Power</span>
+                        <div className="flex items-baseline gap-2">
+                            <h2 className="text-xl font-black text-white tracking-tighter">1,204,500</h2>
+                            <span className="text-xs font-bold text-primary uppercase">vKEY</span>
+                        </div>
+                    </div>
                 </div>
-                <div className="flex gap-4">
-                    {/* Collaborative Status */}
-                    <div className="flex -space-x-1.5 mr-4 items-center">
-                        {othersInModule.map(other => (
-                            <Avatar key={other.connectionId} className="h-6 w-6 ring-2 ring-background border border-border">
-                                <AvatarImage src={other.info?.avatar} />
-                                <AvatarFallback className="text-[6px]">{other.info?.name.substring(0, 1)}</AvatarFallback>
-                            </Avatar>
-                        ))}
-                        {othersInModule.length > 0 && (
-                            <span className="ml-3 text-[8px] font-black text-primary uppercase tracking-widest">{othersInModule.length} ANALYSTS_ONLINE</span>
-                        )}
-                    </div>
 
-                    <div className="px-4 py-2 bg-muted border border-border rounded-xl flex items-center gap-3 shadow-sm">
-                        <Scale size={14} className="text-primary" />
-                        <span className="text-[10px] font-mono text-muted-foreground">VOTING_WEIGHT: 1.4M $KEY</span>
-                    </div>
+                <div className="flex items-center gap-4">
+                    <span className="text-[9px] font-mono text-zinc-500 uppercase hidden sm:inline">Snapshot: 2D 14H</span>
+                    <button className="px-4 py-2 bg-white text-black font-black text-[10px] uppercase tracking-widest rounded-lg hover:scale-105 transition-transform flex items-center gap-2">
+                        Delegate <ArrowUpRight size={12} />
+                    </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                {/* 1. Governance HUD (1 Column) */}
-                <div className="lg:col-span-1 flex flex-col gap-6">
-                    <div className="p-8 rounded-[2.5rem] bg-gradient-to-br from-primary/10 to-card border border-primary/20 flex flex-col gap-8 shadow-sm">
-                        <div>
-                            <div className="flex items-center gap-2 mb-2">
-                                <Users size={14} className="text-muted-foreground" />
-                                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Active Voters</span>
-                            </div>
-                            <div className="text-4xl font-black text-foreground tracking-tighter">1,248</div>
-                        </div>
-
-                        <div className="flex flex-col gap-4">
-                            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                                <span className="text-muted-foreground">Participation Rate</span>
-                                <span className="text-foreground">68%</span>
-                            </div>
-                            <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                                <div className="h-full w-[68%] bg-primary shadow-[0_0_10px_var(--dashboard-accent-muted)]" />
-                            </div>
-                        </div>
-
-                        <button className="w-full py-4 bg-primary text-primary-foreground font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:scale-[1.02] transition-transform shadow-lg shadow-primary/20">
-                            Delegate Power
-                        </button>
-                    </div>
-
-                    <div className="p-8 rounded-[2.5rem] bg-card border border-border flex flex-col gap-6 shadow-sm">
-                        <div className="flex items-center gap-3">
-                            <ShieldAlert className="text-destructive font-black" size={18} />
-                            <span className="text-[10px] font-black text-destructive uppercase tracking-widest">Critical Alert</span>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground leading-relaxed font-medium">KIP-014 requires 200k more votes to reach quorum before the window closes.</p>
-                        <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground/60 font-black">
-                            <Clock size={12} />
-                            <span>T-MINUS 22:14:04</span>
-                        </div>
+            {/* 2. Proposals - High Density Table */}
+            <div className="flex-1 flex flex-col overflow-hidden relative border-t border-zinc-800/50 mt-2">
+                {/* Table Header */}
+                <div className="px-4 py-2 flex justify-between items-center bg-zinc-900/30">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Governance Register</span>
+                    <div className="flex gap-2">
+                        <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[8px] font-bold uppercase border border-emerald-500/20">2 Active</span>
                     </div>
                 </div>
 
-                {/* 2. Proposal Feed (3 Columns) */}
-                <div className="lg:col-span-3 flex flex-col gap-6">
-                    <div className="flex-1 bg-card border border-border rounded-[2.5rem] p-8 flex flex-col gap-6 shadow-sm">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                                <Gavel size={20} />
-                            </div>
-                            <h3 className="text-sm font-black text-foreground uppercase tracking-widest text-[11px]">Tactical Proposal Feed</h3>
-                        </div>
-
-                        <div className="flex flex-col gap-6">
-                            {PROPOSALS.map((prop) => (
-                                <div key={prop.id} className="p-8 rounded-[2rem] bg-background border border-border flex flex-col gap-6 hover:border-primary/30 transition-all group shadow-sm">
-                                    <div className="flex justify-between items-start">
-                                        <div className="flex flex-col gap-3 max-w-2xl">
-                                            <div className="flex items-center gap-3">
-                                                <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-[0.2em] border ${prop.status === "ACTIVE"
-                                                    ? "bg-primary/10 border-primary/30 text-primary"
-                                                    : prop.status === "PASSED"
-                                                        ? "bg-blue-500/10 border-blue-500/30 text-blue-500"
-                                                        : "bg-destructive/10 border-destructive/30 text-destructive"
-                                                    }`}>
-                                                    {prop.status}
-                                                </span>
-                                                <span className="text-[9px] font-mono text-muted-foreground/50 uppercase tracking-widest">{prop.endTime}</span>
+                <div className="flex-1 overflow-x-auto scrollbar-thin font-mono bg-zinc-900/10">
+                    <table className="w-full text-left border-collapse min-w-[900px]">
+                        <thead>
+                            <tr className="text-[9px] uppercase tracking-widest text-zinc-600 border-b border-zinc-800">
+                                <th className="py-3 pl-4 font-normal w-24">ID</th>
+                                <th className="py-3 font-normal">Proposal</th>
+                                <th className="py-3 font-normal w-32">Status</th>
+                                <th className="py-3 font-normal w-48">Quorum</th>
+                                <th className="py-3 font-normal w-32">My Vote</th>
+                                <th className="py-3 font-normal w-24 text-right pr-4">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody className="text-[10px] text-zinc-400">
+                            {PROPOSALS.map((p) => (
+                                <tr key={p.id} className="group hover:bg-zinc-900/50 transition-colors border-b border-zinc-800/30">
+                                    <td className="py-4 pl-4 font-mono text-zinc-300">
+                                        <div className="px-1.5 py-0.5 rounded bg-zinc-800 w-fit">{p.id}</div>
+                                    </td>
+                                    <td className="py-4 max-w-md">
+                                        <div className="flex flex-col gap-1 pr-8">
+                                            <span className="text-white font-bold text-xs group-hover:text-primary transition-colors cursor-pointer">{p.title}</span>
+                                            <span className="text-zinc-500 line-clamp-1">{p.desc}</span>
+                                        </div>
+                                    </td>
+                                    <td className="py-4">
+                                        <div className="flex items-center gap-2">
+                                            {p.status === 'ACTIVE' && <Clock size={12} className="text-orange-500" />}
+                                            {p.status === 'PASSED' && <CheckCircle2 size={12} className="text-emerald-500" />}
+                                            {p.status === 'REJECTED' && <AlertCircle size={12} className="text-rose-500" />}
+                                            <span className={`font-bold ${p.status === 'ACTIVE' ? 'text-orange-500' :
+                                                    p.status === 'PASSED' ? 'text-emerald-500' : 'text-rose-500'
+                                                }`}>{p.status === 'ACTIVE' ? p.endsIn : p.status}</span>
+                                        </div>
+                                    </td>
+                                    <td className="py-4">
+                                        <div className="flex flex-col gap-1 w-32">
+                                            <div className="flex justify-between text-[8px] uppercase tracking-wider">
+                                                <span className="text-emerald-500">{p.votesFor} For</span>
+                                                <span className="text-rose-500">{p.votesAgainst} Against</span>
                                             </div>
-                                            <h4 className="text-xl font-black text-foreground uppercase tracking-tighter group-hover:text-primary transition-colors">{prop.title}</h4>
-                                            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{prop.description}</p>
-                                        </div>
-                                        <button className="p-3 bg-muted border border-border rounded-xl text-muted-foreground hover:text-foreground transition-colors shadow-sm">
-                                            <ExternalLink size={18} />
-                                        </button>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
-                                        <div className="flex flex-col gap-2">
-                                            <span className="text-[9px] text-muted-foreground uppercase font-black tracking-widest">For</span>
-                                            <span className="text-lg font-black text-primary font-mono">{prop.votes.for}</span>
-                                        </div>
-                                        <div className="flex flex-col gap-2">
-                                            <span className="text-[9px] text-muted-foreground uppercase font-black tracking-widest">Against</span>
-                                            <span className="text-lg font-black text-destructive font-mono">{prop.votes.against}</span>
-                                        </div>
-                                        <div className="flex flex-col gap-2">
-                                            <span className="text-[9px] text-muted-foreground uppercase font-black tracking-widest">Quorum</span>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-lg font-black text-foreground font-mono">{prop.quorum}</span>
-                                                <CheckCircle2 size={14} className="text-primary" />
+                                            <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden flex">
+                                                <div className="h-full bg-emerald-500" style={{ width: `${(p.votesFor / (p.votesFor + p.votesAgainst)) * 100}%` }} />
                                             </div>
                                         </div>
-                                        <div className="flex items-center justify-end gap-3">
-                                            {simulatingPropId === prop.id && (
-                                                <motion.div
-                                                    initial={{ opacity: 0 }}
-                                                    animate={{ opacity: 1 }}
-                                                    className="flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-full border border-primary/30"
-                                                >
-                                                    <Zap size={10} className="text-primary animate-pulse" />
-                                                    <span className="text-[7px] font-black text-primary uppercase tracking-widest">Team_Simulating</span>
-                                                </motion.div>
-                                            )}
-                                            <button
-                                                onClick={() => handleSimulate(prop.id)}
-                                                className="px-6 py-2.5 bg-muted border border-border rounded-xl text-[10px] font-black text-foreground uppercase tracking-widest hover:bg-muted/80 transition-colors flex items-center gap-2 group/btn shadow-sm"
-                                            >
-                                                <BarChart3 size={14} className="group-hover/btn:text-primary transition-colors" />
-                                                Impact_Sim
+                                    </td>
+                                    <td className="py-4">
+                                        {p.myVote ? (
+                                            <span className="flex items-center gap-2 text-emerald-500 font-bold uppercase text-[9px]">
+                                                <CheckCircle2 size={12} /> Voted {p.myVote}
+                                            </span>
+                                        ) : p.status === 'ACTIVE' ? (
+                                            <span className="text-zinc-600 text-[9px] uppercase italic">Not Voted</span>
+                                        ) : (
+                                            <span className="text-zinc-600 text-[9px] uppercase">Did not vote</span>
+                                        )}
+                                    </td>
+                                    <td className="py-4 text-right pr-4">
+                                        {p.status === 'ACTIVE' && !p.myVote && (
+                                            <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button className="p-1.5 rounded hover:bg-emerald-500/20 hover:text-emerald-500 text-zinc-500 transition-colors"><ThumbsUp size={14} /></button>
+                                                <button className="p-1.5 rounded hover:bg-rose-500/20 hover:text-rose-500 text-zinc-500 transition-colors"><ThumbsDown size={14} /></button>
+                                            </div>
+                                        )}
+                                        {p.status !== 'ACTIVE' && (
+                                            <button className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-white/10 text-zinc-500 hover:text-white transition-all">
+                                                <ExternalLink size={14} />
                                             </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden flex shadow-inner">
-                                        <div className="h-full bg-primary shadow-[0_0_8px_var(--dashboard-accent-muted)]" style={{ width: '75%' }} />
-                                        <div className="h-full bg-destructive shadow-[0_0_8px_rgba(239,68,68,0.3)]" style={{ width: '15%' }} />
-                                    </div>
-                                </div>
+                                        )}
+                                    </td>
+                                </tr>
                             ))}
-                        </div>
-                    </div>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

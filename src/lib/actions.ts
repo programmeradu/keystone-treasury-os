@@ -12,7 +12,7 @@ export interface ActionContext {
     connection: Connection;
     wallet: any;
     squadsClient: SquadsClient;
-    heliusClient: HeliusClient;
+    heliusClient?: HeliusClient;
     vaultAddress: string;
 }
 
@@ -75,18 +75,21 @@ async function executeSingleAction(operation: string, parameters: any, context: 
             return await context.squadsClient.createVaultTransaction(
                 context.vaultAddress,
                 [], // instructions
+                0,
                 `Bridge ${parameters.amount} ${parameters.token} from ${parameters.sourceChain} to ${parameters.destinationChain}`
             );
         case "yield_deposit":
             return await context.squadsClient.createVaultTransaction(
                 context.vaultAddress,
                 [], // instructions
+                0,
                 `Deposit ${parameters.amount} ${parameters.token} into ${parameters.protocol} for yield`
             );
         case "yield_withdraw":
             return await context.squadsClient.createVaultTransaction(
                 context.vaultAddress,
                 [], // instructions
+                0,
                 `Withdraw ${parameters.amount} ${parameters.token} from ${parameters.protocol}`
             );
         case "rebalance":
@@ -98,6 +101,7 @@ async function executeSingleAction(operation: string, parameters: any, context: 
             return await context.squadsClient.createVaultTransaction(
                 context.vaultAddress,
                 [],
+                0,
                 `Rebalance portfolio to: ${rebalanceSummary}`
             );
         case "monitor":
@@ -156,6 +160,7 @@ async function executeSingleAction(operation: string, parameters: any, context: 
                 return await context.squadsClient.createVaultTransaction(
                     context.vaultAddress,
                     [], // Instructions would be built dynamicly here
+                    0,
                     `Execute ${dynamicOp.name} via Plugin ${dynamicOp.programId.substr(0, 6)}...`
                 );
             }
@@ -229,6 +234,7 @@ async function executeSwap(params: any, context: ActionContext): Promise<string>
     return await squadsClient.createVaultTransaction(
         vaultAddress,
         mockInstructions,
+        0,
         `Swap ${amount} ${inputToken} to ${outputToken}`
     );
 }
@@ -249,6 +255,7 @@ async function executeTransfer(params: any, context: ActionContext): Promise<str
     return await squadsClient.createVaultTransaction(
         vaultAddress,
         mockInstructions,
+        0,
         `Transfer ${amount} ${token} to ${recipient}`
     );
 }

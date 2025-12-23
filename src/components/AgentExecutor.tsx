@@ -75,7 +75,7 @@ export function AgentExecutor({
       if (plan) {
         setLlmPlan(plan);
         setLlmDialogOpen(true);
-        toastNotifications.approvalRequested(`AI suggested: ${plan.operation}`);
+        toastNotifications.approvalRequested(`AI suggested: ${plan.actions?.[0]?.operation || 'strategy'}`);
       } else {
         toastNotifications.executionFailed("Strategy", "Failed to plan strategy. Try being more specific.");
       }
@@ -96,15 +96,15 @@ export function AgentExecutor({
 
     try {
       // Convert LLM plan to agent input
-      let input: any = llmPlan.parameters;
+      let input: any = llmPlan.actions?.[0]?.parameters;
 
-      const result = await execute(llmPlan.operation as any, input);
-      
+      const result = await execute(llmPlan.actions?.[0]?.operation as any, input);
+
       setLlmDialogOpen(false);
       setLlmPlan(null);
       setUserDescription("");
-      
-      toastNotifications.executionSuccess("Strategy", `${llmPlan.operation} completed successfully`);
+
+      toastNotifications.executionSuccess("Strategy", `${llmPlan.actions?.[0]?.operation || 'Action'} completed successfully`);
       onSuccess?.(result);
     } catch (err: any) {
       const errorExplanation = await explainError(err);

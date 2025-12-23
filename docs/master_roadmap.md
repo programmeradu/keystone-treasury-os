@@ -75,10 +75,10 @@ Keystone OS v1.0 establishes the "Infinite Command Layer." It is no longer a sta
 
 ### Phase 15: Predictive & Mobile (The Future)
 *Goal: Forecasting the next move and signing on the go.*
-- [ ] **Predictive Runway:** AI-powered cash flow projector based on burn rates.
+- [x] **Predictive Runway:** AI-powered cash flow projector based on burn rates.
 - [ ] **Mobile Approver:** Zero-friction PWA for one-click signing via FaceID/Passkeys.
-- [ ] **Agent Personas:** Customizable risk profiles and autonomous threshold settings.
-- [ ] **Agent Personas:** Customizable risk profiles and autonomous threshold settings.
+- [x] **Agent Personas:** Customizable risk profiles and autonomous threshold settings.
+- [x] **Agent Personas:** Customizable risk profiles and autonomous threshold settings.
 
 ### Phase 15b: Treasury Management Hub (Deep Control)
 *Goal: Dedicated deep-control page for vault isolation and complex ops.*

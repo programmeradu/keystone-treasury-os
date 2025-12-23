@@ -52,7 +52,7 @@ export default function TeamPage() {
                 </div>
             </header>
 
-            <div className="flex-1 p-6 overflow-y-auto custom-scrollbar bg-background">
+            <div className="flex-1 p-8 overflow-y-auto scrollbar-thin bg-background">
                 <div className="max-w-[1600px] mx-auto space-y-6">
                     {/* Compact Section Header */}
                     <div className="flex items-center justify-between">

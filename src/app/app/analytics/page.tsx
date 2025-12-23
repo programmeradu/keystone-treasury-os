@@ -89,7 +89,7 @@ export default function AnalyticsPage() {
                 </div>
             </header>
 
-            <main className="flex-1 p-6 overflow-y-auto custom-scrollbar">
+            <main className="flex-1 p-6 overflow-y-auto scrollbar-thin">
                 <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4 max-w-[1600px] mx-auto">
 
                     {/* Main Growth Chart */}

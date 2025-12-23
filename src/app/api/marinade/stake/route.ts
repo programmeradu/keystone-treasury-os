@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { Connection, PublicKey, Transaction, clusterApiUrl } from "@solana/web3.js";
 import { Marinade, MarinadeConfig } from "@marinade.finance/marinade-ts-sdk";
+import BN from "bn.js";
 
 // Build an unsigned legacy Transaction for staking SOL to mSOL via Marinade.
 // Client will sign and send using wallet-adapter.
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
     const marinade = new Marinade(config);
 
     // Build the deposit transaction (legacy) without signing
-    const { transaction } = await marinade.deposit(amountLamports);
+    const { transaction } = await marinade.deposit(new BN(amountLamports));
 
     // Ensure fee payer and blockhash are set for client to sign
     const { blockhash } = await connection.getLatestBlockhash({ commitment: "finalized" });

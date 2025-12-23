@@ -1,4 +1,4 @@
-"use client";
+// Utility class for Firecrawl scraping functionality
 
 export class FirecrawlClient {
     private apiKey: string;

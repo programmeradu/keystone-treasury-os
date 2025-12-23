@@ -1,4 +1,4 @@
-"use client";
+// Utility class for Tavily search functionality
 
 export interface TavilySearchResult {
     title: string;

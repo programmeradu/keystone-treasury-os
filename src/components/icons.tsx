@@ -252,3 +252,19 @@ export const LayoutGrid = ({ size = 20, ...props }: IconProps) => (
         <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5" />
     </svg>
 );
+
+export const ArchitectIcon = ({ size = 20, fillColor = "currentColor", ...props }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+        {/* Foundation */}
+        <path d="M4 21H20" stroke={fillColor} strokeWidth="1.5" strokeLinecap="round" />
+        {/* Core Pillar Structure */}
+        <path d="M7 21V7" stroke={fillColor} strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M17 21V7" stroke={fillColor} strokeWidth="1.5" strokeLinecap="round" />
+        {/* Top Pediment / Data Node */}
+        <path d="M12 3L20 7H4L12 3Z" stroke={fillColor} strokeWidth="1.5" strokeLinejoin="round" />
+        {/* Central Intelligence Node */}
+        <rect x="10" y="10" width="4" height="4" rx="1" stroke={fillColor} strokeWidth="1.5" />
+        <path d="M12 10V7" stroke={fillColor} strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M12 14V21" stroke={fillColor} strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+);

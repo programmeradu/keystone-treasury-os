@@ -1,237 +1,101 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion } from "framer-motion";
-import {
-    Database,
-    ShieldCheck,
-    FileJson,
-    FileText,
-    Search,
-    Filter,
-    Download,
-    BarChart,
-    RefreshCw,
-    AlertCircle,
-    CheckCircle2,
-    Calendar,
-    Users,
-    Zap
-} from "lucide-react";
-import { useUpdateMyPresence, useOthers } from "@/liveblocks.config";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Download, FileText, Filter, Calendar, Search, CheckCircle2, AlertCircle } from "lucide-react";
 
-interface Transaction {
-    id: string;
-    to: string;
-    amount: string;
-    category: string;
-    status: "RECONCILED" | "UNRECONCILED";
-    compliance: "SECURE" | "FLAGGED";
-}
-
-const TXS: Transaction[] = [
-    { id: "tx_0a1", to: "Zebec_Stream_Pulp", amount: "1,200 USDC", category: "PAYROLL", status: "RECONCILED", compliance: "SECURE" },
-    { id: "tx_0b2", to: "Unknown_Wallet_0x...f2", amount: "50,000 USDC", category: "UNCATEGORIZED", status: "UNRECONCILED", compliance: "FLAGGED" },
-    { id: "tx_0c3", to: "AWS_Infrastructure", amount: "240.21 USDC", category: "INFRA", status: "RECONCILED", compliance: "SECURE" },
+const COMPLIANCE_LOGS = [
+    { id: "TX_9921", date: "2024-12-20", type: "OUTFLOW", entity: "Contributor_Grant_Pool", amount: "50,000 USDC", status: "VERIFIED", hash: "5x...92a" },
+    { id: "TX_9920", date: "2024-12-19", type: "INFLOW", entity: "Kamino_Yield_Strategy", amount: "1,240.52 USDC", status: "VERIFIED", hash: "2a...b11" },
+    { id: "TX_9919", date: "2024-12-18", type: "SWAP", entity: "Jupiter_Aggregator", amount: "500 SOL -> 32,500 USDC", status: "VERIFIED", hash: "9c...22f" },
+    { id: "TX_9918", date: "2024-12-18", type: "VOTE", entity: "Realms_Governance", amount: "---", status: "EXECUTED", hash: "1d...44a" },
+    { id: "TX_9917", date: "2024-12-15", type: "OUTFLOW", entity: "Security_Audit_Firm_A", amount: "12,500 USDC", status: "PENDING_AUDIT", hash: "7b...33e" },
 ];
 
 export function DataNexus() {
-    const updatePresence = useUpdateMyPresence();
-    const others = useOthers();
-    const [focusedTx, setFocusedTx] = useState<string | null>(null);
-
-    const handleTxFocus = (txId: string | null) => {
-        setFocusedTx(txId);
-        updatePresence({ selectedTxId: txId } as any);
-    };
-
-    const othersInModule = others.filter(other => (other.presence as any)?.module === "DATA");
-
     return (
-        <div className="flex flex-col gap-8">
-            <div className="flex justify-between items-end">
-                <div>
-                    <h2 className="text-3xl font-black text-foreground uppercase tracking-tighter mb-2">Data Nexus</h2>
-                    <p className="text-muted-foreground text-sm italic font-mono uppercase tracking-widest text-xs opacity-60">KE_OS // TREASURY_INTELLIGENCE_LAYER</p>
-                </div>
-                <div className="flex gap-4">
-                    {/* Collaborative Status */}
-                    <div className="flex -space-x-1.5 mr-4 items-center">
-                        {othersInModule.map(other => (
-                            <Avatar key={other.connectionId} className="h-6 w-6 ring-2 ring-background border border-border">
-                                <AvatarImage src={other.info?.avatar} />
-                                <AvatarFallback className="text-[6px]">{other.info?.name.substring(0, 1)}</AvatarFallback>
-                            </Avatar>
-                        ))}
-                        {othersInModule.length > 0 && (
-                            <span className="ml-3 text-[8px] font-black text-primary uppercase tracking-widest">{othersInModule.length} AUDITORS_LOGGED_IN</span>
-                        )}
-                    </div>
-
-                    <button className="px-6 py-2.5 bg-primary text-primary-foreground font-black text-xs uppercase tracking-widest rounded-xl hover:scale-105 transition-transform flex items-center gap-2 shadow-lg shadow-primary/20">
-                        <Download size={16} />
-                        Export Reports
+        <div className="flex flex-col h-full gap-2">
+            {/* 1. Export Command Station - Flattened Toolbar */}
+            <div className="flex items-center justify-between px-4 pt-2">
+                <div className="flex gap-2">
+                    <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-[10px] uppercase font-bold text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all">
+                        <FileText size={14} /> Month Report
+                    </button>
+                    <div className="h-8 w-px bg-zinc-800 mx-1" />
+                    <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[10px] uppercase font-bold text-emerald-500 hover:text-emerald-400 transition-all">
+                        <Download size={14} /> Export CSV
                     </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                {/* 1. Accounting HUD (1 Column) */}
-                <div className="lg:col-span-1 flex flex-col gap-6">
-                    <div className="p-8 rounded-[2.5rem] bg-gradient-to-br from-primary/10 to-card border border-primary/20 flex flex-col gap-6 relative overflow-hidden group shadow-sm">
-                        <div className="absolute top-0 right-0 p-4 opacity-10">
-                            <Database size={80} className="text-primary" />
-                        </div>
-
-                        <div className="relative z-10 flex flex-col gap-1">
-                            <span className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">Reconciliation Score</span>
-                            <span className="text-4xl font-black text-foreground tracking-tighter">98.4%</span>
-                        </div>
-
-                        <div className="relative z-10 flex flex-col gap-4">
-                            <div className="flex justify-between text-[8px] font-mono text-muted-foreground uppercase">
-                                <span>Uncategorized</span>
-                                <span>12 Transactions</span>
-                            </div>
-                            <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                                <div className="h-full w-[98%] bg-primary shadow-[0_0_10px_var(--dashboard-accent-muted)]" />
-                            </div>
-                        </div>
-
-                        <button className="relative z-10 w-full py-4 bg-muted border border-border rounded-2xl text-[10px] font-black text-foreground uppercase tracking-[0.2em] hover:bg-muted/80 transition-colors flex items-center justify-center gap-2 shadow-sm">
-                            <RefreshCw size={14} className="text-primary" />
-                            Auto-Categorize
-                        </button>
+            {/* 2. Compliance Ledger - Full Bleed */}
+            <div className="flex-1 flex flex-col overflow-hidden relative border-t border-zinc-800/50 mt-2">
+                {/* Decorative Header */}
+                <div className="px-4 py-3 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[9px] uppercase font-mono font-bold text-zinc-500 tracking-widest">Real-Time Ledger Sync</span>
                     </div>
-
-                    <div className="p-8 rounded-[2.5rem] bg-card border border-border flex flex-col gap-6 shadow-sm">
-                        <div className="flex items-center gap-3">
-                            <ShieldCheck className="text-primary" size={18} />
-                            <span className="text-[10px] font-black text-foreground uppercase tracking-widest">Compliance Monitor</span>
-                        </div>
-                        <div className="flex flex-col gap-4">
-                            {[
-                                { label: "OFAC_Screening", status: "ACTIVE", color: "var(--dashboard-accent)" },
-                                { label: "AML_Heuristics", status: "ACTIVE", color: "var(--dashboard-accent)" },
-                                { label: "Risk_Level", status: "LOW", color: "var(--dashboard-accent)" }
-                            ].map((item, i) => (
-                                <div key={i} className="flex justify-between items-center p-3 rounded-xl bg-muted/30 border border-border">
-                                    <span className="text-[9px] font-mono text-muted-foreground uppercase">{item.label}</span>
-                                    <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: item.color }}>{item.status}</span>
-                                </div>
-                            ))}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button className="flex items-center gap-2 px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 text-[9px] font-mono text-zinc-400 hover:text-white transition-colors">
+                            <Calendar size={10} /> Dec 2024
+                        </button>
+                        <div className="relative">
+                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-600" size={10} />
+                            <input
+                                className="h-7 w-40 bg-zinc-900 border border-zinc-800 rounded pl-7 pr-2 text-[9px] font-mono text-white focus:outline-none focus:border-zinc-700 transition-colors"
+                                placeholder="Filter hash..."
+                            />
                         </div>
                     </div>
                 </div>
 
-                {/* 2. Transaction Feed & Ingestion (3 Columns) */}
-                <div className="lg:col-span-3 flex flex-col gap-6">
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="p-8 bg-card border border-border rounded-[2.5rem] flex flex-col gap-4 hover:border-primary/50 transition-all cursor-pointer group shadow-sm">
-                            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
-                                <FileText size={20} />
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-black text-foreground uppercase tracking-widest mb-1">Ingest CSV/PDF</h3>
-                                <p className="text-[10px] text-muted-foreground font-mono">Drag and drop transaction logs for auto-reconciliation.</p>
-                            </div>
-                        </div>
-                        <div className="p-8 bg-card border border-border rounded-[2.5rem] flex flex-col gap-4 hover:border-blue-500/50 transition-all cursor-pointer group shadow-sm">
-                            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 shadow-inner">
-                                <FileJson size={20} />
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-black text-foreground uppercase tracking-widest mb-1">Integrate ERP</h3>
-                                <p className="text-[10px] text-muted-foreground font-mono">Sync with QuickBooks, Bitwave, or TRES.finance via API.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex-1 bg-card border border-border rounded-[2.5rem] p-8 flex flex-col gap-6 shadow-sm">
-                        <div className="flex justify-between items-center mb-4">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                                    <BarChart size={20} />
-                                </div>
-                                <h3 className="text-sm font-black text-foreground uppercase tracking-widest text-[11px]">Intelligence Feed</h3>
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/40" size={14} />
-                                    <input
-                                        type="text"
-                                        placeholder="SEARCH_LOGS..."
-                                        className="bg-muted border border-border rounded-full py-1.5 pl-9 pr-4 text-[10px] font-mono text-foreground placeholder:text-muted-foreground/40 w-48 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
-                                    />
-                                </div>
-                                <button className="p-2 rounded-lg bg-muted border border-border text-muted-foreground hover:text-foreground shadow-sm">
-                                    <Filter size={14} />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-col gap-4">
-                            {TXS.map((tx) => {
-                                const auditor = othersInModule.find(o => (o.presence as any)?.selectedTxId === tx.id);
-
-                                return (
-                                    <div
-                                        key={tx.id}
-                                        onMouseEnter={() => handleTxFocus(tx.id)}
-                                        onMouseLeave={() => handleTxFocus(null)}
-                                        className={`p-6 rounded-[2rem] bg-background border transition-all relative group shadow-sm ${auditor ? "border-primary/50 shadow-[0_0_15px_var(--dashboard-accent-muted)]" : "border-border hover:border-primary/20"
-                                            }`}
-                                    >
-                                        <div className="flex items-center gap-6">
-                                            <div className={`w-1 h-8 rounded-full ${tx.compliance === "SECURE" ? "bg-primary" : "bg-destructive"} shadow-[0_0_8px_currentColor]`} />
-                                            <div className="flex flex-col">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <span className="text-[10px] font-bold text-foreground uppercase tracking-tighter">{tx.to}</span>
-                                                    {tx.compliance === "FLAGGED" && (
-                                                        <span className="flex items-center gap-1 text-[7px] font-black text-destructive bg-destructive/10 px-1.5 py-0.5 rounded uppercase border border-destructive/20">
-                                                            <AlertCircle size={8} />
-                                                            Risk_ Detected
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="flex items-center gap-3 text-[9px] font-mono text-muted-foreground/50 uppercase">
-                                                    <span>{tx.id}</span>
-                                                    <span>{tx.category}</span>
-                                                </div>
+                {/* Terminal List */}
+                <div className="flex-1 overflow-x-auto scrollbar-thin font-mono bg-zinc-900/10">
+                    <div className="min-w-[800px]">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="text-[9px] uppercase tracking-widest text-zinc-600 border-b border-zinc-800">
+                                    <th className="py-2 pl-4 font-normal">Transaction ID</th>
+                                    <th className="py-2 font-normal">Date</th>
+                                    <th className="py-2 font-normal">Type</th>
+                                    <th className="py-2 font-normal">Entity / Contract</th>
+                                    <th className="py-2 font-normal">Value Vector</th>
+                                    <th className="py-2 font-normal">Status</th>
+                                    <th className="py-2 font-normal">Hash</th>
+                                </tr>
+                            </thead>
+                            <tbody className="text-[10px] text-zinc-400">
+                                {COMPLIANCE_LOGS.map((log) => (
+                                    <tr key={log.id} className="group hover:bg-zinc-900/50 transition-colors text-[10px]">
+                                        <td className="py-3 pl-4 border-b border-zinc-900/50 text-white font-bold">{log.id}</td>
+                                        <td className="py-3 border-b border-zinc-900/50 opacity-70">{log.date}</td>
+                                        <td className="py-3 border-b border-zinc-900/50">
+                                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${log.type === "INFLOW" ? "bg-emerald-500/10 text-emerald-500" :
+                                                log.type === "OUTFLOW" ? "bg-rose-500/10 text-rose-500" :
+                                                    "bg-zinc-800 text-zinc-400"
+                                                }`}>
+                                                {log.type}
+                                            </span>
+                                        </td>
+                                        <td className="py-3 border-b border-zinc-900/50 text-white font-mono">{log.entity}</td>
+                                        <td className="py-3 border-b border-zinc-900/50 font-bold">{log.amount}</td>
+                                        <td className="py-3 border-b border-zinc-900/50">
+                                            <div className="flex items-center gap-1.5">
+                                                {log.status === "VERIFIED" || log.status === "EXECUTED" ? <CheckCircle2 size={10} className="text-emerald-500" /> : <AlertCircle size={10} className="text-orange-500" />}
+                                                <span className={log.status === "VERIFIED" || log.status === "EXECUTED" ? "text-emerald-500" : "text-orange-500"}>{log.status}</span>
                                             </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-6 ml-auto">
-                                            {auditor && (
-                                                <div className="flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-full border border-primary/30">
-                                                    <span className="text-[7px] font-black text-primary uppercase tracking-widest">{auditor.info?.name} Auditing</span>
-                                                </div>
-                                            )}
-
-                                            <div className="flex items-center gap-12">
-                                                <div className="flex flex-col items-end">
-                                                    <span className="text-sm font-black text-foreground font-mono">{tx.amount}</span>
-                                                    <span className="text-[9px] font-mono text-muted-foreground uppercase">Disbursement</span>
-                                                </div>
-                                                <div className="w-24">
-                                                    <div className={`flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg border text-[8px] font-black uppercase tracking-widest shadow-sm ${tx.status === "RECONCILED"
-                                                        ? "bg-primary/10 border-primary/20 text-primary"
-                                                        : "bg-muted border-border text-muted-foreground/50"
-                                                        }`}>
-                                                        {tx.status === "RECONCILED" && <CheckCircle2 size={10} />}
-                                                        {tx.status}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                        </td>
+                                        <td className="py-3 border-b border-zinc-900/50 font-mono opacity-50 underline decoration-zinc-800 cursor-pointer hover:text-primary transition-colors">{log.hash}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
+
+            {/* Terminal List is already rendered above, removing duplicate */}
         </div>
     );
 }
+

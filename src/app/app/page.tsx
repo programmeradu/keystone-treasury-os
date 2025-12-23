@@ -129,7 +129,7 @@ export default function AppPortalPage() {
         </div>
       </header>
 
-      <div className="flex-1 p-6 pt-4 overflow-y-auto custom-scrollbar">
+      <div className="flex-1 p-6 pt-4 overflow-y-auto scrollbar-thin">
         <div className="grid grid-cols-1 lg:grid-cols-3 grid-rows-[minmax(200px,auto)_auto] gap-4 max-w-[1600px] mx-auto pb-6">
           {/* 1. Total Treasury Card (Compact) */}
           <div className="lg:col-span-2 rounded-2xl bg-card border border-border p-6 relative overflow-hidden group min-h-[220px] flex flex-col justify-between shadow-lg">

@@ -12,6 +12,7 @@ interface Asset {
     price: number;
     change24h: number;
     allocation: number;
+    logo?: string;
 }
 
 interface AssetInventoryTableProps {
@@ -41,27 +42,31 @@ export const AssetInventoryTable = ({ assets }: AssetInventoryTableProps) => {
                         >
                             <td className="px-4 py-3 rounded-l-lg border-l border-t border-b border-border">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-black border border-border group-hover:border-primary/50 transition-colors text-foreground">
-                                        {asset.symbol.substring(0, 2)}
+                                    <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-black border border-border group-hover:border-primary/50 transition-colors overflow-hidden">
+                                        {asset?.logo ? (
+                                            <img src={asset.logo} alt={asset.symbol} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-foreground">{(asset?.symbol || "??").substring(0, 2)}</span>
+                                        )}
                                     </div>
                                     <div>
-                                        <span className="block text-foreground font-black uppercase text-[10px] tracking-tight">{asset.symbol}</span>
-                                        <span className="block text-[8px] text-muted-foreground uppercase font-black truncate max-w-[80px]">{asset.name}</span>
+                                        <span className="block text-foreground font-black uppercase text-[10px] tracking-tight">{asset?.symbol || "UNKNOWN"}</span>
+                                        <span className="block text-[8px] text-muted-foreground uppercase font-black truncate max-w-[80px]">{asset?.name || "No Name"}</span>
                                     </div>
                                 </div>
                             </td>
                             <td className="px-4 py-3 text-right border-t border-b border-border">
-                                <span className="text-foreground font-bold">{asset.balance.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span>
+                                <span className="text-foreground font-bold">{(asset.balance ?? 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}</span>
                             </td>
                             <td className="px-4 py-3 text-right border-t border-b border-border">
-                                <span className="text-foreground font-black">${asset.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                <span className="text-foreground font-black">${(asset.value ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </td>
                             <td className="px-4 py-3 text-right border-t border-b border-border font-mono text-[10px] text-muted-foreground">
-                                ${asset.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                ${(asset.price ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
                             <td className="px-4 py-3 text-right border-t border-b border-border font-black">
-                                <span className={asset.change24h >= 0 ? "text-primary" : "text-destructive"}>
-                                    {asset.change24h >= 0 ? "+" : ""}{asset.change24h.toFixed(2)}%
+                                <span className={(asset.change24h ?? 0) >= 0 ? "text-primary" : "text-destructive"}>
+                                    {(asset.change24h ?? 0) >= 0 ? "+" : ""}{(asset.change24h ?? 0).toFixed(2)}%
                                 </span>
                             </td>
                             <td className="px-4 py-3 text-right border-t border-b border-border">

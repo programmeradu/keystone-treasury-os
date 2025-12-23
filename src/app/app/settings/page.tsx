@@ -100,7 +100,7 @@ export default function SettingsPage() {
                 </div>
             </header>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+            <main className="flex-1 overflow-y-auto scrollbar-thin p-8">
                 <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Main Column */}
                     {/* Main Column */}
@@ -173,8 +173,8 @@ export default function SettingsPage() {
                         </div>
                     </div>
                 </div>
-            </div>
         </div>
+        </main >
     );
 }
 

@@ -49,7 +49,36 @@ export default function RootLayout({
         <Web3Providers>{children}</Web3Providers>
         <VisualEditsMessenger />
         {/* Global toast portal */}
-        <Toaster position="top-right" richColors closeButton />
+        {/* Global toast portal */}
+        <Toaster
+          position="top-right"
+          theme="dark"
+          expand={false}
+          richColors={false}
+          toastOptions={{
+            style: {
+              background: 'rgba(9, 9, 11, 0.9)',
+              backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(54, 226, 123, 0.1)',
+              color: '#f4f4f5',
+              padding: '12px 16px',
+              borderRadius: '12px',
+              fontSize: '13px',
+              fontFamily: 'var(--font-sans)',
+              boxShadow: '0 10px 30px -10px rgba(0, 0, 0, 0.5)',
+            },
+            classNames: {
+              toast: 'group border-zinc-800',
+              error: 'bg-red-500/10 text-red-500 !border-red-500/20',
+              success: 'bg-[#36e27b]/10 text-[#36e27b] !border-[#36e27b]/40',
+              warning: 'bg-yellow-500/10 text-yellow-500 !border-yellow-500/20',
+              info: 'bg-zinc-900/50 text-zinc-400 !border-zinc-800',
+              description: 'text-zinc-500 text-[11px] mt-1',
+              actionButton: 'bg-primary text-primary-foreground',
+              cancelButton: 'bg-muted text-muted-foreground',
+            }
+          }}
+        />
         <ToastContainer />
       </body>
     </html>

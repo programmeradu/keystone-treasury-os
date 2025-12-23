@@ -151,17 +151,19 @@ export class SquadsClient {
                 }
             }));
 
-            // Special case for SOL if missing
+            // Special case for SOL: Ensure it always has basic metadata and a logo
             const solMint = "So11111111111111111111111111111111111111112";
             if (!metadata[solMint]) {
-                const solPrice = (metadata as any)[solMint]?.price || 0;
                 metadata[solMint] = {
                     symbol: "SOL",
                     name: "Solana",
                     logo: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
-                    price: solPrice,
+                    price: 0,
                     change24h: 0
                 };
+            } else if (!metadata[solMint].logo) {
+                // If DexScreener found price but no logo, provide the fallback logo
+                metadata[solMint].logo = "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png";
             }
 
             return metadata;

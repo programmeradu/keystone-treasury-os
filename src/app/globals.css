@@ -490,6 +490,29 @@
     display: none;
   }
 
+  /* Very thin scrollbar for compact areas */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(1 0 0 / 0.1) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: oklch(1 0 0 / 0.1);
+    border-radius: 10px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: oklch(1 0 0 / 0.2);
+  }
+
   /* Scroll overflow hint shadows (apply on a wrapper) */
   .overflow-shadows {
     position: relative;

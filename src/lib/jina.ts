@@ -1,4 +1,4 @@
-"use client";
+// Utility class for Jina Reader functionality
 
 export class JinaClient {
     private apiKey: string;

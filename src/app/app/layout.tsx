@@ -8,14 +8,14 @@ import { Suspense } from "react";
 import { useSelf } from "@/liveblocks.config";
 import { getAvatarUrl } from "@/lib/avatars";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Logo, LogoFilled, WalletCards, PieChart, Users, Settings, Database, LayoutGrid } from "@/components/icons";
+import { Logo, LogoFilled, WalletCards, PieChart, Users, Settings, Database, LayoutGrid, ArchitectIcon } from "@/components/icons";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CommandBar } from "@/components/CommandBar";
 import { useAppEvent } from "@/lib/events";
 import { ThemeProvider, useTheme } from "@/lib/contexts/ThemeContext";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, ShoppingBag, Library } from "lucide-react";
 
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
     const { theme } = useTheme();
@@ -37,26 +37,33 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                 <LiveCursors />
             </Suspense>
 
-            {/* Side Navigation (Slim Rail - Ultra Compact w-20) */}
-            <nav className="hidden md:flex flex-col items-center w-20 h-full py-4 border-r border-border bg-sidebar z-50">
-                <Link href="/" className="mb-6 p-2 rounded-xl bg-[#36e27b]/5 border border-[#36e27b]/20 flex items-center justify-center shadow-[0_0_15px_rgba(54,226,123,0.1)] hover:scale-105 transition-transform group">
-                    <LogoFilled size={36} fillColor={theme === 'light' ? '#16A34A' : "#36e27b"} className="group-hover:drop-shadow-[0_0_8px_rgba(54,226,123,0.4)] transition-all" />
+            {/* Side Navigation (Slim Rail - Auto-fit, No Scroll) */}
+            <nav className="flex flex-col items-center w-20 h-full py-3 border-r border-border bg-sidebar z-50 shrink-0 select-none">
+                <Link href="/" className="mb-2 p-1.5 rounded-xl bg-[#36e27b]/5 border border-[#36e27b]/20 flex items-center justify-center shadow-[0_0_15px_rgba(54,226,123,0.1)] hover:scale-105 transition-transform group shrink-0">
+                    <LogoFilled size={34} fillColor={theme === 'light' ? '#16A34A' : "#36e27b"} className="group-hover:drop-shadow-[0_0_8px_rgba(54,226,123,0.4)] transition-all" />
                 </Link>
+
                 <TooltipProvider>
-                    <div className="flex flex-col gap-3 w-full px-3">
-                        <NavButton icon={LayoutGrid} label="Dashboard" href="/app" active={pathname === "/app"} />
-                        <NavButton icon={WalletCards} label="Treasury" href="/app/treasury" active={pathname === "/app/treasury"} />
-                        <NavButton icon={Database} label="Assets" href="/app/assets" active={pathname === "/app/assets"} />
-                        <NavButton icon={PieChart} label="Analytics" href="/app/analytics" active={pathname === "/app/analytics"} />
-                        <NavButton icon={Users} label="Team" href="/app/team" active={pathname === "/app/team"} />
-                        <NavButton icon={Settings} label="Settings" href="/app/settings" active={pathname === "/app/settings"} />
-                        <div className="my-2 border-t border-border opacity-50" />
+                    {/* Navigation Items Container - Flex Grow to fill space, Center aligned */}
+                    <div className="flex-1 flex flex-col items-center justify-center w-full px-3 gap-1.5 min-h-0">
+                        <div className="flex flex-col gap-1.5 w-full items-center justify-center overflow-y-auto scrollbar-none">
+                            <NavButton icon={LayoutGrid} label="Dashboard" href="/app" active={pathname === "/app"} />
+                            <NavButton icon={ArchitectIcon} label="Studio" href="/app/studio" active={pathname?.startsWith("/app/studio")} />
+                            <NavButton icon={ShoppingBag} label="Marketplace" href="/app/marketplace" active={pathname?.startsWith("/app/marketplace")} />
+                            <NavButton icon={Library} label="Library" href="/app/library" active={pathname?.startsWith("/app/library")} />
+                            <NavButton icon={WalletCards} label="Treasury" href="/app/treasury" active={pathname === "/app/treasury"} />
+                            <NavButton icon={PieChart} label="Analytics" href="/app/analytics" active={pathname === "/app/analytics"} />
+                            <NavButton icon={Users} label="Team" href="/app/team" active={pathname === "/app/team"} />
+                            <NavButton icon={Settings} label="Settings" href="/app/settings" active={pathname === "/app/settings"} />
+                        </div>
+
+                        <div className="my-1 border-t border-border opacity-50 w-8 shrink-0" />
                         <ThemeToggle />
                     </div>
                 </TooltipProvider>
 
-                <div className="mt-auto mb-4">
-                    <Suspense fallback={<div className="w-9 h-9 rounded-full bg-white/5 animate-pulse" />}>
+                <div className="mt-2 mb-2 shrink-0">
+                    <Suspense fallback={<div className="w-10 h-10 rounded-full bg-white/5 animate-pulse" />}>
                         <UserAccount />
                     </Suspense>
                 </div>
@@ -110,7 +117,7 @@ function NavButton({ icon: Icon, label, href, active }: { icon: any, label: stri
             <TooltipTrigger asChild>
                 <Link
                     href={href}
-                    className={`group flex flex-col items-center justify-center gap-1 w-full aspect-square rounded-xl transition-all duration-300 border border-transparent
+                    className={`group flex flex-col items-center justify-center gap-1 w-11 h-11 rounded-xl transition-all duration-300 border border-transparent shrink-0
                   ${active
                             ? 'bg-primary/10 text-primary border-primary/20 shadow-[0_0_10px_var(--dashboard-accent-muted)]'
                             : 'bg-muted text-muted-foreground hover:bg-primary/20 hover:text-foreground'}`}
@@ -158,7 +165,7 @@ function ThemeToggle() {
             <TooltipTrigger asChild>
                 <button
                     onClick={toggleTheme}
-                    className="group flex flex-col items-center justify-center gap-1 w-full aspect-square rounded-xl transition-all duration-300 border border-transparent bg-muted text-muted-foreground hover:bg-primary/20 hover:text-foreground"
+                    className="group flex flex-col items-center justify-center gap-1 w-11 h-11 rounded-xl transition-all duration-300 border border-transparent bg-muted text-muted-foreground hover:bg-primary/20 hover:text-foreground shrink-0"
                 >
                     {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
                 </button>
