@@ -1,159 +1,196 @@
 "use client";
 
-import React from "react";
-import { Clock, ArrowUpRight, Scale, CheckCircle2, AlertCircle, ThumbsUp, ThumbsDown, ExternalLink } from "lucide-react";
+import { Scale, RefreshCw, ExternalLink, Inbox, ShieldCheck, ThumbsUp } from "lucide-react";
+import { toast } from "@/lib/toast-notifications";
+import { useVault } from "@/lib/contexts/VaultContext";
 
-const PROPOSALS = [
-    {
-        id: "KIP-42",
-        title: "Treasury Diversification: Solayer Strategy",
-        desc: "Allocate 15% of SOL treasury into Solayer pools to capture 8% APY yield and secure network validation.",
-        endsIn: "4H 20M",
-        status: "ACTIVE",
-        votesFor: 72,
-        votesAgainst: 12,
-        myVote: null
-    },
-    {
-        id: "KIP-43",
-        title: "Emergency Multisig Rotation (Signer #4)",
-        desc: "Rotation of signer key #4 due to operational security policy update. New key provided by Ledger HQ.",
-        endsIn: "2D 14H",
-        status: "ACTIVE",
-        votesFor: 98,
-        votesAgainst: 0,
-        myVote: "FOR"
-    },
-    {
-        id: "KIP-41",
-        title: "Q1-2025 Grants Program Budget",
-        desc: "Authorization of 500,000 USDC for the Q1 grants wave focusing on infrastructure tooling.",
-        endsIn: "Ended",
-        status: "PASSED",
-        votesFor: 154,
-        votesAgainst: 2,
-        myVote: "FOR"
-    },
-    {
-        id: "KIP-40",
-        title: "Protocol Parameter Update: Fee Switch",
-        desc: "Turn on protocol fee switch for Uniswap integration.",
-        endsIn: "Ended",
-        status: "REJECTED",
-        votesFor: 45,
-        votesAgainst: 112,
-        myVote: null
-    }
-];
+function statusIcon(status: string) {
+    const s = status.toLowerCase();
+    if (s === "active") return <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />;
+    if (s === "executed") return <span className="h-2 w-2 rounded-full bg-blue-500" />;
+    if (s === "rejected") return <span className="h-2 w-2 rounded-full bg-red-500" />;
+    return <span className="h-2 w-2 rounded-full bg-muted-foreground" />;
+}
+
+function statusColor(status: string) {
+    const s = status.toLowerCase();
+    if (s === "active") return "text-emerald-500";
+    if (s === "executed") return "text-blue-500";
+    if (s === "rejected") return "text-red-500";
+    return "text-muted-foreground";
+}
 
 export function GovernanceOracle() {
+    const { proposals, isMultisig, activeVault, vaultConfig, loading, refresh, sqClient } = useVault();
+
+    const activeCount = proposals.filter((p: any) => p.status.toLowerCase() === "active").length;
+
+    const handleApprove = async (proposalIndex: number) => {
+        if (!sqClient || !activeVault) return;
+        try {
+            await sqClient.voteOnProposal(activeVault, proposalIndex, "Approve");
+            toast.success(`Approved proposal #${proposalIndex}`);
+            refresh();
+        } catch (err: any) {
+            toast.error("Vote failed", { description: err?.message || String(err) });
+        }
+    };
+
+
     return (
         <div className="flex flex-col h-full gap-2">
-            {/* 1. Governance Identity Card - Slim Header */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 pt-4 border-b border-zinc-800/50 pb-4 h-auto shrink-0 bg-gradient-to-r from-zinc-900/50 to-transparent">
+            {/* Governance Header — real config */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 pt-4 border-b border-border pb-4 h-auto shrink-0">
                 <div className="flex items-center gap-4">
-                    <div className="p-2 rounded-lg bg-zinc-800 text-white"><Scale size={16} /></div>
+                    <div className="p-2 rounded-lg bg-muted text-foreground"><Scale size={16} /></div>
                     <div className="flex flex-col">
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Voting Power</span>
+                        <span className="text-[9px] font-medium text-muted-foreground">
+                            {isMultisig ? "Multisig Governance" : "Address Mode"}
+                        </span>
                         <div className="flex items-baseline gap-2">
-                            <h2 className="text-xl font-black text-white tracking-tighter">1,204,500</h2>
-                            <span className="text-xs font-bold text-primary uppercase">vKEY</span>
+                            {vaultConfig ? (
+                                <>
+                                    <h2 className="text-xl font-bold text-foreground tracking-tight">
+                                        {vaultConfig.threshold}/{vaultConfig.members}
+                                    </h2>
+                                    <span className="text-xs font-medium text-primary">threshold</span>
+                                </>
+                            ) : (
+                                <h2 className="text-lg font-bold text-foreground tracking-tight">
+                                    {isMultisig ? "Loading..." : "Observer"}
+                                </h2>
+                            )}
                         </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <span className="text-[9px] font-mono text-zinc-500 uppercase hidden sm:inline">Snapshot: 2D 14H</span>
-                    <button className="px-4 py-2 bg-white text-black font-black text-[10px] uppercase tracking-widest rounded-lg hover:scale-105 transition-transform flex items-center gap-2">
-                        Delegate <ArrowUpRight size={12} />
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => refresh()}
+                        disabled={loading}
+                        className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                        <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
                     </button>
+                    {isMultisig && activeVault && (
+                        <button
+                            onClick={() => window.open(`https://app.squads.so/squads/${activeVault}`, "_blank")}
+                            className="px-4 py-2 bg-primary text-primary-foreground font-semibold text-[10px] rounded-lg hover:opacity-90 transition-all flex items-center gap-2"
+                        >
+                            Open in Squads <ExternalLink size={10} />
+                        </button>
+                    )}
                 </div>
             </div>
 
-            {/* 2. Proposals - High Density Table */}
-            <div className="flex-1 flex flex-col overflow-hidden relative border-t border-zinc-800/50 mt-2">
-                {/* Table Header */}
-                <div className="px-4 py-2 flex justify-between items-center bg-zinc-900/30">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Governance Register</span>
+            {/* Proposals — real data from Squads */}
+            <div className="flex-1 flex flex-col overflow-hidden relative">
+                <div className="px-4 py-2 flex justify-between items-center border-b border-border">
+                    <span className="text-[9px] font-semibold text-muted-foreground">Proposals</span>
                     <div className="flex gap-2">
-                        <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[8px] font-bold uppercase border border-emerald-500/20">2 Active</span>
+                        {activeCount > 0 && (
+                            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[8px] font-bold border border-emerald-500/20">
+                                {activeCount} Active
+                            </span>
+                        )}
+                        <span className="px-2 py-0.5 rounded bg-muted text-muted-foreground text-[8px] font-medium border border-border">
+                            {proposals.length} Total
+                        </span>
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-x-auto scrollbar-thin font-mono bg-zinc-900/10">
-                    <table className="w-full text-left border-collapse min-w-[900px]">
-                        <thead>
-                            <tr className="text-[9px] uppercase tracking-widest text-zinc-600 border-b border-zinc-800">
-                                <th className="py-3 pl-4 font-normal w-24">ID</th>
-                                <th className="py-3 font-normal">Proposal</th>
-                                <th className="py-3 font-normal w-32">Status</th>
-                                <th className="py-3 font-normal w-48">Quorum</th>
-                                <th className="py-3 font-normal w-32">My Vote</th>
-                                <th className="py-3 font-normal w-24 text-right pr-4">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="text-[10px] text-zinc-400">
-                            {PROPOSALS.map((p) => (
-                                <tr key={p.id} className="group hover:bg-zinc-900/50 transition-colors border-b border-zinc-800/30">
-                                    <td className="py-4 pl-4 font-mono text-zinc-300">
-                                        <div className="px-1.5 py-0.5 rounded bg-zinc-800 w-fit">{p.id}</div>
-                                    </td>
-                                    <td className="py-4 max-w-md">
-                                        <div className="flex flex-col gap-1 pr-8">
-                                            <span className="text-white font-bold text-xs group-hover:text-primary transition-colors cursor-pointer">{p.title}</span>
-                                            <span className="text-zinc-500 line-clamp-1">{p.desc}</span>
-                                        </div>
-                                    </td>
-                                    <td className="py-4">
-                                        <div className="flex items-center gap-2">
-                                            {p.status === 'ACTIVE' && <Clock size={12} className="text-orange-500" />}
-                                            {p.status === 'PASSED' && <CheckCircle2 size={12} className="text-emerald-500" />}
-                                            {p.status === 'REJECTED' && <AlertCircle size={12} className="text-rose-500" />}
-                                            <span className={`font-bold ${p.status === 'ACTIVE' ? 'text-orange-500' :
-                                                    p.status === 'PASSED' ? 'text-emerald-500' : 'text-rose-500'
-                                                }`}>{p.status === 'ACTIVE' ? p.endsIn : p.status}</span>
-                                        </div>
-                                    </td>
-                                    <td className="py-4">
-                                        <div className="flex flex-col gap-1 w-32">
-                                            <div className="flex justify-between text-[8px] uppercase tracking-wider">
-                                                <span className="text-emerald-500">{p.votesFor} For</span>
-                                                <span className="text-rose-500">{p.votesAgainst} Against</span>
-                                            </div>
-                                            <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden flex">
-                                                <div className="h-full bg-emerald-500" style={{ width: `${(p.votesFor / (p.votesFor + p.votesAgainst)) * 100}%` }} />
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="py-4">
-                                        {p.myVote ? (
-                                            <span className="flex items-center gap-2 text-emerald-500 font-bold uppercase text-[9px]">
-                                                <CheckCircle2 size={12} /> Voted {p.myVote}
-                                            </span>
-                                        ) : p.status === 'ACTIVE' ? (
-                                            <span className="text-zinc-600 text-[9px] uppercase italic">Not Voted</span>
-                                        ) : (
-                                            <span className="text-zinc-600 text-[9px] uppercase">Did not vote</span>
-                                        )}
-                                    </td>
-                                    <td className="py-4 text-right pr-4">
-                                        {p.status === 'ACTIVE' && !p.myVote && (
-                                            <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button className="p-1.5 rounded hover:bg-emerald-500/20 hover:text-emerald-500 text-zinc-500 transition-colors"><ThumbsUp size={14} /></button>
-                                                <button className="p-1.5 rounded hover:bg-rose-500/20 hover:text-rose-500 text-zinc-500 transition-colors"><ThumbsDown size={14} /></button>
-                                            </div>
-                                        )}
-                                        {p.status !== 'ACTIVE' && (
-                                            <button className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-white/10 text-zinc-500 hover:text-white transition-all">
-                                                <ExternalLink size={14} />
-                                            </button>
-                                        )}
-                                    </td>
+                {!activeVault ? (
+                    <div className="flex-1 flex flex-col items-center justify-center gap-3">
+                        <Inbox size={24} className="text-muted-foreground" />
+                        <p className="text-[11px] text-muted-foreground">Connect an address to view governance</p>
+                    </div>
+                ) : !isMultisig ? (
+                    <div className="flex-1 flex flex-col items-center justify-center gap-3">
+                        <ShieldCheck size={24} className="text-muted-foreground" />
+                        <p className="text-[11px] text-muted-foreground">Governance requires a Squads multisig</p>
+                        <p className="text-[9px] text-muted-foreground/60">Standard wallets don&apos;t have proposals</p>
+                    </div>
+                ) : proposals.length === 0 ? (
+                    <div className="flex-1 flex flex-col items-center justify-center gap-3">
+                        <Scale size={24} className="text-muted-foreground" />
+                        <p className="text-[11px] text-muted-foreground">{loading ? "Loading proposals..." : "No proposals found"}</p>
+                    </div>
+                ) : (
+                    <div className="flex-1 overflow-x-auto scrollbar-thin">
+                        <table className="w-full text-left border-collapse min-w-[700px]">
+                            <thead>
+                                <tr className="text-[9px] uppercase tracking-wider text-muted-foreground border-b border-border">
+                                    <th className="py-3 pl-4 font-normal w-20">#</th>
+                                    <th className="py-3 font-normal">Proposal</th>
+                                    <th className="py-3 font-normal w-28">Status</th>
+                                    <th className="py-3 font-normal w-40">Approvals</th>
+                                    <th className="py-3 font-normal w-24 text-right pr-4">Action</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody className="text-[10px] text-muted-foreground">
+                                {proposals.map((p: any) => {
+                                    const approvalPct = p.threshold > 0 ? (p.signatures / p.threshold) * 100 : 0;
+                                    const isActive = p.status.toLowerCase() === "active";
+                                    return (
+                                        <tr key={p.index} className="group hover:bg-muted/30 transition-colors border-b border-border/50">
+                                            <td className="py-4 pl-4 font-mono">
+                                                <div className="px-1.5 py-0.5 rounded bg-muted text-foreground w-fit text-[9px] font-bold">#{p.index}</div>
+                                            </td>
+                                            <td className="py-4 max-w-md">
+                                                <div className="flex flex-col gap-0.5 pr-4">
+                                                    <span className="text-foreground font-bold text-xs group-hover:text-primary transition-colors cursor-pointer">{p.title}</span>
+                                                    <span className="text-muted-foreground text-[9px] font-mono truncate">{p.pda}</span>
+                                                </div>
+                                            </td>
+                                            <td className="py-4">
+                                                <div className="flex items-center gap-2">
+                                                    {statusIcon(p.status)}
+                                                    <span className={`font-bold text-[9px] uppercase ${statusColor(p.status)}`}>
+                                                        {p.status}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="py-4">
+                                                <div className="flex flex-col gap-1 w-36">
+                                                    <div className="flex justify-between text-[8px]">
+                                                        <span className="text-foreground font-semibold">{p.signatures}/{p.threshold} signed</span>
+                                                        <span className="text-muted-foreground">{Math.round(approvalPct)}%</span>
+                                                    </div>
+                                                    <div className="w-full h-1 bg-muted rounded-full overflow-hidden flex">
+                                                        <div
+                                                            className={`h-full rounded-full transition-all ${approvalPct >= 100 ? "bg-emerald-500" : "bg-primary"}`}
+                                                            style={{ width: `${Math.min(100, approvalPct)}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="py-4 text-right pr-4">
+                                                <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    {isActive && (
+                                                        <button
+                                                            onClick={() => handleApprove(p.index)}
+                                                            title="Approve"
+                                                            className="p-1.5 rounded hover:bg-emerald-500/20 hover:text-emerald-500 text-muted-foreground transition-colors"
+                                                        >
+                                                            <ThumbsUp size={13} />
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => window.open(`https://explorer.solana.com/address/${p.pda}`, "_blank")}
+                                                        title="View on Explorer"
+                                                        className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                                                    >
+                                                        <ExternalLink size={13} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
         </div>
     );

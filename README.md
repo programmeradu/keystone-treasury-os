@@ -16,7 +16,13 @@ While competitors build better dashboards, we're eliminating the need for them e
   - The enterprise vision for our core product, targeting DAOs, protocols, and VCs.
   - Website: https://keystone.stauniverse.tech
 
-### 3) Tech Stack
+## 📚 Core Documentation
+
+- **[Project Overview (Master)](file:///c:/Users/USER/Documents/GitHub/keystone-treasury-os/docs/PROJECT_OVERVIEW.md)**: The ultimate guide to Keystone architecture, agents, and roadmap.
+- **[System Master Specification](file:///c:/Users/USER/Documents/GitHub/keystone-treasury-os/docs/KEYSTONE_SYSTEM_MASTER_SPEC.md)**: The "OS" vision and design philosophy.
+- **[README.md](file:///c:/Users/USER/Documents/GitHub/keystone-treasury-os/README.md)**: Project vision, quickstart, and deployment guides.
+
+### 4) Tech Stack
 - Frontend: Next.js 15 (App Router), React, TypeScript, Shadcn/UI, Tailwind CSS
 - Backend: Next.js API Routes (RSC + edge/server handlers)
 - Web3: Ethers.js, viem, @solana/web3.js

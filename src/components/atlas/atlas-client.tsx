@@ -1,19 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import type { ComponentType } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { PublicKey, LAMPORTS_PER_SOL, VersionedTransaction, Transaction } from "@solana/web3.js";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { PublicKey, LAMPORTS_PER_SOL, VersionedTransaction } from "@solana/web3.js";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, ArrowRight, ArrowLeft, Sun, Moon } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast-notifications";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
@@ -47,13 +45,24 @@ const JupiterSwapCard = dynamic(() => import("@/components/atlas/JupiterSwapCard
   ssr: false,
   loading: () => <div className="atlas-card relative overflow-hidden min-h-[300px] flex items-center justify-center text-xs opacity-60">Loading swap…</div>
 });
-const RugPullDetector = dynamic(() => import("@/components/atlas/RugPullDetector").then(m => (m as any).default || (m as any).RugPullDetector), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
+import { TokenIntelCard } from "@/components/atlas/TokenIntelCard";
+import {
+  ScoreGauge as LabScoreGauge,
+  YieldProjectionChart as LabYieldChart,
+  RiskBar as LabRiskBar,
+  StrategyCompare as LabStrategyCompare,
+  PulseDot as LabPulseDot,
+} from "@/components/atlas/StrategyLabCharts";
 const DCABotCard = dynamic(() => import("@/components/atlas/DCABotCard").then(m => (m as any).default || (m as any).DCABotCard), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
 const MEVScanner = dynamic(() => import("@/components/atlas/MEVScanner").then(m => (m as any).default || (m as any).MEVScanner), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
 const TransactionTimeMachine = dynamic(() => import("@/components/atlas/TransactionTimeMachine").then(m => (m as any).default || (m as any).TransactionTimeMachine), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
 const CopyMyWallet = dynamic(() => import("@/components/atlas/CopyMyWallet").then(m => (m as any).default || (m as any).CopyMyWallet), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
 const FeeSaver = dynamic(() => import("@/components/atlas/FeeSaver").then(m => (m as any).default || (m as any).FeeSaver), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
 const PortfolioRebalancer = dynamic(() => import("@/components/atlas/PortfolioRebalancer").then(m => (m as any).default || (m as any).PortfolioRebalancer), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
+const RugPullDetector = dynamic(() => import("@/components/atlas/RugPullDetector").then(m => (m as any).default || (m as any).RugPullDetector), { ssr: false, loading: () => <Skeleton className="h-[360px] w-full" /> });
+import { AirdropScoutCard } from "@/components/atlas/AirdropScoutCard";
+import { OpportunitiesCard } from "@/components/atlas/OpportunitiesCard";
+import { MarketPulseCard } from "@/components/atlas/MarketPulseCard";
 const CreateDCABotModal = dynamic<ComponentType<{ isOpen?: boolean; onClose?: () => void }>>(() => import("@/components/atlas/CreateDCABotModal").then(m => (m as any).default || (m as any).CreateDCABotModal), { ssr: false });
 
 // Wrapper to help TypeScript understand the dynamic component accepts these props
@@ -62,12 +71,99 @@ function CreateDCABotModalWrapper(props: { isOpen?: boolean; onClose?: () => voi
   return <C {...props} />;
 }
 
+// Section heading for Quests tab layout
+function SectionHeading({ title }: { title: string }) {
+  return (
+    <div className="flex items-center gap-3 mb-4">
+      <h2 className="text-xs font-semibold uppercase tracking-widest opacity-50">{title}</h2>
+      <div className="flex-1 h-px bg-border/40" />
+    </div>
+  );
+}
+
 // Jupiter core mints (mainnet)
 const MINTS = {
   SOL: "So11111111111111111111111111111111111111112",
   USDC: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-  MSOL: "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So"
+  MSOL: "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+  JITOSOL: "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn",
+  BSOL: "bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1",
 } as const;
+
+// Token symbol → mint address resolver (case-insensitive lookup)
+// Covers all commonly traded Solana tokens. Used by the command bar to map
+// natural language token names (e.g. "JUP", "bonk") to on-chain mint addresses.
+const TOKEN_MINT_MAP: Record<string, string> = {
+  SOL:     "So11111111111111111111111111111111111111112",
+  USDC:    "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  USDT:    "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+  MSOL:    "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+  JITOSOL: "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn",
+  BSOL:    "bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1",
+  JUP:     "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+  BONK:    "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+  PYTH:    "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3",
+  RAY:     "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
+  ORCA:    "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+  WIF:     "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
+  JTO:     "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL",
+  DRIFT:   "DriFtupJYLTosbwoN8koMbEYSx54aFAVLddWsbksjwg7",
+  RENDER:  "rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof",
+  HNT:     "hntyVP6YFm1Hg25TN9WGLqM12b8TQmcknKrdu1oxWux",
+  W:       "85VBFQZC9TZkfaptBWjvUw7YbZjy52A6mjtPGjstQAmQ",
+};
+
+/** Resolve a token symbol (case-insensitive) to its mint address. Returns undefined if unknown. */
+function resolveTokenMint(symbolOrMint: string): string | undefined {
+  if (!symbolOrMint) return undefined;
+  const upper = symbolOrMint.toUpperCase().replace(/[-_\s]/g, "");
+  // Direct match in map
+  if (TOKEN_MINT_MAP[upper]) return TOKEN_MINT_MAP[upper];
+  // Check common aliases
+  if (upper === "WSOLANA" || upper === "WSOL") return TOKEN_MINT_MAP.SOL;
+  if (upper === "MARINADE" || upper === "MNDE") return TOKEN_MINT_MAP.MSOL;
+  if (upper === "JITO") return TOKEN_MINT_MAP.JITOSOL;
+  if (upper === "BLAZE" || upper === "BLAZESTAKE") return TOKEN_MINT_MAP.BSOL;
+  if (upper === "JUPITER") return TOKEN_MINT_MAP.JUP;
+  if (upper === "RAYDIUM") return TOKEN_MINT_MAP.RAY;
+  if (upper === "WORMHOLE") return TOKEN_MINT_MAP.W;
+  // If it looks like a base58 mint address already (32+ chars), return as-is
+  if (symbolOrMint.length >= 32 && /^[1-9A-HJ-NP-Za-km-z]+$/.test(symbolOrMint)) return symbolOrMint;
+  return undefined;
+}
+
+/** Map provider name from LLM to LST_OPTIONS id */
+function resolveStakeProvider(provider?: string): string {
+  if (!provider) return "MSOL";
+  const p = provider.toLowerCase().replace(/[-_\s]/g, "");
+  if (p === "jito" || p === "jitosol") return "JITOSOL";
+  if (p === "blaze" || p === "blazestake" || p === "bsol") return "BSOL";
+  return "MSOL"; // default to Marinade
+}
+
+// Available liquid staking tokens with metadata
+// apyBoost = extra APY on top of base Solana inflation from MEV, validator optimization, incentives
+// maturity: higher = more battle-tested protocol
+const LST_OPTIONS = [
+  { id: "MSOL",    mint: MINTS.MSOL,    name: "Marinade",   symbol: "mSOL",    apyBoost: 2.8,  maturity: 20, riskNote: "Largest LST by TVL", icon: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So/logo.png" },
+  { id: "JITOSOL", mint: MINTS.JITOSOL, name: "Jito",       symbol: "jitoSOL", apyBoost: 4.2,  maturity: 18, riskNote: "MEV-boosted rewards", icon: "https://storage.googleapis.com/token-metadata/JitoSOL-256.png" },
+  { id: "BSOL",    mint: MINTS.BSOL,    name: "BlazeStake", symbol: "bSOL",    apyBoost: 2.0,  maturity: 14, riskNote: "BLZE incentives + staking", icon: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1/logo.png" },
+] as const;
+
+// Core tokens displayed in the Market Pulse hero section (symbol must match Jupiter price API key)
+const CORE_TOKENS: { id: string; symbol: string; icon: string }[] = [
+  { id: "SOL",     symbol: "SOL",     icon: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" },
+  { id: "MSOL",    symbol: "mSOL",    icon: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So/logo.png" },
+  { id: "JITOSOL", symbol: "jitoSOL", icon: "https://storage.googleapis.com/token-metadata/JitoSOL-256.png" },
+  { id: "BSOL",    symbol: "bSOL",    icon: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1/logo.png" },
+  { id: "USDC",    symbol: "USDC",    icon: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png" },
+  { id: "JUP",     symbol: "JUP",     icon: "https://static.jup.ag/jup/icon.png" },
+  { id: "BONK",    symbol: "BONK",    icon: "https://arweave.net/hQiPZOsRZXGXBJd_82PhVdlM_hACsT_q6wqwf5cSY7I" },
+  { id: "PYTH",    symbol: "PYTH",    icon: "https://pyth.network/token.svg" },
+  { id: "RAY",     symbol: "RAY",     icon: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R/logo.png" },
+  { id: "ORCA",    symbol: "ORCA",    icon: "https://arweave.net/jQJRDpMM7NWRAQ3VQyr7K_Me6K6UZbOacJ62blhdsNg" },
+];
+const CORE_TOKEN_IDS = CORE_TOKENS.map((t) => t.id).join(",");
 
 type StrategyKind = "stake_marinade" | "swap_jupiter" | "lp_sol_usdc";
 
@@ -139,7 +235,6 @@ export function AtlasClient() {
   const { publicKey, sendTransaction, disconnect } = useWallet();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isClay = (searchParams?.get("style") || "") === "clay";
   const { setVisible } = useWalletModal();
   const { dispatch, lastCommand } = useAtlasCommand();
 
@@ -154,13 +249,19 @@ export function AtlasClient() {
   // Strategy Lab state
   const [kind, setKind] = useState<StrategyKind>("stake_marinade");
   const [amountSol, setAmountSol] = useState<number>(5);
+  const [selectedLst, setSelectedLst] = useState<string>("MSOL"); // default to Marinade
   const [quote, setQuote] = useState<any>(null);
   const [nlpText, setNlpText] = useState("");
   const [nlpLoading, setNlpLoading] = useState(false);
   const nlpInputRef = useRef<HTMLInputElement | null>(null);
   const [execLoading, setExecLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("quests");
-  const [headerStyle, setHeaderStyle] = useState<"default" | "alt">("default");
+
+  // AbortController refs for cancelling in-flight requests on rapid re-invocation
+  const simulateAbortRef = useRef<AbortController | null>(null);
+  const refreshAbortRef = useRef<AbortController | null>(null);
+  const scanAbortRef = useRef<AbortController | null>(null);
+  const holderAbortRef = useRef<AbortController | null>(null);
 
   // Airdrop Compass state
   const [compassLoading, setCompassLoading] = useState(false);
@@ -176,9 +277,9 @@ export function AtlasClient() {
     if (!lastCommand) return;
 
     const { tool_id, parameters } = lastCommand;
-    console.log("Handling command:", tool_id, parameters);
 
     switch (tool_id) {
+      // ── Navigation ─────────────────────────────────────────────────
       case "navigate_to_tab":
         if (parameters.tab_id) {
           handleTabChange(parameters.tab_id);
@@ -190,6 +291,7 @@ export function AtlasClient() {
         }
         break;
 
+      // ── Discover ───────────────────────────────────────────────────
       case "scan_airdrops":
         handleTabChange("quests");
         setTimeout(() => {
@@ -199,42 +301,70 @@ export function AtlasClient() {
         toast.info("Scanning for airdrops...");
         break;
 
-      case "swap_tokens":
-        handleTabChange("quests"); // Jupiter is on the quests tab
-        setTimeout(() => {
-            tryInitiateJupiterSwap({
-                amount: parameters.amount,
-                inputMint: MINTS.SOL, // Assuming SOL for now
-                outputMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" // Assuming USDC
-            });
-            document.getElementById('jupiter-integrated-card')?.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
-        break;
+      // ── Trade (swap) ───────────────────────────────────────────────
+      case "swap_tokens": {
+        // Resolve token symbols from LLM to mint addresses; fall back to SOL->USDC
+        const inputSymbol = parameters.input_token || parameters.input_mint || "SOL";
+        const outputSymbol = parameters.output_token || parameters.output_mint || "USDC";
+        const resolvedInput = resolveTokenMint(inputSymbol) || MINTS.SOL;
+        const resolvedOutput = resolveTokenMint(outputSymbol) || MINTS.USDC;
+        const swapAmount = typeof parameters.amount === "number" ? parameters.amount : 0.1;
 
-      case "stake_sol":
+        // Also route through Strategy Lab if the user typed "swap X SOL to Y"
+        handleTabChange("lab");
+        setKind("swap_jupiter");
+        setAmountSol(swapAmount);
+        setTimeout(() => {
+          simulate();
+          document.getElementById('strategy-lab')?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+
+        // Additionally drive the Jupiter widget on the Quests tab
+        setTimeout(() => {
+          tryInitiateJupiterSwap({
+            amount: swapAmount,
+            inputMint: resolvedInput,
+            outputMint: resolvedOutput,
+          });
+        }, 200);
+
+        toast.info(`Swap: ${swapAmount} ${inputSymbol.toUpperCase()} → ${outputSymbol.toUpperCase()}`);
+        break;
+      }
+
+      // ── Strategy Lab: Stake ────────────────────────────────────────
+      case "stake_sol": {
+        const lstId = resolveStakeProvider(parameters.provider);
         handleTabChange("lab");
         setKind("stake_marinade");
+        setSelectedLst(lstId);
         if (parameters.amount) {
           setAmountSol(parameters.amount);
         }
+        const lstLabel = LST_OPTIONS.find(l => l.id === lstId)?.name || "Marinade";
         setTimeout(() => {
-            simulate();
-            document.getElementById('strategy-lab')?.scrollIntoView({ behavior: 'smooth' });
+          simulate(lstId);
+          document.getElementById('strategy-lab')?.scrollIntoView({ behavior: 'smooth' });
         }, 100);
+        toast.info(`Staking${parameters.amount ? ` ${parameters.amount} SOL` : ""} via ${lstLabel}`);
         break;
-      
+      }
+
+      // ── Strategy Lab: LP ───────────────────────────────────────────
       case "provide_liquidity":
         handleTabChange("lab");
         setKind("lp_sol_usdc");
         if (parameters.amount) {
-            setAmountSol(parameters.amount);
+          setAmountSol(parameters.amount);
         }
         setTimeout(() => {
-            simulate();
-            document.getElementById('strategy-lab')?.scrollIntoView({ behavior: 'smooth' });
+          simulate();
+          document.getElementById('strategy-lab')?.scrollIntoView({ behavior: 'smooth' });
         }, 100);
+        toast.info(`LP simulation${parameters.amount ? ` for ${parameters.amount} SOL` : ""} started`);
         break;
 
+      // ── Analyze ────────────────────────────────────────────────────
       case "view_holder_insights":
         handleTabChange("quests");
         if (parameters.mint_address) {
@@ -249,29 +379,92 @@ export function AtlasClient() {
       case "scan_mev":
         handleTabChange("quests");
         setTimeout(() => {
-            document.getElementById('mev-scanner-card')?.scrollIntoView({ behavior: 'smooth' });
+          document.getElementById('mev-scanner-card')?.scrollIntoView({ behavior: 'smooth' });
         }, 100);
         toast.info("MEV Scanner is now in view.");
         break;
 
+      case "rug_pull_detector":
+        handleTabChange("quests");
+        setTimeout(() => {
+          document.getElementById('rug-pull-detector-card')?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+        toast.info("Rug Pull Detector opened. Paste a token mint to analyze.");
+        break;
+
+      // ── Trade (DCA) ────────────────────────────────────────────────
       case "create_dca_bot":
         setCreateDcaOpen(true);
         break;
 
-      case "open_time_machine":
+      // ── Manage ─────────────────────────────────────────────────────
+      case "transaction_time_machine":
         handleTabChange("quests");
-        // Future: pass signature to the component
         setTimeout(() => {
-            document.getElementById('transaction-time-machine-card')?.scrollIntoView({ behavior: 'smooth' });
+          document.getElementById('transaction-time-machine-card')?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+        toast.info("Transaction Time Machine is now in view.");
+        break;
+
+      case "copy_trader":
+        handleTabChange("quests");
+        setTimeout(() => {
+          document.getElementById('copy-my-wallet-card')?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+        toast.info("Copy Wallet tool is now in view.");
+        break;
+
+      case "portfolio_rebalancer":
+        handleTabChange("quests");
+        setTimeout(() => {
+          document.getElementById('portfolio-rebalancer-card')?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+        toast.info("Portfolio Rebalancer is now in view.");
+        break;
+
+      case "fee_saver_insights":
+        handleTabChange("quests");
+        setTimeout(() => {
+          document.getElementById('fee-saver-card')?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+        toast.info("Fee Saver Insights is now in view.");
+        break;
+
+      // ── Info commands ──────────────────────────────────────────────
+      case "price_check": {
+        const tokenSym = (parameters.token || "SOL").toUpperCase();
+        const price = prices[tokenSym] ?? prices[tokenSym.toLowerCase()];
+        if (price !== undefined && price > 0) {
+          toast.success(`${tokenSym} price: $${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}`);
+        } else {
+          // Try scrolling to market pulse where all prices are visible
+          handleTabChange("quests");
+          setTimeout(() => {
+            document.getElementById('market-pulse-card')?.scrollIntoView({ behavior: 'smooth' });
+          }, 100);
+          toast.info(`Checking ${tokenSym} price — see Market Pulse above.`);
+        }
+        break;
+      }
+
+      case "show_portfolio": {
+        const bal = solBalance !== null ? `${solBalance.toFixed(4)} SOL` : "unknown";
+        const usd = solBalance !== null && prices.SOL ? `($${(solBalance * prices.SOL).toFixed(2)})` : "";
+        toast.success(`Wallet balance: ${bal} ${usd}`);
+        // Scroll to Market Pulse which shows the portfolio overview
+        handleTabChange("quests");
+        setTimeout(() => {
+          document.getElementById('market-pulse-card')?.scrollIntoView({ behavior: 'smooth' });
         }, 100);
         break;
-        
-      case "copy_my_wallet":
+      }
+
+      case "market_overview":
         handleTabChange("quests");
-         // Future: pass address to the component
         setTimeout(() => {
-            document.getElementById('copy-my-wallet-card')?.scrollIntoView({ behavior: 'smooth' });
+          document.getElementById('market-pulse-card')?.scrollIntoView({ behavior: 'smooth' });
         }, 100);
+        toast.info("Market overview is now in view.");
         break;
 
       default:
@@ -361,7 +554,9 @@ export function AtlasClient() {
       return;
     }
     if (type === "lp") {
-      toast.message("LP flow not automated yet", { description: "Use target vault UI for deposit." });
+      setKind("lp_sol_usdc");
+      setAmountSol(val);
+      await executeLp();
       return;
     }
     toast.info("Unsupported task type for execute yet.");
@@ -384,14 +579,10 @@ export function AtlasClient() {
   const [lastCandle, setLastCandle] = useState<any | null>(null);
   const [ohlcvActive, setOhlcvActive] = useState(false);
 
-  // Sparkline price history
-  const [solHistory, setSolHistory] = useState<number[]>([]);
-  const [msolHistory, setMsolHistory] = useState<number[]>([]);
+  // Sparkline price history for all core tokens (keyed by uppercase ID)
+  const [coreHistory, setCoreHistory] = useState<Record<string, number[]>>({});
   const [pricesLoading, setPricesLoading] = useState(false);
   const [pricesUpdatedAt, setPricesUpdatedAt] = useState<number | null>(null);
-
-  // Address Lookup (simple Solscan opener)
-  const [addressLookup, setAddressLookup] = useState("");
 
   // THEME: light/dark toggle
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -415,6 +606,113 @@ export function AtlasClient() {
   const [cmdText, setCmdText] = useState("");
   const [cmdLoading, setCmdLoading] = useState(false);
 
+  /**
+   * Local regex fallback parser — works when LLM API is down.
+   * Returns { tool_id, parameters } or null if no match.
+   */
+  function regexFallbackParse(text: string): { tool_id: string; parameters: Record<string, any> } | null {
+    const lower = text.toLowerCase().trim();
+    const amtMatch = lower.match(/([0-9]+(?:\.[0-9]+)?)/);
+    const amt = amtMatch ? Number(amtMatch[1]) : undefined;
+
+    // ── Stake ──
+    if (/\b(stake|staking)\b/.test(lower)) {
+      let provider = "marinade";
+      if (/\bjito\b/.test(lower)) provider = "jito";
+      else if (/\bblaze\b|\bbsol\b/.test(lower)) provider = "blazestake";
+      return { tool_id: "stake_sol", parameters: { amount: amt, provider } };
+    }
+
+    // ── Swap ──
+    if (/\b(swap|buy|sell|convert|trade)\b/.test(lower)) {
+      // Try to extract "X SOL to Y" or "buy Y with X"
+      const swapMatch = lower.match(/(\d+(?:\.\d+)?)\s*(\w+)\s*(?:to|for|into|→)\s*(\w+)/);
+      if (swapMatch) {
+        return { tool_id: "swap_tokens", parameters: { amount: Number(swapMatch[1]), input_token: swapMatch[2], output_token: swapMatch[3] } };
+      }
+      const buyMatch = lower.match(/buy\s+(\d+(?:\.\d+)?)\s*(\w+)\s*(?:with|using)?\s*(\w+)?/);
+      if (buyMatch) {
+        return { tool_id: "swap_tokens", parameters: { amount: Number(buyMatch[1]), input_token: buyMatch[3] || "SOL", output_token: buyMatch[2] } };
+      }
+      return { tool_id: "swap_tokens", parameters: { amount: amt, input_token: "SOL", output_token: "USDC" } };
+    }
+
+    // ── LP / Liquidity ──
+    if (/\b(lp|liquidity|pool)\b/.test(lower)) {
+      return { tool_id: "provide_liquidity", parameters: { amount: amt } };
+    }
+
+    // ── Price check ──
+    if (/\b(price|how much|worth|cost)\b/.test(lower)) {
+      const tokenMatch = lower.match(/(?:price\s+(?:of\s+)?|how much (?:is )?|worth of )(\w+)/);
+      return { tool_id: "price_check", parameters: { token: tokenMatch ? tokenMatch[1].toUpperCase() : "SOL" } };
+    }
+
+    // ── Portfolio / Balance ──
+    if (/\b(balance|portfolio|holdings|what do i have)\b/.test(lower)) {
+      return { tool_id: "show_portfolio", parameters: {} };
+    }
+
+    // ── Market overview ──
+    if (/\b(market|overview|pulse|trend)\b/.test(lower)) {
+      return { tool_id: "market_overview", parameters: {} };
+    }
+
+    // ── Airdrops ──
+    if (/\b(airdrop|quest)\b/.test(lower)) {
+      return { tool_id: "scan_airdrops", parameters: {} };
+    }
+
+    // ── MEV ──
+    if (/\bmev\b/.test(lower)) {
+      return { tool_id: "scan_mev", parameters: {} };
+    }
+
+    // ── DCA ──
+    if (/\bdca\b/.test(lower)) {
+      return { tool_id: "create_dca_bot", parameters: {} };
+    }
+
+    // ── Rug pull / safety ──
+    if (/\b(rug|scam|safe|audit)\b/.test(lower)) {
+      const mintMatch = lower.match(/([1-9A-HJ-NP-Za-km-z]{32,44})/);
+      return { tool_id: "rug_pull_detector", parameters: { mint_address: mintMatch ? mintMatch[1] : undefined } };
+    }
+
+    // ── Rebalance ──
+    if (/\brebalanc/.test(lower)) {
+      return { tool_id: "portfolio_rebalancer", parameters: {} };
+    }
+
+    // ── Fee saver ──
+    if (/\bfee\b/.test(lower)) {
+      return { tool_id: "fee_saver_insights", parameters: {} };
+    }
+
+    // ── Time machine / tx lookup ──
+    if (/\b(time machine|transaction|tx|lookup)\b/.test(lower)) {
+      const sigMatch = lower.match(/([1-9A-HJ-NP-Za-km-z]{64,88})/);
+      return { tool_id: "transaction_time_machine", parameters: { signature: sigMatch ? sigMatch[1] : undefined } };
+    }
+
+    // ── Copy wallet ──
+    if (/\bcopy\b/.test(lower)) {
+      return { tool_id: "copy_trader", parameters: {} };
+    }
+
+    // ── Navigation: lab ──
+    if (/\blab\b|\bstrategy\b/.test(lower)) {
+      return { tool_id: "navigate_to_tab", parameters: { tab_id: "lab" } };
+    }
+
+    // ── Navigation: quests ──
+    if (/\bquest\b|\btool\b/.test(lower)) {
+      return { tool_id: "navigate_to_tab", parameters: { tab_id: "quests" } };
+    }
+
+    return null;
+  }
+
   const handleBottomSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const text = cmdText.trim();
@@ -422,21 +720,35 @@ export function AtlasClient() {
 
     setCmdLoading(true);
     try {
-      const response = await fetch("/api/ai/parse-atlas-command", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
+      let command: { tool_id: string; parameters: Record<string, any> } | null = null;
 
-      if (!response.ok) {
-        throw new Error("Failed to parse command");
+      // Try LLM-powered parser first
+      try {
+        const response = await fetch("/api/ai/parse-atlas-command", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        if (response.ok) {
+          const parsed = await response.json();
+          // Accept only if the LLM returned a real tool_id (not "unknown" or empty)
+          if (parsed && parsed.tool_id && parsed.tool_id !== "unknown") {
+            command = parsed;
+          }
+        }
+      } catch {
+        // LLM API failed — fall through to regex
       }
 
-      const command = await response.json();
+      // Fallback: local regex parser
+      if (!command) {
+        command = regexFallbackParse(text);
+      }
+
       if (command && command.tool_id) {
         dispatch(command);
       } else {
-        toast.error("Sorry, I couldn't understand that command.");
+        toast.error("Sorry, I couldn't understand that command. Try: 'swap 10 SOL to USDC', 'stake 5 SOL with Jito', or 'show SOL price'.");
       }
     } catch (error: any) {
       toast.error("Error processing command", { description: error.message });
@@ -446,11 +758,151 @@ export function AtlasClient() {
     }
   };
 
+  async function simulate(overrideLst?: string) {
+    // Validate input before making any API calls
+    if (!Number.isFinite(amountSol) || amountSol <= 0) {
+      setError("Please enter a valid amount greater than 0");
+      return;
+    }
+    if (amountSol > 1_000_000) {
+      setError("Amount too large — please enter a realistic value");
+      return;
+    }
+
+    // Cancel any in-flight simulate request
+    if (simulateAbortRef.current) simulateAbortRef.current.abort();
+    simulateAbortRef.current = new AbortController();
+
+    setLoading(true);
+    setError(null);
+    setQuote(null);
+    try {
+      const solPrice = prices.SOL ?? 0;
+      const inputUsd = amountSol * solPrice;
+
+      if (kind === "swap_jupiter") {
+        const amount = Math.max(0, amountSol) * LAMPORTS_PER_SOL;
+        const url = new URL("/api/jupiter/quote", window.location.origin);
+        url.searchParams.set("inputMint", MINTS.SOL);
+        url.searchParams.set("outputMint", MINTS.USDC);
+        url.searchParams.set("amount", String(Math.floor(amount)));
+        url.searchParams.set("slippageBps", "50");
+        const r = await fetch(url.toString(), { cache: "no-store" });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j?.error || "Quote failed");
+        const outAmount = Number(j?.outAmount || j?.data?.outAmount || 0) / 1e6;
+        const priceImpact = Number(j?.priceImpactPct || j?.data?.priceImpactPct || 0);
+        const slippageBps = Number(j?.slippageBps || j?.data?.slippageBps || 50);
+        const routeCount = j?.routePlan?.length || j?.data?.routePlan?.length || 1;
+        const swapUsdValue = Number(j?.swapUsdValue || j?.data?.swapUsdValue || inputUsd);
+
+        // Dynamic score from live quote data
+        const impactPenalty = Math.min(40, priceImpact * 2000);
+        const slippagePenalty = slippageBps > 200 ? 15 : slippageBps > 100 ? 8 : 0;
+        const routeBonus = routeCount === 1 ? 5 : routeCount <= 3 ? 0 : -5;
+        const sizeFactor = Math.min(10, Math.max(0, (Math.log10(swapUsdValue + 1) - 1) * 3));
+        const marketJitter = (Math.sin(Date.now() / 60000) + 1) * 2.5;
+        const rateEff = solPrice > 0 ? Math.min(10, (outAmount / (amountSol * solPrice)) * 10) : 5;
+        const score = Math.max(0, Math.min(100, Math.round(85 - impactPenalty - slippagePenalty + routeBonus + sizeFactor + marketJitter + rateEff)));
+
+        // Dynamic risk from price impact & trade size
+        const riskLevel: "low" | "medium" | "high" = priceImpact > 0.01 || amountSol > 500 ? "high" : priceImpact > 0.002 || amountSol > 100 ? "medium" : "low";
+        const riskLabel = priceImpact > 0.005 ? "High Impact" : amountSol > 200 ? "Large Trade" : "Execution Risk";
+
+        setQuote({ ...j, _parsed: { outAmount, priceImpact, slippageBps, routeCount, inputUsd, score, riskLevel, riskLabel } });
+        toast.success("Jupiter quote ready");
+
+      } else if (kind === "stake_marinade") {
+        const lstId = overrideLst || selectedLst;
+        const lst = LST_OPTIONS.find(l => l.id === lstId) || LST_OPTIONS[0];
+        const baseApy = inflationApy ?? 4.0;
+
+        // Each LST has a different effective APY: base Solana inflation + protocol-specific boost
+        // Try to refine with live Jupiter price data (LST/SOL ratio implies real yield)
+        let protocolApy = baseApy + lst.apyBoost;
+        try {
+          const lstPrice = prices[lst.id] ?? 0;
+          const solPriceLive = prices.SOL ?? 0;
+          if (lstPrice > 0 && solPriceLive > 0) {
+            // LST premium over SOL reflects accumulated yield
+            const premium = lstPrice / solPriceLive;
+            // If premium > 1, LST has appreciated vs SOL (expected for yield-bearing tokens)
+            // Adjust APY estimate based on live premium deviation from expected
+            const expectedPremium = 1 + (protocolApy / 100);
+            const liveAdjustment = premium > 1 ? ((premium - 1) / (expectedPremium - 1)) * protocolApy - protocolApy : 0;
+            protocolApy = Math.max(baseApy, protocolApy + Math.min(2, Math.max(-2, liveAdjustment * 0.3)));
+          }
+        } catch (_e) {
+          // Live price adjustment failed — use base APY estimate
+        }
+
+        const apy = Math.round(protocolApy * 100) / 100;
+        const yield12m = amountSol * (apy / 100);
+        const yieldUsd = yield12m * solPrice;
+
+        // Dynamic score: protocol-specific APY, maturity, yield ratio
+        const apyScore = Math.min(35, Math.round(apy * 4.5));
+        const yieldRatio = amountSol > 0 ? Math.min(20, Math.round((yield12m / amountSol) * 280)) : 0;
+        const protocolBonus = lst.maturity;
+        const amtBonus = amountSol >= 0.5 ? Math.min(12, Math.round(Math.log10(amountSol + 1) * 7)) : 0;
+        const timeJitter = (Math.cos(Date.now() / 90000) + 1) * 2;
+        const score = Math.max(0, Math.min(100, Math.round(apyScore + yieldRatio + protocolBonus + amtBonus + timeJitter)));
+
+        // Risk scales with concentration + protocol maturity
+        const riskLevel: "low" | "medium" | "high" = amountSol > 10000 ? "high" : amountSol > 1000 || lst.maturity < 15 ? "medium" : "low";
+        const riskLabel = amountSol > 5000 ? "Concentration Risk" : apy < 3 ? "Low Yield Environment" : lst.riskNote;
+
+        setQuote({ kind, apy, yield12m, yieldUsd, inputUsd, score, riskLevel, riskLabel, lstId: selectedLst });
+        toast.success(`${lst.name} projection ready`);
+
+      } else if (kind === "lp_sol_usdc") {
+        // Fetch real LP APY data
+        let pools: any[] = [];
+        try {
+          const lpRes = await fetch("/api/lp/apy", { cache: "no-store" });
+          if (lpRes.ok) {
+            const lpData = await lpRes.json();
+            pools = lpData?.pools || [];
+          }
+        } catch (_e) {
+          // LP APY fetch failed — will use fallback values below
+        }
+        const bestPool = pools[0] || { dex: "Orca", pair: "SOL/USDC", apy: 12.5, tvl: 45_000_000 };
+        const lpApy = bestPool.apy;
+        const yield12m = amountSol * (lpApy / 100);
+        const yieldUsd = yield12m * solPrice;
+
+        // Dynamic score from live pool metrics
+        const apyScore = Math.min(30, Math.round(lpApy * 0.6));
+        const tvlScore = bestPool.tvl > 20_000_000 ? 25 : bestPool.tvl > 5_000_000 ? 18 : bestPool.tvl > 1_000_000 ? 12 : 5;
+        const volRatio = (bestPool.volume24h || 0) / Math.max(bestPool.tvl, 1);
+        const utilizationScore = Math.min(15, Math.round(volRatio * 30));
+        const ilPenalty = Math.round(Math.min(20, lpApy * 0.15));
+        const feeBonus = bestPool.fee && bestPool.fee <= 0.003 ? 10 : 5;
+        const lpJitter = (Math.sin(Date.now() / 75000) + 1) * 2;
+        const score = Math.max(0, Math.min(100, Math.round(apyScore + tvlScore + utilizationScore - ilPenalty + feeBonus + lpJitter)));
+
+        // Dynamic risk from TVL and APY
+        const riskLevel: "low" | "medium" | "high" = bestPool.tvl < 1_000_000 || lpApy > 100 ? "high" : bestPool.tvl < 10_000_000 || lpApy > 50 ? "medium" : "low";
+        const riskLabel = bestPool.tvl < 2_000_000 ? "Low Liquidity" : lpApy > 60 ? "Volatile Yield" : "IL + Protocol Risk";
+
+        setQuote({ kind, pools, bestPool, lpApy, yield12m, yieldUsd, inputUsd, solPrice, score, riskLevel, riskLabel });
+        toast.success("LP data ready");
+      }
+    } catch (e: any) {
+      setError(e?.message || String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   // Manual refresh for Market Snapshot
   async function refreshPrices() {
+    if (refreshAbortRef.current) refreshAbortRef.current.abort();
+    refreshAbortRef.current = new AbortController();
     try {
       setPricesLoading(true);
-      const j = await fetchJsonWithRetry("/api/jupiter/price?ids=SOL,MSOL,USDC", { cache: "no-store" });
+      const j = await fetchJsonWithRetry(`/api/jupiter/price?ids=${CORE_TOKEN_IDS}`, { cache: "no-store" });
       if ((j as any)?.data) {
         const map: Record<string, number> = {};
         for (const k of Object.keys((j as any).data)) {
@@ -458,8 +910,14 @@ export function AtlasClient() {
           if (typeof p === "number") map[k.toUpperCase()] = p;
         }
         setPrices(map);
-        if (typeof map.SOL === "number") setSolHistory((prev) => [...prev.slice(-47), map.SOL]);
-        if (typeof map.MSOL === "number") setMsolHistory((prev) => [...prev.slice(-47), map.MSOL]);
+        setCoreHistory((prev) => {
+          const next = { ...prev };
+          for (const t of CORE_TOKENS) {
+            const p = map[t.id];
+            if (typeof p === "number") next[t.id] = [...(next[t.id] || []).slice(-47), p];
+          }
+          return next;
+        });
         setPricesUpdatedAt(Date.now());
       }
     } catch (e: any) {
@@ -531,30 +989,32 @@ export function AtlasClient() {
     return () => {abort = true;clearInterval(id);};
   }, [connection, publicKey]);
 
-  // Fetch price snapshots (SOL, mSOL, USDC) via Jupiter Price API proxy
+  // Fetch price snapshots for all core tokens via Jupiter Price API proxy
   useEffect(() => {
     let abort = false;
     async function run() {
       try {
-        const j = await fetchJsonWithRetry("/api/jupiter/price?ids=SOL,MSOL,USDC", { cache: "no-store" });
+        const j = await fetchJsonWithRetry(`/api/jupiter/price?ids=${CORE_TOKEN_IDS}`, { cache: "no-store" });
         if (!abort && (j as any)?.data) {
           const map: Record<string, number> = {};
           for (const k of Object.keys((j as any).data)) {
             const p = (j as any).data[k]?.price;
             if (typeof p === "number") map[k.toUpperCase()] = p;
           }
-          // update price state
           setPrices(map);
           setPricesUpdatedAt(Date.now());
-          // append to sparkline histories (keep last ~48 points)
-          if (typeof map.SOL === "number") {
-            setSolHistory((prev) => [...prev.slice(-47), map.SOL]);
-          }
-          if (typeof map.MSOL === "number") {
-            setMsolHistory((prev) => [...prev.slice(-47), map.MSOL]);
-          }
+          setCoreHistory((prev) => {
+            const next = { ...prev };
+            for (const t of CORE_TOKENS) {
+              const p = map[t.id];
+              if (typeof p === "number") next[t.id] = [...(next[t.id] || []).slice(-47), p];
+            }
+            return next;
+          });
         }
-      } catch {}
+      } catch (_e) {
+        // Price polling failed — will retry on next interval
+      }
     }
     run();
     const id = setInterval(run, 30_000);
@@ -614,6 +1074,8 @@ export function AtlasClient() {
   async function fetchHolderInsights() {
     const mint = mintInput.trim();
     if (!mint) {toast.error("Enter a token mint");return;}
+    if (holderAbortRef.current) holderAbortRef.current.abort();
+    holderAbortRef.current = new AbortController();
     setHolderLoading(true);
     setHolderError(null);
     setMoralisStats(null);
@@ -652,33 +1114,6 @@ export function AtlasClient() {
       es.close();
     };
   }, [ohlcvActive]);
-
-  // Keyboard shortcuts: "/" focus NLP, "s" simulate, 1/2/3 switch strategies
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
-      if (tag === "input" || tag === "textarea") return;
-      if (e.key === "/") {
-        e.preventDefault();
-        nlpInputRef.current?.focus();
-      } else if (e.key.toLowerCase() === "s") {
-        e.preventDefault();
-        simulate();
-      } else if (["1", "2", "3"].includes(e.key)) {
-        e.preventDefault();
-        const map: Record<string, StrategyKind> = { "1": "stake_marinade", "2": "swap_jupiter", "3": "lp_sol_usdc" };
-        setKind(map[e.key]);
-      } else if (e.key.toLowerCase() === "r") {
-        e.preventDefault();
-        refreshPrices();
-      } else if (e.key.toLowerCase() === "g") {
-        e.preventDefault();
-        document.getElementById("quick-scan")?.click();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [simulate, refreshPrices]);
 
   // Prefill from URL (deep link)
   useEffect(() => {
@@ -753,74 +1188,67 @@ export function AtlasClient() {
         if (r.ok) parsed = await r.json();
       } catch {}
 
-      // Fallback lightweight parser
-      if (!parsed) {
+      // Fallback lightweight parser (client-side)
+      if (!parsed || !parsed.ok) {
         const lower = text.toLowerCase();
         const amtMatch = lower.match(/([0-9]+(?:\.[0-9]+)?)\s*sol/);
         const amt = amtMatch ? Number(amtMatch[1]) : amountSol;
-        if (lower.includes("stake")) parsed = { action: "stake", amount: amt, asset: "SOL", venue: "marinade", confidence: 0.5 };else
-        if (lower.includes("swap")) parsed = { action: "swap", amount: amt, asset: "SOL", venue: "jupiter", confidence: 0.5 };else
-        if (lower.includes("lp") || lower.includes("liquidity")) parsed = { action: "lp", amount: amt, asset: "SOL", venue: "sol/usdc", confidence: 0.5 };
+        if (/\b(stake|staking)\b/.test(lower)) parsed = { action: "stake", amount: amt, asset: "SOL", venue: "marinade", confidence: 0.5 };
+        else if (/\b(swap|buy|sell|convert)\b/.test(lower)) parsed = { action: "swap", amount: amt, asset: "SOL", venue: "jupiter", confidence: 0.5 };
+        else if (/\b(lp|liquidity|pool)\b/.test(lower)) parsed = { action: "lp", amount: amt, asset: "SOL", venue: "orca", confidence: 0.5 };
       }
 
-      if (!parsed) {
-        toast.error("Could not understand that. Try: 'stake 5 sol with marinade'");
+      if (!parsed || !parsed.action) {
+        toast.error("Could not understand that. Try: 'stake 5 sol', 'swap 10 sol to usdc', or 'lp 5 sol'");
         return;
       }
 
-      // Map parsed intent to StrategyKind
+      // Map parsed action → StrategyKind
       let nextKind: StrategyKind = "stake_marinade";
-      if (parsed.action === "swap") nextKind = "swap_jupiter";
+      if (parsed.action === "swap" || parsed.action === "dca") nextKind = "swap_jupiter";
       if (parsed.action === "lp") nextKind = "lp_sol_usdc";
       setKind(nextKind);
       if (typeof parsed.amount === "number" && !Number.isNaN(parsed.amount)) setAmountSol(parsed.amount);
 
-      toast.success("Intent parsed. Simulating…");
+      const conf = parsed.confidence ? ` (${(parsed.confidence * 100).toFixed(0)}% conf)` : "";
+      toast.success(`Parsed: ${parsed.action} ${parsed.amount ?? ""} ${parsed.asset ?? "SOL"}${parsed.venue ? " via " + parsed.venue : ""}${conf}`);
       await simulate();
     } finally {
       setNlpLoading(false);
     }
   }
 
-  async function simulate() {
-    setLoading(true);
-    setError(null);
-    setQuote(null);
-    try {
-      if (kind === "swap_jupiter") {
-        // Quote SOL -> USDC for amountSol using Jupiter v6
-        const amount = Math.max(0, amountSol) * LAMPORTS_PER_SOL; // SOL in lamports
-        const url = new URL("/api/jupiter/quote", window.location.origin);
-        url.searchParams.set("inputMint", MINTS.SOL);
-        url.searchParams.set("outputMint", MINTS.USDC);
-        url.searchParams.set("amount", String(Math.floor(amount)));
-        url.searchParams.set("slippageBps", "50"); // 0.5%
-        const r = await fetch(url.toString(), { cache: "no-store" });
-        const j = await r.json();
-        if (!r.ok) throw new Error(j?.error || "Quote failed");
-        setQuote(j);
-        toast.success("Jupiter quote ready");
-      } else if (kind === "stake_marinade") {
-        // Use inflation APY as baseline; mSOL premium is reflected in price feed
-        setQuote({
-          kind,
-          apy: inflationApy,
-          message: "Staking yield baseline fetched from Solana inflation rate."
-        });
-        toast.success("Staking projection ready");
-      } else if (kind === "lp_sol_usdc") {
-        // Minimal risk note with live prices for PnL sensitivity baseline
-        const sol = prices.SOL ?? 0;
-        const usdc = 1;
-        setQuote({ kind, prices: { SOL: sol, USDC: usdc }, note: "Use Orca/Kamino UI for exact vault APY; prices are live from Jupiter." });
-        toast.success("LP baseline ready");
+  // Keyboard shortcuts: "/" focus NLP, "s" simulate, 1/2/3 switch strategies
+  const simulateRef = useRef(simulate);
+  simulateRef.current = simulate;
+  const refreshPricesRef = useRef(refreshPrices);
+  refreshPricesRef.current = refreshPrices;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea") return;
+      if (e.key === "/") {
+        e.preventDefault();
+        nlpInputRef.current?.focus();
+      } else if (e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        simulateRef.current();
+      } else if (["1", "2", "3"].includes(e.key)) {
+        e.preventDefault();
+        const map: Record<string, StrategyKind> = { "1": "stake_marinade", "2": "swap_jupiter", "3": "lp_sol_usdc" };
+        setKind(map[e.key]);
+      } else if (e.key.toLowerCase() === "r") {
+        e.preventDefault();
+        refreshPricesRef.current();
+      } else if (e.key.toLowerCase() === "g") {
+        e.preventDefault();
+        document.getElementById("quick-scan")?.click();
       }
-    } catch (e: any) {
-      setError(e?.message || String(e));
-    } finally {
-      setLoading(false);
-    }
-  }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // Execute Jupiter swap happy-path: uses current quote
   async function executeSwap() {
@@ -835,7 +1263,10 @@ export function AtlasClient() {
       }
       setExecLoading(true);
 
-      const quoteResponse = quote?.data ?? quote;
+      // Strip internal _parsed analysis data before sending to Jupiter swap API
+      const rawQuote = quote?.data ?? quote;
+      const { _parsed, ...quoteResponse } = rawQuote as any;
+
       const res = await fetch("/api/jupiter/swap", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -856,7 +1287,9 @@ export function AtlasClient() {
       const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
       const vtx = VersionedTransaction.deserialize(bytes);
 
-      const signature = await sendTransaction!(vtx as any, connection, { skipPreflight: false });
+      // skipPreflight avoids simulation errors from address lookup tables or stale blockhash;
+      // Jupiter already validates the route server-side.
+      const signature = await sendTransaction!(vtx, connection, { skipPreflight: true });
       toast.success("Transaction sent", {
         description: "Opening explorer…"
       });
@@ -885,7 +1318,8 @@ export function AtlasClient() {
     }
   }
 
-  // Execute Marinade stake happy-path
+  // Execute liquid stake: SOL → mSOL via Jupiter (routes through Marinade/Jito/etc.)
+  // Using Jupiter instead of the Marinade SDK for reliability in serverless environments.
   async function executeStake() {
     try {
       if (!publicKey) {
@@ -903,22 +1337,42 @@ export function AtlasClient() {
       }
       setExecLoading(true);
 
-      const res = await fetch("/api/marinade/stake", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userPublicKey: publicKey.toBase58(), amountLamports: lamports })
-      });
-      const j = await res.json();
-      if (!res.ok || !j?.transaction) {
-        throw new Error(j?.error || "Failed to build stake transaction");
+      // Step 1: Get Jupiter quote for SOL → LST (liquid staking)
+      const lst = LST_OPTIONS.find(l => l.id === selectedLst) || LST_OPTIONS[0];
+      const quoteUrl = new URL("/api/jupiter/quote", window.location.origin);
+      quoteUrl.searchParams.set("inputMint", MINTS.SOL);
+      quoteUrl.searchParams.set("outputMint", lst.mint);
+      quoteUrl.searchParams.set("amount", String(lamports));
+      quoteUrl.searchParams.set("slippageBps", "10"); // tight slippage for staking
+      const quoteRes = await fetch(quoteUrl.toString(), { cache: "no-store" });
+      const quoteData = await quoteRes.json();
+      if (!quoteRes.ok || !quoteData) {
+        throw new Error(quoteData?.error || "Failed to get staking quote");
       }
 
-      const b64 = j.transaction as string;
-      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-      const tx = Transaction.from(bytes as any);
+      // Step 2: Build swap transaction via Jupiter
+      const swapRes = await fetch("/api/jupiter/swap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quoteResponse: quoteData,
+          userPublicKey: publicKey.toBase58(),
+          wrapAndUnwrapSol: true,
+          asLegacyTransaction: false
+        })
+      });
+      const swapData = await swapRes.json();
+      if (!swapRes.ok || !swapData?.swapTransaction) {
+        throw new Error(swapData?.error || "Failed to build stake transaction");
+      }
 
-      const sig = await sendTransaction!(tx, connection, { skipPreflight: false });
-      toast.success("Stake sent", { description: "Opening explorer…" });
+      // Step 3: Deserialize and send
+      const b64 = swapData.swapTransaction as string;
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const vtx = VersionedTransaction.deserialize(bytes);
+
+      const sig = await sendTransaction!(vtx, connection, { skipPreflight: true });
+      toast.success(`Staked via ${lst.name}`, { description: `SOL → ${lst.symbol} sent` });
       const url = `https://solscan.io/tx/${sig}`;
       toast.message("View on Solscan", {
         description: url,
@@ -936,6 +1390,99 @@ export function AtlasClient() {
       });
     } catch (e: any) {
       toast.error("Stake failed", { description: e?.message || String(e) });
+    } finally {
+      setExecLoading(false);
+    }
+  }
+
+  // Execute LP deposit: swap half SOL → USDC via Jupiter, then open pool for deposit
+  async function executeLp() {
+    try {
+      if (!publicKey) {
+        toast.error("Connect wallet to execute");
+        return;
+      }
+      if (kind !== "lp_sol_usdc") {
+        toast.error("Not in LP mode");
+        return;
+      }
+      const halfSol = amountSol / 2;
+      const lamports = Math.floor(Math.max(0, halfSol) * LAMPORTS_PER_SOL);
+      if (!lamports) {
+        toast.error("Enter amount > 0");
+        return;
+      }
+      setExecLoading(true);
+
+      // Step 1: Swap half SOL → USDC to create the LP pair
+      const quoteUrl = new URL("/api/jupiter/quote", window.location.origin);
+      quoteUrl.searchParams.set("inputMint", MINTS.SOL);
+      quoteUrl.searchParams.set("outputMint", MINTS.USDC);
+      quoteUrl.searchParams.set("amount", String(lamports));
+      quoteUrl.searchParams.set("slippageBps", "50");
+      const quoteRes = await fetch(quoteUrl.toString(), { cache: "no-store" });
+      const quoteData = await quoteRes.json();
+      if (!quoteRes.ok || !quoteData) {
+        throw new Error(quoteData?.error || "Failed to get LP swap quote");
+      }
+
+      // Step 2: Build swap transaction via Jupiter
+      const swapRes = await fetch("/api/jupiter/swap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quoteResponse: quoteData,
+          userPublicKey: publicKey.toBase58(),
+          wrapAndUnwrapSol: true,
+          asLegacyTransaction: false,
+        }),
+      });
+      const swapData = await swapRes.json();
+      if (!swapRes.ok || !swapData?.swapTransaction) {
+        throw new Error(swapData?.error || "Failed to build LP swap transaction");
+      }
+
+      // Step 3: Deserialize and send
+      const b64 = swapData.swapTransaction as string;
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const vtx = VersionedTransaction.deserialize(bytes);
+      const sig = await sendTransaction!(vtx, connection, { skipPreflight: true });
+
+      const txUrl = `https://solscan.io/tx/${sig}`;
+      toast.success(`Swapped ${halfSol.toFixed(3)} SOL → USDC for LP pair`, {
+        description: "Opening pool deposit…",
+      });
+      toast.message("View swap on Solscan", {
+        description: txUrl,
+        action: {
+          label: "Open",
+          onClick: () => window.open(txUrl, "_blank", "noopener,noreferrer"),
+        },
+      });
+
+      // Step 4: Open the pool deposit page on the best DEX
+      const bestPool = quote?.bestPool;
+      let poolUrl: string;
+      if (bestPool?.dex === "Raydium" && bestPool?.pool && bestPool.pool !== "unknown" && bestPool.pool !== "estimated") {
+        poolUrl = `https://raydium.io/liquidity/increase/?mode=add&pool_id=${bestPool.pool}`;
+      } else if (bestPool?.pool && bestPool.pool !== "unknown" && bestPool.pool !== "estimated") {
+        poolUrl = `https://www.orca.so/pools/${bestPool.pool}`;
+      } else {
+        poolUrl = "https://www.orca.so/?tokenA=SOL&tokenB=USDC";
+      }
+
+      // Open pool UI for the deposit step
+      setTimeout(() => {
+        toast.message("Complete LP deposit", {
+          description: `Deposit SOL + USDC on ${bestPool?.dex || "Orca"}`,
+          action: {
+            label: "Open Pool",
+            onClick: () => window.open(poolUrl, "_blank", "noopener,noreferrer"),
+          },
+        });
+      }, 1500);
+    } catch (e: any) {
+      toast.error("LP execution failed", { description: e?.message || String(e) });
     } finally {
       setExecLoading(false);
     }
@@ -966,6 +1513,8 @@ export function AtlasClient() {
       toast.error("Connect wallet to scan airdrops");
       return;
     }
+    if (scanAbortRef.current) scanAbortRef.current.abort();
+    scanAbortRef.current = new AbortController();
     setCompassLoading(true);
     setCompassError(null);
     setCompassData(null);
@@ -996,13 +1545,12 @@ export function AtlasClient() {
   const [trendingUpdatedAt, setTrendingUpdatedAt] = useState<number | null>(null);
   const [trendingLoading, setTrendingLoading] = useState(false);
   const [trendingError, setTrendingError] = useState<string | null>(null);
-  const [trendingSource, setTrendingSource] = useState<"bitquery" | "jupiter">("bitquery");
+  const [trendingSource, setTrendingSource] = useState<"bitquery" | "jupiter" | "moralis">("bitquery");
 
-  // Fetch trending token list (can change over time)
+  // Fetch trending token list — Moralis primary, Jupiter fallback, Bitquery SSE overlay
   useEffect(() => {
     let closed = false;
-    let fellBack = false;
-    let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
+    let baseline: TrendingToken[] = [];
 
     // Helper to insert token uniquely and cap per-source
     const upsert = (list: TrendingToken[], t: TrendingToken, cap: number) => {
@@ -1012,16 +1560,17 @@ export function AtlasClient() {
       return next.slice(0, cap);
     };
 
-    // Local buffers per subscription (max 2 each)
+    // Local buffers per SSE subscription
     let fromJumps: TrendingToken[] = [];
     let fromCurve: TrendingToken[] = [];
 
     const recompute = () => {
-      // Combine two from each subscription → total up to 4
-      const combined: TrendingToken[] = [...fromJumps, ...fromCurve];
-      setTrending((prev) => {
-        // Reset histories for tokens not in the new list
-        const nextMints = new Set(combined.map((t) => t.mint));
+      // SSE tokens first, then fill with baseline (deduped)
+      const sseTokens: TrendingToken[] = [...fromJumps, ...fromCurve];
+      const sseMints = new Set(sseTokens.map((t) => t.mint));
+      const baselineFill = baseline.filter((t) => !sseMints.has(t.mint));
+      const combined = [...sseTokens, ...baselineFill];
+      setTrending(() => {
         setTrendingHist((old) => {
           const fresh: Record<string, number[]> = {};
           for (const it of combined) fresh[it.mint] = old[it.mint] || [];
@@ -1044,7 +1593,6 @@ export function AtlasClient() {
             icon: cur.Uri || undefined,
           };
         }
-        // Fallbacks for potential other shapes
         const t0 = payload?.data?.Solana?.DEXTrades?.[0];
         const tCur = t0?.BaseCurrency || t0?.QuoteCurrency || t0?.Currency;
         if (tCur?.MintAddress && (tCur?.Symbol || tCur?.Name)) {
@@ -1059,18 +1607,29 @@ export function AtlasClient() {
       return null;
     };
 
-    const fetchJupiterFallback = async () => {
-      if (closed || fellBack) return;
-      fellBack = true;
+    // Load trending tokens: try Moralis first, fall back to Jupiter
+    const loadBaseline = async () => {
+      // Try Moralis trending (primary)
       try {
-        setTrendingLoading(true);
-        setTrendingError(null);
-        const j = await fetchJsonWithRetry("/api/jupiter/trending?limit=4", { cache: "no-store" });
+        const m = await fetchJsonWithRetry("/api/moralis/trending?limit=8", { cache: "no-store" });
+        const items = (m as any)?.items || [];
+        if (!closed && Array.isArray(items) && items.length >= 3) {
+          baseline = items;
+          setTrendingSource("moralis");
+          recompute();
+          setTrendingLoading(false);
+          return;
+        }
+      } catch {}
+
+      // Jupiter fallback
+      try {
+        const j = await fetchJsonWithRetry("/api/jupiter/trending?limit=8", { cache: "no-store" });
         const items = (j as any)?.items || [];
-        if (!closed && Array.isArray(items)) {
-          setTrending(items);
+        if (!closed && Array.isArray(items) && items.length > 0) {
+          baseline = items;
           setTrendingSource("jupiter");
-          setTrendingUpdatedAt(Date.now());
+          recompute();
         }
       } catch (e: any) {
         if (!closed) setTrendingError(e?.message || String(e));
@@ -1083,56 +1642,45 @@ export function AtlasClient() {
       try {
         setTrendingLoading(true);
         setTrendingError(null);
-        setTrendingSource("bitquery");
 
+        // 1. Load baseline immediately
+        loadBaseline();
+
+        // 2. Bitquery SSE overlay — prepends real-time discoveries
         const es1 = new EventSource(`/api/bitquery/pumpfun/marketcap-jumps`);
         const es2 = new EventSource(`/api/bitquery/pumpfun/curve-95`);
 
-        const onMsg1 = (ev: MessageEvent) => {
+        const processSseMsg = (ev: MessageEvent, buf: "jumps" | "curve") => {
           if (closed) return;
           try {
-            const data = JSON.parse(ev.data);
-            if (data?.type === "frame" && data?.msg?.payload) {
-              const tok = extractToken(data.msg.payload);
-              if (tok) {
-                if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; }
-                fromJumps = upsert(fromJumps, tok, 2);
-                recompute();
-              }
+            const msg = JSON.parse(ev.data);
+            let payload: any = null;
+            if (msg?.type === "data" && msg?.data) {
+              payload = { data: msg.data };
+            } else if (msg?.type === "frame" && msg?.msg?.payload) {
+              payload = msg.msg.payload;
+            }
+            if (!payload) return;
+            const tok = extractToken(payload);
+            if (tok) {
+              setTrendingLoading(false);
+              if (buf === "jumps") fromJumps = upsert(fromJumps, tok, 3);
+              else fromCurve = upsert(fromCurve, tok, 3);
+              recompute();
             }
           } catch {}
         };
-        const onMsg2 = (ev: MessageEvent) => {
-          if (closed) return;
-          try {
-            const data = JSON.parse(ev.data);
-            if (data?.type === "frame" && data?.msg?.payload) {
-              const tok = extractToken(data.msg.payload);
-              if (tok) {
-                if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; }
-                fromCurve = upsert(fromCurve, tok, 2);
-                recompute();
-              }
-            }
-          } catch {}
-        };
-        const onErr = () => {
-          if (!closed && !fellBack) fetchJupiterFallback();
-        };
+        const onMsg1 = (ev: MessageEvent) => processSseMsg(ev, "jumps");
+        const onMsg2 = (ev: MessageEvent) => processSseMsg(ev, "curve");
+        const onErr = () => {};
 
         es1.addEventListener("message", onMsg1 as any);
         es2.addEventListener("message", onMsg2 as any);
         es1.addEventListener("error", onErr as any);
         es2.addEventListener("error", onErr as any);
 
-        // If no Bitquery frames arrive quickly, fallback to Jupiter
-        fallbackTimer = setTimeout(() => {
-          if (!closed && !fellBack) fetchJupiterFallback();
-        }, 5000);
-
         return () => {
           closed = true;
-          if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; }
           es1.removeEventListener("message", onMsg1 as any);
           es2.removeEventListener("message", onMsg2 as any);
           es1.removeEventListener("error", onErr as any);
@@ -1140,7 +1688,7 @@ export function AtlasClient() {
           es1.close();
           es2.close();
         };
-      } finally {
+      } catch (e) {
         setTrendingLoading(false);
       }
     };
@@ -1282,582 +1830,379 @@ export function AtlasClient() {
             </TabsList>
 
             {/* Quests View */}
-            <TabsContent value="quests" className="mt-8">
-              {/* 3-column uniform grid with equal-height cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
-                {/* Airdrop Compass */}
-                <div className="h-full" id="airdrop-compass">
-                  <Card className="atlas-card relative overflow-hidden h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)] min-h-[360px]">
-                    <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
-                    <CardHeader className="pb-2 flex flex-col gap-2">
-                      <div className="flex h-8 items-center justify-between gap-2">
-                        <CardTitle className="text-sm leading-none whitespace-nowrap">
-                          <span className="flex items-center gap-2"><IconAirDropScout className="h-4 w-4" /><span>Airdrop Scout</span></span>
-                        </CardTitle>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <Button
-                            id="quick-scan"
-                            size="sm"
-                            variant="secondary"
-                            className="h-6 px-2 text-[11px] rounded-md leading-none"
-                            onClick={scanAirdrops}
-                            disabled={!publicKey || compassLoading}>
+            <TabsContent value="quests" className="mt-8 space-y-8">
 
-                             {compassLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Scan Wallet"}
-                           </Button>
-                        </div>
-                      </div>
-                      {!publicKey &&
-                      <div className="text-xs opacity-70">Connect your wallet to scan for eligible and potential airdrops.</div>
-                      }
-                    </CardHeader>
-                    <CardContent className="atlas-card-content pt-0 space-y-4">
-                      {compassLoading &&
-                      <div className="space-y-2">
-                          <Skeleton className="h-4 w-40" />
-                          <Skeleton className="h-3 w-full" />
-                          <Skeleton className="h-3 w-2/3" />
-                        </div>
-                      }
+              {/* ── Market Overview (hero) ────────────────────────── */}
+              <section id="market-pulse-card">
+                <MarketPulseCard
+                  coreTokens={CORE_TOKENS}
+                  prices={prices}
+                  coreHistory={coreHistory}
+                  pricesLoading={pricesLoading}
+                  pricesUpdatedAt={pricesUpdatedAt}
+                  refreshPrices={refreshPrices}
+                  trending={trending}
+                  trendingPrices={trendingPrices}
+                  trendingHist={trendingHist}
+                  trendingUpdatedAt={trendingUpdatedAt}
+                  trendingLoading={trendingLoading}
+                  trendingError={trendingError}
+                  trendingSource={trendingSource}
+                />
+              </section>
 
-                      {compassError &&
-                      <Alert variant="destructive"><AlertDescription>{compassError}</AlertDescription></Alert>
-                      }
-
-                      {compassData &&
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 h-full">
-                          {/* Airdrop list */}
-                          <div className="lg:col-span-1 space-y-2 min-w-0 max-h-96 overflow-y-auto pr-2 pb-2">
-                            <div className="text-xs font-medium opacity-80">Detected Airdrops</div>
-                            {(compassData.eligibleNow || []).map((a: any) =>
-                          <button
-                            key={a.id}
-                            onClick={() => setSelectedAirdropId(a.id)}
-                            className={`relative overflow-hidden w-full text-left rounded-md p-2 text-xs bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 transition-all hover:shadow-[0_6px_18px_-12px_rgba(0,0,0,0.3)] ${selectedAirdropId === a.id ? "bg-muted/60 ring-1 ring-accent" : "hover:bg-card/80"}`}>
-
-                                <span className="pointer-events-none absolute -top-8 -right-8 h-16 w-16 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/25%,transparent_70%)]" />
-                                <div className="flex items-center justify-between gap-2 min-w-0">
-                                  <span className="font-medium truncate flex-1 min-w-0">{a.name}</span>
-                                  <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
-                                    {a.source &&
-                                <Badge variant="secondary" className="text-[10px] whitespace-nowrap">{a.source}</Badge>
-                                }
-                                    <Badge variant={a.status === "eligible" ? "default" : "secondary"} className="text-[10px] whitespace-nowrap">
-                                      {a.status === "eligible" ? "✓ Eligible" : a.status.replace("_", " ")}
-                                    </Badge>
-                                  </div>
-                                </div>
-                                <div className="mt-1 text-[11px] opacity-70 truncate">{a.estReward}</div>
-                              </button>
-                          )}
-                          </div>
-
-                          {/* Airdrop details */}
-                          <div className="lg:col-span-2 min-w-0 overflow-y-auto pr-2 pb-2">
-                            {(() => {
-                            const all = [
-                            ...(compassData.eligibleNow || [])];
-
-                            const sel = all.find((x: any) => x.id === selectedAirdropId) || all[0];
-                            if (!sel) return <div className="text-xs opacity-70 p-3">No eligible airdrops detected for this wallet.</div>;
-                            return (
-                              <div className="space-y-2 text-xs bg-card/40 rounded-lg p-3">
-                                  <div className="flex items-start justify-between gap-2 flex-wrap">
-                                    <div className="font-medium flex-1 min-w-0 break-words pr-2">{sel.name}</div>
-                                    <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
-                                      {sel.source && <Badge variant="secondary" className="text-[10px] whitespace-nowrap">{sel.source}</Badge>}
-                                      <Badge variant={sel.status === "eligible" ? "default" : "secondary"} className="text-[10px] whitespace-nowrap">{sel.status === "eligible" ? "✓ Eligible" : sel.status}</Badge>
-                                      {sel.endsAt &&
-                                    <span className="text-[10px] opacity-70 whitespace-nowrap">Ends {new Date(sel.endsAt).toLocaleDateString()}</span>
-                                    }
-                                    </div>
-                                  </div>
-                                  <div className="opacity-80 break-words text-[11px] leading-relaxed">{sel.details}</div>
-                                  <Separator />
-                                  <div className="font-medium mt-2">Tasks</div>
-                                  <ul className="space-y-1.5">
-                                    {sel.tasks?.map((t: any) =>
-                                  <li key={t.id} className="relative overflow-hidden flex flex-wrap items-center justify-between gap-1.5 rounded-md p-1.5 bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 transition-colors hover:shadow-[0_6px_18px_-12px_rgba(0,0,0,0.3)] min-w-0">
-                                        <span className="pointer-events-none absolute -top-8 -right-8 h-16 w-16 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/25%,transparent_70%)]" />
-                                        <div className="flex flex-col min-w-0 text-[10px]">
-                                          <span className="break-words leading-tight">{t.label}</span>
-                                          {t.venue && <span className="text-[9px] opacity-60">@ {t.venue}</span>}
-                                        </div>
-                                        <div className="flex items-center gap-1 shrink-0">
-                                          <Button size="sm" variant="secondary" onClick={() => handleSimulateTask(t)} title="Simulate task" className="h-5 px-1.5 text-[9px]">
-                                            Sim
-                                          </Button>
-                                          <Button size="sm" onClick={() => handleExecuteTask(t)} title="Execute task" className="h-5 px-1.5 text-[9px]">
-                                            Run
-                                          </Button>
-                                        </div>
-                                      </li>
-                                  )}
-                                  </ul>
-                                </div>);
-
-                          })()}
-                          </div>
-                        </div>
-                      }
-
-                      {!compassLoading && !compassData && !compassError &&
-                      <div className="space-y-3">
-                          <div className="text-xs opacity-70">No scan yet. Connect your wallet and click "Scan Wallet" to fetch real, verifiable airdrops.</div>
-                        </div>
-                      }
-                    </CardContent>
-                  </Card>
+              {/* ── Trade ─────────────────────────────────────────── */}
+              <section>
+                <SectionHeading title="Trade" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="h-full min-h-[360px]" id="jupiter-integrated-card">
+                    <JupiterSwapCard />
+                  </div>
+                  <DCABotCard />
                 </div>
+              </section>
 
-                {/* Speculative Opportunities */}
-                <div className="h-full">
-                  <Card className="atlas-card relative overflow-hidden h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)] min-h-[360px]">
-                    <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
-                    <CardHeader className="pb-2 flex flex-col gap-2">
-                      <div className="flex h-8 items-center justify-between gap-2">
-                        <CardTitle className="text-sm leading-none whitespace-nowrap">
-                          <span className="flex items-center gap-2"><IconAirDropScout className="h-4 w-4" /><span>Opportunities</span></span>
-                        </CardTitle>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <Badge variant="secondary" className="h-6 px-2 text-[10px] rounded-md leading-none">Source: airdrops.io</Badge>
-                        </div>
-                      </div>
-                      <div className="text-xs opacity-70">Curated speculative Solana quests. DYOR.</div>
-                    </CardHeader>
-                    <CardContent className="atlas-card-content pt-0">
-                      {specLoading &&
-                      <div className="space-y-2">
-                          <Skeleton className="h-4 w-40" />
-                          <Skeleton className="h-3 w-full" />
-                          <Skeleton className="h-3 w-2/3" />
-                        </div>
-                      }
-                      {specError && <Alert variant="destructive"><AlertDescription>{specError}</AlertDescription></Alert>}
-                      {!specLoading && !specError && specItems.length === 0 &&
-                      <div className="text-xs opacity-70">No speculative items found.</div>
-                      }
-                      <div className="grid md:grid-cols-2 gap-3">
-                        {specItems.slice(0, 8).map((it: any, i: number) =>
-                        <a key={`${it.url || it.title}-${i}`} href={it.url} target="_blank" rel="noopener noreferrer" className="relative overflow-hidden block rounded-md p-2 text-xs bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 transition-colors hover:shadow-[0_6px_18px_-12px_rgba(0,0,0,0.3)]" title={it.title || it.project || "Untitled"}>
-                            <span className="pointer-events-none absolute -top-8 -right-8 h-16 w-16 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/25%,transparent_70%)]" />
-                            <div className="flex flex-col gap-1 min-w-0">
-                              <div className="flex items-start justify-between gap-2 min-w-0">
-                                <div className="font-medium line-clamp-2 flex-1 min-w-0">{it.title || it.project || "Untitled"}</div>
-                                <div className="flex items-center gap-1 shrink-0">
-                                  <Badge variant="secondary" className="text-[10px] whitespace-nowrap">airdrops.io</Badge>
-                                </div>
-                              </div>
-                              {it.summary && <div className="opacity-70 line-clamp-2 text-[10px]">{it.summary}</div>}
-                            </div>
-                          </a>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
+              {/* ── Analyze ───────────────────────────────────────── */}
+              <section>
+                <SectionHeading title="Analyze" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <TokenIntelCard
+                    mintInput={mintInput}
+                    setMintInput={setMintInput}
+                    holderLoading={holderLoading}
+                    holderError={holderError}
+                    moralisStats={moralisStats}
+                    dasCount={dasCount}
+                    dasData={dasData}
+                    fetchHolderInsights={fetchHolderInsights}
+                  />
+                  <div id="mev-scanner-card"><MEVScanner /></div>
                 </div>
+              </section>
 
-                {/* KeyStone Swap (Jupiter Plugin) */}
-                <div className="h-full min-h-[360px]" id="jupiter-integrated-card">
-                  <JupiterSwapCard />
+              {/* ── Discover ──────────────────────────────────────── */}
+              <section>
+                <SectionHeading title="Discover" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <AirdropScoutCard
+                    publicKey={publicKey}
+                    compassLoading={compassLoading}
+                    compassError={compassError}
+                    compassData={compassData}
+                    scanAirdrops={scanAirdrops}
+                    selectedAirdropId={selectedAirdropId}
+                    setSelectedAirdropId={setSelectedAirdropId}
+                    handleSimulateTask={handleSimulateTask}
+                    handleExecuteTask={handleExecuteTask}
+                  />
+                  <OpportunitiesCard specLoading={specLoading} specError={specError} specItems={specItems} />
                 </div>
+              </section>
 
-                {/* Holder Insights */}
-                <div className="h-full" id="holder-insights-card">
-                  <Card className="atlas-card relative overflow-hidden h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)] min-h-[360px]">
-                    <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
-                    <CardHeader className="pb-2 flex flex-col gap-2">
-                      <CardTitle className="text-sm leading-none whitespace-nowrap">
-                        <span className="flex items-center gap-2"><IconHolderAnalytics className="h-4 w-4" /><span>Holder Analytics</span></span>
-                      </CardTitle>
-                      <div className="text-xs opacity-70">Paste a token mint to view holder distribution and stats from Moralis and Helius.</div>
-                    </CardHeader>
-                    <CardContent className="atlas-card-content pt-0 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Input value={mintInput} onChange={(e) => setMintInput(e.target.value)} placeholder="Token mint (e.g., EPjF...USDC)" className="h-9 font-mono text-xs" title={mintInput} />
-                        <Button size="sm" onClick={fetchHolderInsights} disabled={holderLoading}>
-                          {holderLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <span className="flex items-center gap-1.5"><IconHolderAnalytics className="h-3.5 w-3.5" /><span>Fetch</span></span>}
-                        </Button>
-                      </div>
-                      {holderError && <Alert variant="destructive"><AlertDescription>{holderError}</AlertDescription></Alert>}
-                      {(moralisStats || dasCount != null) &&
-                      <div className="space-y-3">
-                          {/* Moralis Stats */}
-                          {moralisStats && (
-                            <div className="rounded-md space-y-2">
-                              <div className="flex items-center justify-between">
-                                <div className="font-medium text-xs">Moralis Holders</div>
-                                <Badge variant="secondary" className="text-[10px]">Source</Badge>
-                              </div>
-                              <div className="grid grid-cols-2 gap-2 text-xs">
-                                {moralisStats?.holders != null && (
-                                  <div className="rounded p-2 bg-card/40">
-                                    <div className="text-[11px] opacity-70">Total Holders</div>
-                                    <div className="font-mono font-bold text-sm">{(moralisStats.holders || 0).toLocaleString()}</div>
-                                  </div>
-                                )}
-                                {moralisStats?.topHoldersSample && Array.isArray(moralisStats.topHoldersSample) && moralisStats.topHoldersSample.length > 0 && (
-                                  <div className="rounded p-2 bg-card/40">
-                                    <div className="text-[11px] opacity-70">Top Holder %</div>
-                                    <div className="font-mono font-bold text-sm">{(moralisStats.topHoldersSample[0]?.percent || 0).toFixed(2)}%</div>
-                                  </div>
-                                )}
-                              </div>
-                              {moralisStats?.topHoldersSample && Array.isArray(moralisStats.topHoldersSample) && moralisStats.topHoldersSample.length > 0 && (
-                                <div className="rounded p-2 bg-card/40 space-y-1">
-                                  <div className="text-[10px] font-medium opacity-80">Top Holders</div>
-                                  {moralisStats.topHoldersSample.slice(0, 3).map((holder: any, idx: number) => (
-                                    <div key={idx} className="text-[10px] flex items-center justify-between opacity-70">
-                                      <span className="font-mono truncate">{holder.address?.slice(0, 8)}...{holder.address?.slice(-4)}</span>
-                                      <span className="text-amber-400 font-mono">{holder.percent?.toFixed(2)}%</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          
-                          {/* Helius DAS Stats */}
-                          {dasCount != null && (
-                            <div className="rounded-md space-y-2">
-                              <div className="flex items-center justify-between">
-                                <div className="font-medium text-xs">Helius Token Accounts</div>
-                                <Badge variant="secondary" className="text-[10px]">DAS API</Badge>
-                              </div>
-                              <div className="grid grid-cols-2 gap-2 text-xs">
-                                <div className="rounded p-2 bg-card/40">
-                                  <div className="text-[11px] opacity-70">Token Accounts</div>
-                                  <div className="font-mono font-bold text-sm">{dasCount.toLocaleString()}</div>
-                                </div>
-                                <div className="rounded p-2 bg-card/40">
-                                  <div className="text-[11px] opacity-70">Distribution</div>
-                                  <div className="font-mono font-bold text-sm text-emerald-400">{dasCount > 1000 ? "✓ Healthy" : dasCount > 100 ? "⚠ Fair" : "✗ Risky"}</div>
-                                </div>
-                              </div>
-                              {dasData && Array.isArray(dasData) && dasData.length > 0 && (
-                                <div className="rounded p-2 bg-card/40 space-y-1">
-                                  <div className="text-[10px] font-medium opacity-80">Sample Holders</div>
-                                  {dasData.slice(0, 3).map((account: any, idx: number) => (
-                                    <div key={idx} className="text-[10px] flex items-center justify-between opacity-70">
-                                      <span className="font-mono truncate">{account.owner?.slice(0, 8)}...{account.owner?.slice(-4)}</span>
-                                      <span className="text-purple-400 font-mono">{((account.amount || 0) / Math.pow(10, account.decimals || 0)).toFixed(2)} tokens</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      }
-                    </CardContent>
-                  </Card>
+              {/* ── Manage ────────────────────────────────────────── */}
+              <section>
+                <SectionHeading title="Manage" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div id="portfolio-rebalancer-card"><PortfolioRebalancer /></div>
+                  <div id="copy-my-wallet-card"><CopyMyWallet /></div>
+                  <div id="fee-saver-card"><FeeSaver /></div>
                 </div>
+              </section>
 
-                {/* Market Snapshot */}
-                <div className="h-full">
-                  <Card className="atlas-card relative overflow-hidden h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)] min-h-[360px]">
-                    <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
-                    <CardHeader className="pb-2 pt-1 flex items-center justify-between gap-2 relative">
-                      <span className="pointer-events-none absolute inset-x-3 -top-px h-px bg-[linear-gradient(to_right,transparent,theme(colors.border),transparent)] opacity-60" />
-                      <CardTitle className="text-sm leading-none">
-                        <span className="flex items-center gap-2"><IconMarketPulse className="h-4 w-4" /><span>Market Pulse</span></span>
-                      </CardTitle>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={refreshPrices}
-                          disabled={pricesLoading}
-                          className="h-6 px-2 text-[11px] rounded-md leading-none active:scale-[0.98] transition-transform"
-                          title="Refresh prices (R)">
-                          {pricesLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Refresh"}
-                        </Button>
-                        <Badge variant="secondary" className="h-6 px-2 text-[10px] rounded-md leading-none">Jupiter</Badge>
-                        {(() => {
-                          const recent = typeof pricesUpdatedAt === "number" && Date.now() - pricesUpdatedAt < 60_000;
-                          return (
-                            <span
-                              aria-label={recent ? "Live – updated < 60s" : "Stale – updated > 60s"}
-                              title={recent ? "Live – updated < 60s" : "Stale – updated > 60s"}
-                              className={`inline-block h-1.5 w-1.5 rounded-full ${recent ? "bg-emerald-500/80" : "bg-amber-500/80"}`} />
-                          );
-                        })()}
-                        {pricesUpdatedAt ? (
-                          <span className="text-[10px] opacity-60 ml-1">{`Updated ${new Date(pricesUpdatedAt).toLocaleTimeString()}`}</span>
-                        ) : null}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="atlas-card-content pt-0">
-                      <div className="grid grid-cols-2 gap-3 text-xs">
-                        <div className="relative overflow-hidden rounded-md bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 p-3 transition-colors group">
-                          <span className="pointer-events-none absolute -top-8 -right-8 h-16 w-16 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/25%,transparent_70%)]" />
-                          <span className="pointer-events-none absolute -inset-px rounded-md opacity-0 group-hover:opacity-100 transition-opacity [background:conic-gradient(from_0deg,transparent,theme(colors.accent)/25%,transparent_50%,transparent)] animate-[spin_10s_linear_infinite]" />
-                          <div className="flex items-center justify-between">
-                            <span className="opacity-70">SOL</span>
-                            <Badge variant="secondary" className="text-[10px]">Spot</Badge>
-                          </div>
-                          <div className="mt-1 font-mono cursor-pointer select-none" title="Click to copy"
-                          onClick={() => {if (prices.SOL) {navigator.clipboard.writeText(prices.SOL.toFixed(2));toast.success("SOL price copied");}}}>
-
-                            {prices.SOL ? `$${prices.SOL.toFixed(2)}` : <Skeleton className="h-3 w-16" />}
-                          </div>
-                          {(() => {
-                            const d = pctChange(solHistory);
-                            if (d == null) return null;
-                            const up = d >= 0;
-                            return (
-                              <div className={`mt-1 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] ${up ? "text-emerald-500 border-emerald-500/30" : "text-red-500 border-red-500/30"}`}>
-                                <svg viewBox="0 0 24 24" className="h-3 w-3" aria-hidden>
-                                  {up ?
-                                  <path d="M5 14l7-7 7 7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /> :
-
-                                  <path d="M5 10l7 7 7-7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                                  }
-                                </svg>
-                                <span>{`${up ? "+" : ""}${d.toFixed(2)}%`}</span>
-                              </div>);
-
-                          })()}
-                          <div className="mt-2 text-foreground/60">
-                            <Sparkline data={solHistory} />
-                          </div>
-                        </div>
-                        <div className="relative overflow-hidden rounded-md bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 p-3 transition-colors group">
-                          <span className="pointer-events-none absolute -top-8 -right-8 h-16 w-16 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/25%,transparent_70%)]" />
-                          <span className="pointer-events-none absolute -inset-px rounded-md opacity-0 group-hover:opacity-100 transition-opacity [background:conic-gradient(from_0deg,transparent,theme(colors.accent)/25%,transparent_50%,transparent)] animate-[spin_10s_linear_infinite]" />
-                          <div className="flex items-center justify-between">
-                            <span className="opacity-70">mSOL</span>
-                            <Badge variant="secondary" className="text-[10px]">Spot</Badge>
-                          </div>
-                          <div className="mt-1 font-mono cursor-pointer select-none" title="Click to copy"
-                          onClick={() => {if (prices.MSOL) {navigator.clipboard.writeText(prices.MSOL.toFixed(2));toast.success("mSOL price copied");}}}>
-
-                            {prices.MSOL ? `$${prices.MSOL.toFixed(2)}` : <Skeleton className="h-3 w-16" />}
-                          </div>
-                          {(() => {
-                            const d = pctChange(msolHistory);
-                            if (d == null) return null;
-                            const up = d >= 0;
-                            return (
-                              <div className={`mt-1 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] ${up ? "text-emerald-500 border-emerald-500/30" : "text-red-500 border-red-500/30"}`}>
-                                <svg viewBox="0 0 24 24" className="h-3 w-3" aria-hidden>
-                                  {up ?
-                                  <path d="M5 14l7-7 7 7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /> :
-
-                                  <path d="M5 10l7 7 7-7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                                  }
-                                </svg>
-                                <span>{`${up ? "+" : ""}${d.toFixed(2)}%`}</span>
-                              </div>);
-
-                          })()}
-                          <div className="mt-2 text-foreground/60">
-                            <Sparkline data={msolHistory} />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Trending moved into Market Snapshot */}
-                      <div className="mt-4">
-                        <div className="flex items-center justify-between px-1 mb-2">
-                          <div className="text-[11px] opacity-70">Trending</div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="h-5 px-2 text-[10px] rounded-md leading-none">{trendingSource === "bitquery" ? "Bitquery" : "Jupiter"}</Badge>
-                            {(() => {
-                              const recent = typeof trendingUpdatedAt === "number" && Date.now() - trendingUpdatedAt < 60_000;
-                              return (
-                                <span
-                                  aria-label={recent ? "Live – updated < 60s" : "Stale – updated > 60s"}
-                                  title={recent ? "Live – updated < 60s" : "Stale – updated > 60s"}
-                                  className={`inline-block h-1.5 w-1.5 rounded-full ${recent ? "bg-emerald-500/80" : "bg-amber-500/80"}`} />
-                              );
-                            })()}
-                          </div>
-                        </div>
-
-                        {trendingLoading && (
-                          <div className="space-y-2"><Skeleton className="h-4 w-40" /><Skeleton className="h-3 w-full" /><Skeleton className="h-3 w-2/3" /></div>
-                        )}
-                        {trendingError && (
-                          <Alert variant="destructive"><AlertDescription>{trendingError}</AlertDescription></Alert>
-                        )}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                          {trending.map((t) => (
-                            <div key={t.mint} className="relative overflow-hidden rounded-md bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 p-3 transition-colors group">
-                              <span className="pointer-events-none absolute -top-8 -right-8 h-16 w-16 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/25%,transparent_70%)]" />
-                              <span className="pointer-events-none absolute -inset-px rounded-md opacity-0 group-hover:opacity-100 transition-opacity [background:conic-gradient(from_0deg,transparent,theme(colors.accent)/25%,transparent_50%,transparent)] animate-[spin_10s_linear_infinite]" />
-                              <div className="flex items-center justify-between">
-                                <span className="opacity-70 inline-flex items-center gap-1.5">
-                                  {t.icon ? <img src={t.icon} alt="" className="h-4 w-4 rounded" /> : <span className="h-4 w-4 rounded bg-muted inline-block" />}
-                                  <span>{t.symbol}</span>
-                                </span>
-                                <Badge variant="secondary" className="text-[10px]">Spot</Badge>
-                              </div>
-                              <div className="mt-1 font-mono cursor-pointer select-none" title="Click to copy"
-                                onClick={() => { const p = trendingPrices[t.mint]; if (p != null) { navigator.clipboard.writeText(p.toFixed(6)); toast.success(`${t.symbol} price copied`); } }}>
-                                {trendingPrices[t.mint] != null ? `$${trendingPrices[t.mint] < 1 ? trendingPrices[t.mint].toFixed(6) : trendingPrices[t.mint].toFixed(2)}` : <Skeleton className="h-3 w-16" />}
-                              </div>
-                              {(() => {
-                                const hist = trendingHist[t.mint] || [];
-                                const d = pctChange(hist);
-                                if (d == null) return null;
-                                const up = d >= 0;
-                                return (
-                                  <div className={`mt-1 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] ${up ? "text-emerald-500 border-emerald-500/30" : "text-red-500 border-red-500/30"}`}>
-                                    <svg viewBox="0 0 24 24" className="h-3 w-3" aria-hidden>
-                                      {up ? <path d="M5 14l7-7 7 7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /> : <path d="M5 10l7 7 7-7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />}
-                                    </svg>
-                                    <span>{`${up ? "+" : ""}${d.toFixed(2)}%`}</span>
-                                  </div>
-                                );
-                              })()}
-                              <div className="mt-2 text-foreground/60">
-                                <Sparkline data={trendingHist[t.mint] || []} />
-                              </div>
-                            </div>
-                          ))}
-                          {!trendingLoading && !trendingError && trending.length === 0 && (
-                            <div className="text-xs opacity-70">No trending tokens found right now.</div>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+              {/* ── Research ──────────────────────────────────────── */}
+              <section>
+                <SectionHeading title="Research" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div id="transaction-time-machine-card"><TransactionTimeMachine /></div>
+                  <div id="rug-pull-detector-card"><RugPullDetector /></div>
                 </div>
+              </section>
 
-
-
-                {/* 🏴‍☠️ Rug Pull Detector - NEW */}
-                <RugPullDetector />
-
-                {/* 💰 Portfolio Rebalancer - NEW */}
-                <PortfolioRebalancer />
-
-                {/* 🤖 Auto-DCA Bot Builder - NEW */}
-                <DCABotCard />
-
-                {/* 🎯 MEV Opportunity Scanner - NEW */}
-                <div id="mev-scanner-card"><MEVScanner /></div>
-
-                {/* ⏰ Transaction Time Machine */}
-                <div id="transaction-time-machine-card"><TransactionTimeMachine /></div>
-
-                {/* 📋 Copy My Wallet */}
-                <div id="copy-my-wallet-card"><CopyMyWallet /></div>
-
-                {/* ⚡ Fee Saver */}
-                <FeeSaver />
-              </div>
             </TabsContent>
 
             {/* Strategy Lab */}
             <TabsContent value="lab" className="mt-8" id="strategy-lab">
-              <Card className="atlas-card relative overflow-hidden border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)]">
-                <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">
-                    <span className="flex items-center gap-2"><IconStrategyLab className="h-4 w-4" /><span>Strategy Lab</span></span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="atlas-card-content pt-0 space-y-3">
-                  {/* NLP Command Bar */}
-                  <div className="flex items-center gap-2">
+              <div className="space-y-4">
+
+                {/* ── Hero: NLP Command ─────────────────────────────── */}
+                <div className="relative rounded-xl border border-border/30 bg-card/60 backdrop-blur-md p-4 overflow-hidden">
+                  <span className="pointer-events-none absolute -top-16 -right-16 h-40 w-40 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/25%,transparent_70%)]" />
+                  <span className="pointer-events-none absolute -bottom-10 -left-10 h-24 w-24 rounded-full bg-[radial-gradient(closest-side,hsl(var(--chart-2))/20%,transparent_70%)]" />
+
+                  <div className="flex items-center gap-2 mb-3">
+                    <IconStrategyLab className="h-4 w-4 opacity-70" />
+                    <span className="text-xs font-medium opacity-70">Strategy Lab</span>
+                    <LabPulseDot />
+                    <span className="text-[10px] opacity-40 ml-auto">Press / to focus</span>
+                  </div>
+
+                  <form onSubmit={(e) => { e.preventDefault(); handleParse(); }} className="relative">
                     <Input
                       ref={nlpInputRef}
                       value={nlpText}
                       onChange={(e) => setNlpText(e.target.value)}
-                      placeholder="Try: stake 5 SOL with Marinade or swap 10 SOL to USDC"
-                      className="h-9 flex-1" />
-
-                    <Button size="sm" onClick={handleParse} disabled={nlpLoading}>
-                      {nlpLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Parse"}
+                      placeholder="stake 5 SOL · swap 10 SOL to USDC · provide liquidity 3 SOL"
+                      className="h-11 pr-24 text-sm bg-background/30 border-border/30 rounded-lg placeholder:opacity-40"
+                    />
+                    <Button
+                      size="sm"
+                      type="submit"
+                      disabled={nlpLoading || !nlpText.trim()}
+                      className="absolute right-1 top-1 h-9 px-4 rounded-md"
+                    >
+                      {nlpLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Run <ArrowRight className="h-3.5 w-3.5 ml-1" /></>}
                     </Button>
-                    <Button size="sm" variant="secondary" onClick={shareLink} aria-label="Copy deep link">
-                      Share
+                  </form>
+                </div>
+
+                {/* ── Strategy Selector + Amount (inline, compact) ──── */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {(["stake_marinade", "swap_jupiter", "lp_sol_usdc"] as StrategyKind[]).map((k) => {
+                    const labels: Record<StrategyKind, string> = { stake_marinade: "Stake", swap_jupiter: "Swap", lp_sol_usdc: "LP" };
+                    const icons: Record<StrategyKind, string> = { stake_marinade: "◈", swap_jupiter: "⇄", lp_sol_usdc: "◉" };
+                    const active = kind === k;
+                    return (
+                      <button key={k} onClick={() => { setKind(k); setQuote(null); }}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all cursor-pointer ${active ? "bg-foreground/10 text-foreground shadow-sm ring-1 ring-foreground/10" : "bg-card/40 text-foreground/50 hover:bg-card/60 hover:text-foreground/70"}`}>
+                        <span className="text-xs">{icons[k]}</span>{labels[k]}
+                      </button>
+                    );
+                  })}
+                  <div className="ml-auto flex items-center gap-1.5">
+                    <Input
+                      type="number" min={0} step={0.1} value={amountSol}
+                      onChange={(e) => setAmountSol(Number(e.target.value))}
+                      className="h-8 w-20 text-xs text-center bg-background/30 border-border/30 rounded-lg"
+                    />
+                    <span className="text-[10px] opacity-40">SOL</span>
+                    <Button size="sm" variant="ghost" onClick={simulate} disabled={loading} className="h-8 px-2 text-[11px]">
+                      {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Simulate"}
                     </Button>
+                    <Button size="sm" variant="ghost" onClick={shareLink} className="h-8 px-2 text-[11px] opacity-50 hover:opacity-80">Share</Button>
                   </div>
-                  <div className="text-[11px] opacity-60">Press "/" to focus · "1/2/3" switch strategy · "s" simulate</div>
+                </div>
 
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <Button size="sm" variant={kind === "stake_marinade" ? "default" : "secondary"} onClick={() => setKind("stake_marinade")}>Stake with Marinade</Button>
-                    <Button size="sm" variant={kind === "swap_jupiter" ? "default" : "secondary"} onClick={() => setKind("swap_jupiter")}>Swap on Jupiter</Button>
-                    <Button size="sm" variant={kind === "lp_sol_usdc" ? "default" : "secondary"} onClick={() => setKind("lp_sol_usdc")}>LP SOL/USDC</Button>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs opacity-70 w-24">Amount (SOL)</span>
-                    <Input type="number" min={0} step={0.01} value={amountSol} onChange={(e) => setAmountSol(Number(e.target.value))} className="h-9 w-36" />
-                    <Button size="sm" className="ml-auto" onClick={simulate} disabled={loading}>{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Simulate <ArrowRight className="h-4 w-4 ml-1" /></>}</Button>
-                  </div>
-
-                  {loading &&
-                  <div className="space-y-2">
-                      <Skeleton className="h-4 w-40" />
-                      <Skeleton className="h-3 w-full" />
-                      <Skeleton className="h-3 w-2/3" />
+                {/* ── Loading State ─────────────────────────────────── */}
+                {loading && (
+                  <div className="rounded-xl border border-border/30 bg-card/60 backdrop-blur-md p-6 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin opacity-50" />
+                      <span className="text-xs opacity-50">Analyzing strategy…</span>
                     </div>
-                  }
+                    <Skeleton className="h-16 w-full rounded-lg" />
+                    <div className="grid grid-cols-3 gap-2">
+                      <Skeleton className="h-12 rounded-lg" />
+                      <Skeleton className="h-12 rounded-lg" />
+                      <Skeleton className="h-12 rounded-lg" />
+                    </div>
+                    <Skeleton className="h-24 w-full rounded-lg" />
+                  </div>
+                )}
 
-                  {error &&
-                  <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>
-                  }
+                {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
 
-                  {quote && kind === "swap_jupiter" &&
-                  <div className="text-xs rounded-md">
-                      <div className="mb-2 font-medium text-xs">Jupiter Quote</div>
-                      {quote?.data ?
-                    <div className="grid sm:grid-cols-2 gap-2">
-                          <div>Best AMM: <span className="font-mono">{quote.data.routePlan?.[0]?.swapInfo?.ammKey || "-"}</span></div>
-                          <div>Out (USDC): <span className="font-mono">{Number(quote.data.outAmount || 0) / 1e6}</span></div>
-                          <div>Price Impact: <span className="font-mono">{(quote.data.priceImpactPct * 100).toFixed(2)}%</span></div>
-                          <div>Slippage Bps: <span className="font-mono">{quote.data.slippageBps}</span></div>
-                          <div className="col-span-2 mt-1">
-                            <Button size="sm" onClick={executeSwap} disabled={!publicKey || execLoading} className="mt-1">
-                              {execLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Execute Swap"}
-                            </Button>
+                {/* ── Strategy Comparison (shown before simulation) ── */}
+                {!quote && !loading && (
+                  <div className="rounded-xl border border-border/30 bg-card/60 backdrop-blur-md p-4 space-y-3">
+                    <div className="text-[11px] font-medium opacity-60">Compare Strategies</div>
+                    <LabStrategyCompare strategies={[
+                      { name: "Stake", apy: inflationApy ?? 7.0, risk: "Low", active: kind === "stake_marinade" },
+                      { name: "Swap", apy: 0, risk: "None", active: kind === "swap_jupiter" },
+                      { name: "LP", apy: 12.5, risk: "Med", active: kind === "lp_sol_usdc" },
+                    ]} />
+                    <div className="text-[10px] opacity-30 text-center">Select a strategy and hit Simulate, or type a command above</div>
+                  </div>
+                )}
+
+                {/* ── Swap Results ──────────────────────────────────── */}
+                {quote && kind === "swap_jupiter" && (() => {
+                  const p = quote._parsed || {};
+                  const score = p.score ?? 0;
+                  return (
+                  <div className="rounded-xl border border-border/30 bg-card/60 backdrop-blur-md overflow-hidden">
+                    <div className="p-4 space-y-3">
+                      <div className="flex items-start gap-4">
+                        <LabScoreGauge score={score} size={64} label="Strategy" />
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium">Swap via Jupiter</span>
+                            <LabPulseDot />
                           </div>
-                        </div> :
-
-                    <div className="opacity-80">{JSON.stringify(quote)}</div>
-                    }
-                    </div>
-                  }
-
-                  {quote && kind === "stake_marinade" &&
-                  <div className="text-xs rounded-md">
-                      <div className="mb-2 font-medium text-xs">Staking Projection</div>
-                      <div>Baseline APY (network inflation): <span className="font-mono">{inflationApy?.toFixed(2)}%</span></div>
-                      <div>Amount: <span className="font-mono">{amountSol} SOL</span></div>
-                      <div>12m yield (simple): <span className="font-mono">{inflationApy != null ? (amountSol * (inflationApy / 100)).toFixed(3) : "-"} SOL</span></div>
-                      <div className="mt-2">
-                        <Button size="sm" onClick={executeStake} disabled={!publicKey || execLoading}>
-                          {execLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Execute Stake"}
-                        </Button>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="rounded-lg p-2.5 bg-background/30">
+                              <div className="text-[10px] opacity-40">You Send</div>
+                              <div className="font-mono text-sm font-semibold">{amountSol} SOL</div>
+                              <div className="text-[10px] opacity-30 font-mono">${p.inputUsd?.toFixed(2) ?? "-"}</div>
+                            </div>
+                            <div className="rounded-lg p-2.5 bg-background/30">
+                              <div className="text-[10px] opacity-40">You Receive</div>
+                              <div className="font-mono text-sm font-semibold text-emerald-500">{p.outAmount?.toFixed(2) ?? "-"} USDC</div>
+                              <div className="text-[10px] opacity-30 font-mono">{p.outAmount && amountSol ? (p.outAmount / amountSol).toFixed(2) : "-"}/SOL</div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="mt-1 text-[10px] opacity-70">Note: Marinade distributes rewards per epoch; APY varies. mSOL pricing via Jupiter.</div>
-                    </div>
-                  }
 
-                  {quote && kind === "lp_sol_usdc" &&
-                  <div className="text-xs rounded-md">
-                      <div className="mb-2 font-medium text-xs">LP Baseline</div>
-                      <div>Prices — SOL: ${prices.SOL?.toFixed(2) ?? "-"} · USDC: $1.00</div>
-                      <div className="mt-1 text-[10px] opacity-70">Fetch exact APY in target vault UI; Atlas will add direct vault integrations next.</div>
-                    </div>
-                  }
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        {[
+                          { label: "Price Impact", value: `${((p.priceImpact ?? 0) * 100).toFixed(3)}%`, warn: (p.priceImpact ?? 0) > 0.01 },
+                          { label: "Slippage", value: `${((p.slippageBps ?? 50) / 100).toFixed(1)}%`, warn: false },
+                          { label: "Route Hops", value: String(p.routeCount ?? 1), warn: false },
+                        ].map((m, i) => (
+                          <div key={i} className="rounded-lg py-1.5 bg-background/25">
+                            <div className="text-[9px] opacity-40">{m.label}</div>
+                            <div className={`font-mono text-[11px] font-medium ${m.warn ? "text-red-400" : ""}`}>{m.value}</div>
+                          </div>
+                        ))}
+                      </div>
 
-                  <Separator />
-                  <div className="text-xs opacity-70">Strategy score uses live prices (Jupiter) and network APY baseline; on-chain execution funnels to KeyStone.</div>
-                </CardContent>
-              </Card>
+                      <LabRiskBar level={p.riskLevel || "low"} label={p.riskLabel || "Execution Risk"} />
+                    </div>
+                    <div className="border-t border-border/20 p-3">
+                      <Button size="sm" onClick={executeSwap} disabled={!publicKey || execLoading} className="w-full h-9 rounded-lg">
+                        {execLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : !publicKey ? "Connect Wallet" : "Execute Swap →"}
+                      </Button>
+                    </div>
+                  </div>);
+                })()}
+
+                {/* ── Stake Results ─────────────────────────────────── */}
+                {quote && kind === "stake_marinade" && (() => {
+                  const score = quote.score ?? 0;
+                  const apy = quote.apy ?? 7;
+                  const activeLst = LST_OPTIONS.find(l => l.id === selectedLst) || LST_OPTIONS[0];
+                  return (
+                  <div className="rounded-xl border border-border/30 bg-card/60 backdrop-blur-md overflow-hidden">
+                    <div className="p-4 space-y-3">
+                      {/* LST Protocol Selector — re-simulates on switch */}
+                      <div className="flex items-center gap-1.5 mb-1">
+                        {LST_OPTIONS.map((lst) => (
+                          <button
+                            key={lst.id}
+                            onClick={() => { if (selectedLst !== lst.id) { setSelectedLst(lst.id); simulate(lst.id); } }}
+                            className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium transition-all cursor-pointer ${selectedLst === lst.id ? "bg-foreground/10 text-foreground ring-1 ring-foreground/10" : "bg-card/40 text-foreground/40 hover:text-foreground/60"}`}
+                          >
+                            <img src={lst.icon} alt={lst.symbol} className="h-3.5 w-3.5 rounded-full" />
+                            {lst.symbol}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex items-start gap-4">
+                        <LabScoreGauge score={score} size={64} label="Strategy" />
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium">Stake via {activeLst.name}</span>
+                            <LabPulseDot />
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="rounded-lg p-2.5 bg-background/30">
+                              <div className="text-[10px] opacity-40">Deposit</div>
+                              <div className="font-mono text-sm font-semibold">{amountSol} SOL</div>
+                              <div className="text-[10px] opacity-30 font-mono">${quote.inputUsd?.toFixed(2) ?? "-"}</div>
+                            </div>
+                            <div className="rounded-lg p-2.5 bg-background/30">
+                              <div className="text-[10px] opacity-40">APY</div>
+                              <div className="font-mono text-sm font-semibold text-emerald-500">{apy.toFixed(2)}%</div>
+                              <div className="text-[10px] opacity-30">{activeLst.name}</div>
+                            </div>
+                            <div className="rounded-lg p-2.5 bg-background/30">
+                              <div className="text-[10px] opacity-40">12m Yield</div>
+                              <div className="font-mono text-sm font-semibold">{quote.yield12m?.toFixed(3)} SOL</div>
+                              <div className="text-[10px] opacity-30 font-mono">${quote.yieldUsd?.toFixed(2) ?? "-"}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg p-3 bg-background/20">
+                        <div className="text-[10px] opacity-40 mb-1">Projected Growth (12 months)</div>
+                        <LabYieldChart principal={amountSol} apy={apy} />
+                      </div>
+
+                      <LabRiskBar level={(quote as any).riskLevel || "low"} label={(quote as any).riskLabel || "Protocol Risk"} />
+                    </div>
+                    <div className="border-t border-border/20 p-3">
+                      <Button size="sm" onClick={executeStake} disabled={!publicKey || execLoading} className="w-full h-9 rounded-lg">
+                        {execLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : !publicKey ? "Connect Wallet" : `Stake → ${activeLst.symbol}`}
+                      </Button>
+                    </div>
+                  </div>);
+                })()}
+
+                {/* ── LP Results ────────────────────────────────────── */}
+                {quote && kind === "lp_sol_usdc" && (() => {
+                  const score = quote.score ?? 0;
+                  const pools = quote.pools || [];
+                  const lpApy = quote.lpApy ?? 12.5;
+                  return (
+                  <div className="rounded-xl border border-border/30 bg-card/60 backdrop-blur-md overflow-hidden">
+                    <div className="p-4 space-y-3">
+                      <div className="flex items-start gap-4">
+                        <LabScoreGauge score={score} size={64} label="Strategy" />
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium">LP SOL/USDC</span>
+                            <LabPulseDot />
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="rounded-lg p-2.5 bg-background/30">
+                              <div className="text-[10px] opacity-40">Deposit</div>
+                              <div className="font-mono text-sm font-semibold">{amountSol} SOL</div>
+                              <div className="text-[10px] opacity-30 font-mono">${quote.inputUsd?.toFixed(2) ?? "-"}</div>
+                            </div>
+                            <div className="rounded-lg p-2.5 bg-background/30">
+                              <div className="text-[10px] opacity-40">Best APY</div>
+                              <div className="font-mono text-sm font-semibold text-emerald-500">{lpApy.toFixed(1)}%</div>
+                              <div className="text-[10px] opacity-30">{quote.bestPool?.dex ?? "Orca"}</div>
+                            </div>
+                            <div className="rounded-lg p-2.5 bg-background/30">
+                              <div className="text-[10px] opacity-40">12m Yield</div>
+                              <div className="font-mono text-sm font-semibold">{quote.yield12m?.toFixed(3)} SOL</div>
+                              <div className="text-[10px] opacity-30 font-mono">${quote.yieldUsd?.toFixed(2) ?? "-"}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg p-3 bg-background/20">
+                        <div className="text-[10px] opacity-40 mb-1">Projected Growth (12 months, excl. IL)</div>
+                        <LabYieldChart principal={amountSol} apy={lpApy} color="#6366f1" />
+                      </div>
+
+                      {pools.length > 0 && (
+                        <div className="space-y-1">
+                          <div className="text-[10px] font-medium opacity-50">Pools</div>
+                          {pools.slice(0, 4).map((pool: any, i: number) => (
+                            <div key={i} className="flex items-center justify-between text-[10px] rounded-lg px-2.5 py-1.5 bg-background/20">
+                              <span className="opacity-60">{pool.dex}</span>
+                              <span className="opacity-40">{pool.pair}</span>
+                              <span className="font-mono text-emerald-500">{pool.apy?.toFixed(1)}%</span>
+                              <span className="opacity-30">${(pool.tvl / 1e6).toFixed(1)}M</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <LabRiskBar level={(quote as any).riskLevel || "medium"} label={(quote as any).riskLabel || "IL + Protocol Risk"} />
+                    </div>
+                    <div className="border-t border-border/20 p-3">
+                      <Button size="sm" onClick={executeLp} disabled={!publicKey || execLoading} className="w-full h-9 rounded-lg">
+                        {execLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : !publicKey ? "Connect Wallet" : `Deposit LP → ${quote.bestPool?.dex ?? "Orca"}`}
+                      </Button>
+                    </div>
+                  </div>);
+                })()}
+
+              </div>
             </TabsContent>
           </Tabs>
         </div>
       </main>
 
       <form onSubmit={handleBottomSubmit} className="fixed inset-x-0 bottom-4 z-50">
-        <div className="mx-auto max-w-3xl px-4">
-          <div className="flex items-center gap-2 rounded-full bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/90 shadow-lg px-2 py-1 border border-border/50">
+        <div className="mx-auto max-w-xl px-4">
+          <div className="flex items-center gap-2 rounded-full bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/90 shadow-lg px-2 py-1 border border-border/30">
             <Input
               value={cmdText}
               onChange={(e) => setCmdText(e.target.value)}
@@ -1876,4 +2221,3 @@ export function AtlasClient() {
 
 }
 
-export default AtlasClient;

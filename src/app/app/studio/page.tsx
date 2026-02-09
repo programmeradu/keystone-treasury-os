@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
     ResizableHandle,
     ResizablePanel,
@@ -38,8 +38,9 @@ import { WalletManager } from "@/components/studio/WalletManager";
 import { compileProgram } from "@/lib/studio/solana-playground";
 import { saveProject } from "@/actions/studio-actions";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast-notifications";
 import { ProjectBrowser } from "@/components/studio/ProjectBrowser";
+import { useSearchParams } from "next/navigation";
 
 interface StudioFile {
     name: string;
@@ -58,13 +59,14 @@ const FileIcon = ({ fileName, active }: { fileName: string; active: boolean }) =
     return <FileText size={14} className={color} strokeWidth={2.5} />;
 };
 
-export default function StudioPage() {
-    const user = useSelf();
-    const [appName, setAppName] = useState("Untitled Mini-App");
-    const [files, setFiles] = useState<Record<string, StudioFile>>({
-        "App.tsx": {
-            name: "App.tsx",
-            content: `export default function App() {
+const DEFAULT_FILES: Record<string, StudioFile> = {
+    "App.tsx": {
+        name: "App.tsx",
+        content: `import { useVault } from '@keystone-os/sdk';
+
+export default function App() {
+  const { tokens } = useVault();
+
   return (
     <div className="p-8 max-w-4xl mx-auto">
       <div className="flex items-center gap-3 mb-8">
@@ -76,55 +78,48 @@ export default function StudioPage() {
         Keystone <span className="text-emerald-400">Architect</span> Node
       </h1>
       
-      <p className="text-zinc-400 max-w-2xl mb-12 leading-relaxed text-lg">
-        You have successfully initialized the Treasury OS construction environment.
-        Use the AI Architect to synthesize custom mini-apps or build directly on the Keystone kernel.
+      <p className="text-zinc-400 max-w-2xl mb-8 leading-relaxed text-lg">
+        Treasury OS construction environment initialized.
+        Use the AI Architect to synthesize custom mini-apps.
       </p>
-      
-      <div className="grid md:grid-cols-2 gap-6 mb-12">
-        <div className="p-8 rounded-2xl border border-zinc-800 bg-zinc-900/40 backdrop-blur-sm hover:border-emerald-400/30 transition-all duration-300 group">
-          <div className="text-emerald-400 text-xs font-black uppercase tracking-[0.2em] mb-3 group-hover:translate-x-1 transition-transform">Protocol Synthesis</div>
-          <p className="text-zinc-500 text-sm leading-relaxed">Direct integration with Jupiter, Marinade, and Squads for complex DeFi operations.</p>
-        </div>
-        
-        <div className="p-8 rounded-2xl border border-zinc-800 bg-zinc-900/40 backdrop-blur-sm hover:border-emerald-400/30 transition-all duration-300 group">
-          <div className="text-emerald-400 text-xs font-black uppercase tracking-[0.2em] mb-3 group-hover:translate-x-1 transition-transform">Treasury Logic</div>
-          <p className="text-zinc-500 text-sm leading-relaxed">Multisig-native vaults, asset streaming, and role-based access control systems.</p>
-        </div>
-        
-        <div className="p-8 rounded-2xl border border-zinc-800 bg-zinc-900/40 backdrop-blur-sm hover:border-emerald-400/30 transition-all duration-300 group">
-          <div className="text-emerald-400 text-xs font-black uppercase tracking-[0.2em] mb-3 group-hover:translate-x-1 transition-transform">Real-time Automation</div>
-          <p className="text-zinc-500 text-sm leading-relaxed">Event-driven triggers, scheduled operations, and autonomous strategy execution.</p>
-        </div>
-        
-        <div className="p-8 rounded-2xl border border-zinc-800 bg-zinc-900/40 backdrop-blur-sm hover:border-emerald-400/30 transition-all duration-300 group">
-          <div className="text-emerald-400 text-xs font-black uppercase tracking-[0.2em] mb-3 group-hover:translate-x-1 transition-transform">Interface Architect</div>
-          <p className="text-zinc-500 text-sm leading-relaxed">Generate custom dashboards, monitoring widgets, and operational interfaces.</p>
-        </div>
+
+      <div className="grid gap-3 mb-12">
+        {tokens.map((token) => (
+          <div key={token.symbol} className="flex items-center justify-between p-4 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-emerald-400/20 transition-all">
+            <div>
+              <p className="font-bold text-white">{token.symbol}</p>
+              <p className="text-xs text-zinc-500">{token.name}</p>
+            </div>
+            <div className="text-right">
+              <p className="font-mono font-bold text-white">{token.balance.toLocaleString()}</p>
+              <p className="text-xs text-emerald-400">\${(token.balance * token.price).toLocaleString()}</p>
+            </div>
+          </div>
+        ))}
       </div>
       
-      <div className="text-center text-zinc-600 text-[10px] font-bold uppercase tracking-[0.3em] pt-12 border-t border-zinc-900/50">
+      <div className="text-center text-zinc-600 text-[10px] font-bold uppercase tracking-[0.3em] pt-8 border-t border-zinc-900/50">
         <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 mr-3 animate-pulse"></span>
         Ask the Architect to build something
       </div>
     </div>
   );
 }`,
-            language: "typescript",
-        },
-        "utils.ts": {
-            name: "utils.ts",
-            content: `// Keystone Utility Suite
+        language: "typescript",
+    },
+    "utils.ts": {
+        name: "utils.ts",
+        content: `// Keystone Utility Suite
 export const formatUSD = (val: number) => 
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
 
 export const cn = (...classes: string[]) => classes.filter(Boolean).join(' ');
 `,
-            language: "typescript",
-        },
-        "styles.css": {
-            name: "styles.css",
-            content: `/* Keystone Design System */
+        language: "typescript",
+    },
+    "styles.css": {
+        name: "styles.css",
+        content: `/* Keystone Design System */
 body {
   margin: 0;
   background: #09090b;
@@ -132,11 +127,11 @@ body {
   font-family: system-ui, sans-serif;
 }
 `,
-            language: "css",
-        },
-        "lib.rs": {
-            name: "lib.rs",
-            content: `use anchor_lang::prelude::*;
+        language: "css",
+    },
+    "lib.rs": {
+        name: "lib.rs",
+        content: `use anchor_lang::prelude::*;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -152,34 +147,14 @@ pub mod keystone_contract {
 
 #[derive(Accounts)]
 pub struct Initialize {}`,
-            language: "rust",
-        },
-        "keystone.ts": {
-            name: "keystone.ts",
-            content: `// Keystone Node API Definitions
-export const useVault = () => ({
-  activeVault: "Main Portfolio",
-  balances: { SOL: 124.5, USDC: 5400.2 },
-  tokens: [
-    { symbol: "SOL", name: "Solana", balance: 124.5, price: 23.40 },
-    { symbol: "USDC", name: "USD Coin", balance: 5400.2, price: 1.00 }
-  ]
-});
+        language: "rust",
+    },
+};
 
-export const useTurnkey = () => ({
-  getPublicKey: async () => "7KeY...StUdIo",
-  signTransaction: async (tx: any) => {
-     console.log("[Turnkey] Signing transaction...", tx);
-     return "signed_tx_placeholder";
-  }
-});
-
-export const AppEventBus = {
-  emit: (type: string, payload: any) => console.log(\`[EventBus] \${type}\`, payload)
-};`,
-            language: "typescript",
-        },
-    });
+export default function StudioPage() {
+    const user = useSelf();
+    const [appName, setAppName] = useState("Untitled Mini-App");
+    const [files, setFiles] = useState<Record<string, StudioFile>>({ ...DEFAULT_FILES });
     const [activeFile, setActiveFile] = useState("App.tsx");
     const [isGenerating, setIsGenerating] = useState(false);
     const [isCompiling, setIsCompiling] = useState(false);
@@ -193,6 +168,54 @@ export const AppEventBus = {
     const [currentAppId, setCurrentAppId] = useState<string | undefined>(undefined);
     const [showProjectBrowser, setShowProjectBrowser] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+
+    const searchParams = useSearchParams();
+
+    // Load project from ?appId= query param on mount
+    useEffect(() => {
+        const appIdParam = searchParams.get("appId");
+        if (!appIdParam) return;
+
+        // Try localStorage saved projects first
+        try {
+            const projects = JSON.parse(localStorage.getItem("keystone_studio_projects") || "[]");
+            const found = projects.find((p: any) => p.id === appIdParam);
+            if (found) {
+                handleLoadProject(found);
+                return;
+            }
+        } catch {}
+
+        // Try localStorage library apps
+        try {
+            const library = JSON.parse(localStorage.getItem("keystone_library_apps") || "[]");
+            const found = library.find((a: any) => a.id === appIdParam);
+            if (found) {
+                handleLoadProject(found);
+                return;
+            }
+        } catch {}
+
+        // Try DB as last resort
+        (async () => {
+            try {
+                const { getProject } = await import("@/actions/studio-actions");
+                const project = await getProject(appIdParam);
+                if (project) handleLoadProject(project);
+            } catch {}
+        })();
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleNewProject = () => {
+        setAppName("Untitled Mini-App");
+        setCurrentAppId(undefined);
+        setFiles({ ...DEFAULT_FILES });
+        setActiveFile("App.tsx");
+        setRuntimeLogs([]);
+        setProgramBuffer(null);
+        setActiveTab("preview");
+        toast.info("New project created.");
+    };
 
     const handleCodeChange = useCallback((newCode: string) => {
         setFiles((prev) => ({
@@ -231,41 +254,64 @@ export const AppEventBus = {
 
 
     const handleSave = async () => {
-        if (!user?.info?.name) {
-            toast.error("Please connect wallet to save.");
-            return;
-        }
-
         setIsSaving(true);
-        const toastId = toast.loading("Saving to secure enclave...");
+        const toastId = toast.loading("Saving project...");
 
         try {
-            // Transform files to satisfy ProjectCode interface
+            const appId = currentAppId || "proj_" + Math.random().toString(36).substring(2, 15);
+            const creatorWallet = localStorage.getItem("keystone_wallet_id") || user?.info?.name || "Operator";
+
             const projectCode = {
                 files: Object.entries(files).reduce((acc, [name, file]) => ({
                     ...acc,
                     [name]: { content: file.content }
-                }), {})
+                }), {} as Record<string, { content: string }>)
             };
 
-            const result = await saveProject(
-                "7KeY...StUdIo", // Mock User ID for now (until Auth is fully integrated)
-                projectCode,
-                { name: appName, description: "Created in Keystone Studio" },
-                currentAppId
-            );
+            const projectEntry = {
+                id: appId,
+                name: appName,
+                description: "Created in Keystone Studio",
+                code: projectCode,
+                creatorWallet,
+                version: "1.0.0",
+                isPublished: false,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+            };
 
-            if (result.success && result.appId) {
-                setCurrentAppId(result.appId);
-                toast.success("Project saved successfully!");
+            // Save to localStorage
+            const existing = JSON.parse(localStorage.getItem("keystone_studio_projects") || "[]");
+            const idx = existing.findIndex((p: { id: string }) => p.id === appId);
+            if (idx >= 0) {
+                projectEntry.createdAt = existing[idx].createdAt;
+                existing[idx] = projectEntry;
             } else {
-                throw new Error(result.error || "Unknown error");
+                existing.push(projectEntry);
             }
+            localStorage.setItem("keystone_studio_projects", JSON.stringify(existing));
+
+            // Also try DB if available
+            try {
+                await saveProject(
+                    creatorWallet,
+                    projectCode,
+                    { name: appName, description: "Created in Keystone Studio" },
+                    appId
+                );
+            } catch {
+                // DB not available, localStorage is the fallback
+            }
+
+            setCurrentAppId(appId);
             toast.dismiss(toastId);
+            toast.success("Project saved!", {
+                description: `"${appName}" saved. Open My Projects to load it later.`,
+            });
         } catch (error) {
             console.error(error);
-            toast.error("Failed to save project.");
             toast.dismiss(toastId);
+            toast.error("Failed to save project.");
         } finally {
             setIsSaving(false);
         }
@@ -292,48 +338,72 @@ export const AppEventBus = {
         toast.success(`Loaded "${project.name}"`);
     };
 
-    // Deploy logic (mocked for now, will connect to Turnkey later)
-    // Deploy logic
-    const handleDeploy = async () => {
-        if (!programBuffer) {
-            toast.error("Please compile the contract first.");
-            return;
-        }
-
+    // Ship Mini-App to Library
+    const handleShip = async () => {
         setIsDeploying(true);
-        const toastId = toast.loading("Deploying to Solana Devnet...");
+        const toastId = toast.loading("Shipping to Library...");
 
         try {
-            // Get wallet address
-            const walletId = localStorage.getItem("keystone_wallet_id");
-            if (!walletId) {
-                throw new Error("No wallet connected. Please create or select a Vault.");
+            const appId = currentAppId || "app_" + Math.random().toString(36).substring(2, 15);
+            const creatorName = user?.info?.name || "Operator";
+
+            const libraryEntry = {
+                id: appId,
+                name: appName,
+                description: "Built in Keystone Studio by " + creatorName,
+                code: {
+                    files: Object.entries(files).reduce((acc, [name, file]) => ({
+                        ...acc,
+                        [name]: { content: file.content }
+                    }), {} as Record<string, { content: string }>),
+                },
+                creatorWallet: localStorage.getItem("keystone_wallet_id") || creatorName,
+                category: "utility",
+                isPublished: false,
+                version: "1.0.0",
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+            };
+
+            // Save to localStorage library
+            const existing = JSON.parse(localStorage.getItem("keystone_library_apps") || "[]");
+            const idx = existing.findIndex((a: { id: string }) => a.id === appId);
+            if (idx >= 0) {
+                existing[idx] = { ...libraryEntry, createdAt: existing[idx].createdAt };
+            } else {
+                existing.push(libraryEntry);
+            }
+            localStorage.setItem("keystone_library_apps", JSON.stringify(existing));
+
+            // Also try saving to DB if available
+            try {
+                await saveProject(
+                    libraryEntry.creatorWallet,
+                    libraryEntry.code,
+                    { name: appName, description: libraryEntry.description },
+                    appId
+                );
+            } catch {
+                // DB not available, localStorage is the fallback
             }
 
-            // We use a dummy address for now if not fully connected, or we need to get it from Turnkey
-            // For this demo, let's assume we have it or fetch it. 
-            // In a real app we'd have the address in state from WalletManager.
-            const walletAddress = "7KeY...StUdIo"; // Placeholder until connected
-
-            // Mock Connection
-            const { Connection } = await import("@solana/web3.js");
-            const connection = new Connection("https://api.devnet.solana.com", "confirmed");
-
-            // Import dynamically to avoid SSR issues if any
-            const { deployProgram } = await import("@/lib/studio/solana-playground");
-
-            const programId = await deployProgram(connection, walletAddress, programBuffer);
+            setCurrentAppId(appId);
 
             toast.dismiss(toastId);
-            toast.success(`Deployment successful! Program ID: ${programId}`);
+            toast.success("Shipped to Library!", {
+                description: `"${appName}" is ready to launch.`,
+                action: {
+                    label: "Open Library",
+                    onClick: () => window.location.href = "/app/library",
+                },
+            });
 
-            // Log to console
-            setRuntimeLogs(prev => [...prev, `[System] Program Deployed: ${programId}`]);
+            setRuntimeLogs(prev => [...prev, `[System] Shipped "${appName}" to Library (${appId})`]);
 
         } catch (error: any) {
             toast.dismiss(toastId);
-            toast.error(`Deployment failed: ${error.message}`);
-            console.error("Deployment error:", error);
+            toast.error(`Ship failed: ${error.message}`);
+            console.error("Ship error:", error);
         } finally {
             setIsDeploying(false);
         }
@@ -381,9 +451,11 @@ export const AppEventBus = {
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 px-2 py-0.5 border border-border/40 rounded bg-muted/20">
-                            {appName}
-                        </span>
+                        <Input
+                            value={appName}
+                            onChange={(e) => setAppName(e.target.value)}
+                            className="h-7 w-48 text-[10px] font-black uppercase tracking-widest text-muted-foreground/80 bg-muted/20 border-border/40 focus:border-primary/40 focus:text-foreground px-2 rounded"
+                        />
                     </div>
                 </div>
 
@@ -426,12 +498,9 @@ export const AppEventBus = {
                         <Button
                             variant="default"
                             size="sm"
-                            onClick={handleDeploy}
-                            disabled={!programBuffer}
-                            className={`h-8 text-[10px] font-black uppercase tracking-[0.2em] px-6 rounded-sm shadow-lg transition-all ${programBuffer
-                                ? "bg-primary hover:bg-primary/90 text-background shadow-primary/10"
-                                : "bg-muted text-muted-foreground cursor-not-allowed"
-                                }`}
+                            onClick={handleShip}
+                            disabled={isDeploying}
+                            className="h-8 text-[10px] font-black uppercase tracking-[0.2em] px-6 rounded-sm shadow-lg transition-all bg-primary hover:bg-primary/90 text-background shadow-primary/10"
                         >
                             {isDeploying ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : null}
                             {isDeploying ? "SHIPPING..." : "SHIP"}
@@ -563,6 +632,7 @@ export const AppEventBus = {
                                     files={files}
                                     tab={activeTab as "preview" | "code"}
                                     onLogsChange={(newLogs) => setRuntimeLogs(newLogs)}
+                                    appId={currentAppId}
                                 />
                             )}
                         </div>
@@ -586,6 +656,7 @@ export const AppEventBus = {
                 isOpen={showProjectBrowser}
                 onClose={() => setShowProjectBrowser(false)}
                 onLoadProject={handleLoadProject}
+                onNewProject={handleNewProject}
             />
         </div >
     );

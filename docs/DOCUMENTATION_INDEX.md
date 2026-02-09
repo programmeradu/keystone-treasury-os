@@ -250,6 +250,12 @@ src/components/agentic/                 ← UI components
 2. Review VISUAL_ARCHITECTURE_DIAGRAMS.md
 3. Check QUICK_REFERENCE.md for specifics
 
+### 📑 Core System Documentation
+
+- **[PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md)**: Start here. Master summary of everything.
+- **[APP_FEATURES_GUIDE.md](APP_FEATURES_GUIDE.md)**: User-facing guide explaining the app's capabilities (Engine, Foresight, Studio).
+- **[KEYSTONE_SYSTEM_MASTER_SPEC.md](KEYSTONE_SYSTEM_MASTER_SPEC.md)**: The foundational technical and design specification.
+
 ### For Implementation
 1. Use IMPLEMENTATION_ROADMAP.md as checklist
 2. Reference ICON_SYSTEM_VISUAL_GUIDE.md for icons

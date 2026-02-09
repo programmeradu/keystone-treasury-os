@@ -1,0 +1,45 @@
+{
+  "version": "1.0.0",
+  "packages": {
+    "react": {
+      "url": "https://esm.sh/react@19.0.0",
+      "types": "https://esm.sh/v135/@types/react@19.0.0/index.d.ts",
+      "external": true
+    },
+    "react-dom": {
+      "url": "https://esm.sh/react-dom@19.0.0",
+      "types": "https://esm.sh/v135/@types/react-dom@19.0.0/index.d.ts",
+      "external": true
+    },
+    "react-dom/client": {
+      "url": "https://esm.sh/react-dom@19.0.0/client",
+      "types": "https://esm.sh/v135/@types/react-dom@19.0.0/client.d.ts",
+      "external": true
+    },
+    "@keystone-os/sdk": {
+      "url": "blob:keystone-sdk", 
+      "types": "file:///node_modules/@keystone-os/sdk/index.d.ts",
+      "external": false
+    },
+    "framer-motion": {
+      "url": "https://esm.sh/framer-motion@11.5.4?external=react,react-dom",
+      "types": "https://esm.sh/v135/framer-motion@11.5.4/dist/index.d.ts"
+    },
+    "recharts": {
+      "url": "https://esm.sh/recharts@2.12.7?external=react,react-dom",
+      "types": "https://esm.sh/v135/@types/recharts@1.8.29/index.d.ts"
+    },
+    "lucide-react": {
+      "url": "https://esm.sh/lucide-react@0.400.0?external=react,react-dom",
+      "types": "https://esm.sh/v135/lucide-react@0.400.0/dist/lucide-react.d.ts"
+    },
+    "@solana/web3.js": {
+      "url": "https://esm.sh/@solana/web3.js@1.98.0",
+      "types": "https://esm.sh/v135/@solana/web3.js@1.98.0/lib/index.d.ts"
+    },
+    "date-fns": {
+      "url": "https://esm.sh/date-fns@3.6.0",
+      "types": "https://esm.sh/v135/date-fns@3.6.0/index.d.ts"
+    }
+  }
+}

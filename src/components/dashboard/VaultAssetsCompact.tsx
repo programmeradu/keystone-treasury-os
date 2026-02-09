@@ -2,6 +2,8 @@
 
 import { ArrowRight, Copy, ExternalLink, RefreshCw } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
+import { useVault } from "@/lib/contexts/VaultContext";
 
 interface TokenAccount {
     mint: string;
@@ -15,6 +17,8 @@ interface TokenAccount {
 }
 
 export function VaultAssetsCompact({ tokens }: { tokens: TokenAccount[] }) {
+    const { refresh, loading } = useVault();
+
     // Sort: SOL first, then by value desc
     const sortedTokens = [...tokens].sort((a, b) => {
         if (a.symbol === "SOL") return -1;
@@ -30,8 +34,13 @@ export function VaultAssetsCompact({ tokens }: { tokens: TokenAccount[] }) {
                     <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Vault Assets</h3>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-widest">{tokens.length} Positions Active</p>
                 </div>
-                <button className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors">
-                    <RefreshCw size={14} />
+                <button
+                    onClick={() => refresh()}
+                    disabled={loading}
+                    className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors disabled:opacity-40"
+                    title="Refresh vault assets"
+                >
+                    <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
                 </button>
             </div>
 
@@ -99,10 +108,12 @@ export function VaultAssetsCompact({ tokens }: { tokens: TokenAccount[] }) {
             </div>
 
             <div className="p-4 border-t border-border bg-background/50 sticky bottom-0 backdrop-blur-sm">
-                <button className="w-full py-2.5 rounded-lg bg-muted/50 hover:bg-muted border border-border text-xs text-center text-foreground font-bold transition-all flex items-center justify-center gap-2 group">
-                    View Full Treasury
-                    <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                </button>
+                <Link href="/app/treasury">
+                    <button className="w-full py-2.5 rounded-lg bg-muted/50 hover:bg-muted border border-border text-xs text-center text-foreground font-bold transition-all flex items-center justify-center gap-2 group">
+                        View Full Treasury
+                        <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                    </button>
+                </Link>
             </div>
         </div>
     );

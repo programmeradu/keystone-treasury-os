@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { useOthers, useSelf } from "@/liveblocks.config";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -9,6 +9,24 @@ import { getAvatarUrl } from "@/lib/avatars";
 export const CollaborativeHeader = () => {
     const others = useOthers();
     const self = useSelf();
+
+    // Read from the same profile store used by Settings > Identity Profile & sidebar UserAccount
+    const { displayName, avatarUrl } = useMemo(() => {
+        let name = self?.info?.name || "User";
+        let seed = name;
+        try {
+            const raw = localStorage.getItem("keystone_user_profile");
+            if (raw) {
+                const profile = JSON.parse(raw);
+                name = profile.displayName || name;
+                seed = profile.avatarSeed || name;
+            }
+        } catch {}
+        return {
+            displayName: name,
+            avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}`,
+        };
+    }, [self]);
 
     return (
         <div className="flex items-center -space-x-2 overflow-hidden px-4">
@@ -19,16 +37,16 @@ export const CollaborativeHeader = () => {
                         <TooltipTrigger asChild>
                             <div className="relative inline-block">
                                 <Avatar className="h-8 w-8 ring-2 ring-primary ring-offset-2 ring-offset-background shadow-[0_0_10px_var(--dashboard-accent-muted)]">
-                                    <AvatarImage src={getAvatarUrl(self.info?.name || "ME")} />
+                                    <AvatarImage src={avatarUrl} />
                                     <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
-                                        {self.info?.name?.substring(0, 2).toUpperCase() || "ME"}
+                                        {displayName.substring(0, 2).toUpperCase()}
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="absolute bottom-0 right-0 h-2 w-2 rounded-full border border-background bg-primary" />
                             </div>
                         </TooltipTrigger>
                         <TooltipContent side="bottom">
-                            <p>You ({self.info?.name || "Anonymous"})</p>
+                            <p>You ({displayName})</p>
                         </TooltipContent>
                     </Tooltip>
                 )}

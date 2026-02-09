@@ -198,6 +198,12 @@ export async function GET(req: Request) {
                 id: `arb-${token.symbol}-${buyDex}-${sellDex}-${Date.now()}`,
                 type: "arbitrage",
                 token: `${token.symbol}/USDC`,
+                tokenSymbol: token.symbol,
+                tokenMint: token.mint,
+                // Raw DexScreener dexId — pass straight to Jupiter's `dexes` param
+                buyDexId: buyDex,
+                sellDexId: sellDex,
+                // Display names (capitalized)
                 buyDex: buyDex.charAt(0).toUpperCase() + buyDex.slice(1),
                 sellDex: sellDex.charAt(0).toUpperCase() + sellDex.slice(1),
                 buyPrice,
@@ -215,6 +221,13 @@ export async function GET(req: Request) {
                 verified: jupiterValidated,
                 buyPairAddress: buyPair.pairAddress,
                 sellPairAddress: sellPair.pairAddress,
+                // Raw pair data for dynamic execution
+                buyPairQuoteToken: buyPair.quoteToken?.symbol || "USDC",
+                sellPairQuoteToken: sellPair.quoteToken?.symbol || "USDC",
+                buyPairBaseMint: buyPair.baseToken?.address || token.mint,
+                buyPairQuoteMint: buyPair.quoteToken?.address || "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                sellPairBaseMint: sellPair.baseToken?.address || token.mint,
+                sellPairQuoteMint: sellPair.quoteToken?.address || "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
               });
             }
           }

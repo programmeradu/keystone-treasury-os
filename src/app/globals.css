@@ -661,3 +661,35 @@ nextjs-portal {
 .lb-root {
   display: none !important;
 }
+
+/* ===== Landing Page Utilities ===== */
+
+/* Gradient text utility */
+.text-gradient-green {
+  background: linear-gradient(135deg, #36e27b 0%, rgba(54, 226, 123, 0.6) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Premium shadow for landing cards */
+.shadow-landing {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 20px 40px -12px rgba(0, 0, 0, 0.4);
+}
+
+.shadow-landing-hover {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 24px 48px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* Keystone green glow */
+.glow-green {
+  box-shadow: 0 0 30px rgba(54, 226, 123, 0.25);
+}
+
+.glow-green-hover:hover {
+  box-shadow: 0 0 40px rgba(54, 226, 123, 0.35);
+}

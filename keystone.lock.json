@@ -1,0 +1,108 @@
+{
+  "$schema": "keystone-lock/1.0",
+  "description": "Curated package registry for Keystone Mini-App runtime. All packages are pinned to specific esm.sh URLs with React externalized to prevent the 'Two Reacts' problem.",
+  "runtime": {
+    "react": {
+      "version": "18.2.0",
+      "url": "https://esm.sh/react@18.2.0",
+      "integrity": null
+    },
+    "react-dom": {
+      "version": "18.2.0",
+      "url": "https://esm.sh/react-dom@18.2.0",
+      "integrity": null
+    },
+    "react-dom/client": {
+      "version": "18.2.0",
+      "url": "https://esm.sh/react-dom@18.2.0/client",
+      "integrity": null
+    }
+  },
+  "packages": {
+    "framer-motion": {
+      "version": "11.5.4",
+      "url": "https://esm.sh/framer-motion@11.5.4?external=react,react-dom",
+      "external": ["react", "react-dom"]
+    },
+    "lightweight-charts": {
+      "version": "4.2.1",
+      "url": "https://esm.sh/lightweight-charts@4.2.1",
+      "external": []
+    },
+    "recharts": {
+      "version": "2.12.7",
+      "url": "https://esm.sh/recharts@2.12.7?external=react,react-dom",
+      "external": ["react", "react-dom"]
+    },
+    "d3": {
+      "version": "7.9.0",
+      "url": "https://esm.sh/d3@7.9.0",
+      "external": []
+    },
+    "chart.js": {
+      "version": "4.4.4",
+      "url": "https://esm.sh/chart.js@4.4.4",
+      "external": []
+    },
+    "lucide-react": {
+      "version": "0.441.0",
+      "url": "https://esm.sh/lucide-react@0.441.0?external=react",
+      "external": ["react"]
+    },
+    "@solana/web3.js": {
+      "version": "1.95.3",
+      "url": "https://esm.sh/@solana/web3.js@1.95.3",
+      "external": []
+    },
+    "animejs": {
+      "version": "3.2.2",
+      "url": "https://esm.sh/animejs@3.2.2",
+      "external": []
+    },
+    "zustand": {
+      "version": "4.5.5",
+      "url": "https://esm.sh/zustand@4.5.5?external=react",
+      "external": ["react"]
+    },
+    "clsx": {
+      "version": "2.1.1",
+      "url": "https://esm.sh/clsx@2.1.1",
+      "external": []
+    },
+    "date-fns": {
+      "version": "3.6.0",
+      "url": "https://esm.sh/date-fns@3.6.0",
+      "external": []
+    },
+    "uuid": {
+      "version": "10.0.0",
+      "url": "https://esm.sh/uuid@10.0.0",
+      "external": []
+    },
+    "react-icons": {
+      "version": "5.3.0",
+      "url": "https://esm.sh/react-icons@5.3.0?external=react",
+      "external": ["react"]
+    },
+    "class-variance-authority": {
+      "version": "0.7.0",
+      "url": "https://esm.sh/class-variance-authority@0.7.0",
+      "external": []
+    },
+    "tailwind-merge": {
+      "version": "2.5.2",
+      "url": "https://esm.sh/tailwind-merge@2.5.2",
+      "external": []
+    },
+    "@tanstack/react-query": {
+      "version": "5.56.2",
+      "url": "https://esm.sh/@tanstack/react-query@5.56.2?external=react",
+      "external": ["react"]
+    },
+    "swr": {
+      "version": "2.2.5",
+      "url": "https://esm.sh/swr@2.2.5?external=react",
+      "external": ["react"]
+    }
+  }
+}

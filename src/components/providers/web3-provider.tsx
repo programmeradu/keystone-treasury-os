@@ -19,9 +19,11 @@ import {
   TorusWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
 import "@solana/wallet-adapter-react-ui/styles.css";
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { VaultProvider } from "@/lib/contexts/VaultContext";
 import { NetworkProvider, useNetwork } from "@/lib/contexts/NetworkContext";
+import { WalletError } from "@solana/wallet-adapter-base";
+import { toast } from "@/lib/toast-notifications";
 
 
 
@@ -70,16 +72,24 @@ function Web3ProvidersContent({ children }: { children: ReactNode }) {
   const { endpoint } = useNetwork();
   const apiKey = process.env.NEXT_PUBLIC_CDP_API_KEY;
 
-  // Solana wallets - only initialize if needed
-  const solanaWallets = [
+  // Memoize wallet adapters to prevent re-instantiation on every render
+  const solanaWallets = useMemo(() => [
     new SolflareWalletAdapter(),
     new TorusWalletAdapter(),
-  ];
+  ], []);
+
+  // Surface wallet errors to the user
+  const onWalletError = useCallback((error: WalletError) => {
+    console.error("[Wallet Error]", error);
+    toast.error(error.message || "Wallet connection failed", {
+      description: "Please try again or use a different wallet.",
+    });
+  }, []);
 
   return (
     <LiveblocksProvider publicApiKey={process.env.NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY || "pk_dev_placeholder"}>
       <ConnectionProvider endpoint={endpoint}>
-        <WalletProvider wallets={solanaWallets} autoConnect={false}>
+        <WalletProvider wallets={solanaWallets} autoConnect onError={onWalletError}>
           <WalletModalProvider>
             <VaultProvider>
               <WagmiProvider config={rainbowConfig}>

@@ -13,6 +13,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CommandBar } from "@/components/CommandBar";
+import { VaultStatusBar } from "@/components/VaultStatusBar";
 import { useAppEvent } from "@/lib/events";
 import { ThemeProvider, useTheme } from "@/lib/contexts/ThemeContext";
 import { Sun, Moon, ShoppingBag, Library } from "lucide-react";
@@ -58,6 +59,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                         </div>
 
                         <div className="my-1 border-t border-border opacity-50 w-8 shrink-0" />
+                        <VaultStatusBar />
                         <ThemeToggle />
                     </div>
                 </TooltipProvider>
@@ -135,23 +137,35 @@ function NavButton({ icon: Icon, label, href, active }: { icon: any, label: stri
 
 function UserAccount() {
     const self = useSelf();
-    const name = self?.info?.name || "User";
+    const fallbackName = self?.info?.name || "User";
+
+    // Read from the same profile store used by Settings > Identity Profile
+    let displayName = fallbackName;
+    let avatarSeed = fallbackName;
+    try {
+        const raw = localStorage.getItem("keystone_user_profile");
+        if (raw) {
+            const profile = JSON.parse(raw);
+            displayName = profile.displayName || fallbackName;
+            avatarSeed = profile.avatarSeed || fallbackName;
+        }
+    } catch {}
 
     return (
         <Tooltip>
             <TooltipTrigger asChild>
                 <div className="relative group cursor-pointer">
-                    <Avatar className="h-10 w-10 ring-2 ring-primary/10 ring-offset-2 ring-offset-background group-hover:ring-primary/40 transition-all">
-                        <AvatarImage src={getAvatarUrl(name)} />
+                    <Avatar className="h-10 w-10 ring-2 ring-primary/10 ring-offset-2 ring-offset-background group-hover:ring-primary/40 transition-all bg-background">
+                        <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(avatarSeed)}`} />
                         <AvatarFallback className="bg-primary/10 text-primary font-bold text-[10px]">
-                            {name.substring(0, 2).toUpperCase()}
+                            {displayName.substring(0, 2).toUpperCase()}
                         </AvatarFallback>
                     </Avatar>
                     <div className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background bg-primary" />
                 </div>
             </TooltipTrigger>
             <TooltipContent side="right">
-                <p>{name} (Active)</p>
+                <p>{displayName} (Active)</p>
             </TooltipContent>
         </Tooltip>
     );

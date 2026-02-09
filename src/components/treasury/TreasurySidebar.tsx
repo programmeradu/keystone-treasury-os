@@ -59,7 +59,7 @@ export function TreasurySidebar({ activeModule, setActiveModule, others = [] }: 
                             <item.icon size={18} className={`shrink-0 ${isActive ? "text-primary" : "text-zinc-500 group-hover:text-zinc-300"}`} />
 
                             <div className="flex flex-col">
-                                <span className="text-xs font-bold uppercase tracking-widest leading-none mb-1">
+                                <span className="text-xs font-semibold leading-none mb-1">
                                     {item.label}
                                 </span>
                                 <span className={`text-[9px] font-medium leading-none ${isActive ? "text-primary/60" : "text-zinc-600 group-hover:text-zinc-500"}`}>
@@ -90,7 +90,7 @@ export function TreasurySidebar({ activeModule, setActiveModule, others = [] }: 
                         }`}
                 >
                     <Settings size={18} />
-                    <span className="text-xs font-bold uppercase tracking-widest">System_Config</span>
+                    <span className="text-xs font-semibold">Settings</span>
                 </button>
             </div>
         </aside>

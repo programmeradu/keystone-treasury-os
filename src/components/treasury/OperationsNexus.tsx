@@ -1,38 +1,60 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Upload,
     FileText,
-    Activity,
     Zap,
     Users,
     Coins,
     X,
-    Terminal,
-    Eye,
-    ArrowUpRight
+    ArrowUpRight,
+    Trash2,
+    RotateCcw,
+    AlertTriangle,
+    Clock,
+    ChevronDown,
+    ChevronUp,
+    Pencil,
+    Check,
 } from "lucide-react";
 import { useBroadcastEvent, useEventListener, useOthers } from "@/liveblocks.config";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { toast } from "@/lib/toast-notifications";
+import {
+    useDistributionFiles,
+    parseDistributionFile,
+    DistributionFile,
+    DistributionEntry,
+} from "@/lib/hooks/useDistributionFiles";
 
 export function OperationsNexus() {
     const [dragActive, setDragActive] = useState(false);
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    const [simulating, setSimulating] = useState(false);
-    const [simData, setSimData] = useState<{ recipients: number; total: string; fee: string } | null>(null);
-    const [remoteSim, setRemoteSim] = useState<{ user: string; data: any } | null>(null);
+    const [parsing, setParsing] = useState(false);
+    const [parseErrors, setParseErrors] = useState<string[]>([]);
+    const [activeDistribution, setActiveDistribution] = useState<DistributionFile | null>(null);
+    const [showPreview, setShowPreview] = useState(false);
+    const [showSaved, setShowSaved] = useState(true);
+
+    // Naming flow: after parse, prompt user to name before saving
+    const [pendingParse, setPendingParse] = useState<{ entries: DistributionEntry[]; sourceType: "csv" | "json"; fileName: string; detectedToken: string } | null>(null);
+    const [nameInput, setNameInput] = useState("");
+
+    // Inline rename in saved list
+    const [renamingId, setRenamingId] = useState<string | null>(null);
+    const [renameInput, setRenameInput] = useState("");
+    const renameRef = useRef<HTMLInputElement>(null);
+
+    const { files: savedFiles, saveFile, deleteFile, renameFile } = useDistributionFiles();
 
     const broadcast = useBroadcastEvent();
     const others = useOthers();
-
     const othersInModule = others.filter(other => (other.presence as any)?.module === "OPERATIONS");
 
-    useEventListener(({ event, user }) => {
-        if (event.type === "SIMULATION_RESULT") {
-            setRemoteSim({ user: (user as any)?.info?.name || "Team Member", data: event.payload.result });
-            setTimeout(() => setRemoteSim(null), 10000);
+    useEventListener(({ event }) => {
+        if (event.type === "DISTRIBUTION_SAVED") {
+            toast.info("A team member saved a new distribution file.");
         }
     });
 
@@ -48,152 +70,434 @@ export function OperationsNexus() {
         e.stopPropagation();
         setDragActive(false);
         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            handleFile(e.dataTransfer.files[0]);
+            processFile(e.dataTransfer.files[0]);
         }
     }, []);
 
-    const handleFile = (file: File) => {
-        setSelectedFile(file);
-        setSimulating(true);
-        // Simulate parsing
-        setTimeout(() => {
-            const result = {
-                recipients: Math.floor(Math.random() * 500) + 50,
-                total: `${(Math.random() * 100000).toFixed(2)} USDC`,
-                fee: "0.42 SOL"
-            };
-            setSimData(result);
-            setSimulating(false);
+    const processFile = async (file: File) => {
+        setParsing(true);
+        setParseErrors([]);
+        setActiveDistribution(null);
+        setPendingParse(null);
 
-            broadcast({
-                type: "SIMULATION_RESULT",
-                payload: { proposalId: 0, result }
-            });
-        }, 1500);
+        try {
+            const { entries, errors, sourceType, detectedToken } = await parseDistributionFile(file);
+
+            if (errors.length > 0) setParseErrors(errors);
+
+            if (entries.length === 0) {
+                setParsing(false);
+                toast.error("No valid entries found in file");
+                return;
+            }
+
+            // Show naming prompt instead of saving immediately
+            const baseName = file.name.replace(/\.(csv|json|txt)$/i, "");
+            setNameInput(baseName);
+            setPendingParse({ entries, sourceType, fileName: file.name, detectedToken });
+            toast.success(`Parsed ${entries.length} recipients — name your distribution to save`);
+        } catch (err: any) {
+            toast.error("Failed to parse file", { description: err?.message });
+            setParseErrors([err?.message || "Unknown error"]);
+        } finally {
+            setParsing(false);
+        }
     };
 
+    const confirmSave = () => {
+        if (!pendingParse) return;
+        const name = nameInput.trim() || pendingParse.fileName;
+        const saved = saveFile(name, pendingParse.entries, pendingParse.sourceType);
+        setActiveDistribution(saved);
+        setPendingParse(null);
+        setNameInput("");
+        broadcast({ type: "DISTRIBUTION_SAVED", payload: { name, count: saved.recipientCount } });
+        toast.success(`Saved "${name}" — ${saved.recipientCount} recipients`);
+    };
+
+    const loadSavedFile = (file: DistributionFile) => {
+        setActiveDistribution(file);
+        setParseErrors([]);
+        setShowPreview(false);
+        setPendingParse(null);
+    };
+
+    const clearActive = () => {
+        setActiveDistribution(null);
+        setParseErrors([]);
+        setShowPreview(false);
+        setPendingParse(null);
+    };
+
+    const handleDeleteSaved = (id: string, name: string) => {
+        deleteFile(id);
+        if (activeDistribution?.id === id) clearActive();
+        toast.success(`Deleted "${name}"`);
+    };
+
+    const startRename = (file: DistributionFile) => {
+        setRenamingId(file.id);
+        setRenameInput(file.name);
+        setTimeout(() => renameRef.current?.focus(), 50);
+    };
+
+    const confirmRename = () => {
+        if (!renamingId) return;
+        const trimmed = renameInput.trim();
+        if (trimmed) {
+            renameFile(renamingId, trimmed);
+            // Update active if it's the same file
+            if (activeDistribution?.id === renamingId) {
+                setActiveDistribution(prev => prev ? { ...prev, name: trimmed } : null);
+            }
+        }
+        setRenamingId(null);
+        setRenameInput("");
+    };
+
+    const hasTokenColumn = activeDistribution?.entries.some(e => e.token);
+
     return (
-        <div className="flex flex-col gap-8 h-full">
-            {/* Header / Collaboration Strip */}
-            <div className="flex justify-between items-end mb-4">
-                <div className="flex flex-col p-4 bg-zinc-900/50 rounded-2xl border border-zinc-800">
-                    <span className="text-[10px] uppercase font-black tracking-widest text-zinc-500 mb-1">Active Command</span>
-                    <div className="flex items-center gap-2 text-emerald-500">
-                        <Terminal size={14} />
-                        <span className="text-xs font-mono font-bold uppercase">Awaiting_Inject_Sequence</span>
+        <div className="flex flex-col h-full gap-3 overflow-hidden">
+            {/* Header */}
+            <div className="flex justify-between items-center px-4 pt-2 shrink-0">
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 text-primary">
+                        <Zap size={14} />
+                        <span className="text-xs font-semibold">
+                            {activeDistribution
+                                ? `${activeDistribution.recipientCount} recipients · ${activeDistribution.tokenSummary}`
+                                : pendingParse
+                                ? `${pendingParse.entries.length} parsed — name to save`
+                                : "Drop a file to start"}
+                        </span>
                     </div>
                 </div>
-
-                <div className="flex items-center gap-4">
-                    {/* Team Status */}
+                <div className="flex items-center gap-3">
                     <div className="flex -space-x-2">
                         {othersInModule.map(u => (
-                            <Avatar key={u.connectionId} className="h-8 w-8 ring-2 ring-black">
+                            <Avatar key={u.connectionId} className="h-7 w-7 ring-2 ring-background">
                                 <AvatarImage src={u.info?.avatar} />
-                                <AvatarFallback>{u.info?.name?.[0]}</AvatarFallback>
+                                <AvatarFallback className="text-[9px]">{u.info?.name?.[0]}</AvatarFallback>
                             </Avatar>
                         ))}
                     </div>
                     {othersInModule.length > 0 && (
-                        <div className="px-3 py-1 bg-primary/10 rounded-full border border-primary/20 text-[9px] text-primary font-bold uppercase tracking-widest animate-pulse">
-                            {othersInModule.length} Operators Active
-                        </div>
+                        <span className="px-2 py-0.5 bg-primary/10 rounded-full border border-primary/20 text-[9px] text-primary font-medium">
+                            {othersInModule.length} here
+                        </span>
                     )}
                 </div>
             </div>
 
-            {/* Central Dispatch Zone */}
-            <div className="flex-1 flex flex-col items-center justify-center">
-                <div
-                    onDragEnter={handleDrag}
-                    onDragLeave={handleDrag}
-                    onDragOver={handleDrag}
-                    onDrop={handleDrop}
-                    className={`relative w-full max-w-2xl min-h-[500px] rounded-[3rem] border transition-all duration-500 flex flex-col items-center justify-center p-12 overflow-hidden
-                        ${dragActive
-                            ? "bg-zinc-900/80 border-primary shadow-[0_0_50px_rgba(54,226,123,0.1)] scale-[1.02]"
-                            : "bg-black/40 border-dashed border-zinc-800 hover:bg-zinc-900/40 hover:border-zinc-700"
-                        }`}
-                >
-                    {/* Background Grid Pattern */}
-                    <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
-
+            {/* Main content — split layout */}
+            <div className="flex-1 flex gap-3 px-4 pb-2 min-h-0 overflow-hidden">
+                {/* LEFT: Upload / Naming / Active Preview */}
+                <div className="flex-1 flex flex-col gap-3 min-w-0 overflow-hidden">
                     <AnimatePresence mode="wait">
-                        {!selectedFile ? (
+                        {pendingParse ? (
+                            /* ─── Naming step after parse ─── */
                             <motion.div
-                                key="upload-prompt"
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 1.1 }}
-                                className="text-center z-10 flex flex-col items-center"
+                                key="naming"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0 }}
+                                className="flex-1 flex flex-col items-center justify-center gap-4 p-8"
                             >
-                                <div className="w-24 h-24 rounded-[2rem] bg-zinc-900 flex items-center justify-center mb-8 border border-zinc-800 shadow-2xl group relative cursor-pointer hover:border-primary/50 transition-colors">
-                                    <div className="absolute inset-0 bg-primary/5 rounded-[2rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    <Upload className="text-zinc-500 group-hover:text-primary transition-colors" size={32} />
+                                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                                    <FileText size={22} />
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-foreground font-semibold text-sm mb-1">
+                                        {pendingParse.entries.length} recipients parsed
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground">
+                                        {pendingParse.detectedToken !== "Token" ? `Token: ${pendingParse.detectedToken} · ` : ""}
+                                        {pendingParse.sourceType.toUpperCase()} · {pendingParse.fileName}
+                                    </p>
                                 </div>
 
-                                <h3 className="text-4xl font-black text-white uppercase tracking-tighter mb-4">Initiate Dispatch</h3>
-                                <p className="text-zinc-500 text-sm mb-10 max-w-sm leading-relaxed">
-                                    Drag & Drop your distribution JSON/CSV here. <br />
-                                    <span className="text-zinc-600 text-xs">Parsing engine v2.4 standing by.</span>
-                                </p>
+                                {parseErrors.length > 0 && (
+                                    <div className="p-2 rounded-lg bg-destructive/10 border border-destructive/20 w-full max-w-sm">
+                                        <span className="text-[9px] text-destructive font-semibold">{parseErrors.length} rows skipped</span>
+                                    </div>
+                                )}
 
-                                <label className="group relative px-8 py-4 bg-white text-black rounded-2xl font-black text-xs uppercase tracking-[0.2em] cursor-pointer hover:scale-105 transition-transform overflow-hidden">
-                                    <span className="relative z-10 flex items-center gap-2">
-                                        Select Source File <ArrowUpRight size={14} />
-                                    </span>
-                                    <div className="absolute inset-0 bg-primary translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-                                    <input type="file" className="hidden" onChange={(e) => e.target.files && handleFile(e.target.files[0])} />
-                                </label>
+                                <div className="w-full max-w-sm">
+                                    <label className="text-[9px] text-muted-foreground font-medium mb-1 block">Name this distribution</label>
+                                    <input
+                                        value={nameInput}
+                                        onChange={(e) => setNameInput(e.target.value)}
+                                        onKeyDown={(e) => e.key === "Enter" && confirmSave()}
+                                        placeholder="e.g. Q1 Grants Airdrop"
+                                        className="w-full h-9 px-3 rounded-lg bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/40 transition-colors"
+                                        autoFocus
+                                    />
+                                </div>
+
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => { setPendingParse(null); setParseErrors([]); }}
+                                        className="px-4 py-2 rounded-lg bg-muted border border-border text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={confirmSave}
+                                        className="px-6 py-2 rounded-lg bg-primary text-primary-foreground text-[11px] font-semibold hover:opacity-90 transition-opacity"
+                                    >
+                                        Save Distribution
+                                    </button>
+                                </div>
+                            </motion.div>
+                        ) : !activeDistribution ? (
+                            /* ─── Upload zone ─── */
+                            <motion.div
+                                key="upload"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="flex-1 flex flex-col"
+                            >
+                                <div
+                                    onDragEnter={handleDrag}
+                                    onDragLeave={handleDrag}
+                                    onDragOver={handleDrag}
+                                    onDrop={handleDrop}
+                                    className={`flex-1 rounded-2xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center p-8 relative overflow-hidden
+                                        ${dragActive
+                                            ? "border-primary bg-primary/5 scale-[1.01]"
+                                            : "border-border bg-card/30 hover:border-muted-foreground/30 hover:bg-card/50"
+                                        }`}
+                                >
+                                    <div className="text-center z-10 flex flex-col items-center">
+                                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 border transition-colors ${
+                                            dragActive ? "bg-primary/10 border-primary/30 text-primary" : "bg-muted border-border text-muted-foreground"
+                                        }`}>
+                                            <Upload size={24} />
+                                        </div>
+
+                                        <h3 className="text-xl font-bold text-foreground tracking-tight mb-2">
+                                            {parsing ? "Parsing..." : "Mass Distribution"}
+                                        </h3>
+                                        <p className="text-muted-foreground text-[11px] mb-2 max-w-sm leading-relaxed">
+                                            Drop a CSV or JSON file with recipient addresses and amounts.
+                                        </p>
+                                        <p className="text-muted-foreground/60 text-[9px] mb-6 max-w-xs leading-relaxed">
+                                            Token is auto-detected from your file. Add a &quot;token&quot; column for multi-token distributions.
+                                        </p>
+
+                                        <label className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold text-[11px] cursor-pointer hover:opacity-90 transition-opacity flex items-center gap-2">
+                                            Select File <ArrowUpRight size={12} />
+                                            <input
+                                                type="file"
+                                                accept=".csv,.json,.txt"
+                                                className="hidden"
+                                                onChange={(e) => e.target.files?.[0] && processFile(e.target.files[0])}
+                                            />
+                                        </label>
+                                    </div>
+                                </div>
                             </motion.div>
                         ) : (
+                            /* ─── Active distribution preview ─── */
                             <motion.div
-                                key="file-analysis"
-                                initial={{ opacity: 0, y: 20 }}
+                                key="preview"
+                                initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="w-full h-full flex flex-col z-10"
+                                exit={{ opacity: 0 }}
+                                className="flex-1 flex flex-col gap-3 min-h-0 overflow-hidden"
                             >
-                                {/* File Header */}
-                                <div className="flex items-center justify-between mb-12 p-4 rounded-2xl bg-zinc-900/80 border border-zinc-800">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-xl bg-zinc-800 flex items-center justify-center text-primary">
-                                            <FileText size={24} />
+                                {/* Active File Header */}
+                                <div className="flex items-center justify-between p-3 rounded-xl bg-card border border-border shrink-0">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                            <FileText size={18} />
                                         </div>
-                                        <div>
-                                            <h4 className="text-white font-bold text-sm uppercase tracking-widest">{selectedFile.name}</h4>
-                                            <span className="text-[10px] text-zinc-500 font-mono">{(selectedFile.size / 1024).toFixed(2)} KB // PARSED</span>
+                                        <div className="min-w-0">
+                                            <h4 className="text-foreground font-semibold text-[11px] truncate">{activeDistribution.name}</h4>
+                                            <span className="text-[9px] text-muted-foreground font-mono">
+                                                {activeDistribution.sourceType.toUpperCase()} · {activeDistribution.recipientCount} recipients · {activeDistribution.tokenSummary}
+                                            </span>
                                         </div>
                                     </div>
-                                    <button onClick={() => { setSelectedFile(null); setSimData(null); }} className="hover:text-white text-zinc-500 transition-colors">
-                                        <X size={20} />
+                                    <button onClick={clearActive} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0">
+                                        <X size={16} />
                                     </button>
                                 </div>
 
-                                {/* Stats Grid */}
-                                <div className="grid grid-cols-3 gap-4 mb-auto">
+                                {/* Stats */}
+                                <div className="grid grid-cols-3 gap-2 shrink-0">
                                     {[
-                                        { label: "Valid Recipients", val: simData?.recipients || "---", icon: Users },
-                                        { label: "Total Volume", val: simData?.total || "---", icon: Coins },
-                                        { label: "Network Fee", val: simData?.fee || "---", icon: Zap, color: "text-orange-500" }
+                                        { label: "Recipients", val: activeDistribution.recipientCount.toLocaleString(), icon: Users, color: "text-primary" },
+                                        { label: "Total Amount", val: `${activeDistribution.totalAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${activeDistribution.tokenSummary}`, icon: Coins, color: "text-foreground" },
+                                        { label: "Est. Fee", val: `~${(activeDistribution.recipientCount * 0.000005).toFixed(4)} SOL`, icon: Zap, color: "text-orange-500" },
                                     ].map((s, i) => (
-                                        <div key={i} className="p-6 rounded-3xl bg-zinc-900/40 border border-zinc-800 flex flex-col gap-2">
-                                            <s.icon size={16} className={`mb-2 ${s.color || "text-zinc-500"}`} />
-                                            <span className="text-[9px] uppercase font-bold text-zinc-600 tracking-widest">{s.label}</span>
-                                            <span className="text-xl font-mono font-bold text-white">{simulating ? "SYNC..." : s.val}</span>
+                                        <div key={i} className="p-3 rounded-xl bg-card border border-border flex flex-col gap-1">
+                                            <s.icon size={14} className={s.color} />
+                                            <span className="text-[8px] font-medium text-muted-foreground">{s.label}</span>
+                                            <span className="text-sm font-mono font-bold text-foreground truncate">{s.val}</span>
                                         </div>
                                     ))}
                                 </div>
 
-                                {/* Execute Action */}
+                                {/* Preview Table */}
+                                <div className="flex-1 flex flex-col min-h-0 overflow-hidden rounded-xl border border-border">
+                                    <button
+                                        onClick={() => setShowPreview(!showPreview)}
+                                        className="flex items-center justify-between px-3 py-2 bg-card text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-colors shrink-0 border-b border-border"
+                                    >
+                                        <span>Preview Recipients ({activeDistribution.recipientCount})</span>
+                                        {showPreview ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                                    </button>
+                                    {showPreview && (
+                                        <div className="flex-1 overflow-auto scrollbar-thin">
+                                            <table className="w-full text-left border-collapse">
+                                                <thead className="sticky top-0 bg-card z-10">
+                                                    <tr className="text-[8px] uppercase tracking-wider text-muted-foreground border-b border-border">
+                                                        <th className="py-2 pl-3 font-normal">#</th>
+                                                        <th className="py-2 font-normal">Address</th>
+                                                        <th className="py-2 font-normal">Amount</th>
+                                                        {hasTokenColumn && <th className="py-2 font-normal">Token</th>}
+                                                        {activeDistribution.entries[0]?.label && <th className="py-2 font-normal">Label</th>}
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="text-[10px] font-mono text-muted-foreground">
+                                                    {activeDistribution.entries.map((entry: DistributionEntry, i: number) => (
+                                                        <tr key={i} className="hover:bg-muted/30 transition-colors border-b border-border/30">
+                                                            <td className="py-1.5 pl-3 text-muted-foreground/50">{i + 1}</td>
+                                                            <td className="py-1.5">
+                                                                <span className="text-foreground">{entry.address.slice(0, 8)}...{entry.address.slice(-4)}</span>
+                                                            </td>
+                                                            <td className="py-1.5 font-bold text-foreground">
+                                                                {entry.amount.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                                                            </td>
+                                                            {hasTokenColumn && (
+                                                                <td className="py-1.5">
+                                                                    <span className="px-1.5 py-0.5 rounded bg-muted text-[8px] font-bold text-muted-foreground">{entry.token || "—"}</span>
+                                                                </td>
+                                                            )}
+                                                            {entry.label && <td className="py-1.5 text-muted-foreground">{entry.label}</td>}
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Execute */}
                                 <button
-                                    disabled={simulating}
-                                    className="w-full py-5 bg-primary text-black font-black text-sm uppercase tracking-[0.3em] rounded-2xl hover:bg-primary/90 transition-colors shadow-[0_0_40px_rgba(54,226,123,0.2)] disabled:opacity-50 disabled:shadow-none mt-8"
+                                    onClick={() => toast.info("Distribution execution requires a connected multisig wallet.")}
+                                    className="w-full py-3 bg-primary text-primary-foreground font-semibold text-[11px] rounded-xl hover:opacity-90 transition-opacity shrink-0"
                                 >
-                                    {simulating ? "Simulating Vector..." : "Execute Disbursement"}
+                                    Execute Distribution
                                 </button>
                             </motion.div>
                         )}
                     </AnimatePresence>
+                </div>
+
+                {/* RIGHT: Saved Distributions */}
+                <div className="w-64 flex flex-col border border-border rounded-xl overflow-hidden shrink-0">
+                    <button
+                        onClick={() => setShowSaved(!showSaved)}
+                        className="flex items-center justify-between px-3 py-2.5 bg-card text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-colors border-b border-border shrink-0"
+                    >
+                        <span className="flex items-center gap-2">
+                            <Clock size={12} />
+                            Distributions ({savedFiles.length})
+                        </span>
+                        {showSaved ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+                    </button>
+
+                    {showSaved && (
+                        <div className="flex-1 overflow-auto scrollbar-thin p-2">
+                            {savedFiles.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-8 gap-2">
+                                    <FileText size={20} className="text-muted-foreground/50" />
+                                    <p className="text-[9px] text-muted-foreground text-center leading-relaxed">
+                                        No saved distributions yet.<br />Upload a file to get started.
+                                    </p>
+                                </div>
+                            ) : (
+                                savedFiles.map((file) => (
+                                    <div
+                                        key={file.id}
+                                        className={`p-2.5 rounded-lg mb-1.5 border transition-colors cursor-pointer group ${
+                                            activeDistribution?.id === file.id
+                                                ? "bg-primary/10 border-primary/20"
+                                                : "bg-card/50 border-border hover:border-muted-foreground/30"
+                                        }`}
+                                    >
+                                        <div className="flex items-start justify-between gap-1.5 mb-1">
+                                            <div className="min-w-0 flex-1" onClick={() => loadSavedFile(file)}>
+                                                {renamingId === file.id ? (
+                                                    <div className="flex items-center gap-1">
+                                                        <input
+                                                            ref={renameRef}
+                                                            value={renameInput}
+                                                            onChange={(e) => setRenameInput(e.target.value)}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === "Enter") confirmRename();
+                                                                if (e.key === "Escape") { setRenamingId(null); setRenameInput(""); }
+                                                            }}
+                                                            onBlur={confirmRename}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className="w-full h-5 px-1 rounded bg-muted border border-primary/30 text-[10px] text-foreground focus:outline-none"
+                                                        />
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); confirmRename(); }}
+                                                            className="p-0.5 text-primary"
+                                                        >
+                                                            <Check size={10} />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-[10px] font-semibold text-foreground truncate">{file.name}</p>
+                                                )}
+                                                <p className="text-[8px] text-muted-foreground font-mono mt-0.5">
+                                                    {file.recipientCount} recipients · {file.totalAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })} {file.tokenSummary}
+                                                </p>
+                                            </div>
+                                            <div className="flex gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); startRename(file); }}
+                                                    title="Rename"
+                                                    className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                                                >
+                                                    <Pencil size={9} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); loadSavedFile(file); }}
+                                                    title="Load"
+                                                    className="p-1 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
+                                                >
+                                                    <RotateCcw size={9} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleDeleteSaved(file.id, file.name); }}
+                                                    title="Delete"
+                                                    className="p-1 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
+                                                >
+                                                    <Trash2 size={9} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[7px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono">{file.sourceType.toUpperCase()}</span>
+                                            {file.tokenSummary !== "Token" && (
+                                                <span className="text-[7px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono">{file.tokenSummary}</span>
+                                            )}
+                                            <span className="text-[7px] text-muted-foreground/50 ml-auto">
+                                                {new Date(file.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

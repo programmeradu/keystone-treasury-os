@@ -7,12 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, Bot, Play, Pause, TrendingUp, TrendingDown, Zap } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast-notifications";
 import { CreateDCABotModal } from "./CreateDCABotModal";
 import { IconDCAScheduler } from "@/components/ui/icons";
 
 export function DCABotCard() {
   const [loading, setLoading] = useState(false);
+  const [toggling, setToggling] = useState<string | null>(null);
+  const [executing, setExecuting] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [bots, setBots] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>(null);
@@ -39,6 +41,7 @@ export function DCABotCard() {
   };
 
   const toggleBot = async (botId: string, currentStatus: string) => {
+    setToggling(botId);
     try {
       const newStatus = currentStatus === "active" ? "paused" : "active";
       const res = await fetch("/api/solana/dca-bot", {
@@ -54,13 +57,16 @@ export function DCABotCard() {
       if (!res.ok) throw new Error(data.error);
 
       toast.success(`Bot ${newStatus === "active" ? "resumed" : "paused"}`);
-      fetchBots(); // Refresh
+      fetchBots();
     } catch (e: any) {
       toast.error(e.message || "Failed to toggle bot");
+    } finally {
+      setToggling(null);
     }
   };
 
   const executeBot = async (botId: string) => {
+    setExecuting(botId);
     try {
       toast.info("Executing trade...");
       
@@ -77,9 +83,11 @@ export function DCABotCard() {
       if (!res.ok) throw new Error(data.error);
 
       toast.success("Trade executed successfully!");
-      fetchBots(); // Refresh
+      fetchBots();
     } catch (e: any) {
       toast.error(e.message || "Failed to execute trade");
+    } finally {
+      setExecuting(null);
     }
   };
 
@@ -130,9 +138,16 @@ export function DCABotCard() {
           )}
 
           {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs space-y-2">
+              <div className="flex items-center gap-2 text-amber-500 font-medium">
+                <Bot className="h-3.5 w-3.5" />
+                <span>Could not load DCA bots</span>
+              </div>
+              <div className="opacity-70">{error}</div>
+              <Button size="sm" variant="outline" className="h-6 px-2 text-[11px]" onClick={fetchBots} disabled={loading}>
+                {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Retry"}
+              </Button>
+            </div>
           )}
 
           {/* Summary Card */}
@@ -227,18 +242,22 @@ export function DCABotCard() {
                       variant="ghost"
                       className="h-6 px-2"
                       onClick={() => executeBot(bot.id)}
+                      disabled={executing === bot.id}
                       title="Execute now"
                     >
-                      <Zap className="h-3 w-3" />
+                      {executing === bot.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
                       className="h-6 px-2"
                       onClick={() => toggleBot(bot.id, bot.status)}
+                      disabled={toggling === bot.id}
                       title={bot.status === "active" ? "Pause" : "Resume"}
                     >
-                      {bot.status === "active" ? (
+                      {toggling === bot.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : bot.status === "active" ? (
                         <Pause className="h-3 w-3" />
                       ) : (
                         <Play className="h-3 w-3" />

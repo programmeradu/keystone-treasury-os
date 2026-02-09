@@ -7,8 +7,11 @@ import { executeAction } from "@/lib/actions";
 import { SquadsClient } from "@/lib/squads";
 import { Connection } from "@solana/web3.js";
 import { IntentRegistry } from "@/lib/agents/registry";
-
-// ... existing imports ...
+import { useRouter } from "next/navigation";
+import { toast } from "@/lib/toast-notifications";
+import { useSimulationStore } from "@/lib/stores/simulation-store";
+import { isForesightPrompt, parseForesightPrompt } from "@/lib/foresight/foresight-agent";
+import { useVault } from "@/lib/contexts/VaultContext";
 
 export function CommandBar() {
     const [open, setOpen] = useState(false);
@@ -16,11 +19,172 @@ export function CommandBar() {
     const [loading, setLoading] = useState(false);
     const [executing, setExecuting] = useState(false);
     const [plan, setPlan] = useState<any>(null);
+    const router = useRouter();
+    const simStore = useSimulationStore();
+    const { vaultTokens } = useVault();
 
-    // ... existing useEffect ...
+    // ─── Foresight Simulation Handler ─────────────────────────────
+    const handleForesight = async (prompt: string) => {
+        // Immediately close bar and navigate so user sees analytics loading
+        setOpen(false);
+        setInput("");
+        router.push("/app/analytics");
+
+        // ─── Build portfolio from real vault data + live prices ────
+        const STABLECOINS = new Set(["USDC","USDT","BUSD","DAI","TUSD","USDP","FRAX","LUSD","PYUSD","GUSD"]);
+        const hasVault = vaultTokens && vaultTokens.length > 0;
+        let priceSource: "live" | "vault" | "fallback" = hasVault ? "vault" : "fallback";
+
+        let portfolio: { symbol: string; amount: number; price: number; change24h?: number; isStable?: boolean; mint?: string }[];
+
+        if (hasVault) {
+            portfolio = vaultTokens.map((t: any) => ({
+                symbol: t.symbol || "SPL",
+                amount: t.amount || 0,
+                price: t.price || 0,
+                change24h: t.change24h || 0,
+                isStable: STABLECOINS.has((t.symbol || "").toUpperCase()),
+                mint: t.mint || undefined,
+            }));
+
+            // Attempt live price overlay
+            try {
+                const symbols = portfolio.map(t => t.symbol).filter(Boolean).join(",");
+                if (symbols) {
+                    const priceRes = await fetch(`/api/jupiter/price?ids=${encodeURIComponent(symbols)}`);
+                    if (priceRes.ok) {
+                        const priceJson = await priceRes.json();
+                        const priceData = priceJson.data || {};
+                        for (const token of portfolio) {
+                            const live = priceData[token.symbol];
+                            if (live?.price && live.price > 0) {
+                                token.price = live.price;
+                            }
+                        }
+                        priceSource = "live";
+                    }
+                }
+            } catch (e) {
+                console.warn("[Foresight] Live price fetch failed, using vault prices", e);
+            }
+        } else {
+            toast.warning("No vault connected", {
+                id: "foresight-no-vault",
+                description: "Connect a vault for accurate Foresight simulations. Using demo portfolio.",
+            });
+            portfolio = [
+                { symbol: "SOL", amount: 124.5, price: 175.00, isStable: false },
+                { symbol: "USDC", amount: 54000, price: 1.00, isStable: true },
+                { symbol: "JUP", amount: 850, price: 1.12, isStable: false },
+                { symbol: "BONK", amount: 15000000, price: 0.000024, isStable: false },
+            ];
+        }
+
+        // ─── Step 1: Try LLM-powered parsing (Groq — fast) ─────────
+        let variables: any[] | null = null;
+        let timeframeMonths = 12;
+        let title = "Simulation";
+        let confidence = 0;
+        let parsedSummary: string[] = [];
+        let parserUsed: "llm" | "regex" = "regex";
+
+        toast.loading("Analyzing prompt with AI...", { id: "foresight-sim" });
+
+        try {
+            const llmRes = await fetch("/api/foresight/parse", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    prompt,
+                    portfolio: portfolio.map(t => ({ symbol: t.symbol, amount: t.amount, price: t.price })),
+                }),
+            });
+
+            if (llmRes.ok) {
+                const llmData = await llmRes.json();
+                if (llmData.variables && llmData.variables.length > 0) {
+                    variables = llmData.variables;
+                    timeframeMonths = llmData.timeframeMonths || 12;
+                    title = llmData.title || "AI-Parsed Scenario";
+                    confidence = llmData.confidence || 0.85;
+                    parsedSummary = llmData.parsedSummary || [];
+                    parserUsed = "llm";
+                    console.log(`[Foresight] LLM parsed (${llmData.provider}):`, title, variables);
+                }
+            }
+        } catch (e) {
+            console.warn("[Foresight] LLM parse failed, falling back to regex:", e);
+        }
+
+        // ─── Step 2: Fallback to regex parsing ──────────────────────
+        if (!variables || variables.length === 0) {
+            const regexParsed = parseForesightPrompt(prompt);
+            variables = regexParsed.variables;
+            timeframeMonths = regexParsed.timeframeMonths;
+            title = regexParsed.title;
+            confidence = regexParsed.confidence;
+            parsedSummary = regexParsed.parsedSummary;
+            parserUsed = "regex";
+            console.log("[Foresight] Using regex parser:", title, variables);
+        }
+
+        // Start simulation in store
+        simStore.startSimulation(prompt, variables, timeframeMonths);
+
+        toast.loading("Running simulation...", {
+            id: "foresight-sim",
+            description: `${parserUsed === "llm" ? "🧠 " : ""}${title}`,
+        });
+
+        // Warn user if confidence is low
+        if (confidence < 0.3) {
+            toast.warning("Low parsing confidence", {
+                id: "foresight-low-conf",
+                description: "Prompt wasn't fully understood — using default stress test scenario.",
+            });
+        }
+
+        try {
+            const res = await fetch("/api/simulation", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    portfolio,
+                    variables,
+                    timeframeMonths,
+                    granularity: "monthly",
+                    priceSource,
+                }),
+            });
+
+            if (!res.ok) {
+                const errBody = await res.json().catch(() => ({}));
+                throw new Error(errBody.error || `Simulation returned ${res.status}`);
+            }
+
+            const result = await res.json();
+            simStore.setResult(result);
+
+            const deltaStr = `${result.summary.deltaPercent >= 0 ? "+" : ""}${result.summary.deltaPercent.toFixed(1)}%`;
+            toast.success("Foresight simulation ready", {
+                id: "foresight-sim",
+                description: `${parserUsed === "llm" ? "🧠 " : ""}${title} • ${deltaStr} projected`,
+            });
+        } catch (err: any) {
+            simStore.setError(err.message || "Simulation failed");
+            toast.error("Simulation failed", { id: "foresight-sim", description: err.message });
+        }
+    };
 
     const executeCommand = async () => {
         if (!input.trim() || loading) return;
+
+        // Check if this is a foresight/simulation prompt first
+        if (isForesightPrompt(input)) {
+            await handleForesight(input);
+            return;
+        }
+
         setLoading(true);
         try {
             const res = await fetch("/api/agent", {

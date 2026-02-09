@@ -1,10 +1,56 @@
 "use client";
 
-import React from "react";
-import { CreditCard, CheckCircle2, BarChart3, Download, Zap } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { CreditCard, CheckCircle2, BarChart3, Package, Zap, Store, ShoppingCart } from "lucide-react";
 import { Logo } from "@/components/icons";
+import { useNotificationStore } from "@/lib/notifications";
+import { formatDistanceToNow } from "date-fns";
+
+interface AppStats {
+    appsCreated: number;
+    appsListed: number;
+    appsPurchased: number;
+    totalSpentSol: number;
+    totalEarnedSol: number;
+}
+
+function getStats(): AppStats {
+    try {
+        const library = JSON.parse(localStorage.getItem("keystone_library_apps") || "[]");
+        const listings = JSON.parse(localStorage.getItem("keystone_marketplace_listings") || "[]");
+        const purchases = JSON.parse(localStorage.getItem("keystone_purchases") || "[]");
+
+        // Count purchased apps from both library entries (new) and purchases store (legacy)
+        const libraryPurchased = library.filter((a: any) => a.purchasedAt);
+        const purchaseCount = Math.max(libraryPurchased.length, purchases.length);
+        const totalSpentFromPurchases = purchases.reduce((s: number, p: any) => s + (p.amount || p.priceUsdc || 0), 0);
+        const totalSpentFromLibrary = libraryPurchased.reduce((s: number, a: any) => s + (a.priceUsdc || 0), 0);
+        const totalSpent = Math.max(totalSpentFromPurchases, totalSpentFromLibrary);
+        const totalEarned = listings.reduce((s: number, a: any) => s + ((a.installs || 0) * (a.priceUsdc || 0) * 0.8), 0);
+        return {
+            appsCreated: library.length,
+            appsListed: listings.length,
+            appsPurchased: purchaseCount,
+            totalSpentSol: totalSpent,
+            totalEarnedSol: totalEarned,
+        };
+    } catch {
+        return { appsCreated: 0, appsListed: 0, appsPurchased: 0, totalSpentSol: 0, totalEarnedSol: 0 };
+    }
+}
 
 export const BillingView = () => {
+    const [stats, setStats] = useState<AppStats>({ appsCreated: 0, appsListed: 0, appsPurchased: 0, totalSpentSol: 0, totalEarnedSol: 0 });
+    const { notifications } = useNotificationStore();
+
+    useEffect(() => { setStats(getStats()); }, []);
+
+    // Derive purchase history from notifications
+    const purchaseNotifs = notifications
+        .filter((n) => n.type === "purchase" || n.type === "install")
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .slice(0, 10);
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
             <div className="flex items-center gap-3">
@@ -12,8 +58,8 @@ export const BillingView = () => {
                     <CreditCard size={20} />
                 </div>
                 <div>
-                    <h2 className="text-lg font-black text-foreground uppercase tracking-tight">Plan & Billing</h2>
-                    <p className="text-xs text-muted-foreground font-black uppercase tracking-widest">Manage subscription tier and payment history.</p>
+                    <h2 className="text-lg font-black text-foreground uppercase tracking-tight">Plan & Usage</h2>
+                    <p className="text-xs text-muted-foreground font-black uppercase tracking-widest">Activity overview and transaction history.</p>
                 </div>
             </div>
 
@@ -39,57 +85,74 @@ export const BillingView = () => {
 
                         <div className="space-y-3 mb-8">
                             <FeatureItem text="Unlimited Agent Personas" />
-                            <FeatureItem text="Priority RPC Nodes (100ms latency)" />
-                            <FeatureItem text="Advanced Risk Analytics" />
-                            <FeatureItem text="24/7 Dedicated Support" />
+                            <FeatureItem text="Marketplace Publishing" />
+                            <FeatureItem text="On-Chain Payments (Solana)" />
+                            <FeatureItem text="Persistent Notification History" />
                         </div>
 
-                        <div className="flex gap-4">
-                            <button className="px-6 py-2.5 rounded-lg bg-foreground text-background font-black text-xs hover:opacity-90 transition-all shadow-sm uppercase">
-                                Manage Subscription
-                            </button>
-                            <button className="px-6 py-2.5 rounded-lg bg-muted border border-border text-foreground font-black text-xs hover:bg-muted/80 transition-all shadow-sm uppercase">
-                                Change Plan
-                            </button>
+                        {/* Real stats */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <StatCard icon={Package} label="Apps Created" value={stats.appsCreated} />
+                            <StatCard icon={Store} label="Listings" value={stats.appsListed} />
+                            <StatCard icon={ShoppingCart} label="Purchased" value={stats.appsPurchased} />
+                            <StatCard icon={Zap} label="Notifications" value={notifications.length} />
                         </div>
                     </div>
                 </div>
 
-                {/* Usage Stats */}
+                {/* Revenue Summary */}
                 <div className="bg-card border border-border rounded-2xl p-6 flex flex-col justify-between shadow-sm">
                     <div>
                         <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <BarChart3 size={14} className="text-primary" /> RPC Usage
+                            <BarChart3 size={14} className="text-primary" /> Revenue
                         </h3>
                         <div className="text-3xl font-black text-foreground mb-1">
-                            842k <span className="text-sm font-black text-muted-foreground uppercase tracking-widest">/ 1M reqs</span>
+                            {stats.totalEarnedSol.toFixed(2)} <span className="text-sm font-black text-muted-foreground uppercase tracking-widest">SOL earned</span>
                         </div>
-                        <div className="w-full h-2 bg-muted rounded-full overflow-hidden mb-2 shadow-inner">
-                            <div className="h-full bg-primary" style={{ width: '84.2%' }} />
-                        </div>
-                        <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">Resets in 12 days</p>
+                        <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">From {stats.appsListed} marketplace listing{stats.appsListed !== 1 ? "s" : ""}</p>
                     </div>
 
                     <div className="mt-6 pt-6 border-t border-border">
                         <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <Zap size={14} className="text-primary" /> Compute Credits
+                            <ShoppingCart size={14} className="text-primary" /> Spent
                         </h3>
                         <div className="text-2xl font-black text-foreground mb-1 uppercase tracking-tight">
-                            $42.50 <span className="text-sm font-black text-muted-foreground uppercase tracking-widest">remaining</span>
+                            {stats.totalSpentSol.toFixed(2)} <span className="text-sm font-black text-muted-foreground uppercase tracking-widest">SOL total</span>
                         </div>
-                        <button className="text-[10px] text-primary font-black hover:underline uppercase tracking-widest">Top Up Credits &rarr;</button>
+                        <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">Across {stats.appsPurchased} purchase{stats.appsPurchased !== 1 ? "s" : ""}</p>
                     </div>
                 </div>
             </div>
 
-            {/* Invoices */}
+            {/* Transaction History */}
             <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-                <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-4">Payment History</h3>
-                <div className="space-y-1 divide-y divide-border">
-                    <InvoiceRow date="Dec 01, 2024" amount="$299.00" status="Paid" id="INV-2024-001" />
-                    <InvoiceRow date="Nov 01, 2024" amount="$299.00" status="Paid" id="INV-2024-002" />
-                    <InvoiceRow date="Oct 01, 2024" amount="$299.00" status="Paid" id="INV-2024-003" />
-                </div>
+                <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-4">Transaction History</h3>
+                {purchaseNotifs.length === 0 ? (
+                    <div className="py-8 text-center">
+                        <p className="text-xs text-muted-foreground">No transactions yet. Purchases and installs will appear here.</p>
+                    </div>
+                ) : (
+                    <div className="space-y-1 divide-y divide-border">
+                        {purchaseNotifs.map((n) => (
+                            <div key={n.id} className="flex items-center justify-between p-3 hover:bg-primary/5 rounded-lg transition-all group">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-2 rounded bg-muted border border-border text-muted-foreground group-hover:text-primary transition-colors shadow-sm">
+                                        {n.type === "purchase" ? <ShoppingCart size={14} /> : <Package size={14} />}
+                                    </div>
+                                    <div>
+                                        <span className="text-sm font-black text-foreground block uppercase tracking-tight truncate max-w-[200px]">{n.title}</span>
+                                        <span className="text-[10px] text-muted-foreground font-mono font-black uppercase tracking-widest">
+                                            {formatDistanceToNow(new Date(n.timestamp), { addSuffix: true })}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-[10px] text-primary font-black uppercase tracking-widest">{n.type === "purchase" ? "Purchase" : "Install"}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -101,20 +164,10 @@ const FeatureItem = ({ text }: any) => (
     </div>
 );
 
-const InvoiceRow = ({ date, amount, status, id }: any) => (
-    <div className="flex items-center justify-between p-3 hover:bg-primary/5 rounded-lg transition-all group">
-        <div className="flex items-center gap-4">
-            <div className="p-2 rounded bg-muted border border-border text-muted-foreground group-hover:text-primary transition-colors shadow-sm">
-                <Download size={14} />
-            </div>
-            <div>
-                <span className="text-sm font-black text-foreground block uppercase tracking-tight">Keystone OS Pro</span>
-                <span className="text-[10px] text-muted-foreground font-mono font-black uppercase tracking-widest">{date} • {id}</span>
-            </div>
-        </div>
-        <div className="text-right">
-            <span className="text-sm font-black text-foreground block uppercase tracking-tight">{amount}</span>
-            <span className="text-[10px] text-primary font-black uppercase tracking-widest">{status}</span>
-        </div>
+const StatCard = ({ icon: Icon, label, value }: { icon: any; label: string; value: number }) => (
+    <div className="p-3 rounded-xl bg-muted/20 border border-border text-center shadow-inner">
+        <Icon size={16} className="text-primary mx-auto mb-1.5" />
+        <div className="text-lg font-black text-foreground">{value}</div>
+        <div className="text-[9px] text-muted-foreground font-black uppercase tracking-widest">{label}</div>
     </div>
 );

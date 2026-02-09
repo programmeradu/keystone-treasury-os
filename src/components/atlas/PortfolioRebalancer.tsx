@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, TrendingUp, ArrowDown, DollarSign, Zap, AlertTriangle, Percent } from "lucide-react";
-import { toast } from "sonner";
+import { Loader2, TrendingUp, ArrowDown, Zap, AlertTriangle, Percent } from "lucide-react";
+import { toast } from "@/lib/toast-notifications";
 import { IconPortfolioBalancer } from "@/components/ui/icons";
+import { isValidSolanaAddress, formatCurrency, fetchTokenPrices } from "@/lib/atlas-utils";
 
 interface TokenHolding {
   mint: string;
@@ -77,11 +78,6 @@ export function PortfolioRebalancer() {
   const [taxAnalysis, setTaxAnalysis] = useState<TaxAnalysis | null>(null);
   const [showTaxDetails, setShowTaxDetails] = useState(false);
 
-  const isValidSolanaAddress = (address: string): boolean => {
-    if (!address || address.length < 32 || address.length > 44) return false;
-    const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
-    return base58Regex.test(address);
-  };
 
   const loadPortfolio = async () => {
     const address = walletAddress.trim();
@@ -101,11 +97,7 @@ export function PortfolioRebalancer() {
     setRebalanceResult(null);
 
     try {
-      let url = `/api/helius/das/wallet-holdings?address=${address}`;
-      if (typeof window !== "undefined") {
-        const pageMock = new URL(window.location.href).searchParams.get("mock");
-        if (String(pageMock || "").toLowerCase() === "true") url += "&mock=true";
-      }
+      const url = `/api/helius/das/wallet-holdings?address=${address}`;
 
       const response = await fetch(url);
       const raw = await response.text();
@@ -129,50 +121,9 @@ export function PortfolioRebalancer() {
         return;
       }
 
-      // First, try to fetch prices for all tokens
+      // Fetch prices for all tokens via Jupiter proxy (supports any SPL token)
       const mints = tokens.map((t: any) => t.mint || t.address).filter(Boolean);
-      let priceMap: Record<string, number> = {};
-      
-      if (mints.length > 0) {
-        try {
-          // Use CoinGecko API to get prices by token addresses (Solana blockchain)
-          const coingeckoIds = mints.map((mint: string) => {
-            // Map known Solana token mints to CoinGecko IDs
-            const knownTokens: Record<string, string> = {
-              "So11111111111111111111111111111111111111112": "solana",
-              "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": "usd-coin",
-              "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So": "marinade-staked-sol",
-              "orcaEKTdK7LKz57chssaukiYmUTRziToVqKHKn3J4e": "orca",
-              "SRMuApVgqbCGJuG5yvVGdgwVSRwhhHsnWhvzomqs3GA": "serum",
-            };
-            return knownTokens[mint] || null;
-          }).filter(Boolean);
-          
-          if (coingeckoIds.length > 0) {
-            const priceUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoIds.join(",")}&vs_currencies=usd`;
-            const priceRes = await fetch(priceUrl, { cache: "no-store" });
-            if (priceRes.ok) {
-              const priceDataFromCG = await priceRes.json();
-              // Map back from CoinGecko IDs to mints
-              const cgIdToMint: Record<string, string> = {};
-              const knownTokensReverse: Record<string, string> = {
-                "solana": "So11111111111111111111111111111111111111112",
-                "usd-coin": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-                "marinade-staked-sol": "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
-                "orca": "orcaEKTdK7LKz57chssaukiYmUTRziToVqKHKn3J4e",
-                "serum": "SRMuApVgqbCGJuG5yvVGdgwVSRwhhHsnWhvzomqs3GA",
-              };
-              for (const [cgId, mint] of Object.entries(knownTokensReverse)) {
-                if (priceDataFromCG[cgId]?.usd) {
-                  priceMap[mint] = priceDataFromCG[cgId].usd;
-                }
-              }
-            }
-          }
-        } catch (priceErr) {
-          console.warn("Price fetch failed:", priceErr);
-        }
-      }
+      const priceMap = await fetchTokenPrices(mints);
 
       const holdings: TokenHolding[] = tokens.map((t: any) => {
         const mint = t.mint || t.address;
@@ -307,7 +258,7 @@ export function PortfolioRebalancer() {
 
   return (
     <div className="h-full">
-      <Card className="atlas-card relative overflow-hidden h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)] min-h-[360px]">
+      <Card className="atlas-card relative overflow-hidden h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)]">
         <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
 
         <CardHeader className="pb-2 flex flex-col gap-2">
@@ -318,12 +269,12 @@ export function PortfolioRebalancer() {
                 <span>Portfolio Balancer</span>
               </span>
             </CardTitle>
-            <Badge variant="secondary" className="h-6 px-2 text-[10px] rounded-md leading-none">
+            <Badge variant="secondary" className="h-5 px-2 text-[10px] rounded-md leading-none">
               Optimization
             </Badge>
           </div>
-          <div className="text-xs opacity-70">
-            Rebalance your portfolio to target allocations with minimal fees.
+          <div className="text-[11px] opacity-60">
+            Rebalance to target allocations with minimal fees
           </div>
         </CardHeader>
 
@@ -353,7 +304,7 @@ export function PortfolioRebalancer() {
           {currentHoldings.length > 0 && (
             <div className="space-y-2">
               <div className="font-medium text-xs">Current Holdings</div>
-              <div className="space-y-1 max-h-32 overflow-y-auto">
+              <div className="space-y-1 max-h-32 overflow-y-auto scrollbar-thin">
                 {currentHoldings.map((holding) => {
                   const currentPercent = (holding.valueUSD / totalPortfolioValue) * 100;
                   return (
@@ -379,7 +330,7 @@ export function PortfolioRebalancer() {
           {currentHoldings.length > 0 && (
             <div className="space-y-2 border-t pt-2">
               <div className="font-medium text-xs">Target Allocations (%)</div>
-              <div className="space-y-1 max-h-32 overflow-y-auto">
+              <div className="space-y-1 max-h-32 overflow-y-auto scrollbar-thin">
                 {allocations.map((alloc, idx) => (
                   <div
                     key={alloc.symbol}
@@ -620,8 +571,8 @@ export function PortfolioRebalancer() {
           )}
 
           {!currentHoldings.length && !loading && !rebalanceResult && (
-            <div className="text-xs opacity-70 text-center py-4">
-              Enter a wallet address to begin rebalancing.
+            <div className="text-[11px] opacity-50 text-center py-3">
+              Enter a wallet address above to load holdings
             </div>
           )}
         </CardContent>

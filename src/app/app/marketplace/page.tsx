@@ -1,17 +1,23 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { WalletButton } from "@/components/WalletButton";
 import { CollaborativeHeader } from "@/components/CollaborativeHeader";
-import { Bell, Search, Filter, Plus } from "lucide-react";
+import { Search, Filter, Plus, Box, ArrowRight, Rocket } from "lucide-react";
 import { Logo } from "@/components/icons";
 import { useNetwork } from "@/lib/contexts/NetworkContext";
 import { Suspense } from "react";
 import { MiniAppCard } from "@/components/studio/MiniAppCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { ListingModal } from "@/components/studio/ListingModal";
+import { NotificationBell } from "@/components/NotificationBell";
+import Link from "next/link";
 
-// Mock data until DB fetch is connected in a Server Component or API
+const CATEGORIES = ["All", "DeFi", "NFT", "Governance", "Analytics", "Utility", "Trading", "Security", "Social"];
+
+// Mock data — creator wallets are display-only placeholders (not valid Solana addresses)
 const MOCK_APPS = [
     {
         id: "app_1",
@@ -57,17 +63,66 @@ const MOCK_APPS = [
 
 export default function MarketplacePage() {
     const [search, setSearch] = useState("");
+    const [allApps, setAllApps] = useState(MOCK_APPS);
     const [filteredApps, setFilteredApps] = useState(MOCK_APPS);
+    const [showPublishPicker, setShowPublishPicker] = useState(false);
+    const [libraryApps, setLibraryApps] = useState<any[]>([]);
+    const [listingApp, setListingApp] = useState<any>(null);
+    const [categoryFilter, setCategoryFilter] = useState("All");
+    const [showFilters, setShowFilters] = useState(false);
 
     const { network, setNetwork } = useNetwork();
 
+    const loadMarketplaceListings = useCallback(() => {
+        try {
+            const stored = JSON.parse(localStorage.getItem("keystone_marketplace_listings") || "[]");
+            const listedApps = stored.map((app: any) => ({
+                id: app.id,
+                name: app.name,
+                description: app.description,
+                priceUsdc: app.priceUsdc || 0,
+                rating: app.rating || null,
+                installs: app.installs || 0,
+                creatorWallet: app.creatorWallet || "Unknown",
+                category: app.category || "utility",
+                iconUrl: app.iconUrl || undefined,
+            }));
+            // Listed apps first, then mock apps (deduplicated by id)
+            const merged = [...listedApps, ...MOCK_APPS];
+            const unique = Array.from(new Map(merged.map((a: any) => [a.id, a])).values());
+            setAllApps(unique);
+        } catch {
+            setAllApps(MOCK_APPS);
+        }
+    }, []);
+
+    // Load listed apps from localStorage on mount
+    useEffect(() => {
+        loadMarketplaceListings();
+    }, [loadMarketplaceListings]);
+
+    // Load library apps when publish picker opens
+    useEffect(() => {
+        if (showPublishPicker) {
+            try {
+                const stored = JSON.parse(localStorage.getItem("keystone_library_apps") || "[]");
+                setLibraryApps(stored);
+            } catch {
+                setLibraryApps([]);
+            }
+        }
+    }, [showPublishPicker]);
+
     useEffect(() => {
         const lower = search.toLowerCase();
-        setFilteredApps(MOCK_APPS.filter(app =>
-            app.name.toLowerCase().includes(lower) ||
-            app.description.toLowerCase().includes(lower)
-        ));
-    }, [search]);
+        setFilteredApps(allApps.filter(app => {
+            const matchesSearch = app.name.toLowerCase().includes(lower) ||
+                app.description.toLowerCase().includes(lower);
+            const matchesCategory = categoryFilter === "All" ||
+                app.category.toLowerCase() === categoryFilter.toLowerCase();
+            return matchesSearch && matchesCategory;
+        }));
+    }, [search, allApps, categoryFilter]);
 
     return (
         <div className="flex-1 flex flex-col h-screen bg-background overflow-hidden relative">
@@ -84,10 +139,7 @@ export default function MarketplacePage() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <button className="p-2 rounded-lg hover:bg-muted text-muted-foreground transition-colors relative">
-                        <Bell size={18} />
-                        <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-primary" />
-                    </button>
+                    <NotificationBell />
                     <button
                         onClick={() => setNetwork(network === 'mainnet-beta' ? 'devnet' : 'mainnet-beta')}
                         className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border transition-colors ${network === 'mainnet-beta' ? 'bg-primary/10 border-primary/20 hover:bg-primary/20' : 'bg-orange-500/10 border-orange-500/20 hover:bg-orange-500/20'}`}
@@ -131,7 +183,11 @@ export default function MarketplacePage() {
                                     Built by the community, secured by Keystone.
                                 </p>
                             </div>
-                            <Button size="lg" className="h-12 px-8 text-sm font-black uppercase tracking-widest shadow-[0_0_20px_rgba(54,226,123,0.3)] hover:shadow-[0_0_30px_rgba(54,226,123,0.5)] transition-all bg-primary text-black hover:bg-primary/90">
+                            <Button
+                                size="lg"
+                                onClick={() => setShowPublishPicker(true)}
+                                className="h-12 px-8 text-sm font-black uppercase tracking-widest shadow-[0_0_20px_rgba(54,226,123,0.3)] hover:shadow-[0_0_30px_rgba(54,226,123,0.5)] transition-all bg-primary text-black hover:bg-primary/90"
+                            >
                                 <Plus size={18} className="mr-2" />
                                 Publish App
                             </Button>
@@ -148,11 +204,34 @@ export default function MarketplacePage() {
                                     onChange={(e) => setSearch(e.target.value)}
                                 />
                             </div>
-                            <Button variant="outline" className="h-12 w-12 p-0 rounded-xl border-white/10 bg-white/5 hover:bg-white/10 hover:border-primary/30">
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowFilters(f => !f)}
+                                className={`h-12 w-12 p-0 rounded-xl border-white/10 bg-white/5 hover:bg-white/10 hover:border-primary/30 ${showFilters ? 'border-primary/40 bg-primary/10' : ''}`}
+                            >
                                 <Filter size={18} />
                             </Button>
                         </div>
                     </div>
+
+                    {/* Category Filter Pills */}
+                    {showFilters && (
+                        <div className="flex flex-wrap gap-2 mb-8 animate-in fade-in slide-in-from-top-2 duration-200">
+                            {CATEGORIES.map(cat => (
+                                <button
+                                    key={cat}
+                                    onClick={() => setCategoryFilter(cat)}
+                                    className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider border transition-all ${
+                                        categoryFilter === cat
+                                            ? 'bg-primary/15 border-primary/40 text-primary shadow-[0_0_12px_rgba(54,226,123,0.15)]'
+                                            : 'bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10 hover:border-white/20'
+                                    }`}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+                    )}
 
                     {/* App Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -172,6 +251,82 @@ export default function MarketplacePage() {
                     )}
                 </div>
             </div>
+
+            {/* Publish Picker Dialog */}
+            <Dialog open={showPublishPicker} onOpenChange={setShowPublishPicker}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Rocket size={18} className="text-primary" />
+                            Publish to Marketplace
+                        </DialogTitle>
+                        <DialogDescription>
+                            Select an app from your Library to list on the Marketplace.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {libraryApps.length === 0 ? (
+                        <div className="py-8 flex flex-col items-center gap-4 text-center">
+                            <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground">
+                                <Box size={28} />
+                            </div>
+                            <div>
+                                <p className="font-bold mb-1">No apps in your Library</p>
+                                <p className="text-sm text-muted-foreground">Build an app in the Studio and SHIP it first.</p>
+                            </div>
+                            <Link href="/app/studio">
+                                <Button className="gap-2">
+                                    Open Studio <ArrowRight size={14} />
+                                </Button>
+                            </Link>
+                        </div>
+                    ) : (
+                        <div className="space-y-2 max-h-[400px] overflow-y-auto py-2">
+                            {libraryApps.map((app: any) => {
+                                const alreadyListed = app.isPublished;
+                                return (
+                                    <button
+                                        key={app.id}
+                                        onClick={() => {
+                                            setShowPublishPicker(false);
+                                            setListingApp(app);
+                                        }}
+                                        className="w-full flex items-center gap-4 p-4 rounded-xl border border-border/40 hover:border-primary/40 hover:bg-primary/5 transition-all text-left group"
+                                    >
+                                        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-muted-foreground group-hover:text-primary shrink-0">
+                                            <Box size={20} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-bold text-sm truncate group-hover:text-primary transition-colors">{app.name}</p>
+                                            <p className="text-xs text-muted-foreground truncate">{app.description || "No description"}</p>
+                                        </div>
+                                        <div className="shrink-0">
+                                            {alreadyListed ? (
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-1 rounded-md">Update</span>
+                                            ) : (
+                                                <ArrowRight size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
+                                            )}
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Listing Modal */}
+            {listingApp && (
+                <ListingModal
+                    open={!!listingApp}
+                    onOpenChange={(open) => { if (!open) setListingApp(null); }}
+                    app={listingApp}
+                    onSuccess={() => {
+                        setListingApp(null);
+                        loadMarketplaceListings();
+                    }}
+                />
+            )}
         </div>
     );
 }

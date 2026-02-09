@@ -5,39 +5,85 @@ import { useParams } from "next/navigation"; // Correct hook for App Router
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Star, Download, ShieldCheck, Zap, Code, Shield } from "lucide-react";
+import { ArrowLeft, Star, Download, ShieldCheck, Zap, Code, Shield, CheckCircle2, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { getAvatarUrl } from "@/lib/avatars";
 import { PurchaseModal } from "@/components/studio/PurchaseModal";
 import { CollaborativeHeader } from "@/components/CollaborativeHeader";
 import { WalletButton } from "@/components/WalletButton";
-import { Bell } from "lucide-react";
+import { toast } from "@/lib/toast-notifications";
+import { NotificationBell } from "@/components/NotificationBell";
 
-// Mock data (would fetch from DB using marketplace.getAppById)
-const MOCK_APP_DETAILS = {
-    id: "app_1",
-    name: "Solana Token Sniper",
-    description: "The ultimate tool for efficient token acquisition on the Solana network. \n\nFeatures:\n- Real-time Raydium pool monitoring\n- Configurable slippage and gas settings\n- Anti-rug checks via RugCheck API\n- Auto-sell strategies based on PnL\n\nPerfect for high-frequency traders who need speed and precision. Built with Rust for maximum performance and security.",
-    priceUsdc: 50,
-    rating: 4.8,
-    installs: 1240,
-    creatorWallet: "7KeY...StUdIo",
-    category: "DeFi",
-    version: "1.2.4",
-    updatedAt: "2 days ago",
-    screenshots: [
-        "/screenshots/sniper-1.png",
-        "/screenshots/sniper-2.png"
-    ]
+// Fallback mock data for legacy/demo app IDs
+const MOCK_APPS: Record<string, any> = {
+    "app_1": {
+        id: "app_1", name: "Solana Token Sniper",
+        description: "The ultimate tool for efficient token acquisition on the Solana network. \n\nFeatures:\n- Real-time Raydium pool monitoring\n- Configurable slippage and gas settings\n- Anti-rug checks via RugCheck API\n- Auto-sell strategies based on PnL\n\nPerfect for high-frequency traders who need speed and precision. Built with Rust for maximum performance and security.",
+        priceUsdc: 50, rating: 4.8, installs: 1240, creatorWallet: "7KeY...StUdIo", category: "DeFi", version: "1.2.4", updatedAt: "2 days ago",
+    },
+    "app_2": {
+        id: "app_2", name: "NFT Portfolio Visualizer",
+        description: "A stunning 3D gallery view for your Solana NFT collection with floor price tracking.",
+        priceUsdc: 0, rating: 4.5, installs: 8503, creatorWallet: "8BoX...CrEaTr", category: "NFT", version: "2.0.1", updatedAt: "1 week ago",
+    },
+    "app_3": {
+        id: "app_3", name: "Yield Farming Auto-Compounder",
+        description: "Optimize your Kamino and Meteora positions with auto-compounding strategies.",
+        priceUsdc: 100, rating: 4.9, installs: 532, creatorWallet: "9FaR...Yield", category: "DeFi", version: "1.0.0", updatedAt: "3 days ago",
+    },
+    "app_4": {
+        id: "app_4", name: "DAO Voter Bot",
+        description: "Never miss a governance proposal. Auto-vote based on your preferences.",
+        priceUsdc: 10, rating: 4.2, installs: 300, creatorWallet: "3Gov...Voter", category: "Governance", version: "0.9.0", updatedAt: "5 days ago",
+    },
 };
+
+function loadAppDetails(appId: string) {
+    // Try localStorage marketplace listings first
+    try {
+        const listings = JSON.parse(localStorage.getItem("keystone_marketplace_listings") || "[]");
+        const found = listings.find((a: any) => a.id === appId);
+        if (found) {
+            return {
+                ...found,
+                updatedAt: found.updatedAt ? new Date(found.updatedAt).toLocaleDateString() : "Recently",
+            };
+        }
+    } catch {}
+    // Fall back to mock
+    return MOCK_APPS[appId] || null;
+}
 
 export default function AppDetailPage() {
     const params = useParams();
     const appId = params.appId as string;
 
-    // In a real app, useQuery(appId) here
-    const app = MOCK_APP_DETAILS;
+    const [app, setApp] = React.useState<any>(null);
     const [showPurchaseModal, setShowPurchaseModal] = React.useState(false);
+    const [installedVersion, setInstalledVersion] = React.useState<string | null>(null);
+
+    React.useEffect(() => {
+        setApp(loadAppDetails(appId));
+        // Check if already installed
+        try {
+            const library = JSON.parse(localStorage.getItem("keystone_library_apps") || "[]");
+            const found = library.find((a: any) => a.id === appId);
+            if (found) setInstalledVersion(found.version || "1.0.0");
+        } catch {}
+    }, [appId]);
+
+    if (!app) {
+        return (
+            <div className="h-screen flex flex-col items-center justify-center bg-background text-foreground gap-4">
+                <Zap size={48} className="text-muted-foreground" />
+                <h1 className="text-xl font-bold">App Not Found</h1>
+                <p className="text-muted-foreground">This app is not listed on the marketplace.</p>
+                <Link href="/app/marketplace">
+                    <Button variant="outline">Back to Marketplace</Button>
+                </Link>
+            </div>
+        );
+    }
 
     return (
         <div className="flex-1 flex flex-col h-screen bg-background overflow-hidden relative selection:bg-[#36e27b] selection:text-black">
@@ -57,9 +103,7 @@ export default function AppDetailPage() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <button className="p-2 rounded-lg hover:bg-muted text-muted-foreground transition-colors relative">
-                        <Bell size={18} />
-                    </button>
+                    <NotificationBell />
                     <div className="w-px h-6 bg-border mx-1" />
                     <WalletButton />
                 </div>
@@ -86,7 +130,7 @@ export default function AppDetailPage() {
                         <div className="w-48 h-48 rounded-3xl bg-[#0B0C10] border border-white/10 flex items-center justify-center shrink-0 shadow-[0_20px_40px_rgba(0,0,0,0.4)] relative overflow-hidden group">
                             <div className="absolute inset-0 bg-primary/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
                             <Avatar className="h-full w-full rounded-none">
-                                <AvatarImage src={`https://api.dicebear.com/7.x/shapes/svg?seed=${appId}`} />
+                                <AvatarImage src={app.iconUrl || `https://api.dicebear.com/7.x/shapes/svg?seed=${appId}`} />
                                 <AvatarFallback><Zap size={64} className="text-muted-foreground" /></AvatarFallback>
                             </Avatar>
                         </div>
@@ -118,28 +162,60 @@ export default function AppDetailPage() {
                                         <div className="flex items-center gap-1.5">
                                             <div className="flex">
                                                 {[1, 2, 3, 4, 5].map((s) => (
-                                                    <Star key={s} size={14} fill={s <= Math.floor(app.rating) ? "#F59E0B" : "none"} stroke={s <= Math.floor(app.rating) ? "none" : "#52525B"} />
+                                                    <Star key={s} size={14} fill={s <= Math.floor(app.rating ?? 0) ? "#F59E0B" : "none"} stroke={s <= Math.floor(app.rating ?? 0) ? "none" : "#52525B"} />
                                                 ))}
                                             </div>
-                                            <span className="text-foreground font-bold">{app.rating}</span>
+                                            <span className="text-foreground font-bold">{app.rating ?? "New"}</span>
                                         </div>
                                         <span className="text-muted-foreground/20">|</span>
-                                        <span className="text-muted-foreground font-mono">{app.installs.toLocaleString()} NODES ACTIVE</span>
+                                        <span className="text-muted-foreground font-mono">{(app.installs ?? 0).toLocaleString()} NODES ACTIVE</span>
                                     </div>
                                 </div>
 
                                 <div className="flex items-center gap-4 mt-2">
-                                    <Button
-                                        size="lg"
-                                        onClick={() => setShowPurchaseModal(true)}
-                                        className="h-14 min-w-[200px] px-8 text-base font-black uppercase tracking-[0.15em] shadow-[0_0_30px_rgba(54,226,123,0.2)] hover:shadow-[0_0_50px_rgba(54,226,123,0.4)] transition-all bg-[#36e27b] text-black hover:bg-[#36e27b] hover:scale-105 active:scale-95 rounded-xl border-2 border-transparent hover:border-white/20"
-                                    >
-                                        {app.priceUsdc === 0 ? (
-                                            <span className="flex items-center"><Download size={20} className="mr-3" /> INSTALL MODULE</span>
-                                        ) : (
-                                            <span className="flex items-center">ACQUIRE • ${app.priceUsdc}</span>
-                                        )}
-                                    </Button>
+                                    {(() => {
+                                        const appVersion = app.version || "1.0.0";
+                                        const isInstalled = installedVersion !== null;
+                                        const hasUpdate = isInstalled && installedVersion !== appVersion;
+
+                                        if (isInstalled && !hasUpdate) {
+                                            return (
+                                                <Button
+                                                    size="lg"
+                                                    disabled
+                                                    className="h-14 min-w-[200px] px-8 text-base font-black uppercase tracking-[0.15em] bg-zinc-800 text-zinc-400 rounded-xl border-2 border-zinc-700 cursor-default"
+                                                >
+                                                    <span className="flex items-center"><CheckCircle2 size={20} className="mr-3" /> INSTALLED</span>
+                                                </Button>
+                                            );
+                                        }
+
+                                        if (hasUpdate) {
+                                            return (
+                                                <Button
+                                                    size="lg"
+                                                    onClick={() => setShowPurchaseModal(true)}
+                                                    className="h-14 min-w-[200px] px-8 text-base font-black uppercase tracking-[0.15em] shadow-[0_0_30px_rgba(54,226,123,0.2)] hover:shadow-[0_0_50px_rgba(54,226,123,0.4)] transition-all bg-[#36e27b] text-black hover:bg-[#36e27b] hover:scale-105 active:scale-95 rounded-xl border-2 border-transparent hover:border-white/20"
+                                                >
+                                                    <span className="flex items-center"><RefreshCw size={20} className="mr-3" /> UPDATE TO v{appVersion}</span>
+                                                </Button>
+                                            );
+                                        }
+
+                                        return (
+                                            <Button
+                                                size="lg"
+                                                onClick={() => setShowPurchaseModal(true)}
+                                                className="h-14 min-w-[200px] px-8 text-base font-black uppercase tracking-[0.15em] shadow-[0_0_30px_rgba(54,226,123,0.2)] hover:shadow-[0_0_50px_rgba(54,226,123,0.4)] transition-all bg-[#36e27b] text-black hover:bg-[#36e27b] hover:scale-105 active:scale-95 rounded-xl border-2 border-transparent hover:border-white/20"
+                                            >
+                                                {app.priceUsdc === 0 ? (
+                                                    <span className="flex items-center"><Download size={20} className="mr-3" /> INSTALL MODULE</span>
+                                                ) : (
+                                                    <span className="flex items-center">ACQUIRE • {app.priceUsdc} SOL</span>
+                                                )}
+                                            </Button>
+                                        );
+                                    })()}
 
                                     <div className="flex flex-col justify-center px-4 h-14 rounded-xl border border-white/5 bg-white/5 backdrop-blur-sm">
                                         <span className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">License Type</span>
@@ -153,17 +229,39 @@ export default function AppDetailPage() {
                     {/* Content Grid */}
                     <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-12">
                         <div className="space-y-12">
-                            {/* Visuals */}
-                            <div className="group relative rounded-3xl overflow-hidden border border-white/10 shadow-2xl aspect-video bg-[#050505]">
-                                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10" />
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <Code size={80} className="text-white/5 Group-hover:text-primary/20 transition-colors duration-500" />
+                            {/* Visuals / Screenshots */}
+                            {app.screenshots && app.screenshots.length > 0 ? (
+                                <div className="space-y-3">
+                                    {/* Main screenshot */}
+                                    <div className="group relative rounded-3xl overflow-hidden border border-white/10 shadow-2xl aspect-video bg-[#050505]">
+                                        <img src={app.screenshots[0]} alt="Screenshot 1" className="w-full h-full object-cover" />
+                                        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
+                                            <p className="text-muted-foreground text-sm font-mono">v{app.version || "1.0.0"} (Latest Build)</p>
+                                        </div>
+                                    </div>
+                                    {/* Thumbnail row */}
+                                    {app.screenshots.length > 1 && (
+                                        <div className="grid grid-cols-3 gap-3">
+                                            {app.screenshots.slice(1).map((url: string, i: number) => (
+                                                <div key={i} className="rounded-xl overflow-hidden border border-white/10 aspect-video bg-[#050505] hover:border-primary/30 transition-colors cursor-pointer">
+                                                    <img src={url} alt={`Screenshot ${i + 2}`} className="w-full h-full object-cover" />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black via-black/80 to-transparent">
-                                    <h3 className="text-white font-bold text-lg uppercase tracking-widest mb-1">Interface Preview</h3>
-                                    <p className="text-muted-foreground text-sm font-mono">v{app.version} (Latest Build)</p>
+                            ) : (
+                                <div className="group relative rounded-3xl overflow-hidden border border-white/10 shadow-2xl aspect-video bg-[#050505]">
+                                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10" />
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <Code size={80} className="text-white/5 group-hover:text-primary/20 transition-colors duration-500" />
+                                    </div>
+                                    <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black via-black/80 to-transparent">
+                                        <h3 className="text-white font-bold text-lg uppercase tracking-widest mb-1">Interface Preview</h3>
+                                        <p className="text-muted-foreground text-sm font-mono">v{app.version || "1.0.0"} (Latest Build)</p>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Description */}
                             <div className="prose prose-invert max-w-none">
@@ -220,7 +318,7 @@ export default function AppDetailPage() {
                                     </div>
                                     <div className="flex justify-between items-center group">
                                         <span className="text-muted-foreground group-hover:text-white transition-colors">Version</span>
-                                        <span className="font-mono text-[#36e27b]">{app.version}</span>
+                                        <span className="font-mono text-[#36e27b]">{app.version || "1.0.0"}</span>
                                     </div>
                                     <div className="flex justify-between items-center group">
                                         <span className="text-muted-foreground group-hover:text-white transition-colors">Framework</span>
@@ -238,7 +336,12 @@ export default function AppDetailPage() {
                 onOpenChange={setShowPurchaseModal}
                 app={app}
                 onSuccess={() => {
-                    console.log("App installed");
+                    toast.success(`"${app.name}" added to your Library`, {
+                        action: {
+                            label: "Open Library",
+                            onClick: () => window.location.href = "/app/library",
+                        },
+                    });
                 }}
             />
         </div>

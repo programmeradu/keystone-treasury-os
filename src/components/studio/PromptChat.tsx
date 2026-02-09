@@ -1,15 +1,18 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowUp, Activity, Loader2, Terminal, Cpu } from "lucide-react";
-import { Logo, ArchitectIcon } from "@/components/icons";
+import { ArrowUp, Activity, Loader2, Cpu, Zap, Shield, AlertTriangle } from "lucide-react";
+import { ArchitectIcon } from "@/components/icons";
 import { getAvatarUrl } from "@/lib/avatars";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSelf } from "@/liveblocks.config";
 import { cn } from "@/lib/utils";
+import { ArchitectEngine, type ArchitectStatus, type ArchitectState } from "@/lib/studio/architect-engine";
+
+// ─── Types ──────────────────────────────────────────────────────────
 
 interface Message {
     id: string;
@@ -17,15 +20,30 @@ interface Message {
     content: string;
     timestamp: Date;
     codeGenerated?: boolean;
+    state?: ArchitectState;
 }
 
 interface PromptChatProps {
     onGenerate: (files: Record<string, string>) => void;
     isGenerating: boolean;
     setIsGenerating: (value: boolean) => void;
-    userFiles: Record<string, any>; // Pass current state
-    runtimeLogs?: string[]; // Optional runtime context
+    userFiles: Record<string, any>;
+    runtimeLogs?: string[];
 }
+
+// ─── State Label Map ────────────────────────────────────────────────
+
+const STATE_LABELS: Record<ArchitectState, { label: string; color: string; icon: string }> = {
+    IDLE: { label: "IDLE", color: "text-zinc-500", icon: "" },
+    STREAMING: { label: "GENERATING", color: "text-cyan-400", icon: "animate-pulse" },
+    ANALYZING: { label: "ANALYZING", color: "text-yellow-400", icon: "" },
+    CORRECTING: { label: "SELF-CORRECTING", color: "text-orange-400", icon: "animate-pulse" },
+    RE_ANALYZING: { label: "RE-ANALYZING", color: "text-yellow-400", icon: "" },
+    CLEAN: { label: "CLEAN BUILD", color: "text-emerald-400", icon: "" },
+    FAILED: { label: "ERRORS REMAIN", color: "text-red-400", icon: "" },
+};
+
+// ─── Component ──────────────────────────────────────────────────────
 
 export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFiles, runtimeLogs }: PromptChatProps) {
     const user = useSelf();
@@ -34,14 +52,15 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
         {
             id: "welcome",
             role: "assistant",
-            content: "Architect initialized. Direct sequence active.\n\nCapabilities:\n• Protocol Synthesizer\n• Treasury Logic Constructor\n• Interface Architect\n\nAwaiting specifications...",
+            content: "Architect initialized. Self-correction engine online.\n\nCapabilities:\n\u2022 Protocol Synthesizer\n\u2022 Treasury Logic Constructor\n\u2022 Auto Error Detection & Fix (3 attempts)\n\nAwaiting specifications...",
             timestamp: new Date(),
         },
     ]);
     const scrollRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const [isResearching, setIsResearching] = useState(false);
     const [useDeepResearch, setUseDeepResearch] = useState(false);
+    const [architectStatus, setArchitectStatus] = useState<ArchitectStatus | null>(null);
+    const engineRef = useRef<ArchitectEngine | null>(null);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -49,6 +68,28 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
         }
     }, [messages]);
 
+    // ─── Architect Engine Setup ─────────────────────────────
+    const getEngine = useCallback(() => {
+        if (!engineRef.current) {
+            engineRef.current = new ArchitectEngine({
+                onStateChange: (status) => {
+                    setArchitectStatus({ ...status });
+                },
+                onFilesGenerated: (files) => {
+                    onGenerate(files);
+                },
+                onExplanation: () => {
+                    // Explanation handled via message update below
+                },
+                onError: (error) => {
+                    console.error("[Architect]", error);
+                },
+            });
+        }
+        return engineRef.current;
+    }, [onGenerate]);
+
+    // ─── Submit Handler ─────────────────────────────────────
     const handleSubmit = async () => {
         if (!input.trim() || isGenerating) return;
 
@@ -63,106 +104,152 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
         setInput("");
         setIsGenerating(true);
 
-        // Add thinking message
         const thinkingId = (Date.now() + 1).toString();
         setMessages((prev) => [
             ...prev,
             {
                 id: thinkingId,
                 role: "assistant",
-                content: useDeepResearch ? "Initiating deep research protocol..." : "Analyzing request parameters...",
+                content: useDeepResearch
+                    ? "Initiating deep research protocol..."
+                    : "Initializing self-correction pipeline...",
                 timestamp: new Date(),
+                state: "STREAMING",
             },
         ]);
 
         let researchContext = "";
 
         try {
-            // 1. Conduct Research if enabled
+            // ─── Deep Research (optional) ───────────────────
             if (useDeepResearch) {
-                setIsResearching(true);
-                setMessages((prev) => prev.map(m => m.id === thinkingId ? { ...m, content: "Scanning decentralized protocols..." } : m));
+                setMessages((prev) =>
+                    prev.map((m) =>
+                        m.id === thinkingId
+                            ? { ...m, content: "Scanning decentralized protocols..." }
+                            : m
+                    )
+                );
 
-                const researchRes = await fetch("/api/agent/knowledge", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ query: userMessage.content }),
-                });
+                try {
+                    const researchRes = await fetch("/api/agent/knowledge", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ query: userMessage.content }),
+                    });
 
-                if (researchRes.ok) {
-                    const researchData = await researchRes.json();
-                    researchContext = `\n\n[RESEARCH CONTEXT based on: ${researchData.query}]\nSummary: ${researchData.summary}\nTechnical Reference: ${researchData.rawContent}`;
+                    if (researchRes.ok) {
+                        const researchData = await researchRes.json();
+                        researchContext = `\n\n[RESEARCH CONTEXT based on: ${researchData.query}]\nSummary: ${researchData.summary}\nTechnical Reference: ${researchData.rawContent}`;
 
-                    setMessages((prev) => prev.map(m => m.id === thinkingId ? {
-                        ...m,
-                        content: `Research complete. Found data sources: ${researchData.sources.map((s: any) => s.title).join(", ")}.\nSynthesizing implementation plan...`
-                    } : m));
+                        setMessages((prev) =>
+                            prev.map((m) =>
+                                m.id === thinkingId
+                                    ? {
+                                          ...m,
+                                          content: `Research complete. Synthesizing implementation...`,
+                                      }
+                                    : m
+                            )
+                        );
+                    }
+                } catch {
+                    // Research failed — continue without it
                 }
             }
 
-            // 2. Generate Code
+            // ─── Run Architect Engine ───────────────────────
+            const engine = getEngine();
 
-            // Prepare Runtime Context
-            let runtimeContext = "";
-            if (runtimeLogs && runtimeLogs.length > 0) {
-                const recentLogs = runtimeLogs.slice(-20).join('\n');
-                runtimeContext = `\n\n[RUNTIME LOGS (Console Output)]\n${recentLogs}`;
-            }
+            // Subscribe to state changes for message updates
+            const originalOnState = engine["callbacks"].onStateChange;
+            engine["callbacks"].onStateChange = (status: ArchitectStatus) => {
+                originalOnState(status);
 
-            const response = await fetch("/api/studio/generate", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    prompt: userMessage.content + researchContext + runtimeContext,
-                    contextFiles: userFiles
-                }),
-            });
+                // Update thinking message based on state
+                const stateMsg = getStateMessage(status);
+                setMessages((prev) =>
+                    prev.map((m) =>
+                        m.id === thinkingId
+                            ? { ...m, content: stateMsg, state: status.state }
+                            : m
+                    )
+                );
+            };
 
-            if (!response.ok) {
-                const errData = await response.json().catch(() => ({}));
-                console.error("API Error Details:", errData);
-                throw new Error(errData.details || errData.error || "Failed to generate code");
-            }
+            engine["callbacks"].onExplanation = (explanation: string) => {
+                setMessages((prev) =>
+                    prev.map((m) =>
+                        m.id === thinkingId
+                            ? {
+                                  ...m,
+                                  content: `Generation complete.\n\n${explanation}`,
+                                  codeGenerated: true,
+                                  state: "CLEAN",
+                              }
+                            : m
+                    )
+                );
+            };
 
-            const data = await response.json();
+            engine["callbacks"].onFilesGenerated = (files: Record<string, string>) => {
+                const status = engine.getStatus();
+                const fileCount = Object.keys(files).length;
+                const wasClean = status.state === "CLEAN";
 
-            // Update thinking message with result
-            setMessages((prev) =>
-                prev.map((m) =>
-                    m.id === thinkingId
-                        ? {
-                            ...m,
-                            content: `Generation complete. ${Object.keys(data.files || {}).length} module(s) synthesized.\n\n${data.explanation || "Preview environment updated."}`,
-                            codeGenerated: true,
-                        }
-                        : m
-                )
+                setMessages((prev) =>
+                    prev.map((m) =>
+                        m.id === thinkingId
+                            ? {
+                                  ...m,
+                                  content: wasClean
+                                      ? `${fileCount} module(s) synthesized. Clean build.${status.attempt > 0 ? ` (${status.attempt} correction(s) applied)` : ""}`
+                                      : `${fileCount} module(s) generated with ${status.errors.length} remaining issue(s) after ${status.attempt} correction attempt(s).`,
+                                  codeGenerated: true,
+                                  state: status.state,
+                              }
+                            : m
+                    )
+                );
+
+                onGenerate(files);
+            };
+
+            engine["callbacks"].onError = (error: string) => {
+                setMessages((prev) =>
+                    prev.map((m) =>
+                        m.id === thinkingId
+                            ? {
+                                  ...m,
+                                  content: `Generation issue:\n${error}`,
+                                  state: "FAILED",
+                              }
+                            : m
+                    )
+                );
+            };
+
+            await engine.generate(
+                userMessage.content,
+                userFiles,
+                runtimeLogs,
+                researchContext || undefined
             );
-
-            if (data.files) {
-                // Check for Smart Contract files (.rs)
-                const hasContract = Object.keys(data.files).some(f => f.endsWith(".rs"));
-                if (hasContract) {
-                    console.log("[PromptChat] Smart Contract detected. Triggering Compiler Service...");
-                    // In next steps, we will call onCompile(data.files) or switch tab
-                }
-                onGenerate(data.files);
-            }
         } catch (error) {
             console.error("PromptChat Error:", error);
             setMessages((prev) =>
                 prev.map((m) =>
                     m.id === thinkingId
                         ? {
-                            ...m,
-                            content: `Generation failed. System error.\n\n${error instanceof Error ? error.message : "Unknown error"}`,
-                        }
+                              ...m,
+                              content: `Generation failed.\n\n${error instanceof Error ? error.message : "Unknown error"}`,
+                              state: "FAILED",
+                          }
                         : m
                 )
             );
         } finally {
             setIsGenerating(false);
-            setIsResearching(false);
         }
     };
 
@@ -175,6 +262,11 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
 
     return (
         <div className="flex flex-col h-full min-h-0">
+            {/* Status Bar */}
+            {architectStatus && architectStatus.state !== "IDLE" && (
+                <ArchitectStatusBar status={architectStatus} />
+            )}
+
             {/* Messages */}
             <ScrollArea className="flex-1 p-3 scrollbar-thin min-h-0" ref={scrollRef}>
                 <div className="space-y-4">
@@ -197,7 +289,10 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
                                     message.role === "user"
                                         ? "bg-primary text-background font-bold tracking-tight"
                                         : "bg-muted/20 text-foreground border border-border/40 font-medium",
-                                    message.codeGenerated && "border-primary/40 bg-primary/5 text-primary shadow-[0_0_20px_rgba(54,226,123,0.05)] font-bold tracking-tight"
+                                    message.codeGenerated && "border-primary/40 bg-primary/5 text-primary shadow-[0_0_20px_rgba(54,226,123,0.05)] font-bold tracking-tight",
+                                    message.state === "STREAMING" && "border-cyan-400/30 bg-cyan-400/5",
+                                    message.state === "CORRECTING" && "border-orange-400/30 bg-orange-400/5",
+                                    message.state === "FAILED" && "border-red-400/30 bg-red-400/5"
                                 )}
                             >
                                 <pre className="whitespace-pre-wrap font-sans">
@@ -258,9 +353,79 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
                 </div>
                 <p className="text-[9px] text-muted-foreground mt-4 text-center font-bold tracking-[0.1em] uppercase opacity-40">
                     <Activity size={10} className="inline mr-2 text-primary" />
-                    KeyStone Engine Active
+                    Architect Engine v2.0 — Self-Correction Active
                 </p>
             </div>
         </div>
     );
+}
+
+// ─── Status Bar Sub-Component ───────────────────────────────────────
+
+function ArchitectStatusBar({ status }: { status: ArchitectStatus }) {
+    const info = STATE_LABELS[status.state];
+    const elapsed = Math.round(status.elapsedMs / 1000);
+
+    return (
+        <div className="px-4 py-2 border-b border-border bg-muted/10 flex items-center gap-4 text-[9px] font-bold uppercase tracking-widest shrink-0">
+            {/* State */}
+            <div className={cn("flex items-center gap-1.5", info.color)}>
+                {(status.state === "STREAMING" || status.state === "CORRECTING") && (
+                    <div className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                )}
+                {status.state === "CLEAN" && <Zap size={10} />}
+                {status.state === "FAILED" && <AlertTriangle size={10} />}
+                {status.state === "ANALYZING" || status.state === "RE_ANALYZING" ? (
+                    <Shield size={10} />
+                ) : null}
+                <span>{info.label}</span>
+            </div>
+
+            <div className="h-3 w-px bg-border/60" />
+
+            {/* Attempts */}
+            {status.attempt > 0 && (
+                <>
+                    <span className="text-orange-400">
+                        FIX {status.attempt}/{status.maxAttempts}
+                    </span>
+                    <div className="h-3 w-px bg-border/60" />
+                </>
+            )}
+
+            {/* Tokens */}
+            <span className="text-zinc-500">
+                ~{status.tokensGenerated.toLocaleString()} tok
+            </span>
+
+            <div className="h-3 w-px bg-border/60" />
+
+            {/* Elapsed */}
+            <span className="text-zinc-500">{elapsed}s</span>
+
+            {/* Model */}
+            <span className="ml-auto text-zinc-600">{status.model}</span>
+        </div>
+    );
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────
+
+function getStateMessage(status: ArchitectStatus): string {
+    switch (status.state) {
+        case "STREAMING":
+            return "Generating code...";
+        case "ANALYZING":
+            return "Analyzing generated code for errors...";
+        case "CORRECTING":
+            return `Self-correction attempt ${status.attempt}/${status.maxAttempts}...\nFixing: ${status.errors.slice(0, 2).join("; ")}`;
+        case "RE_ANALYZING":
+            return `Re-analyzing after correction ${status.attempt}...`;
+        case "CLEAN":
+            return "Clean build achieved.";
+        case "FAILED":
+            return `Self-correction exhausted. ${status.errors.length} issue(s) remain.`;
+        default:
+            return "Processing...";
+    }
 }

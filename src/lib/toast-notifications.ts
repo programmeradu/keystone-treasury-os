@@ -1,10 +1,9 @@
 /**
- * Toast notification system for agent executions
- * Provides real-time feedback on execution status
+ * Custom toast notification system
+ * Drop-in replacement for Sonner with premium UI
  */
 
 import { create } from 'zustand';
-import { ExecutionStatus } from './agents';
 
 export interface Toast {
   id: string;
@@ -12,7 +11,8 @@ export interface Toast {
   title: string;
   message: string;
   timestamp: number;
-  duration?: number; // milliseconds, 0 = permanent
+  duration: number; // milliseconds, 0 = permanent
+  dismissedAt?: number; // for exit animation timing
   action?: {
     label: string;
     onClick: () => void;
@@ -21,37 +21,63 @@ export interface Toast {
 
 interface ToastStore {
   toasts: Toast[];
-  addToast: (toast: Omit<Toast, 'id' | 'timestamp'>) => string;
+  addToast: (toast: Omit<Toast, 'id' | 'timestamp'> & { id?: string }) => string;
   removeToast: (id: string) => void;
+  dismissToast: (id: string) => void; // triggers exit animation first
   clearToasts: () => void;
 }
 
-export const useToastStore = create<ToastStore>((set) => ({
+const MAX_VISIBLE = 5;
+
+export const useToastStore = create<ToastStore>((set, get) => ({
   toasts: [],
   
   addToast: (toast) => {
-    const id = `toast-${Date.now()}-${Math.random()}`;
+    const id = toast.id || `t_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const duration = toast.duration ?? 5000;
+
     const newToast: Toast = {
       ...toast,
       id,
       timestamp: Date.now(),
-      duration: toast.duration ?? 5000, // Default 5s
+      duration,
     };
-    
-    set((state) => ({
-      toasts: [...state.toasts, newToast],
-    }));
 
-    // Auto-remove after duration
-    if (newToast.duration && newToast.duration > 0) {
+    set((state) => {
+      // If id already exists, replace it (dedup)
+      const exists = state.toasts.find(t => t.id === id);
+      const updated = exists
+        ? state.toasts.map(t => t.id === id ? newToast : t)
+        : [...state.toasts, newToast];
+      // Cap visible toasts
+      const capped = updated.length > MAX_VISIBLE + 3
+        ? updated.slice(updated.length - MAX_VISIBLE - 3)
+        : updated;
+      return { toasts: capped };
+    });
+
+    // Auto-dismiss after duration
+    if (duration > 0) {
       setTimeout(() => {
-        set((state) => ({
-          toasts: state.toasts.filter((t) => t.id !== id),
-        }));
-      }, newToast.duration);
+        get().dismissToast(id);
+      }, duration);
     }
 
     return id;
+  },
+
+  dismissToast: (id) => {
+    set((state) => ({
+      toasts: state.toasts.map(t =>
+        t.id === id ? { ...t, dismissedAt: Date.now() } : t
+      ),
+    }));
+    // Remove after exit animation (400ms)
+    setTimeout(() => {
+      set((state) => ({
+        toasts: state.toasts.filter(t => t.id !== id),
+      }));
+    }, 400);
   },
 
   removeToast: (id) => {
@@ -64,6 +90,55 @@ export const useToastStore = create<ToastStore>((set) => ({
     set({ toasts: [] });
   },
 }));
+
+// ─── Sonner-compatible API ──────────────────────────────────────────
+// Usage: toast.success("Saved!") or toast.error("Failed", { description: "..." })
+
+interface ToastOptions {
+  id?: string;
+  description?: string;
+  duration?: number;
+  action?: { label: string; onClick: () => void };
+}
+
+function createToast(type: Toast['type'], titleOrMsg: string, opts?: ToastOptions): string {
+  return useToastStore.getState().addToast({
+    id: opts?.id,
+    type,
+    title: titleOrMsg,
+    message: opts?.description || '',
+    duration: opts?.duration ?? (type === 'error' ? 6000 : 4000),
+    action: opts?.action,
+  });
+}
+
+/**
+ * Drop-in replacement for Sonner's toast() API.
+ * Supports: toast.success("msg"), toast.error("msg", { description }), etc.
+ */
+export const toast = Object.assign(
+  // toast("message") — defaults to info
+  (msg: string, opts?: ToastOptions) => createToast('info', msg, opts),
+  {
+    success: (msg: string, opts?: ToastOptions) => createToast('success', msg, opts),
+    error: (msg: string, opts?: ToastOptions) => createToast('error', msg, opts),
+    warning: (msg: string, opts?: ToastOptions) => createToast('warning', msg, opts),
+    info: (msg: string, opts?: ToastOptions) => createToast('info', msg, opts),
+    // Loading: persistent info toast (duration 0) until manually dismissed
+    loading: (msg: string, opts?: ToastOptions) => createToast('info', msg, { ...opts, duration: 0 }),
+    // Message: alias for info (Sonner compat)
+    message: (msg: string, opts?: ToastOptions) => createToast('info', msg, opts),
+    // Dismiss: with id dismisses one, without id dismisses all
+    dismiss: (id?: string) => {
+      const store = useToastStore.getState();
+      if (id) {
+        store.dismissToast(id);
+      } else {
+        store.toasts.forEach(t => store.dismissToast(t.id));
+      }
+    },
+  }
+);
 
 /**
  * Helper functions for common toast scenarios

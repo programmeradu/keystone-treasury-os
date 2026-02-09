@@ -1,7 +1,21 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Shield, Zap, TrendingUp, CheckCircle2, Lock, Landmark, Orbit, Rocket } from "lucide-react";
+import { toast } from "@/lib/toast-notifications";
+
+const LS_KEY = "keystone_risk_profile";
+
+function loadSaved(): { profile: RiskProfile; threshold: number } | null {
+    try {
+        const raw = localStorage.getItem(LS_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+}
+
+function persist(profile: RiskProfile, threshold: number) {
+    localStorage.setItem(LS_KEY, JSON.stringify({ profile, threshold }));
+}
 
 type RiskProfile = "conservative" | "balanced" | "aggressive";
 
@@ -39,12 +53,21 @@ const PROFILES = {
 };
 
 export const RiskProfileSelector = () => {
-    const [selectedProfile, setSelectedProfile] = useState<RiskProfile>("balanced");
-    const [customThreshold, setCustomThreshold] = useState(PROFILES[selectedProfile].threshold);
+    const saved = loadSaved();
+    const [selectedProfile, setSelectedProfile] = useState<RiskProfile>(saved?.profile || "balanced");
+    const [customThreshold, setCustomThreshold] = useState(saved?.threshold ?? PROFILES[saved?.profile || "balanced"].threshold);
 
     const handleProfileChange = (profile: RiskProfile) => {
         setSelectedProfile(profile);
-        setCustomThreshold(PROFILES[profile].threshold);
+        const t = PROFILES[profile].threshold;
+        setCustomThreshold(t);
+        persist(profile, t);
+        toast.success(`Risk profile set to ${PROFILES[profile].name}`);
+    };
+
+    const handleThresholdChange = (value: number) => {
+        setCustomThreshold(value);
+        persist(selectedProfile, value);
     };
 
     return (
@@ -101,7 +124,7 @@ export const RiskProfileSelector = () => {
                             max="5000"
                             step="100"
                             value={customThreshold}
-                            onChange={(e) => setCustomThreshold(Number(e.target.value))}
+                            onChange={(e) => handleThresholdChange(Number(e.target.value))}
                             className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-[0_0_8px_var(--dashboard-accent-muted)] [&::-webkit-slider-thumb]:transition-all [&::-webkit-slider-thumb]:hover:scale-125"
                         />
                         <p className="text-[9px] text-muted-foreground mt-2 italic font-black uppercase tracking-widest">

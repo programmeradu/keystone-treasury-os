@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useOthers, useSelf, useBroadcastEvent, useEventListener } from "@/liveblocks.config";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -18,11 +18,55 @@ import { Suspense } from "react";
 import { WalletButton } from "@/components/WalletButton";
 import { getAvatarUrl } from "@/lib/avatars";
 import { NetworkSelector } from "@/components/NetworkSelector";
+import { useVault } from "@/lib/contexts/VaultContext";
+import { toast } from "@/lib/toast-notifications";
+
+interface LogEntry {
+    user: string;
+    action: string;
+    target: string;
+    time: string;
+}
+
+const SEED_LOG: LogEntry[] = [
+    { user: "Neural Agent 01", action: "SIMULATED TRANSACTION", target: "Jupiter Swap: 10 SOL -> USDC", time: "02:42:12" },
+    { user: "You", action: "UPDATED TREASURY", target: "New Vault Linked", time: "02:30:05" },
+    { user: "Neural Agent 01", action: "RISK SCAN", target: "Liquidity Check: PASSED", time: "02:15:00" },
+];
 
 export default function TeamPage() {
     const others = useOthers();
     const self = useSelf();
-    const [vaultAddress, setVaultAddress] = useState("");
+    const { activeVault, vaultConfig } = useVault();
+    const vaultAddress = activeVault || "";
+
+    // Live Tactical Log — seeded with mocks, appends real events
+    const [logEntries, setLogEntries] = useState<LogEntry[]>(SEED_LOG);
+    const logRef = useRef<HTMLDivElement>(null);
+
+    const appendLog = useCallback((entry: Omit<LogEntry, "time">) => {
+        const now = new Date();
+        const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+        setLogEntries(prev => [{ ...entry, time }, ...prev].slice(0, 50));
+    }, []);
+
+    useEffect(() => {
+        const unsub = AppEventBus.subscribe((event) => {
+            switch (event.type) {
+                case "AGENT_COMMAND":
+                    appendLog({ user: "Agent", action: "AGENT COMMAND", target: event.payload?.command || event.payload?.message || "Executed" });
+                    break;
+                case "UI_NOTIFICATION":
+                    appendLog({ user: "System", action: "NOTIFICATION", target: event.payload?.message || "Event" });
+                    break;
+                case "REFRESH_DASHBOARD":
+                    appendLog({ user: "You", action: "REFRESH", target: "Dashboard data synced" });
+                    break;
+            }
+        });
+        return unsub;
+    }, [appendLog]);
+
 
     return (
         <div className="flex-1 flex flex-col h-screen bg-background overflow-hidden font-mono text-foreground">
@@ -132,30 +176,21 @@ export default function TeamPage() {
                                         <TerminalSquare size={16} className="text-primary" />
                                         Tactical Log
                                     </h3>
-                                    <span className="text-[10px] text-muted-foreground font-mono">LIVE FEED // AES-256</span>
+                                    <span className="text-[10px] text-muted-foreground font-mono">LIVE FEED // AES-256 • {logEntries.length} entries</span>
                                 </div>
-                                <div className="p-4 space-y-2 font-mono text-xs flex-1">
-                                    <ActivityItem
-                                        user="Neural Agent 01"
-                                        action="SIMULATED TRANSACTION"
-                                        target="Jupiter Swap: 10 SOL -> USDC"
-                                        time="02:42:12"
-                                    />
-                                    <ActivityItem
-                                        user="You"
-                                        action="UPDATED TREASURY"
-                                        target="New Vault Linked"
-                                        time="02:30:05"
-                                    />
-                                    <ActivityItem
-                                        user="Neural Agent 01"
-                                        action="RISK SCAN"
-                                        target="Liquidity Check: PASSED"
-                                        time="02:15:00"
-                                    />
+                                <div ref={logRef} className="p-4 space-y-2 font-mono text-xs flex-1 overflow-y-auto scrollbar-thin max-h-[300px]">
+                                    {logEntries.map((entry, idx) => (
+                                        <ActivityItem
+                                            key={`${entry.time}-${idx}`}
+                                            user={entry.user}
+                                            action={entry.action}
+                                            target={entry.target}
+                                            time={entry.time}
+                                        />
+                                    ))}
                                     <div className="flex items-center gap-2 opacity-50 pt-2">
                                         <span className="text-primary animate-pulse">_</span>
-                                        <span className="italic text-muted-foreground">Awaiting new signals...</span>
+                                        <span className="italic text-muted-foreground">Listening for signals...</span>
                                     </div>
                                 </div>
                             </div>
@@ -163,13 +198,21 @@ export default function TeamPage() {
 
                         {/* Sidebar: War Room & Neural Uplink */}
                         <div className="space-y-6">
+                            {/* Vault Link for War Room */}
+                            {!activeVault && (
+                                <div className="bg-card border border-dashed border-border rounded-2xl p-4 shadow-sm text-center">
+                                    <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mb-1">No Vault Connected</p>
+                                    <p className="text-[9px] text-muted-foreground/50">Connect a vault via the sidebar to unlock War Room</p>
+                                </div>
+                            )}
+
                             <WarRoom vaultAddress={vaultAddress} />
 
                             {/* Collaborative Chat */}
                             <CollaborativeChat />
 
                             {/* Quorum Core: Real-time Governance Power */}
-                            <QuorumCore others={others as any[]} threshold={3} />
+                            <QuorumCore others={others as any[]} threshold={vaultConfig?.threshold ?? 3} />
                         </div>
                     </div>
                 </div>
@@ -286,8 +329,20 @@ function WarRoom({ vaultAddress }: { vaultAddress: string }) {
 }
 
 function MemberCard({ name, role, status, isSelf, avatar, color }: any) {
+    const handleClick = () => {
+        if (isSelf) {
+            toast.info("That's you! Active as Admin / Signer.");
+        } else {
+            toast(`${name}`, {
+                description: `Role: ${role} • Status: ${status === "online" ? "Online now" : "Offline"}`,
+            });
+        }
+    };
+
     return (
-        <div className="p-3 bg-muted/10 border border-border rounded-lg flex items-center gap-4 hover:border-primary/50 transition-all group relative overflow-hidden shadow-sm">
+        <div
+            onClick={handleClick}
+            className="p-3 bg-muted/10 border border-border rounded-lg flex items-center gap-4 hover:border-primary/50 transition-all group relative overflow-hidden shadow-sm cursor-pointer">
             {/* Holographic Corner */}
             <div className="absolute top-0 right-0 w-8 h-8 bg-gradient-to-bl from-primary/10 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />
 

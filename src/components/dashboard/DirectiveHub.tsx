@@ -1,256 +1,249 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useRef, useCallback, useMemo, useState } from "react";
 import { motion, AnimatePresence, useMotionTemplate, useMotionValue } from "framer-motion";
-import { Activity, Cpu, Hexagon } from "lucide-react";
+import { FileText, ExternalLink, RefreshCw, ShieldCheck, Clock, CheckCircle2, XCircle, Ban, Inbox, Eye, Users, ArrowUpRight } from "lucide-react";
 import { useTheme } from "@/lib/contexts/ThemeContext";
+import { useVault } from "@/lib/contexts/VaultContext";
 
-interface Directive {
-    id: string;
-    type: "SIGNATURE" | "INFRA" | "SWAP";
+interface Proposal {
+    index: number;
     title: string;
-    subtitle: string;
-    priority: "CRITICAL" | "ROUTINE" | "LOW";
-    progress?: number;
-    timestamp: string;
+    status: string;
+    signatures: number;
+    threshold: number;
+    pda: string;
 }
 
-const DIRECTIVES: Directive[] = [
-    {
-        id: "dir_01",
-        type: "SIGNATURE",
-        title: "DEV_GUILD_GRANT",
-        subtitle: "5,000 USDC • 2/3 SIGS",
-        priority: "CRITICAL",
-        progress: 66,
-        timestamp: "2M_AGO"
-    },
-    {
-        id: "dir_02",
-        type: "INFRA",
-        title: "AWS_SERVER_SYNC",
-        subtitle: "240.21 USDC • COMPLETED",
-        priority: "ROUTINE",
-        progress: 100,
-        timestamp: "1H_AGO"
-    },
-    {
-        id: "dir_03",
-        type: "SWAP",
-        title: "SOL_USDC_VECTOR",
-        subtitle: "CONFIRM RATE • PENDING",
-        priority: "LOW",
-        progress: 0,
-        timestamp: "4H_AGO"
-    }
-];
-
-const CharacterShuffle = ({ text }: { text: string }) => {
-    const [displayText, setDisplayText] = useState(text);
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>[]{}/\\|";
-
-    useEffect(() => {
-        let iteration = 0;
-        const interval = setInterval(() => {
-            setDisplayText(
-                text
-                    .split("")
-                    .map((char, index) => {
-                        if (index < iteration) return text[index];
-                        return chars[Math.floor(Math.random() * chars.length)];
-                    })
-                    .join("")
-            );
-            if (iteration >= text.length) clearInterval(interval);
-            iteration += 1 / 2.5;
-        }, 30);
-        return () => clearInterval(interval);
-    }, [text]);
-
-    return <span>{displayText}</span>;
+const STATUS_CONFIG: Record<string, { label: string; color: string; dotColor: string; icon: typeof Clock; critical: boolean }> = {
+    Active:      { label: "Pending",   color: "text-amber-500",         dotColor: "bg-amber-500", icon: Clock,        critical: true },
+    Approved:    { label: "Approved",  color: "text-primary",           dotColor: "bg-primary",   icon: CheckCircle2, critical: false },
+    Executed:    { label: "Executed",  color: "text-primary",           dotColor: "bg-primary",   icon: ShieldCheck,  critical: false },
+    Rejected:    { label: "Rejected",  color: "text-destructive",       dotColor: "bg-destructive", icon: XCircle,   critical: false },
+    Cancelled:   { label: "Cancelled", color: "text-muted-foreground",  dotColor: "bg-muted-foreground", icon: Ban,  critical: false },
 };
-
-const HexStatusNode = ({ color, critical = false }: { color: string; critical?: boolean }) => (
-    <div className="relative w-12 h-12 flex items-center justify-center">
-        {/* Outer Rotating Ring */}
-        <motion.div
-            className="absolute inset-0"
-            animate={{ rotate: 360 }}
-            transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-        >
-            <svg viewBox="0 0 100 100" className="w-full h-full opacity-20">
-                <path d="M50 5 L90 27 L90 73 L50 95 L10 73 L10 27 Z" fill="none" stroke={color} strokeWidth="2" strokeDasharray="10 5" />
-            </svg>
-        </motion.div>
-
-        {/* Core Hexagon */}
-        <div className="relative z-10">
-            <Hexagon size={24} style={{ color, fill: `${color}11` }} className={critical ? "animate-pulse" : ""} />
-            {critical && (
-                <div className="absolute inset-0 bg-current blur-md opacity-40 animate-pulse rounded-full" style={{ color }} />
-            )}
-        </div>
-    </div>
-);
 
 export function DirectiveHub() {
     const { theme } = useTheme();
+    const { proposals, activeVault, loading, refresh, isMultisig } = useVault();
     const mouseX = useMotionValue(0);
     const mouseY = useMotionValue(0);
     const containerRef = useRef<HTMLDivElement>(null);
+    const [refreshing, setRefreshing] = useState(false);
 
-    const handleMouseMove = ({ currentTarget, clientX, clientY }: React.MouseEvent) => {
+    const handleMouseMove = useCallback(({ currentTarget, clientX, clientY }: React.MouseEvent) => {
         const { left, top } = currentTarget.getBoundingClientRect();
         mouseX.set(clientX - left);
         mouseY.set(clientY - top);
-    };
+    }, [mouseX, mouseY]);
+
+    const handleRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await refresh();
+        setRefreshing(false);
+    }, [refresh]);
 
     const holographicBackground = useMotionTemplate`
         radial-gradient(
             400px circle at ${mouseX}px ${mouseY}px,
-            ${theme === 'light' ? 'rgba(22, 163, 74, 0.08)' : 'rgba(54, 226, 123, 0.08)'},
+            ${theme === 'light' ? 'rgba(22, 163, 74, 0.06)' : 'rgba(54, 226, 123, 0.06)'},
             transparent 80%
         )
     `;
+
+    const activeCount = useMemo(() =>
+        proposals.filter((p: Proposal) => p.status === "Active").length
+    , [proposals]);
+
+    const statusLine = useMemo(() => {
+        if (!activeVault) return "No address linked";
+        if (loading) return "Syncing...";
+        if (!isMultisig) return "Observer mode";
+        if (proposals.length === 0) return "No proposals";
+        return activeCount > 0 ? `${activeCount} pending` : "All resolved";
+    }, [activeVault, loading, proposals.length, activeCount, isMultisig]);
 
     return (
         <div
             ref={containerRef}
             onMouseMove={handleMouseMove}
-            className="bg-card backdrop-blur-[40px] border border-border rounded-[2rem] overflow-hidden flex flex-col h-full group/hub relative shadow-xl"
+            className="bg-card border border-border rounded-2xl overflow-hidden flex flex-col h-full group/hub relative shadow-sm"
         >
-            {/* Holographic Mouse Reflection */}
+            {/* Subtle Mouse Glow */}
             <motion.div
                 className="absolute inset-0 pointer-events-none z-0"
                 style={{ background: holographicBackground }}
             />
 
-            {/* Tactical Grid Background */}
-            <div className={`absolute inset-0 ${theme === 'light' ? 'opacity-[0.01]' : 'opacity-[0.03]'} pointer-events-none z-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay`} />
-
-            <div className="p-4 border-b border-border flex justify-between items-center bg-white/[0.03] z-10">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center relative overflow-hidden group-hover/hub:border-primary/50 transition-colors">
-                        <Cpu className="text-primary" size={16} />
-                        <motion.div
-                            className="absolute inset-0 bg-gradient-to-t from-transparent via-primary/20 to-transparent"
-                            animate={{ y: ["100%", "-100%"] }}
-                            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                        />
+            {/* Header */}
+            <div className="px-4 py-3 border-b border-border flex justify-between items-center z-10">
+                <div className="flex items-center gap-2.5">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                        isMultisig ? "bg-primary/10 border border-primary/20" : "bg-muted border border-border"
+                    }`}>
+                        {isMultisig ? <FileText className="text-primary" size={14} /> : <Eye className="text-muted-foreground" size={14} />}
                     </div>
                     <div>
-                        <h2 className="text-foreground font-black text-[10px] tracking-[0.3em] uppercase leading-none mb-1">Tactical Feed</h2>
-                        <div className="flex items-center gap-2">
-                            <span className="text-[8px] text-primary font-mono animate-pulse font-bold tracking-tighter opacity-70">OS_KERNEL::DIRECTIVES_READY</span>
-                        </div>
+                        <h2 className="text-foreground font-semibold text-xs leading-none mb-0.5">
+                            {isMultisig ? "Proposals" : "Governance"}
+                        </h2>
+                        <span className={`text-[10px] ${activeCount > 0 ? "text-amber-500" : "text-muted-foreground"}`}>
+                            {statusLine}
+                        </span>
                     </div>
                 </div>
-                <div className="flex flex-col items-end gap-0.5">
-                    <div className="text-[8px] text-foreground/40 font-mono tracking-widest uppercase">Enc_High</div>
-                    <div className="flex gap-0.5">
-                        {[1, 2, 3, 4].map(i => (
-                            <div key={i} className={`w-1 h-1 rounded-sm ${i <= 3 ? 'bg-primary' : 'bg-muted'}`} />
-                        ))}
-                    </div>
+                <div className="flex items-center gap-2">
+                    {activeVault && (
+                        <button
+                            onClick={handleRefresh}
+                            disabled={refreshing || loading}
+                            className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-40"
+                            aria-label="Refresh proposals"
+                        >
+                            <RefreshCw size={12} className={`text-muted-foreground ${refreshing || loading ? "animate-spin" : ""}`} />
+                        </button>
+                    )}
+                    {proposals.length > 0 && (
+                        <span className="text-[10px] text-muted-foreground tabular-nums">
+                            {proposals.length} total
+                        </span>
+                    )}
                 </div>
             </div>
 
-            <div className="p-3 flex flex-col gap-3 overflow-y-auto flex-1 custom-scrollbar z-10">
-                <AnimatePresence>
-                    {DIRECTIVES.map((directive, index) => (
+            {/* Proposals List */}
+            <div className="p-3 flex flex-col gap-2 overflow-y-auto flex-1 z-10">
+                <AnimatePresence mode="wait">
+                    {!activeVault ? (
                         <motion.div
-                            key={directive.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.1 }}
-                            className="relative group/directive"
+                            key="no-vault"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="flex-1 flex flex-col items-center justify-center gap-3 py-8 text-center"
                         >
-                            {/* Slanted Armor Card */}
-                            <div
-                                className="relative bg-background border border-border p-4 transition-all duration-500 hover:scale-[1.01] group-hover/directive:border-primary/40 overflow-hidden"
-                                style={{
-                                    clipPath: "polygon(0 0, 93% 0, 100% 15%, 100% 100%, 7% 100%, 0 85%)"
-                                }}
-                            >
-                                {/* Hex-Grid Overlay for Card Inner */}
-                                <div className="absolute inset-0 opacity-[0.05] pointer-events-none bg-[radial-gradient(var(--dashboard-accent)_1px,transparent_1px)] bg-[size:8px_8px]" />
-
-                                <div className="flex gap-3 relative z-10">
-                                    {/* Advanced Hex Node - Slightly Smaller */}
-                                    <div className="scale-75 origin-center">
-                                        <HexStatusNode
-                                            color={directive.priority === "CRITICAL" ? "#ff5b39" : (theme === 'light' ? "#16A34A" : "#36e27b")}
-                                            critical={directive.priority === "CRITICAL"}
-                                        />
-                                    </div>
-
-                                    <div className="flex-1 min-w-0 flex flex-col justify-center -ml-2">
-                                        <div className="flex justify-between items-center mb-0.5">
-                                            <div className="flex items-center gap-2">
-                                                <span className={`text-[9px] font-black tracking-[0.1em] uppercase ${directive.priority === "CRITICAL" ? "text-[#ff5b39]" : "text-primary"
-                                                    }`}>
-                                                    <CharacterShuffle text={directive.title} />
-                                                </span>
-                                                {directive.priority === "CRITICAL" && (
-                                                    <div className="px-1 py-0.2 bg-[#ff5b39]/10 border border-[#ff5b39]/30 rounded-[2px] leading-none">
-                                                        <span className="text-[7px] font-black text-[#ff5b39] animate-pulse">REQ</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <span className="text-[8px] font-mono text-foreground/20 font-bold uppercase tracking-widest">{directive.timestamp}</span>
-                                        </div>
-                                        <p className="text-[10px] text-muted-foreground mb-3 font-mono uppercase tracking-tight leading-none italic">{directive.subtitle}</p>
-
-                                        {/* Laser-Sync Progress Line */}
-                                        {directive.progress !== undefined && (
-                                            <div className="relative h-[2px] w-full bg-muted rounded-full">
-                                                <motion.div
-                                                    className="absolute h-full shadow-[0_0_8px_currentColor] bg-current"
-                                                    style={{ color: directive.priority === "CRITICAL" ? "#ff5b39" : (theme === 'light' ? "#16A34A" : "#36e27b") }}
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: `${directive.progress}%` }}
-                                                    transition={{ duration: 1.2, delay: 0.6, ease: "circOut" }}
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                            <div className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center">
+                                <Inbox size={18} className="text-muted-foreground" />
                             </div>
-
-                            {/* Tactical Corner Accent */}
-                            <div className="absolute top-0 right-0 w-8 h-8 pointer-events-none opacity-0 group-hover/directive:opacity-100 transition-opacity">
-                                <div className="absolute top-0 right-0 w-[1px] h-full bg-[#36e27b]/50" />
-                                <div className="absolute top-0 right-0 h-[1px] w-full bg-[#36e27b]/50" />
+                            <div>
+                                <p className="text-xs font-medium text-muted-foreground">No address connected</p>
+                                <p className="text-[10px] text-muted-foreground/60 mt-1">Paste any Solana address to get started</p>
                             </div>
                         </motion.div>
-                    ))}
+                    ) : !isMultisig ? (
+                        <motion.div
+                            key="observer"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="flex-1 flex flex-col items-center justify-center gap-3 py-8 px-4 text-center"
+                        >
+                            <div className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center">
+                                <Eye size={18} className="text-muted-foreground" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-medium text-foreground">Observer mode</p>
+                                <p className="text-[10px] text-muted-foreground/60 mt-1 leading-relaxed">
+                                    You&apos;re viewing a standard wallet. Upgrade to a
+                                    <br />Squads multisig to unlock team governance.
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => window.open("https://app.squads.so/create-squad", "_blank")}
+                                className="mt-1 px-3 py-1.5 flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors text-primary"
+                            >
+                                <Users size={12} />
+                                <span className="text-[10px] font-medium">Create a Squad</span>
+                                <ArrowUpRight size={10} />
+                            </button>
+                        </motion.div>
+                    ) : proposals.length === 0 ? (
+                        <motion.div
+                            key="empty"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="flex-1 flex flex-col items-center justify-center gap-3 py-8 text-center"
+                        >
+                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                <ShieldCheck size={18} className="text-primary" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-medium text-muted-foreground">All clear</p>
+                                <p className="text-[10px] text-muted-foreground/60 mt-1">No recent proposals found</p>
+                            </div>
+                        </motion.div>
+                    ) : (
+                        proposals.map((proposal: Proposal, index: number) => {
+                            const config = STATUS_CONFIG[proposal.status] || STATUS_CONFIG.Active;
+                            const sigProgress = Math.round((proposal.signatures / proposal.threshold) * 100);
+                            const StatusIcon = config.icon;
+
+                            return (
+                                <motion.div
+                                    key={proposal.pda}
+                                    initial={{ opacity: 0, y: 6 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -6 }}
+                                    transition={{ delay: index * 0.05 }}
+                                >
+                                    <div
+                                        className="bg-background border border-border rounded-xl p-3.5 transition-colors hover:border-primary/30 cursor-pointer group/card"
+                                        onClick={() => window.open(`https://explorer.solana.com/address/${proposal.pda}`, "_blank")}
+                                        role="button"
+                                        tabIndex={0}
+                                        aria-label={`${proposal.title} — ${config.label} — ${proposal.signatures} of ${proposal.threshold} signatures`}
+                                    >
+                                        <div className="flex items-start justify-between mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-semibold text-foreground">
+                                                    Proposal #{proposal.index}
+                                                </span>
+                                                {config.critical && (
+                                                    <span className="px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-[9px] font-medium text-amber-500">
+                                                        Needs signature
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <div className={`w-1.5 h-1.5 rounded-full ${config.dotColor} ${config.critical ? "animate-pulse" : ""}`} />
+                                                <span className={`text-[10px] font-medium ${config.color}`}>
+                                                    {config.label}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <p className="text-[11px] text-muted-foreground mb-2.5">
+                                            {proposal.signatures} of {proposal.threshold} signatures
+                                        </p>
+
+                                        {/* Signature Progress */}
+                                        <div className="relative h-1 w-full bg-muted rounded-full overflow-hidden">
+                                            <motion.div
+                                                className={`absolute h-full rounded-full ${config.critical ? "bg-amber-500" : "bg-primary"}`}
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${sigProgress}%` }}
+                                                transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+                                            />
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            );
+                        })
+                    )}
                 </AnimatePresence>
             </div>
 
-            {/* Tactical Footer Action - Compact */}
-            <div className="p-4 border-t border-border bg-white/[0.02] z-10">
-                <button className="w-full py-2 group/btn relative overflow-hidden flex items-center justify-center gap-2 rounded-lg border border-border hover:border-primary/30 transition-all">
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-1000" />
-                    <Activity size={14} className="text-primary" />
-                    <span className="text-[9px] font-black text-foreground tracking-[0.3em] uppercase group-hover/btn:text-primary transition-colors">INIT_VECT_ALL</span>
-                </button>
-            </div>
-
-            <style jsx global>{`
-                .custom-scrollbar::-webkit-scrollbar {
-                    width: 3px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background: rgba(255, 255, 255, 0.05);
-                    border-radius: 10px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                    background: rgba(54, 226, 123, 0.3);
-                }
-            `}</style>
+            {/* Footer */}
+            {activeVault && isMultisig && (
+                <div className="px-4 py-3 border-t border-border z-10">
+                    <button
+                        onClick={() => window.open(`https://app.squads.so/squads/${activeVault}`, "_blank")}
+                        className="w-full py-2 flex items-center justify-center gap-2 rounded-lg border border-border hover:border-primary/30 hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground"
+                        aria-label="Open vault in Squads"
+                    >
+                        <ExternalLink size={12} />
+                        <span className="text-[11px] font-medium">View on Squads</span>
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

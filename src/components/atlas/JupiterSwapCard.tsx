@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
@@ -19,7 +19,7 @@ export const JupiterSwapCard = () => {
       try {
         // Attempt to clean up any prior instance to avoid double-mount
         if (typeof Jupiter.destroy === "function") {
-          try {Jupiter.destroy();} catch {}
+          try { Jupiter.destroy(); } catch (_e) { /* prior instance cleanup failed — safe to ignore */ }
         }
         Jupiter.init({
           displayMode: "integrated",
@@ -83,10 +83,9 @@ export const JupiterSwapCard = () => {
             `;
             document.head.appendChild(st);
           }
-        } catch {}
-      } catch (e) {
-
-        // No-op; widget will simply not render
+        } catch (_e) { /* style injection failed — cosmetic only */ }
+      } catch (_e) {
+        // Jupiter widget init failed — widget will simply not render
       }};
 
     // Handle ESC key to close Jupiter modal
@@ -103,24 +102,22 @@ export const JupiterSwapCard = () => {
       }
     };
 
-    // If already loaded, init immediately
+    // Jupiter plugin script is loaded globally via layout.tsx (plugin-v1.js).
+    // Poll for window.Jupiter readiness instead of injecting a duplicate script.
     if ((window as any)?.Jupiter) {
       initJup();
     } else {
-      // Otherwise inject script once
-      const id = "jupiter-plugin-script";
-      if (!document.getElementById(id)) {
-        const s = document.createElement("script");
-        s.id = id;
-        s.src = "https://terminal.jup.ag/main-v2.js"; // Terminal is now Plugin; CDN kept for compatibility
-        s.async = true;
-        s.onload = initJup;
-        document.body.appendChild(s);
-      } else {
-        // If script tag exists but window.Jupiter not ready yet, wait a tick
-        const t = setTimeout(initJup, 50);
-        return () => clearTimeout(t);
-      }
+      let attempts = 0;
+      const poll = setInterval(() => {
+        attempts++;
+        if ((window as any)?.Jupiter) {
+          clearInterval(poll);
+          initJup();
+        } else if (attempts > 100) { // ~5s timeout
+          clearInterval(poll);
+        }
+      }, 50);
+      return () => clearInterval(poll);
     }
 
     document.addEventListener("keydown", handleEscKey);

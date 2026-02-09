@@ -6,7 +6,7 @@ import { useSelf } from "@/liveblocks.config";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Box, Play, Clock, MoreVertical, LayoutGrid } from "lucide-react";
+import { Loader2, Box, Play, Clock, MoreVertical, LayoutGrid, Store, Trash2, XCircle } from "lucide-react";
 import { Logo } from "@/components/icons";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
@@ -14,27 +14,87 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
+import { ListingModal } from "@/components/studio/ListingModal";
+import { toast } from "@/lib/toast-notifications";
+import { notify } from "@/lib/notifications";
 
 export default function LibraryPage() {
     const user = useSelf();
     const [apps, setApps] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [listingApp, setListingApp] = useState<any>(null);
+
+    function handleUninstall(app: any) {
+        try {
+            const library = JSON.parse(localStorage.getItem("keystone_library_apps") || "[]");
+            const updated = library.filter((a: any) => a.id !== app.id);
+            localStorage.setItem("keystone_library_apps", JSON.stringify(updated));
+            setApps(prev => prev.filter(a => a.id !== app.id));
+            toast.success(`"${app.name}" uninstalled`, {
+                description: "Removed from your Library.",
+            });
+        } catch (e) {
+            toast.error("Failed to uninstall.");
+        }
+    }
+
+    function handleDelist(app: any) {
+        try {
+            // Remove from marketplace listings
+            const listings = JSON.parse(localStorage.getItem("keystone_marketplace_listings") || "[]");
+            const updated = listings.filter((a: any) => a.id !== app.id);
+            localStorage.setItem("keystone_marketplace_listings", JSON.stringify(updated));
+
+            // Update library entry
+            const library = JSON.parse(localStorage.getItem("keystone_library_apps") || "[]");
+            const idx = library.findIndex((a: any) => a.id === app.id);
+            if (idx >= 0) {
+                library[idx].isPublished = false;
+                delete library[idx].priceUsdc;
+                localStorage.setItem("keystone_library_apps", JSON.stringify(library));
+            }
+
+            // Update local state
+            setApps(prev => prev.map(a => a.id === app.id ? { ...a, isPublished: false } : a));
+            toast.success(`"${app.name}" delisted`, {
+                description: "Removed from the Marketplace.",
+            });
+            notify.delist(app.name);
+        } catch (e) {
+            toast.error("Failed to delist.");
+        }
+    }
 
     useEffect(() => {
-        if (user?.info?.name) {
-            // Mock ID for now until we have real auth user ID
-            loadApps("7KeY...StUdIo");
-        } else {
-            // Try loading with mock ID anyway for demo
-            loadApps("7KeY...StUdIo");
-        }
+        loadApps();
     }, [user]);
 
-    async function loadApps(userId: string) {
+    async function loadApps() {
         try {
-            const data = await getInstalledApps(userId);
+            // Try DB first
+            const userId = user?.info?.name || "7KeY...StUdIo";
+            let data: any[] = [];
+            try {
+                data = await getInstalledApps(userId);
+            } catch {
+                // DB not available
+            }
+
+            // Merge with localStorage library
+            try {
+                const stored = JSON.parse(localStorage.getItem("keystone_library_apps") || "[]");
+                if (stored.length > 0) {
+                    const merged = [...stored, ...data];
+                    const unique = Array.from(new Map(merged.map((a: any) => [a.id, a])).values());
+                    data = unique;
+                }
+            } catch {
+                // localStorage parse error
+            }
+
             setApps(data);
         } catch (error) {
             console.error(error);
@@ -106,14 +166,18 @@ export default function LibraryPage() {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {apps.map((app) => (
-                            <Card key={app.id} className="group bg-zinc-900/40 border-zinc-800/60 backdrop-blur hover:bg-zinc-900/60 hover:border-emerald-400/20 transition-all duration-300 overflow-hidden">
+                            <Card key={app.id} className="group bg-card border-border backdrop-blur hover:border-emerald-400/30 transition-all duration-300 overflow-hidden shadow-sm hover:shadow-md">
                                 <CardHeader className="p-0">
-                                    <div className="h-32 bg-gradient-to-br from-zinc-900 to-black relative overflow-hidden group-hover:from-emerald-950/30 group-hover:to-zinc-900/80 transition-colors">
-                                        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+                                    <div className="h-32 bg-gradient-to-br from-muted to-muted/50 dark:from-zinc-900 dark:to-black relative overflow-hidden group-hover:from-emerald-100 group-hover:to-muted dark:group-hover:from-emerald-950/30 dark:group-hover:to-zinc-900/80 transition-colors">
+                                        {app.iconUrl ? (
+                                            <img src={app.iconUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-40 transition-opacity" />
+                                        ) : (
+                                            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+                                        )}
                                         <div className="absolute top-4 right-4">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-zinc-500 hover:text-white">
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground">
                                                         <MoreVertical size={14} />
                                                     </Button>
                                                 </DropdownMenuTrigger>
@@ -123,31 +187,62 @@ export default function LibraryPage() {
                                                             Edit Source
                                                         </Link>
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem className="text-red-400">Uninstall</DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem
+                                                        onClick={() => setListingApp(app)}
+                                                        className="text-primary"
+                                                    >
+                                                        <Store size={12} className="mr-2" />
+                                                        {app.isPublished ? "Update Listing" : "List on Marketplace"}
+                                                    </DropdownMenuItem>
+                                                    {app.isPublished && (
+                                                        <>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem
+                                                                onClick={() => handleDelist(app)}
+                                                                className="text-amber-400"
+                                                            >
+                                                                <XCircle size={12} className="mr-2" />
+                                                                Delist from Marketplace
+                                                            </DropdownMenuItem>
+                                                        </>
+                                                    )}
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem
+                                                        onClick={() => handleUninstall(app)}
+                                                        className="text-red-400"
+                                                    >
+                                                        <Trash2 size={12} className="mr-2" />
+                                                        Uninstall
+                                                    </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </div>
                                         <div className="absolute bottom-4 left-4">
-                                            <div className="w-10 h-10 rounded bg-black/50 backdrop-blur border border-white/10 flex items-center justify-center text-white shadow-xl">
-                                                <Box size={20} />
+                                            <div className="w-10 h-10 rounded bg-background/80 dark:bg-black/50 backdrop-blur border border-border flex items-center justify-center text-foreground shadow-xl overflow-hidden">
+                                                {app.iconUrl ? (
+                                                    <img src={app.iconUrl} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <Box size={20} />
+                                                )}
                                             </div>
                                         </div>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="p-5">
                                     <div className="flex justify-between items-start mb-2">
-                                        <h3 className="font-bold text-base text-zinc-200 group-hover:text-white truncate pr-2">
+                                        <h3 className="font-bold text-base text-foreground truncate pr-2">
                                             {app.name}
                                         </h3>
-                                        <Badge variant="secondary" className="text-[9px] h-4 bg-zinc-800 text-zinc-400 border-zinc-700/50">
+                                        <Badge variant="secondary" className="text-[9px] h-4 bg-muted text-muted-foreground border-border">
                                             {app.version}
                                         </Badge>
                                     </div>
-                                    <p className="text-xs text-zinc-500 line-clamp-2 h-8 mb-4">
+                                    <p className="text-xs text-muted-foreground line-clamp-2 h-8 mb-4">
                                         {app.description}
                                     </p>
 
-                                    <div className="flex items-center justify-between text-[10px] text-zinc-600 font-mono">
+                                    <div className="flex items-center justify-between text-[10px] text-muted-foreground/70 font-mono">
                                         <span className="flex items-center gap-1">
                                             <Clock size={10} />
                                             {formatDistanceToNow(new Date(app.updatedAt), { addSuffix: true })}
@@ -159,7 +254,7 @@ export default function LibraryPage() {
                                 </CardContent>
                                 <CardFooter className="p-4 pt-0">
                                     <Link href={`/app/run/${app.id}`} className="w-full">
-                                        <Button className="w-full gap-2 text-xs font-bold uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 hover:text-emerald-300">
+                                        <Button className="w-full gap-2 text-xs font-bold uppercase tracking-widest bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 hover:text-emerald-700 dark:hover:text-emerald-300">
                                             <Play size={12} fill="currentColor" />
                                             Launch App
                                         </Button>
@@ -170,6 +265,17 @@ export default function LibraryPage() {
                     </div>
                 )}
             </div>
+            {listingApp && (
+                <ListingModal
+                    open={!!listingApp}
+                    onOpenChange={(open) => { if (!open) setListingApp(null); }}
+                    app={listingApp}
+                    onSuccess={() => {
+                        setListingApp(null);
+                        loadApps();
+                    }}
+                />
+            )}
         </div>
     );
 }

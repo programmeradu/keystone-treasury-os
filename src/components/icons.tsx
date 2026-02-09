@@ -253,6 +253,28 @@ export const LayoutGrid = ({ size = 20, ...props }: IconProps) => (
     </svg>
 );
 
+/** Foresight Icon — geometric prism refracting forward-projecting rays.
+ *  Used for simulation / foresight mode indicators across the app. */
+export const ForesightIcon = ({ size = 20, fillColor = "currentColor", ...props }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+        {/* Prism body */}
+        <path
+            d="M4 19L12 3L20 19H4Z"
+            stroke={fillColor}
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+        />
+        {/* Refracted light rays projecting forward */}
+        <line x1="12" y1="11" x2="22" y2="7" stroke={fillColor} strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
+        <line x1="12" y1="13" x2="22" y2="13" stroke={fillColor} strokeWidth="1.2" strokeLinecap="round" opacity="0.5" />
+        <line x1="12" y1="15" x2="22" y2="19" stroke={fillColor} strokeWidth="1.2" strokeLinecap="round" opacity="0.3" />
+        {/* Incoming beam */}
+        <line x1="2" y1="13" x2="8" y2="13" stroke={fillColor} strokeWidth="1.2" strokeLinecap="round" opacity="0.4" />
+        {/* Core node */}
+        <circle cx="12" cy="13" r="1.5" fill={fillColor} opacity="0.9" />
+    </svg>
+);
+
 export const ArchitectIcon = ({ size = 20, fillColor = "currentColor", ...props }: IconProps) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
         {/* Foundation */}

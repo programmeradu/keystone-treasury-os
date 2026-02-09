@@ -6,6 +6,7 @@ import { getAvatarUrl } from "@/lib/avatars";
 import { Wallet, MoreHorizontal } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTheme } from "@/lib/contexts/ThemeContext";
+import { useRouter } from "next/navigation";
 
 const STREAMS = [
     { id: 1, name: "Alex Dev", rate: "2.5k", avatar: getAvatarUrl("Alex Dev") },
@@ -15,6 +16,7 @@ const STREAMS = [
 
 export function PayrollStreams() {
     const { theme } = useTheme();
+    const router = useRouter();
     const visualizerRef = useRef<HTMLDivElement>(null);
     const treasuryRef = useRef<HTMLDivElement>(null);
     const payeeRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
@@ -87,7 +89,11 @@ export function PayrollStreams() {
                     <h2 className="text-muted-foreground uppercase tracking-widest text-xs font-semibold mb-1">Payroll Streams</h2>
                     <p className="text-xl font-bold text-foreground">4,500 USDC <span className="text-muted-foreground text-sm font-normal">/ month flowing</span></p>
                 </div>
-                <button className="p-2 rounded-full hover:bg-muted/10 transition-colors text-muted-foreground">
+                <button
+                    onClick={() => router.push("/app/treasury")}
+                    className="p-2 rounded-full hover:bg-muted/10 transition-colors text-muted-foreground"
+                    title="Manage payroll in Treasury"
+                >
                     <MoreHorizontal size={20} />
                 </button>
             </div>

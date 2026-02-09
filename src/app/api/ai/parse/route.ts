@@ -1,10 +1,32 @@
 import { NextRequest } from "next/server";
 
-// Heuristic parser for NL prompts → structured intent and steps
+// Solana-native NLP parser for Strategy Lab
+// Maps natural language → { action, amount, asset, venue, confidence }
 // No external keys required. Deterministic, fast, and safe defaults.
+
+const SOLANA_TOKENS: Record<string, string> = {
+  sol: "SOL", msol: "mSOL", stsol: "stSOL", jitosol: "jitoSOL",
+  usdc: "USDC", usdt: "USDT",
+  jup: "JUP", bonk: "BONK", wif: "WIF", jto: "JTO",
+  pyth: "PYTH", orca: "ORCA", ray: "RAY", mnde: "MNDE",
+  drift: "DRIFT", tnsr: "TNSR", render: "RENDER", mobile: "MOBILE",
+  hnt: "HNT", samo: "SAMO", dust: "DUST", step: "STEP",
+};
+
+const VENUES: Record<string, string[]> = {
+  jupiter: ["jupiter", "jup.ag", "jup"],
+  marinade: ["marinade", "mnde"],
+  orca: ["orca", "whirlpool"],
+  raydium: ["raydium", "ray"],
+  kamino: ["kamino"],
+  drift: ["drift"],
+  marginfi: ["marginfi", "mrgn"],
+  solend: ["solend"],
+  sanctum: ["sanctum"],
+};
+
 export async function POST(req: NextRequest) {
   try {
-    // Accept both { prompt } and { text } payloads for client compatibility
     const body = (await req.json()) as { prompt?: string; text?: string };
     const raw = body?.prompt ?? body?.text ?? "";
     if (!raw.trim()) {
@@ -12,85 +34,95 @@ export async function POST(req: NextRequest) {
     }
 
     const original = String(raw);
-    const lower = original.toLowerCase();
+    const lower = original.toLowerCase().replace(/,/g, "");
 
-    // Amount parsing: e.g., 100k, 2.5m, 75,000, 1
-    const normalized = lower.replace(/,/g, "");
-    const amtMatch = normalized.match(/(\d+(?:\.\d+)?)(\s*)(k|m|b)?/);
+    // ── Amount parsing ──────────────────────────────────────────────
+    const amtMatch = lower.match(/(\d+(?:\.\d+)?)\s*(k|m|b)?\s*(sol|usdc|usdt|msol|jup|bonk|wif|jto|pyth|orca|ray)?/);
     let amount = amtMatch ? parseFloat(amtMatch[1]) : undefined;
-    const mag = amtMatch?.[3]?.toLowerCase();
+    const mag = amtMatch?.[2]?.toLowerCase();
     if (amount && mag) {
-      const mult = mag === "k" ? 1e3 : mag === "m" ? 1e6 : mag === "b" ? 1e9 : 1;
-      amount = amount * mult;
+      amount *= mag === "k" ? 1e3 : mag === "m" ? 1e6 : mag === "b" ? 1e9 : 1;
     }
 
-    // Token detection (expanded)
-    const tokenMap = ["usdc", "eth", "weth", "dai", "usdt", "wbtc", "btc", "op", "arb", "baseeth"];
-    const token = tokenMap.find((t) => lower.includes(t))?.toUpperCase() || undefined;
+    // ── Token detection ─────────────────────────────────────────────
+    let sellToken: string | undefined;
+    let buyToken: string | undefined;
 
-    // Chain detection
-    const chainSynonyms: Record<string, string[]> = {
-      ethereum: ["eth", "ethereum", "mainnet"],
-      base: ["base"],
-      polygon: ["polygon", "matic"],
-      arbitrum: ["arbitrum", "arb"],
-      optimism: ["optimism", "op"],
-      avalanche: ["avalanche", "avax"],
-    };
-
-    function detectChain(segment: string): string | undefined {
-      const s = segment.toLowerCase();
-      for (const [key, vals] of Object.entries(chainSynonyms)) {
-        if (vals.some((v) => s.includes(v))) return key;
-      }
-      return undefined;
+    // "swap X SOL to/for USDC" pattern
+    const swapPairMatch = lower.match(/(?:swap|convert|exchange)\s+(?:\d+(?:\.\d+)?\s*(?:k|m|b)?\s*)?(\w+)\s+(?:to|for|into)\s+(\w+)/);
+    if (swapPairMatch) {
+      sellToken = SOLANA_TOKENS[swapPairMatch[1]] || swapPairMatch[1].toUpperCase();
+      buyToken = SOLANA_TOKENS[swapPairMatch[2]] || swapPairMatch[2].toUpperCase();
     }
 
-    const fromChain = /from\s+([a-z0-9\- ]+)/i.test(original)
-      ? detectChain(original.match(/from\s+([a-z0-9\- ]+)/i)! [1])
-      : detectChain(original);
-    const toChain = /to\s+([a-z0-9\- ]+)/i.test(original)
-      ? detectChain(original.match(/to\s+([a-z0-9\- ]+)/i)! [1])
-      : undefined;
+    // General token detection from text
+    const detectedTokens: string[] = [];
+    for (const [key, sym] of Object.entries(SOLANA_TOKENS)) {
+      // Word-boundary match to avoid "solve" matching "sol"
+      const regex = new RegExp(`\\b${key}\\b`, "i");
+      if (regex.test(lower)) detectedTokens.push(sym);
+    }
+    if (!sellToken && detectedTokens.length > 0) sellToken = detectedTokens[0];
+    if (!buyToken && detectedTokens.length > 1) buyToken = detectedTokens[1];
 
-    // Constraints
-    const slippageMatch = lower.match(/(?:<|<=|under|less than)\s*(\d+(?:\.\d+)?)%\s*slippage/) || lower.match(/slippage\s*(\d+(?:\.\d+)?)%/);
-    const slippage = slippageMatch ? parseFloat(slippageMatch[1]) : undefined;
-    const horizonMatch = lower.match(/(\d+)\s*(day|days|month|months|year|years)/);
-    const horizon = horizonMatch ? `${horizonMatch[1]} ${horizonMatch[2]}` : undefined;
-    const vestMatch = lower.match(/(\d+)%\s*(?:over|for)\s*(\d+)\s*(months?|years?)/i);
-    const vestPercent = vestMatch ? parseFloat(vestMatch[1]) : undefined;
-    const vestMonths = vestMatch ? parseInt(vestMatch[2]) * (vestMatch[3].startsWith("year") ? 12 : 1) : undefined;
+    // ── Venue detection ─────────────────────────────────────────────
+    let venue: string | undefined;
+    for (const [name, keywords] of Object.entries(VENUES)) {
+      if (keywords.some((k) => lower.includes(k))) { venue = name; break; }
+    }
 
-    // Step detection
-    const steps: Array<{ type: string; params?: Record<string, any> }> = [];
-    const pushUnique = (type: string, params: Record<string, any> = {}) => {
-      if (!steps.find((s) => s.type === type)) steps.push({ type, params });
-    };
+    // ── Slippage ────────────────────────────────────────────────────
+    const slipMatch = lower.match(/(\d+(?:\.\d+)?)\s*%?\s*slippage/) || lower.match(/slippage\s*(\d+(?:\.\d+)?)\s*%?/);
+    const slippage = slipMatch ? parseFloat(slipMatch[1]) : undefined;
 
-    if (lower.includes("bridge")) pushUnique("bridge", { amount, token, fromChain, toChain, slippage });
-    if (lower.includes("swap")) pushUnique("swap", { amount, sellToken: token, buyToken: token === "ETH" ? "USDC" : "USDC", slippage });
-    if (lower.includes("stake") || lower.includes("lend") || lower.includes("deposit")) pushUnique("yield", { asset: token, chain: toChain || fromChain, horizon });
-    if (lower.includes("vest")) pushUnique("vest", { percent: vestPercent, months: vestMonths });
-    if (lower.includes("gas")) pushUnique("gas", { chain: fromChain || "ethereum" });
+    // ── Action detection ────────────────────────────────────────────
+    let action: "stake" | "swap" | "lp" | "dca" | "lend" | "hold" | undefined;
 
-    // Default when no obvious action, assume analysis/yield
-    if (steps.length === 0) pushUnique("yield", { asset: token || "USDC", chain: toChain || fromChain || "base", horizon: horizon || "30 days" });
+    if (/\b(stake|staking|deposit.*marinade|liquid.?staking)\b/.test(lower)) action = "stake";
+    else if (/\b(swap|exchange|convert|trade|buy|sell)\b/.test(lower)) action = "swap";
+    else if (/\b(lp|liquidity|pool|provide.?liquidity|add.?liquidity)\b/.test(lower)) action = "lp";
+    else if (/\b(dca|dollar.?cost|auto.?buy|recurring)\b/.test(lower)) action = "dca";
+    else if (/\b(lend|borrow|supply|deposit)\b/.test(lower)) action = "lend";
+    else if (/\b(hold|hodl|keep)\b/.test(lower)) action = "hold";
 
-    const intent = steps.length > 1 ? "plan" : steps[0].type;
+    // Default: if we have an amount + SOL and no action, assume stake
+    if (!action && sellToken === "SOL" && amount) action = "stake";
+    // If we still have nothing, default to swap
+    if (!action) action = "swap";
 
-    const confidence = Math.min(0.9, 0.5 + (steps.length > 1 ? 0.2 : 0) + (token ? 0.1 : 0) + (amount ? 0.1 : 0));
+    // ── Auto-infer venue if not specified ────────────────────────────
+    if (!venue) {
+      if (action === "stake") venue = "marinade";
+      else if (action === "swap") venue = "jupiter";
+      else if (action === "lp") venue = "orca";
+      else if (action === "lend") venue = "marginfi";
+    }
 
-    const entities = { amount, token, fromChain, toChain, slippage, horizon, vestPercent, vestMonths };
+    // ── Default tokens ──────────────────────────────────────────────
+    if (!sellToken) sellToken = "SOL";
+    if (action === "swap" && !buyToken) buyToken = sellToken === "SOL" ? "USDC" : "SOL";
 
-    const references = [
-      { label: "Oracle Docs: Supported Chains", url: "/#showcase" },
-      { label: "Gas RPC Example", url: "/api/rpc" },
-      { label: "Yields API", url: "/api/yields" },
-    ];
+    // ── Confidence scoring ──────────────────────────────────────────
+    let confidence = 0.4;
+    if (action) confidence += 0.2;
+    if (amount) confidence += 0.15;
+    if (sellToken) confidence += 0.1;
+    if (venue) confidence += 0.05;
+    if (swapPairMatch) confidence += 0.1;
+    confidence = Math.min(0.95, confidence);
 
     return new Response(
-      JSON.stringify({ ok: true, intent, steps, entities, confidence, references }),
+      JSON.stringify({
+        ok: true,
+        action,
+        amount,
+        asset: sellToken,
+        buyAsset: buyToken,
+        venue,
+        slippage,
+        confidence,
+        detectedTokens,
+      }),
       { status: 200, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } }
     );
   } catch (err: any) {

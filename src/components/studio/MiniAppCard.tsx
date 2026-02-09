@@ -16,6 +16,7 @@ interface MiniAppCardProps {
         installs: number;
         creatorWallet: string;
         category: string;
+        iconUrl?: string;
     };
     onInstall?: () => void;
 }
@@ -29,9 +30,9 @@ export function MiniAppCard({ app, onInstall }: MiniAppCardProps) {
 
             <div className="relative z-10 flex flex-col h-full">
                 <div className="flex justify-between items-start mb-5">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-white/10 to-transparent border border-white/5 flex items-center justify-center shrink-0 shadow-inner group-hover:scale-110 transition-transform duration-300">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-white/10 to-transparent border border-white/5 flex items-center justify-center shrink-0 shadow-inner group-hover:scale-110 transition-transform duration-300 overflow-hidden">
                         <Avatar className="h-full w-full rounded-2xl">
-                            <AvatarImage src={`https://api.dicebear.com/7.x/shapes/svg?seed=${app.id}`} />
+                            <AvatarImage src={app.iconUrl || `https://api.dicebear.com/7.x/shapes/svg?seed=${app.id}`} />
                             <AvatarFallback><Zap size={24} className="text-primary" /></AvatarFallback>
                         </Avatar>
                     </div>
@@ -43,7 +44,7 @@ export function MiniAppCard({ app, onInstall }: MiniAppCardProps) {
                             </span>
                         ) : (
                             <span className="px-2 py-1 rounded-md bg-primary/10 border border-primary/20 text-[10px] font-black uppercase tracking-wider text-primary shadow-[0_0_8px_rgba(54,226,123,0.2)]">
-                                ${app.priceUsdc} USDC
+                                {app.priceUsdc} SOL
                             </span>
                         )}
                         <Badge variant="outline" className="text-[9px] font-mono opacity-50 border-white/10 uppercase tracking-widest">

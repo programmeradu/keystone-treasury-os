@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, Shield, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
-import { toast } from "sonner";
+import { Loader2, AlertTriangle, CheckCircle2, XCircle, Rocket } from "lucide-react";
+import { toast } from "@/lib/toast-notifications";
 import { IconTokenAuditor } from "@/components/ui/icons";
 
 export function RugPullDetector() {
@@ -197,19 +197,20 @@ export function RugPullDetector() {
               {result.launchPreparedness && (
                 <div className="space-y-2 border-t pt-3">
                   <div className="font-medium text-xs flex items-center gap-2">
-                    <span>🚀 Launch Preparedness</span>
+                    <Rocket className="h-3.5 w-3.5" />
+                    <span>Launch Preparedness</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-[11px]">
                     <div className="rounded-md p-2 bg-card/60">
                       <div className="opacity-70">Upgradeable</div>
                       <div className="font-mono font-medium">
-                        {result.launchPreparedness.isUpgradeable ? "⚠️ Yes" : "✓ No"}
+                        {result.launchPreparedness.isUpgradeable ? <span className="flex items-center gap-1"><AlertTriangle className="h-3 w-3 text-amber-500" />Yes</span> : <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-emerald-500" />No</span>}
                       </div>
                     </div>
                     <div className="rounded-md p-2 bg-card/60">
                       <div className="opacity-70">Admin Functions</div>
                       <div className="font-mono font-medium">
-                        {result.launchPreparedness.hasAdminFunctions ? "⚠️ Yes" : "✓ No"}
+                        {result.launchPreparedness.hasAdminFunctions ? <span className="flex items-center gap-1"><AlertTriangle className="h-3 w-3 text-amber-500" />Yes</span> : <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-emerald-500" />No</span>}
                       </div>
                     </div>
                     <div className="rounded-md p-2 bg-card/60">
@@ -219,9 +220,9 @@ export function RugPullDetector() {
                     <div className="rounded-md p-2 bg-card/60">
                       <div className="opacity-70">Whale Risk</div>
                       <div className="font-mono font-medium capitalize">
-                        {result.launchPreparedness.whaleThreshold === "high" && "🔴 High"}
-                        {result.launchPreparedness.whaleThreshold === "medium" && "🟡 Medium"}
-                        {result.launchPreparedness.whaleThreshold === "low" && "🟢 Low"}
+                        {result.launchPreparedness.whaleThreshold === "high" && <span className="flex items-center gap-1"><XCircle className="h-3 w-3 text-red-500" />High</span>}
+                        {result.launchPreparedness.whaleThreshold === "medium" && <span className="flex items-center gap-1"><AlertTriangle className="h-3 w-3 text-amber-500" />Medium</span>}
+                        {result.launchPreparedness.whaleThreshold === "low" && <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-emerald-500" />Low</span>}
                       </div>
                     </div>
                   </div>

@@ -1,20 +1,54 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { getProject } from "@/actions/studio-actions";
 import { LivePreview } from "@/components/studio/LivePreview";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
-interface RunPageProps {
-    params: Promise<{
-        appId: string;
-    }>;
-}
+export default function RunPage() {
+    const params = useParams();
+    const appId = params.appId as string;
 
-export default async function RunPage({ params }: RunPageProps) {
-    const { appId } = await params;
-    const project = await getProject(appId);
+    const [project, setProject] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function load() {
+            // Try localStorage first
+            try {
+                const stored = JSON.parse(localStorage.getItem("keystone_library_apps") || "[]");
+                const found = stored.find((a: any) => a.id === appId);
+                if (found) {
+                    setProject(found);
+                    setLoading(false);
+                    return;
+                }
+            } catch {}
+
+            // Fall back to DB
+            try {
+                const data = await getProject(appId);
+                if (data) {
+                    setProject(data);
+                }
+            } catch {}
+
+            setLoading(false);
+        }
+        load();
+    }, [appId]);
+
+    if (loading) {
+        return (
+            <div className="h-screen flex flex-col items-center justify-center bg-background text-foreground gap-4">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold">Loading App...</p>
+            </div>
+        );
+    }
 
     if (!project) {
         return (
@@ -35,7 +69,7 @@ export default async function RunPage({ params }: RunPageProps) {
     const files: Record<string, { name: string; content: string; language: string }> = {};
     if (project.code && typeof project.code === 'object' && 'files' in project.code) {
         const storedFiles = (project.code as any).files;
-        Object.keys(storedFiles).forEach(fileName => {
+        Object.keys(storedFiles).forEach((fileName: string) => {
             const ext = fileName.split('.').pop() || '';
             const langMap: Record<string, string> = {
                 'tsx': 'typescript',

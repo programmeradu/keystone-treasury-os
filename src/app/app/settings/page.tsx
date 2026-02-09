@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useState } from "react";
+import React, { Suspense, useState, useEffect, useRef } from "react";
 import { Settings as SettingsIcon, Shield, Bell, Key, Smartphone, Users, Fingerprint, Cpu, Scan, CreditCard, Lock, Zap, Gavel, LayoutGrid } from "lucide-react";
 import { RiskProfileSelector } from "@/components/agents/RiskProfileSelector";
 import { Logo } from "@/components/icons";
@@ -11,15 +11,36 @@ import { NotificationsView } from "@/components/settings/NotificationsView";
 import { ApiKeysView } from "@/components/settings/ApiKeysView";
 import { BillingView } from "@/components/settings/BillingView";
 import { NetworkSelector } from "@/components/NetworkSelector";
+import { useNotificationStore } from "@/lib/notifications";
+import { toast } from "@/lib/toast-notifications";
 
 type SettingsView = "general" | "profile" | "notifications" | "api" | "billing";
 
 export default function SettingsPage() {
     const [currentView, setCurrentView] = useState<SettingsView>("general");
+    const unreadCount = useNotificationStore((s) => s.notifications.filter((n) => !n.read).length);
+    const deferredPrompt = useRef<any>(null);
+
+    useEffect(() => {
+        const handler = (e: Event) => { e.preventDefault(); deferredPrompt.current = e; };
+        window.addEventListener("beforeinstallprompt", handler);
+        return () => window.removeEventListener("beforeinstallprompt", handler);
+    }, []);
+
+    const handleInstallPwa = async () => {
+        if (deferredPrompt.current) {
+            deferredPrompt.current.prompt();
+            const result = await deferredPrompt.current.userChoice;
+            if (result.outcome === "accepted") toast.success("PWA installed!");
+            deferredPrompt.current = null;
+        } else {
+            toast.info("To install: use your browser's \"Install App\" option (or Add to Home Screen on mobile).");
+        }
+    };
 
     const renderContent = () => {
         switch (currentView) {
-            case "profile": return <ProfileView />;
+            case "profile": return <ProfileView onNavigate={(view: string) => setCurrentView(view as SettingsView)} />;
             case "notifications": return <NotificationsView />;
             case "api": return <ApiKeysView />;
             case "billing": return <BillingView />;
@@ -63,7 +84,10 @@ export default function SettingsPage() {
                                     Vault policies are immutable and managed directly via the Squads Protocol on-chain.
                                 </p>
                             </div>
-                            <button className="px-5 py-2.5 rounded-lg bg-primary hover:opacity-90 text-primary-foreground text-xs font-black uppercase transition-all flex items-center gap-2 shadow-sm">
+                            <button
+                                onClick={() => window.open("https://explorer.solana.com", "_blank")}
+                                className="px-5 py-2.5 rounded-lg bg-primary hover:opacity-90 text-primary-foreground text-xs font-black uppercase transition-all flex items-center gap-2 shadow-sm"
+                            >
                                 View On-Chain Policy <ExternalIcon />
                             </button>
                         </div>
@@ -130,7 +154,7 @@ export default function SettingsPage() {
                                 <SettingsItem
                                     icon={Bell}
                                     label="Notifications"
-                                    badge="2"
+                                    badge={unreadCount > 0 ? String(unreadCount) : undefined}
                                     active={currentView === "notifications"}
                                     onClick={() => setCurrentView("notifications")}
                                 />
@@ -159,7 +183,10 @@ export default function SettingsPage() {
                                 <p className="text-xs text-muted-foreground mb-6 leading-relaxed uppercase tracking-widest font-black">
                                     Securely sign transactions via PWA. Biometric simulation enabled for testing.
                                 </p>
-                                <button className="w-full py-3 rounded-lg bg-muted/50 hover:bg-muted text-xs font-black text-foreground transition-all border border-border hover:border-primary/20 flex items-center justify-center gap-2 group-hover:shadow-[0_0_15px_var(--dashboard-accent-muted)] uppercase">
+                                <button
+                                    onClick={handleInstallPwa}
+                                    className="w-full py-3 rounded-lg bg-muted/50 hover:bg-muted text-xs font-black text-foreground transition-all border border-border hover:border-primary/20 flex items-center justify-center gap-2 group-hover:shadow-[0_0_15px_var(--dashboard-accent-muted)] uppercase"
+                                >
                                     <Smartphone size={14} />
                                     Install PWA
                                 </button>
@@ -173,8 +200,8 @@ export default function SettingsPage() {
                         </div>
                     </div>
                 </div>
+            </main>
         </div>
-        </main >
     );
 }
 

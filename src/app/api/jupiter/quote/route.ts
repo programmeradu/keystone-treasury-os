@@ -6,14 +6,25 @@ export async function GET(request: NextRequest) {
   const outputMint = searchParams.get("outputMint");
   const amount = searchParams.get("amount");
   const slippageBps = searchParams.get("slippageBps");
+  const dexes = searchParams.get("dexes"); // Restrict route to specific DEX(es)
+  const excludeDexes = searchParams.get("excludeDexes");
+  const onlyDirectRoutes = searchParams.get("onlyDirectRoutes");
 
   if (!inputMint || !outputMint || !amount) {
     return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
   }
 
   try {
-    const jupUrl = `https://quote-api.jup.ag/v6/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=${slippageBps || 50}`;
-    const response = await fetch(jupUrl);
+    const jupUrl = new URL("https://lite-api.jup.ag/swap/v1/quote");
+    jupUrl.searchParams.set("inputMint", inputMint);
+    jupUrl.searchParams.set("outputMint", outputMint);
+    jupUrl.searchParams.set("amount", amount);
+    jupUrl.searchParams.set("slippageBps", slippageBps || "50");
+    if (dexes) jupUrl.searchParams.set("dexes", dexes);
+    if (excludeDexes) jupUrl.searchParams.set("excludeDexes", excludeDexes);
+    if (onlyDirectRoutes) jupUrl.searchParams.set("onlyDirectRoutes", onlyDirectRoutes);
+
+    const response = await fetch(jupUrl.toString());
 
     if (!response.ok) {
       throw new Error(`Jupiter External API Error: ${response.status}`);
@@ -22,7 +33,6 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error: any) {
-    console.error("Jupiter Proxy Error:", error);
     return NextResponse.json({ error: "Failed to fetch quote", details: error.message }, { status: 500 });
   }
 }

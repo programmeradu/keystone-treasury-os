@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { SquadsClient } from "@/lib/squads";
 import { useAppEvent, AppEventBus } from "@/lib/events";
 import { IntentRegistry } from "@/lib/agents/registry";
 import { WalletButton } from "@/components/WalletButton";
-import { RefreshCw, ChevronDown, Bell } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { RefreshCw, ChevronDown } from "lucide-react";
+import { NotificationBell } from "@/components/NotificationBell";
 import { VaultTable } from "@/components/VaultTable";
 import { TreasuryChart } from "@/components/TreasuryChart";
 import { CollaborativeHeader } from "@/components/CollaborativeHeader";
@@ -36,10 +35,9 @@ interface TokenAccount {
 
 export default function AppPortalPage() {
   const { connection } = useConnection();
-  const { setActiveVault, refresh, vaultValue, vaultChange24h, loading, vaultTokens } = useVault();
+  const { activeVault, refresh, vaultValue, vaultChange24h, loading, vaultTokens } = useVault();
   const { theme } = useTheme();
   const { network, setNetwork } = useNetwork();
-  const [localVaultAddress, setLocalVaultAddress] = useState("");
 
   useAppEvent((event) => {
     if (event.type === "REFRESH_DASHBOARD") {
@@ -86,11 +84,6 @@ export default function AppPortalPage() {
     return () => clearInterval(pulseInterval);
   }, [connection]);
 
-  const handleSyncVault = async () => {
-    if (!localVaultAddress) return;
-    setActiveVault(localVaultAddress);
-    // refreshing is handled by VaultContext's useEffect on activeVault change
-  };
 
   return (
     <div className="flex-1 flex flex-col h-screen bg-background overflow-hidden relative">
@@ -107,10 +100,7 @@ export default function AppPortalPage() {
         </div>
 
         <div className="flex items-center gap-4">
-          <button className="p-2 rounded-lg hover:bg-muted text-muted-foreground transition-colors relative">
-            <Bell size={18} />
-            <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-primary" />
-          </button>
+          <NotificationBell />
           <button
             onClick={() => setNetwork(network === 'mainnet-beta' ? 'devnet' : 'mainnet-beta')}
             className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border transition-colors ${network === 'mainnet-beta' ? 'bg-primary/10 border-primary/20 hover:bg-primary/20' : 'bg-orange-500/10 border-orange-500/20 hover:bg-orange-500/20'}`}
@@ -155,19 +145,15 @@ export default function AppPortalPage() {
               </div>
 
               <div className="mt-4 flex items-center gap-3 relative z-10">
-                <Input
-                  className="h-8 w-56 bg-input border-border text-foreground placeholder:text-muted-foreground/30 rounded-lg text-xs font-mono shadow-inner"
-                  placeholder="Enter Vault Address..."
-                  value={localVaultAddress}
-                  onChange={(e) => setLocalVaultAddress(e.target.value)}
-                />
-                <Button
-                  className="h-8 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-lg shadow-md text-xs px-4"
-                  onClick={handleSyncVault}
-                  disabled={loading}
-                >
-                  {loading ? "Syncing..." : "Sync Vault"}
-                </Button>
+                {activeVault ? (
+                  <div className="flex items-center gap-2 h-8 px-3 bg-primary/10 border border-primary/20 rounded-lg">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                    <span className="text-[10px] font-mono text-primary">{activeVault.slice(0, 4)}...{activeVault.slice(-4)}</span>
+                    {loading && <span className="text-[9px] text-primary/60 font-mono">Syncing...</span>}
+                  </div>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground/50 font-mono">No vault — connect via sidebar</span>
+                )}
               </div>
             </div>
           </div>

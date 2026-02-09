@@ -36,7 +36,8 @@ type UserMeta = {
 type RoomEvent =
     | { type: "SIGNAL"; payload: any }
     | { type: "PROPOSAL_SIGNED"; payload: { proposalId: number; signer: string } }
-    | { type: "SIMULATION_RESULT"; payload: { proposalId: number; result: any } };
+    | { type: "SIMULATION_RESULT"; payload: { proposalId: number; result: any } }
+    | { type: "DISTRIBUTION_SAVED"; payload: { name: string; count: number } };
 
 const roomContext = createRoomContext<Presence, Storage, UserMeta, RoomEvent>(client);
 

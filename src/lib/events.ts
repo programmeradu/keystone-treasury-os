@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 type AppEventType = "REFRESH_DASHBOARD" | "NAVIGATE" | "UI_NOTIFICATION" | "AGENT_COMMAND" | "SHOW_STRATEGY_MODAL" | "AGENT_LOG";
 
@@ -36,9 +36,14 @@ export const AppEventBus = {
 
 /**
  * Hook for components to listen to app events.
+ * Uses a ref to hold the latest callback so the subscription is stable
+ * and doesn't re-attach on every render.
  */
 export function useAppEvent(callback: (event: AppEvent) => void) {
+    const callbackRef = useRef(callback);
+    callbackRef.current = callback;
+
     useEffect(() => {
-        return AppEventBus.subscribe(callback);
-    }, [callback]);
+        return AppEventBus.subscribe((event) => callbackRef.current(event));
+    }, []);
 }

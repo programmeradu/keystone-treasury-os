@@ -16,6 +16,9 @@ import { TreasurySidebar } from "@/components/treasury/TreasurySidebar";
 import { TreasuryRightPanel } from "@/components/treasury/TreasuryRightPanel";
 import { VaultAssetsView } from "@/components/treasury/VaultAssetsView";
 import { NetworkSelector } from "@/components/NetworkSelector";
+import { useVault } from "@/lib/contexts/VaultContext";
+import { toast } from "@/lib/toast-notifications";
+import { useRouter } from "next/navigation";
 
 type Module = "OPERATIONS" | "STREAMING" | "GOVERNANCE" | "DATA" | "SETTINGS" | "VAULT";
 
@@ -32,6 +35,26 @@ function TreasuryHubContent() {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const updatePresence = useUpdateMyPresence();
   const others = useOthers();
+  const { vaultValue, vaultChange24h, vaultTokens } = useVault();
+  const router = useRouter();
+
+  const handleExport = () => {
+    if (vaultTokens.length === 0) {
+      toast.info("No vault data to export. Sync a vault first.");
+      return;
+    }
+    const header = "Symbol,Mint,Amount,Price,Value";
+    const rows = vaultTokens.map(t =>
+      `${t.symbol || "Unknown"},${t.mint},${t.amount},${t.price || 0},${t.value || 0}`
+    );
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `keystone-vault-${Date.now()}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Vault data exported as CSV");
+  };
 
   // Broadcast active module to the team
   useEffect(() => {
@@ -44,8 +67,8 @@ function TreasuryHubContent() {
       <header className="flex items-center justify-between px-6 py-4 z-30 border-b border-border bg-background/95 backdrop-blur-xl h-16 shrink-0">
         <div className="flex items-center gap-8">
           <div className="flex flex-col">
-            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground leading-none mb-1">Keystone // Treasury</div>
-            <h1 className="text-xl font-black text-foreground uppercase tracking-tight leading-none">Command_Hub</h1>
+            <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground leading-none mb-1">Keystone Treasury</div>
+            <h1 className="text-lg font-bold text-foreground tracking-tight leading-none">Treasury Hub</h1>
           </div>
 
           <div className="h-8 w-px bg-white/10" />
@@ -53,12 +76,16 @@ function TreasuryHubContent() {
           {/* Quick Stats */}
           <div className="flex items-center gap-8">
             <div className="flex flex-col">
-              <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest leading-none mb-1">Total_Volume</span>
-              <span className="text-sm font-mono font-bold text-foreground leading-none tracking-tight">$12,492,108.42</span>
+              <span className="text-[8px] font-semibold text-muted-foreground uppercase tracking-wider leading-none mb-1">Total Value</span>
+              <span className="text-sm font-mono font-bold text-foreground leading-none tracking-tight">
+                {vaultValue ? `$${vaultValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "$ --,--"}
+              </span>
             </div>
             <div className="flex flex-col">
-              <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest leading-none mb-1">Net_Burn</span>
-              <span className="text-sm font-mono font-bold text-orange-500 leading-none tracking-tight">- $1,240.20 <span className="opacity-50 text-[10px]">/24h</span></span>
+              <span className="text-[8px] font-semibold text-muted-foreground uppercase tracking-wider leading-none mb-1">24h Change</span>
+              <span className={`text-sm font-mono font-bold leading-none tracking-tight ${vaultChange24h !== null && vaultChange24h >= 0 ? 'text-primary' : 'text-orange-500'}`}>
+                {vaultChange24h !== null ? `${vaultChange24h >= 0 ? '+' : ''}${vaultChange24h.toFixed(2)}%` : "--"} <span className="opacity-50 text-[10px]">/24h</span>
+              </span>
             </div>
           </div>
         </div>
@@ -73,7 +100,7 @@ function TreasuryHubContent() {
             onClick={() => setIsPanelOpen(!isPanelOpen)}
             className={`hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all ${isPanelOpen ? "bg-primary/10 border-primary/20 text-primary" : "bg-muted/10 border-white/5 text-muted-foreground hover:text-white"}`}
           >
-            <span className="text-[9px] font-black uppercase tracking-widest">{isPanelOpen ? "Hide Panel" : "Show Panel"}</span>
+            <span className="text-[9px] font-semibold uppercase tracking-wider">{isPanelOpen ? "Hide Panel" : "Show Panel"}</span>
             <LayoutDashboard size={14} />
           </button>
 
@@ -91,7 +118,7 @@ function TreasuryHubContent() {
                 </Avatar>
                 {/* Status Dot */}
                 <div className="absolute top-0 right-0 w-2 h-2 rounded-full bg-emerald-500 border-2 border-background" />
-                <div className="absolute top-full mt-2 right-0 px-2 py-1 rounded bg-zinc-900 border border-zinc-800 text-[8px] font-black text-white uppercase whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none">
+                <div className="absolute top-full mt-2 right-0 px-2 py-1 rounded bg-zinc-900 border border-zinc-800 text-[9px] font-medium text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none">
                   {other.info?.name || "Anonymous"}
                 </div>
               </div>
@@ -115,22 +142,25 @@ function TreasuryHubContent() {
         />
 
         {/* Center Column: Content Workspace */}
-        <main className="flex-1 min-w-0 overflow-y-auto scrollbar-thin p-1 bg-black relative">
+        <main className="flex-1 min-w-0 overflow-y-auto scrollbar-thin p-1 bg-background relative">
 
           {/* Header for Active Module - Minimal */}
           <div className="mb-4 px-4 pt-4 flex items-end justify-between border-b border-border/40 pb-4">
             <div>
-              <h2 className="text-xl font-black text-white uppercase tracking-tight leading-none mb-1">
-                {activeModule === "VAULT" ? "Vault Assets" : activeModule === "DATA" ? "Data Nexus" : activeModule.replace('_', ' ')}
+              <h2 className="text-lg font-bold text-foreground tracking-tight leading-none mb-1">
+                {activeModule === "VAULT" ? "Vault Assets" : activeModule === "DATA" ? "Data Nexus" : activeModule === "OPERATIONS" ? "Operations" : activeModule === "STREAMING" ? "Streaming" : activeModule === "GOVERNANCE" ? "Governance" : activeModule}
               </h2>
-              <p className="text-[10px] font-mono text-emerald-500 uppercase tracking-widest opacity-80">
-                // {activeModule}_VECTOR_ACTIVE
+              <p className="text-[10px] text-muted-foreground">
+                {activeModule === "OPERATIONS" ? "Mass payouts, airdrops & transfers" : activeModule === "VAULT" ? "Token balances & positions" : activeModule === "STREAMING" ? "Real-time flow analytics" : activeModule === "GOVERNANCE" ? "Proposals & voting" : activeModule === "DATA" ? "Accounting & compliance" : ""}
               </p>
             </div>
 
             {/* Quick Action / Export */}
             <div className="flex gap-2">
-              <button className="h-8 px-4 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-[10px] font-bold uppercase tracking-widest text-zinc-400 hover:text-white transition-all">
+              <button
+                onClick={handleExport}
+                className="h-8 px-4 rounded-lg bg-muted/50 border border-border hover:bg-muted text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-all"
+              >
                 Export
               </button>
             </div>
@@ -152,11 +182,7 @@ function TreasuryHubContent() {
                 {activeModule === "STREAMING" && <StreamingVelocity />}
                 {activeModule === "GOVERNANCE" && <GovernanceOracle />}
                 {activeModule === "DATA" && <DataNexus />}
-                {activeModule === "SETTINGS" && (
-                  <div className="h-96 flex items-center justify-center text-zinc-500 uppercase tracking-widest font-bold">
-                    System Configuration Locked
-                  </div>
-                )}
+                {activeModule === "SETTINGS" && (() => { router.push("/app/settings"); return null; })()}
               </motion.div>
             </AnimatePresence>
           </div>

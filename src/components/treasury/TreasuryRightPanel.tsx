@@ -12,17 +12,17 @@ export function TreasuryRightPanel() {
             <div className="flex flex-col">
                 <div className="flex items-center gap-2 mb-4 text-muted-foreground">
                     <History size={14} />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em]">Vector History</span>
+                    <span className="text-[10px] font-semibold">Recent Distributions</span>
                 </div>
 
                 <div className="flex flex-col gap-3">
                     {[
-                        { label: "CONTRIBUTOR_AIRDROP_Q4", amount: "50,000 USDC", count: 124, status: "success" },
-                        { label: "SECURITY_BOUNTY_REW...", amount: "12,500 USDC", count: 12, status: "success" },
+                        { label: "Contributor Airdrop Q4", amount: "50,000 USDC", count: 124, status: "success" },
+                        { label: "Security Bounty Rewards", amount: "12,500 USDC", count: 12, status: "success" },
                     ].map((item, i) => (
                         <div key={i} className="group p-4 rounded-xl bg-zinc-900/50 border border-white/5 hover:border-primary/20 hover:bg-zinc-900 transition-all cursor-pointer">
                             <div className="flex items-start justify-between mb-2">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-300 group-hover:text-white truncate max-w-[140px]">
+                                <span className="text-[10px] font-semibold text-zinc-300 group-hover:text-white truncate max-w-[160px]">
                                     {item.label}
                                 </span>
                                 <div className={`w-1.5 h-1.5 rounded-full ${item.status === 'success' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-orange-500'}`} />
@@ -36,8 +36,8 @@ export function TreasuryRightPanel() {
                             </div>
                         </div>
                     ))}
-                    <button className="w-full py-2.5 mt-1 rounded-lg border border-white/5 text-[10px] font-bold uppercase tracking-widest text-zinc-500 hover:text-white hover:bg-white/5 transition-all">
-                        View All Distributions
+                    <button className="w-full py-2.5 mt-1 rounded-lg border border-white/5 text-[10px] font-medium text-zinc-500 hover:text-white hover:bg-white/5 transition-all">
+                        View all distributions
                     </button>
                 </div>
             </div>
@@ -49,10 +49,10 @@ export function TreasuryRightPanel() {
                 </div>
                 <div className="flex items-center gap-2 mb-3 text-emerald-400">
                     <Zap size={14} fill="currentColor" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em]">Network_Throughput</span>
+                    <span className="text-[10px] font-semibold">Network Status</span>
                 </div>
                 <div className="flex items-end justify-between font-mono text-xs mb-1">
-                    <span className="text-zinc-500">SOLANA_MAINNET</span>
+                    <span className="text-zinc-500">Solana Mainnet</span>
                     <span className="text-white font-bold">2.4K TPS</span>
                 </div>
                 <div className="h-1 w-full bg-zinc-800 rounded-full overflow-hidden">

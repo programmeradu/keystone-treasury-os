@@ -128,6 +128,7 @@ export function WalletManager() {
             setSubOrgId(data.subOrganizationId);
 
             localStorage.setItem("keystone_sub_org_id", data.subOrganizationId);
+            localStorage.setItem("keystone_wallet_id", data.subOrganizationId);
 
             setStep("complete");
         } catch (error) {

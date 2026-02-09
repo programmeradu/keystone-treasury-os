@@ -20,48 +20,21 @@ function getFallbackData() {
   console.log(`Airdrops API: Using fallback data in ${environmentInfo} environment - real scraping failed after all attempts`);
   
   const fallbackItems = [
-    {
-      title: "Jupiter - DEX Aggregator",
-      url: "https://jup.ag",
-      project: "Jupiter",
-      summary: "Leading DEX aggregator on Solana with potential airdrop opportunities. Recently launched JUP token.",
-      source: SOURCE_URL,
-    },
-    {
-      title: "Marinade Finance - Liquid Staking",
-      url: "https://marinade.finance",
-      project: "Marinade",
-      summary: "Liquid staking protocol for Solana with mSOL token. Active governance and yield farming opportunities.",
-      source: SOURCE_URL,
-    },
-    {
-      title: "Orca - AMM DEX",
-      url: "https://orca.so",
-      project: "Orca",
-      summary: "User-friendly automated market maker on Solana ecosystem with concentrated liquidity.",
-      source: SOURCE_URL,
-    },
-    {
-      title: "Raydium - AMM & DEX",
-      url: "https://raydium.io",
-      project: "Raydium",
-      summary: "Automated market maker and order book DEX built on Solana with yield farming.",
-      source: SOURCE_URL,
-    },
-    {
-      title: "Kamino Finance - Yield Optimization",
-      url: "https://kamino.finance",
-      project: "Kamino",
-      summary: "Automated liquidity and yield strategies for Solana DeFi protocols.",
-      source: SOURCE_URL,
-    },
-    {
-      title: "Solend - Lending Protocol",
-      url: "https://solend.fi",
-      project: "Solend",
-      summary: "Algorithmic, decentralized protocol for lending and borrowing on Solana.",
-      source: SOURCE_URL,
-    }
+    { title: "Jupiter - DEX Aggregator", url: "https://jup.ag", project: "Jupiter", summary: "Leading DEX aggregator on Solana. Active JUP staking, governance votes, and periodic airdrop seasons.", source: SOURCE_URL },
+    { title: "Marinade Finance - Liquid Staking", url: "https://marinade.finance", project: "Marinade", summary: "Liquid staking with mSOL. Earn staking yield plus DeFi composability across the ecosystem.", source: SOURCE_URL },
+    { title: "Orca - Concentrated Liquidity DEX", url: "https://orca.so", project: "Orca", summary: "Top concentrated-liquidity AMM on Solana. Whirlpool LPs earn trading fees and potential incentives.", source: SOURCE_URL },
+    { title: "Raydium - AMM & Order Book DEX", url: "https://raydium.io", project: "Raydium", summary: "Hybrid AMM with on-chain order book. AcceleRaytor launchpad and yield farming pools.", source: SOURCE_URL },
+    { title: "Kamino Finance - Yield Vaults", url: "https://kamino.finance", project: "Kamino", summary: "Automated liquidity vaults, lending, and leverage strategies. Active KMNO points program.", source: SOURCE_URL },
+    { title: "Solend - Lending & Borrowing", url: "https://solend.fi", project: "Solend", summary: "Algorithmic lending protocol on Solana. Supply or borrow assets with variable APY.", source: SOURCE_URL },
+    { title: "Drift Protocol - Perpetuals DEX", url: "https://drift.trade", project: "Drift", summary: "Decentralized perpetual futures and spot exchange. Active DRIFT token and trading rewards.", source: SOURCE_URL },
+    { title: "Marginfi - Lending & Points", url: "https://marginfi.com", project: "Marginfi", summary: "Lending protocol with an active points program. Deposit or borrow to earn mrgn points.", source: SOURCE_URL },
+    { title: "Tensor - NFT Marketplace", url: "https://tensor.trade", project: "Tensor", summary: "Pro-grade NFT trading platform. TNSR token with trading rewards and season-based airdrops.", source: SOURCE_URL },
+    { title: "Sanctum - LST Hub", url: "https://sanctum.so", project: "Sanctum", summary: "Liquid staking token aggregator. Swap between LSTs and earn CLOUD points.", source: SOURCE_URL },
+    { title: "Jito - MEV & Liquid Staking", url: "https://jito.network", project: "Jito", summary: "MEV-powered liquid staking with JitoSOL. Earn staking APY plus MEV rewards.", source: SOURCE_URL },
+    { title: "Parcl - Real Estate Perpetuals", url: "https://parcl.co", project: "Parcl", summary: "Trade real-world real estate indexes as perpetuals on Solana. Active PRCL rewards.", source: SOURCE_URL },
+    { title: "Phoenix DEX - On-chain CLOB", url: "https://phoenix.trade", project: "Phoenix", summary: "Fully on-chain central limit order book. Fast fills and deep liquidity for Solana tokens.", source: SOURCE_URL },
+    { title: "Meteora - Dynamic Liquidity", url: "https://meteora.ag", project: "Meteora", summary: "Dynamic AMM pools and DLMM vaults. Earn yield with intelligent liquidity management.", source: SOURCE_URL },
+    { title: "Pyth Network - Oracle Data", url: "https://pyth.network", project: "Pyth", summary: "High-fidelity oracle network. PYTH staking and governance for data publishers and consumers.", source: SOURCE_URL },
   ];
 
   const message = isProduction 

@@ -184,7 +184,6 @@ export const agentApprovals = sqliteTable('agent_approvals', {
 }, (table) => ({
   executionIdx: index('agent_approvals_execution_idx').on(table.executionId),
   userIdx: index('agent_approvals_user_idx').on(table.userId),
-  approvedIdx: index('agent_approvals_approved_idx').on(table.approved),
   expiresAtIdx: index('agent_approvals_expires_at_idx').on(table.expiresAt),
 }));
 
@@ -198,27 +197,53 @@ export const miniApps = sqliteTable('mini_apps', {
   contractCode: text('contract_code'), // Anchor/Rust source
   programId: text('program_id'), // Deployed program address
   version: text('version').notNull().default("1.0.0"),
-
+ 
   // Creator
   creatorWallet: text('creator_wallet').notNull(),
   creatorShare: real('creator_share').notNull().default(0.8), // 80%
-
+ 
   // Marketplace
   isPublished: integer('is_published', { mode: 'boolean' }).notNull().default(false),
   priceUsdc: real('price_usdc').notNull().default(0),
   category: text('category').notNull().default("utility"),
   tags: text('tags', { mode: 'json' }), // Array of strings
-
+ 
+  // Hybrid Storage [OPUS Phase 3.1]
+  codeHash: text('code_hash'),           // SHA-256 of the source bundle for integrity
+  arweaveTxId: text('arweave_tx_id'),    // Arweave transaction ID for immutable cold storage
+  manifest: text('manifest', { mode: 'json' }), // keystone.manifest.json { allowedDomains, permissions, etc. }
+ 
+  // Security [OPUS Phase 2]
+  securityScore: integer('security_score'), // 0-100 from 5-stage scan pipeline
+  lastScanAt: integer('last_scan_at'),      // Timestamp of last security scan
+ 
   // Stats
   installs: integer('installs').notNull().default(0),
   rating: real('rating'), // Average rating
-
+ 
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
 }, (table) => ({
   creatorIdx: index('mini_apps_creator_idx').on(table.creatorWallet),
   categoryIdx: index('mini_apps_category_idx').on(table.category),
   isPublishedIdx: index('mini_apps_is_published_idx').on(table.isPublished),
+}));
+
+// User-installed apps with dock ordering [OPUS Phase 3.1]
+export const userInstalledApps = sqliteTable('user_installed_apps', {
+  id: text('id').primaryKey(), // install_abc123
+  userId: text('user_id').notNull(),
+  appId: text('app_id').notNull().references(() => miniApps.id, { onDelete: 'cascade' }),
+  installedAt: integer('installed_at').notNull(),
+  uninstalledAt: integer('uninstalled_at'), // null = currently installed
+  dockOrder: integer('dock_order').notNull().default(0), // Position in user's dock
+  pinned: integer('pinned', { mode: 'boolean' }).notNull().default(false),
+  lastOpenedAt: integer('last_opened_at'),
+  settings: text('settings', { mode: 'json' }), // Per-user app settings
+}, (table) => ({
+  userIdx: index('user_installed_apps_user_idx').on(table.userId),
+  appIdx: index('user_installed_apps_app_idx').on(table.appId),
+  userAppIdx: index('user_installed_apps_user_app_idx').on(table.userId, table.appId),
 }));
 
 export const reviews = sqliteTable('reviews', {

@@ -1,150 +1,166 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useToastStore, type Toast } from '@/lib/toast-notifications';
-import { X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, CheckCircle2, AlertTriangle, XCircle, Info } from 'lucide-react';
+
+const TOAST_CONFIG = {
+  success: {
+    icon: CheckCircle2,
+    accent: '#36e27b',
+    glow: 'rgba(54, 226, 123, 0.08)',
+    border: 'rgba(54, 226, 123, 0.25)',
+    iconBg: 'rgba(54, 226, 123, 0.12)',
+  },
+  error: {
+    icon: XCircle,
+    accent: '#ef4444',
+    glow: 'rgba(239, 68, 68, 0.08)',
+    border: 'rgba(239, 68, 68, 0.25)',
+    iconBg: 'rgba(239, 68, 68, 0.12)',
+  },
+  warning: {
+    icon: AlertTriangle,
+    accent: '#f59e0b',
+    glow: 'rgba(245, 158, 11, 0.08)',
+    border: 'rgba(245, 158, 11, 0.25)',
+    iconBg: 'rgba(245, 158, 11, 0.12)',
+  },
+  info: {
+    icon: Info,
+    accent: '#6366f1',
+    glow: 'rgba(99, 102, 241, 0.08)',
+    border: 'rgba(99, 102, 241, 0.25)',
+    iconBg: 'rgba(99, 102, 241, 0.12)',
+  },
+};
 
 /**
- * Toast Container Component
- * Displays all active toasts in the UI
+ * Toast Container — renders all active toasts with stacking
  */
 export function ToastContainer() {
-  const { toasts, removeToast } = useToastStore();
+  const { toasts, dismissToast } = useToastStore();
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 space-y-3 pointer-events-none">
-      {toasts.map((toast) => (
-        <ToastItem
-          key={toast.id}
-          toast={toast}
-          onClose={() => removeToast(toast.id)}
-        />
-      ))}
+    <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none" style={{ maxWidth: 380 }}>
+      <AnimatePresence mode="popLayout">
+        {toasts.map((t, i) => (
+          <ToastItem
+            key={t.id}
+            toast={t}
+            index={i}
+            onDismiss={() => dismissToast(t.id)}
+          />
+        ))}
+      </AnimatePresence>
     </div>
   );
 }
 
 /**
- * Custom Icons for Toasts
+ * Individual toast with progress bar, icon, animations
  */
-function SuccessIcon() {
-  return (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
+function ToastItem({ toast, index, onDismiss }: { toast: Toast; index: number; onDismiss: () => void }) {
+  const config = TOAST_CONFIG[toast.type] || TOAST_CONFIG.info;
+  const Icon = config.icon;
+  const isDismissing = !!toast.dismissedAt;
 
-function ErrorIcon() {
-  return (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 8v4M12 16h.01" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
+  // Progress bar
+  const [progress, setProgress] = useState(100);
+  const startRef = useRef(toast.timestamp);
+  const rafRef = useRef<number>(0);
 
-function WarningIcon() {
-  return (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 2L2 20h20L12 2Z" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M12 9v4M12 17h.01" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function InfoIcon() {
-  return (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 16v-4M12 8h.01" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-/**
- * Individual Toast Item
- */
-function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   useEffect(() => {
-    if (toast.duration && toast.duration > 0) {
-      const timer = setTimeout(onClose, toast.duration);
-      return () => clearTimeout(timer);
-    }
-  }, [toast.duration, onClose]);
+    if (toast.duration <= 0 || isDismissing) return;
+    startRef.current = toast.timestamp;
 
-  const getToastStyles = (type: Toast['type']) => {
-    switch (type) {
-      case 'success':
-        return {
-          bg: 'bg-slate-900 border-slate-700',
-          icon: <SuccessIcon />,
-          iconColor: 'text-emerald-400',
-        };
-      case 'error':
-        return {
-          bg: 'bg-slate-900 border-slate-700',
-          icon: <ErrorIcon />,
-          iconColor: 'text-red-400',
-        };
-      case 'warning':
-        return {
-          bg: 'bg-slate-900 border-slate-700',
-          icon: <WarningIcon />,
-          iconColor: 'text-amber-400',
-        };
-      case 'info':
-      default:
-        return {
-          bg: 'bg-slate-900 border-slate-700',
-          icon: <InfoIcon />,
-          iconColor: 'text-blue-400',
-        };
-    }
-  };
-
-  const styles = getToastStyles(toast.type);
+    const tick = () => {
+      const elapsed = Date.now() - startRef.current;
+      const remaining = Math.max(0, 100 - (elapsed / toast.duration) * 100);
+      setProgress(remaining);
+      if (remaining > 0) {
+        rafRef.current = requestAnimationFrame(tick);
+      }
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [toast.duration, toast.timestamp, isDismissing]);
 
   return (
-    <div
-      className={cn(
-        'pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-lg border backdrop-blur-sm shadow-lg animate-in fade-in slide-in-from-right-2 duration-300 max-w-sm',
-        styles.bg
-      )}
+    <motion.div
+      layout
+      initial={{ opacity: 0, x: 60, scale: 0.92 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, x: 80, scale: 0.9, filter: 'blur(4px)' }}
+      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+      className="pointer-events-auto relative overflow-hidden rounded-xl"
+      style={{
+        background: 'rgba(12, 12, 14, 0.85)',
+        backdropFilter: 'blur(20px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        border: `1px solid ${config.border}`,
+        boxShadow: `0 0 0 1px rgba(255,255,255,0.03), 0 8px 32px -8px rgba(0,0,0,0.6), 0 0 20px ${config.glow}`,
+      }}
     >
-      {/* Icon */}
-      <div className={cn('flex-shrink-0 mt-0.5', styles.iconColor)}>
-        {styles.icon}
+      {/* Left accent bar */}
+      <div
+        className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl"
+        style={{ background: config.accent }}
+      />
+
+      <div className="flex items-start gap-3 pl-4 pr-3 py-3">
+        {/* Icon */}
+        <div
+          className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center mt-0.5"
+          style={{ background: config.iconBg }}
+        >
+          <Icon size={16} style={{ color: config.accent }} strokeWidth={2.5} />
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0 py-0.5">
+          <p className="text-[13px] font-semibold text-zinc-100 leading-tight truncate">
+            {toast.title}
+          </p>
+          {toast.message && (
+            <p className="text-[11px] text-zinc-400 mt-0.5 leading-snug line-clamp-2">
+              {toast.message}
+            </p>
+          )}
+          {toast.action && (
+            <button
+              onClick={() => { toast.action?.onClick(); onDismiss(); }}
+              className="mt-2 text-[11px] font-semibold transition-colors hover:brightness-125"
+              style={{ color: config.accent }}
+            >
+              {toast.action.label}
+            </button>
+          )}
+        </div>
+
+        {/* Close */}
+        <button
+          onClick={onDismiss}
+          className="shrink-0 p-1 rounded-md text-zinc-600 hover:text-zinc-300 hover:bg-white/5 transition-colors mt-0.5"
+        >
+          <X size={14} />
+        </button>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-sm text-white">{toast.title}</p>
-        <p className="text-xs text-slate-300 mt-0.5">{toast.message}</p>
-
-        {/* Action Button */}
-        {toast.action && (
-          <button
-            onClick={() => {
-              toast.action?.onClick();
-              onClose();
+      {/* Progress bar */}
+      {toast.duration > 0 && (
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/5">
+          <motion.div
+            className="h-full rounded-full"
+            style={{
+              background: `linear-gradient(90deg, ${config.accent}44, ${config.accent})`,
+              width: `${progress}%`,
             }}
-            className="mt-2 text-xs font-medium text-white hover:text-slate-100 opacity-80 hover:opacity-100 transition-opacity"
-          >
-            {toast.action.label}
-          </button>
-        )}
-      </div>
-
-      {/* Close Button */}
-      <button
-        onClick={onClose}
-        className="flex-shrink-0 text-slate-500 hover:text-white transition-colors mt-0.5"
-        aria-label="Close notification"
-      >
-        <X className="w-4 h-4" />
-      </button>
-    </div>
+            transition={{ duration: 0.1, ease: 'linear' }}
+          />
+        </div>
+      )}
+    </motion.div>
   );
 }

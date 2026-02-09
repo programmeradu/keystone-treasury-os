@@ -99,10 +99,12 @@ export async function GET(req: NextRequest) {
       let alive = true;
       let hb: NodeJS.Timeout | null = null;
       let wsPing: NodeJS.Timeout | null = null;
+      let livenessGuard: NodeJS.Timeout | null = null;
 
       const closeAll = (reason?: string) => {
         try { if (hb) clearInterval(hb); } catch {}
         try { if (wsPing) clearInterval(wsPing); } catch {}
+        try { if (livenessGuard) clearInterval(livenessGuard); } catch {}
         try { ws.close(); } catch {}
         try { controller.close(); } catch {}
       };
@@ -165,7 +167,7 @@ export async function GET(req: NextRequest) {
       req.signal?.addEventListener("abort", () => closeAll("client_abort"));
 
       // Liveness guard: if no frames in 90s, terminate
-      setInterval(() => {
+      livenessGuard = setInterval(() => {
         if (!alive) {
           sendEvent("error", { error: "Upstream silent timeout" });
           closeAll("timeout");

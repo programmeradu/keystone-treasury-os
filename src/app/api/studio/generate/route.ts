@@ -1,46 +1,83 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
-const STUDIO_SYSTEM_PROMPT = `You are the Keystone Studio AI, a full-stack Web3 development assistant.
+const STUDIO_SYSTEM_PROMPT = `You are "The Architect" — an AI code generator for Keystone Studio, the Bloomberg Terminal for Web3.
 
 YOUR MISSION:
-Synthesize production-grade TypeScript/React code that integrates specialized Solana protocols.
+Generate production-grade TypeScript/React Mini-Apps that run in the Keystone sandboxed iframe runtime.
 
-CRITICAL ARCHITECTURE RULES:
-1. SINGLE-FILE SYNTHESIS: For the current preview environment, you MUST consolidate all React components and logic into one single file: "App.tsx". Do NOT create separate files like "SwapTool.tsx" unless specifically asked for a library structure.
-2. MODULE RESOLUTION: The Keystone APIs (useVault, useTurnkey, AppEventBus) are provided via a virtual module. ALWAYS import them exactly like this:
-   import { useVault, useTurnkey, AppEventBus } from './keystone';
-3. FILE NAMING: Use lowercase for all filenames except "App.tsx".
+═══════════════════════════════════════════════════════════════
+§1. RUNTIME ENVIRONMENT (CRITICAL — read this first)
+═══════════════════════════════════════════════════════════════
 
-RESEARCH CONTEXT UTILIZATION:
-If the user provides a [RESEARCH CONTEXT] block, it is your PRIMARY source of truth. Extract API endpoints and method names to write REAL fetch() calls.
+The Mini-App runs inside a sandboxed <iframe> with:
+- sandbox="allow-scripts" (NO allow-same-origin — no localStorage, no cookies)
+- Babel standalone compiles TSX → JS in-browser with retainLines:true
+- React 18.2.0 loaded via ESM Import Map from esm.sh (pinned)
+- All external packages resolved via keystone.lock.json registry
 
-RUNTIME DIAGNOSTICS (DEBUGGING MODE):
-If the user provides a [RUNTIME LOGS] block containing errors (red text, "error", "fail"):
-1. PRIORITIZE FIXING THE CODE. Do not add new features until the error is resolved.
-2. Analyze the stack trace or error message to pinpoint the exact line or import failing.
-3. If it's a "Module not found" error, ensure you are using the virtual './keystone' module correctly or that the file structure matches your imports.
+═══════════════════════════════════════════════════════════════
+§2. FORBIDDEN APIs (will cause runtime errors or security blocks)
+═══════════════════════════════════════════════════════════════
 
-KEYSTONE CONTEXT APIS (available via './keystone'):
-- useVault(): { activeVault, balances, tokens }
-- useTurnkey(): { signTransaction, getPublicKey }
-- AppEventBus: { emit: (type, payload) => void }
+NEVER use these:
+- fetch() or XMLHttpRequest directly — use useFetch() from SDK instead
+- localStorage, sessionStorage, document.cookie — blocked by sandbox
+- window.parent.postMessage — reserved for SDK internals only
+- require(), __dirname, __filename, process, fs, path — no Node.js
+- eval(), new Function() — blocked by CSP
+- window.open() — blocked by sandbox
 
-STYLING:
-- Use Tailwind CSS. Dark theme: bg-zinc-900, text-white. Primary accent: emerald-400.
+═══════════════════════════════════════════════════════════════
+§3. KEYSTONE SDK (@keystone-os/sdk)
+═══════════════════════════════════════════════════════════════
 
-OUTPUT FORMAT (STRICT JSON):
+ALWAYS import from '@keystone-os/sdk'. Example:
+  import { useVault, useTurnkey, useFetch, AppEventBus } from '@keystone-os/sdk';
+
+Available hooks:
+- useVault(): { activeVault: string, balances: Record<string,number>, tokens: Token[] }
+  Token = { symbol, name, balance, price, mint?, decimals?, logoURI? }
+
+- useTurnkey(): { getPublicKey: () => Promise<string>, signTransaction: (tx, description?) => Promise<{signature}> }
+
+- useFetch<T>(url, options?): { data: T|null, error: string|null, loading: boolean, refetch: () => void }
+  Routes through Keystone proxy. Allowed domains: api.jup.ag, api.coingecko.com, api.dexscreener.com,
+  public-api.birdeye.so, api.helius.xyz, api.raydium.io, etc.
+
+- AppEventBus: { emit: (type: string, payload?: any) => void }
+
+═══════════════════════════════════════════════════════════════
+§4. OUTPUT FORMAT (STRICT JSON)
+═══════════════════════════════════════════════════════════════
+
 {
   "files": {
-    "App.tsx": "import React from 'react';\nimport { useTurnkey } from './keystone';\n\nexport default function App() { ... }"
+    "App.tsx": "import { useVault, useFetch } from '@keystone-os/sdk';\\n\\nexport default function App() { ... }"
   },
-  "explanation": "Summarize the technical implementation and highlight research usage."
+  "explanation": "Brief technical summary."
 }
 
-RULES:
-1. NO PLACEHOLDERS. Write the ACTUAL logic.
-2. Components must be self-contained in App.tsx.
-3. ABSOLUTELY NO EMOJIS in the JSON response.`;
+═══════════════════════════════════════════════════════════════
+§5. SELF-CORRECTION (DEBUGGING MODE)
+═══════════════════════════════════════════════════════════════
+
+If user provides [RUNTIME LOGS] or [TYPESCRIPT ERRORS]:
+1. PRIORITIZE FIXING over adding features
+2. Analyze error → pinpoint root cause → generate minimal patch
+3. Common fixes: wrong import path → use '@keystone-os/sdk', missing default export, fetch() → useFetch()
+
+═══════════════════════════════════════════════════════════════
+§6. STYLING & CONVENTIONS
+═══════════════════════════════════════════════════════════════
+
+- Tailwind CSS (loaded via CDN in iframe). Dark theme: bg-zinc-900/bg-[#09090b], text-white.
+- Primary accent: emerald-400. Secondary: cyan-400.
+- Cyberpunk Bloomberg aesthetic: dense data, monospace numbers, subtle borders.
+- Single-file: ALL components in App.tsx unless user asks for multi-file.
+- Default export required: export default function App() { ... }
+- NO emojis in code or JSON. NO placeholder comments like "// TODO". Write REAL logic.`;
+
 
 export async function POST(req: NextRequest) {
   try {
@@ -72,44 +109,56 @@ export async function POST(req: NextRequest) {
       // Return a demo response if no API keys
       return NextResponse.json({
         files: {
-          "App.tsx": `import React from "react";
-import { useVault } from "./keystone";
+          "App.tsx": `import { useVault } from '@keystone-os/sdk';
 
 export default function App() {
-  const { balances, tokens } = useVault();
-  
+  const { tokens, activeVault } = useVault();
+
+  const totalValue = tokens.reduce((sum, t) => sum + t.balance * t.price, 0);
+
   return (
-    <div className="p-6 bg-zinc-900 min-h-screen text-white">
-      <h1 className="text-xl font-bold text-emerald-400 mb-6 uppercase tracking-wider">
-        Treasury Balance
-      </h1>
+    <div className="p-6 bg-[#09090b] min-h-screen text-white">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-xl font-bold text-emerald-400 uppercase tracking-wider">
+            Treasury Pulse
+          </h1>
+          <p className="text-xs text-zinc-500 mt-1 font-mono">{activeVault}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-2xl font-mono font-bold text-white">
+            \${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </p>
+          <p className="text-[10px] text-emerald-400 uppercase tracking-widest font-bold">Total Value</p>
+        </div>
+      </div>
       <div className="grid gap-3">
-        {tokens?.map((token) => (
-          <div 
+        {tokens.map((token) => (
+          <div
             key={token.symbol}
-            className="flex items-center justify-between p-4 bg-zinc-800 rounded-xl border border-zinc-700"
+            className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800 hover:border-emerald-400/20 transition-all"
           >
             <div>
               <p className="font-bold">{token.symbol}</p>
-              <p className="text-sm text-zinc-400">{token.name}</p>
+              <p className="text-xs text-zinc-500">{token.name}</p>
             </div>
             <div className="text-right">
               <p className="font-mono font-bold">{token.balance.toLocaleString()}</p>
-              <p className="text-sm text-emerald-400">
-                \${(token.balance * token.price).toLocaleString()}
+              <p className="text-xs text-emerald-400">
+                \${(token.balance * token.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </p>
             </div>
           </div>
         ))}
       </div>
-      <p className="text-xs text-zinc-500 mt-4 text-center">
-        Demo: Configure API keys for AI generation
+      <p className="text-[9px] text-zinc-600 mt-6 text-center uppercase tracking-widest">
+        Configure OPENAI_API_KEY for AI generation
       </p>
     </div>
   );
 }`,
         },
-        explanation: "Demo response - Configure OPENAI_API_KEY or GROQ_API_KEY for AI-powered generation. This shows a basic treasury balance widget using Keystone context.",
+        explanation: "Demo response — Treasury Pulse widget displaying vault balances. Configure OPENAI_API_KEY or GROQ_API_KEY for full AI-powered generation.",
       });
     }
 

@@ -44,12 +44,23 @@ export async function GET(req: Request) {
     let res: Response | null = null;
     let data: any = null;
     let lastErr: any = null;
+    let jupiterData: Record<string, { price: number }> = {};
+    const requestedIds = ids ? ids.split(",").map((v) => v.trim().toUpperCase()).filter(Boolean) : [];
+
     for (let i = 0; i < 2; i++) {
       try {
         res = await fetch(base.toString(), { next: { revalidate: 0 }, headers });
         data = await res.json();
         if (res.ok) {
-          return NextResponse.json(data, { status: 200 });
+          jupiterData = data?.data || {};
+          // Check if ALL requested ids are present in the response
+          const missingIds = requestedIds.filter((id) => jupiterData[id] == null);
+          if (missingIds.length === 0 || !ids) {
+            // Jupiter returned everything we need — return immediately
+            return NextResponse.json(data, { status: 200 });
+          }
+          // Jupiter returned partial data — fall through to fill gaps via DefiLlama
+          break;
         }
         lastErr = new Error(data?.error || res.statusText);
       } catch (e: any) {
@@ -59,8 +70,8 @@ export async function GET(req: Request) {
     }
 
     // Fallback provider: DefiLlama Prices API (no key required)
-    // Map requested assets -> DefiLlama identifiers and back to output keys
-    const out: Record<string, { price: number }> = {};
+    // Seed with any partial Jupiter data we already have
+    const out: Record<string, { price: number }> = { ...jupiterData };
     const idsArr = ids ? ids.split(",").map((v) => v.trim()).filter(Boolean) : [];
     const mintsArr = mints ? mints.split(",").map((v) => v.trim()).filter(Boolean) : [];
 
@@ -73,13 +84,25 @@ export async function GET(req: Request) {
       keyMapping.push({ llama, outKey });
     };
 
+    // Symbol → DefiLlama identifier map for all core tokens
+    const symToLlama: Record<string, string> = {
+      SOL:     "coingecko:solana",
+      USDC:    "solana:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      MSOL:    "solana:mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+      JITOSOL: "solana:J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn",
+      BSOL:    "solana:bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1",
+      JUP:     "solana:JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+      BONK:    "solana:DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+      PYTH:    "solana:HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3",
+      RAY:     "solana:4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
+      ORCA:    "solana:orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    };
+
     // Map ids
     for (const symRaw of idsArr) {
       const sym = symRaw.toUpperCase();
-      if (sym === "SOL") mapPush("coingecko:solana", sym); else
-      if (sym === "USDC") mapPush("solana:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", sym); else
-      if (sym === "MSOL") mapPush("solana:mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So", sym);
-      // extend here if needed
+      const llama = symToLlama[sym];
+      if (llama) mapPush(llama, sym);
     }
 
     // Map mints
@@ -104,10 +127,11 @@ export async function GET(req: Request) {
               out[outKey] = { price: p };
             }
           }
-          hadAnyFromLlama = Object.keys(out).length > 0;
+          hadAnyFromLlama = Object.keys(out).length > Object.keys(jupiterData).length;
           if (ids && !mints) {
-            // If only ids were requested and we got some prices, return early
-            if (hadAnyFromLlama) return NextResponse.json({ data: out, fallback: "defillama" }, { status: 200 });
+            // If only ids were requested and we got some prices, return merged result
+            const hasJup = Object.keys(jupiterData).length > 0;
+            if (Object.keys(out).length > 0) return NextResponse.json({ data: out, fallback: hasJup && hadAnyFromLlama ? "jupiter+defillama" : hadAnyFromLlama ? "defillama" : "jupiter" }, { status: 200 });
           }
         }
       } catch (e) {

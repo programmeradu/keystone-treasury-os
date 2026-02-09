@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, Copy, CheckCircle2, AlertCircle, Wallet } from "lucide-react";
-import { toast } from "sonner";
+import { Loader2, Copy, CheckCircle2, AlertCircle } from "lucide-react";
+import { toast } from "@/lib/toast-notifications";
 import { IconWalletCopy } from "@/components/ui/icons";
+import { isValidSolanaAddress, formatCurrency } from "@/lib/atlas-utils";
 
 interface TokenHolding {
   token: string;
@@ -31,15 +32,6 @@ export function CopyMyWallet() {
   const [portfolio, setPortfolio] = useState<PortfolioData | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Simple Base58 validation (Solana addresses are 32-44 chars)
-  const isValidSolanaAddress = (address: string): boolean => {
-    if (!address || address.length < 32 || address.length > 44) {
-      return false;
-    }
-    // Check if it's base58 (no 0, O, I, l characters)
-    const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
-    return base58Regex.test(address);
-  };
 
   const handleAnalyze = async () => {
     const address = walletAddress.trim();
@@ -60,13 +52,7 @@ export function CopyMyWallet() {
 
     try {
       // Fetch wallet holdings from Helius DAS API
-      let url = `/api/helius/das/wallet-holdings?address=${address}`;
-      try {
-        if (typeof window !== "undefined") {
-          const pageMock = new URL(window.location.href).searchParams.get("mock");
-          if (String(pageMock || "").toLowerCase() === "true") url += "&mock=true";
-        }
-      } catch { }
+      const url = `/api/helius/das/wallet-holdings?address=${address}`;
       const response = await fetch(url);
 
       const raw = await response.text();
@@ -74,15 +60,13 @@ export function CopyMyWallet() {
       if (raw && raw.length > 0) {
         try {
           data = JSON.parse(raw);
-        } catch (parseErr) {
-          console.error("CopyMyWallet: failed to parse response", raw, parseErr);
+        } catch (_parseErr) {
           throw new Error("Invalid JSON from wallet holdings API");
         }
       }
 
       if (!response.ok) {
         const bodyMsg = data?.error || raw || response.statusText;
-        console.error("CopyMyWallet API error:", response.status, bodyMsg);
         throw new Error(bodyMsg || "Failed to fetch wallet holdings");
       }
 
@@ -92,7 +76,6 @@ export function CopyMyWallet() {
       const tokens = data?.holdings || data?.result || data?.items || data?.tokens || [];
 
       if (!Array.isArray(tokens) || tokens.length === 0) {
-        console.error("CopyMyWallet: no tokens found", { url, data, raw });
         setError("No tokens found in this wallet");
         setLoading(false);
         return;
@@ -206,18 +189,10 @@ export function CopyMyWallet() {
     });
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  };
 
   return (
     <div className="h-full">
-      <Card className="atlas-card relative overflow-hidden h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)] min-h-[360px]">
+      <Card className="atlas-card relative overflow-hidden h-full flex flex-col border-border/50 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors hover:border-foreground/20 hover:shadow-[0_6px_24px_-12px_rgba(0,0,0,0.25)]">
         <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/35%,transparent_70%)]" />
 
         <CardHeader className="pb-2 flex flex-col gap-2">
@@ -228,38 +203,29 @@ export function CopyMyWallet() {
                 <span>Wallet Copy</span>
               </span>
             </CardTitle>
-            <Badge variant="secondary" className="h-6 px-2 text-[10px] rounded-md leading-none">
+            <Badge variant="secondary" className="h-5 px-2 text-[10px] rounded-md leading-none">
               Portfolio Clone
             </Badge>
           </div>
-          <div className="text-xs opacity-70">
-            Analyze any Solana wallet and generate a transaction plan to match their allocation
+          <div className="text-[11px] opacity-60">
+            Analyze any wallet and generate a plan to match their allocation
           </div>
         </CardHeader>
 
-        <CardContent className="atlas-card-content pt-0 space-y-4">
+        <CardContent className="atlas-card-content pt-0 space-y-3">
           {/* Wallet Input */}
-          <div className="space-y-2">
-            <label className="text-xs opacity-70">Wallet Address</label>
-            <div className="flex gap-2">
-              <Input
-                value={walletAddress}
-                onChange={(e) => setWalletAddress(e.target.value)}
-                placeholder="Enter Solana wallet address..."
-                className="h-9 flex-1 font-mono text-xs"
-              />
-              <Button
-                onClick={handleAnalyze}
-                disabled={loading}
-                size="sm"
-              >
-                {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Analyze"
-                )}
-              </Button>
-            </div>
+          <div className="flex items-center gap-2">
+            <Input
+              value={walletAddress}
+              onChange={(e) => setWalletAddress(e.target.value)}
+              placeholder="Paste wallet address..."
+              className="h-9 flex-1 font-mono text-xs"
+              onKeyDown={(e) => e.key === "Enter" && handleAnalyze()}
+              disabled={loading}
+            />
+            <Button onClick={handleAnalyze} disabled={loading} size="sm" className="shrink-0">
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Analyze"}
+            </Button>
           </div>
 
           {/* Error Display */}
@@ -314,7 +280,7 @@ export function CopyMyWallet() {
                   </Button>
                 </div>
 
-                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                <div className="space-y-1.5 max-h-56 overflow-y-auto pr-0.5 scrollbar-thin">
                   {portfolio.holdings.map((holding, index) => (
                     <div
                       key={holding.token}
@@ -357,8 +323,8 @@ export function CopyMyWallet() {
           )}
 
           {!portfolio && !loading && !error && (
-            <div className="text-xs opacity-70 text-center py-8">
-              Enter a Solana wallet address above to analyze its portfolio
+            <div className="text-[11px] opacity-50 text-center py-3">
+              Enter a wallet address above to analyze its portfolio
             </div>
           )}
         </CardContent>

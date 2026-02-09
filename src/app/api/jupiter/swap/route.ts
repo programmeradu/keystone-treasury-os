@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 
 // Proxies to Jupiter v6 swap build endpoint to construct a signed-by-program transaction
 // Docs: https://station.jup.ag/docs/apis/swap-api
-const JUP_SWAP_URL = "https://quote-api.jup.ag/v6/swap";
+const JUP_SWAP_URL = "https://lite-api.jup.ag/swap/v1/swap";
 
 export async function POST(req: NextRequest) {
   try {

@@ -1,14 +1,40 @@
-import { Connection, PublicKey, Transaction, SystemProgram } from "@solana/web3.js";
+import { Connection, Keypair, PublicKey, Transaction, SystemProgram } from "@solana/web3.js";
 // @ts-ignore
 import { createTransferInstruction, getAssociatedTokenAddress } from "@solana/spl-token";
 
-// Keystone Treasury Wallet (Hardcoded for demo)
-const KEYSTONE_TREASURY_WALLET = "KeystoneTreasuryWalletAddress1111111111111";
+// Keystone Treasury Wallet
+// Uses env var if set, otherwise derives a deterministic devnet address from a seed
+const KEYSTONE_TREASURY_WALLET = (() => {
+    const envAddr = process.env.NEXT_PUBLIC_KEYSTONE_TREASURY_WALLET;
+    if (envAddr) {
+        try { new PublicKey(envAddr); return envAddr; } catch { /* invalid, fall through */ }
+    }
+    // Deterministic devnet treasury derived from a static seed
+    const seed = Uint8Array.from(
+        Array.from("keystone-treasury-v1-seed-000000", (c) => c.charCodeAt(0))
+    );
+    return Keypair.fromSeed(seed).publicKey.toBase58();
+})();
 
 // USDC Mint (Devnet)
 const USDC_MINT = new PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
 
+/**
+ * Validate that a string is a valid Solana public key
+ */
+export function isValidSolanaAddress(address: string): boolean {
+    try {
+        new PublicKey(address);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 export const marketplacePayments = {
+    /** Get the treasury wallet address */
+    getTreasuryAddress: () => KEYSTONE_TREASURY_WALLET,
+
     /**
      * Creates a transaction to purchase an app
      * Splits payment: 80% to Creator, 20% to Keystone
@@ -20,6 +46,10 @@ export const marketplacePayments = {
         priceAmount: number, // In natural units (e.g. 50 USDC)
         token: "SOL" | "USDC" = "SOL"
     ) => {
+        if (!isValidSolanaAddress(creatorWallet)) {
+            throw new Error("Invalid creator wallet address");
+        }
+
         const transaction = new Transaction();
         const creatorKey = new PublicKey(creatorWallet);
         const treasuryKey = new PublicKey(KEYSTONE_TREASURY_WALLET);
@@ -81,10 +111,10 @@ export const marketplacePayments = {
             );
         }
 
-        const { blockhash } = await connection.getLatestBlockhash();
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
         transaction.recentBlockhash = blockhash;
         transaction.feePayer = buyerPublicKey;
 
-        return transaction;
+        return { transaction, blockhash, lastValidBlockHeight };
     }
 };

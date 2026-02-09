@@ -2,24 +2,31 @@ export const ATLAS_TOOL_MANIFEST = `
 [
   {
     "tool_id": "swap_tokens",
-    "description": "Swap one cryptocurrency for another using Jupiter Swap.",
+    "description": "Swap one cryptocurrency for another using Jupiter Swap. Common examples: 'swap 10 SOL to USDC', 'buy 100 JUP with SOL', 'sell 5 SOL for BONK'. Use token symbols like SOL, USDC, JUP, BONK, PYTH, RAY, ORCA, WIF, JTO, DRIFT, etc.",
     "parameters": {
-      "input_mint": "The mint address of the token to sell.",
-      "output_mint": "The mint address of the token to buy.",
-      "amount": "The amount of the input token to sell (in the smallest unit, e.g., lamports)."
+      "input_token": "The symbol of the token to sell (e.g. 'SOL', 'USDC', 'JUP'). NOT a mint address.",
+      "output_token": "The symbol of the token to buy (e.g. 'USDC', 'SOL', 'BONK'). NOT a mint address.",
+      "amount": "The numeric amount of the input token to sell (e.g. 5, 10.5, 100). A plain number, NOT in lamports."
     }
   },
   {
     "tool_id": "stake_sol",
-    "description": "Stake SOL with a provider like Marinade or Lido.",
+    "description": "Liquid-stake SOL to earn yield. Supports Marinade (mSOL), Jito (jitoSOL), and BlazeStake (bSOL). Examples: 'stake 5 SOL', 'stake 10 SOL with Jito', 'stake SOL via BlazeStake'.",
     "parameters": {
-      "provider": "The staking provider (e.g., 'marinade', 'lido').",
-      "amount": "The amount of SOL to stake."
+      "provider": "The staking provider: 'marinade', 'jito', or 'blazestake'. Default: 'marinade'.",
+      "amount": "The numeric amount of SOL to stake (e.g. 5, 10.5)."
+    }
+  },
+  {
+    "tool_id": "provide_liquidity",
+    "description": "Provide liquidity to a SOL/USDC pool via Orca or Raydium. Examples: 'LP 5 SOL', 'provide liquidity 10 SOL', 'add liquidity'.",
+    "parameters": {
+      "amount": "The numeric amount of SOL to provide as liquidity."
     }
   },
   {
     "tool_id": "scan_airdrops",
-    "description": "Scan the connected wallet for potential airdrops.",
+    "description": "Scan the connected wallet for potential airdrops and quest opportunities.",
     "parameters": {}
   },
   {
@@ -36,54 +43,68 @@ export const ATLAS_TOOL_MANIFEST = `
   },
   {
     "tool_id": "create_dca_bot",
-    "description": "Create a Dollar-Cost Averaging (DCA) bot to automate token purchases.",
+    "description": "Create a Dollar-Cost Averaging (DCA) bot to automate recurring token purchases.",
     "parameters": {
-        "in_mint": "The mint address of the token to spend (e.g. SOL or USDC)",
-        "out_mint": "The mint address of the token to buy",
-        "amount": "The total amount of 'in_mint' to spend",
-        "frequency": "How often the DCA should execute (e.g., 'daily', 'weekly')"
+      "in_mint": "The symbol of the token to spend (e.g. 'SOL', 'USDC')",
+      "out_mint": "The symbol of the token to buy (e.g. 'JUP', 'BONK')",
+      "amount": "The total amount to spend",
+      "frequency": "How often the DCA should execute (e.g., 'daily', 'weekly')"
     }
   },
   {
     "tool_id": "rug_pull_detector",
-    "description": "Analyze a token to assess its risk of being a 'rug pull' scam.",
+    "description": "Analyze a token to assess its risk of being a rug pull or scam. Examples: 'is this token safe?', 'check rug risk for [mint]'.",
     "parameters": {
-        "mint_address": "The mint address of the token to analyze."
+      "mint_address": "The mint address of the token to analyze."
     }
   },
   {
     "tool_id": "portfolio_rebalancer",
-    "description": "Rebalance your portfolio to target allocations with minimal fees using optimal swap routing.",
-    "parameters": {
-        "wallet_address": "Your Solana wallet address.",
-        "target_allocations": "Target allocation percentages for each token (e.g., {SOL: 50, USDC: 30, JUP: 20})"
-    }
+    "description": "Open the portfolio rebalancer tool to rebalance holdings with optimal swap routing.",
+    "parameters": {}
   },
   {
     "tool_id": "transaction_time_machine",
-    "description": "Look up and analyze a past transaction.",
+    "description": "Look up and analyze a past transaction. Examples: 'look up transaction [signature]', 'show me tx [sig]'.",
     "parameters": {
-        "signature": "The transaction signature to look up."
+      "signature": "The transaction signature to look up."
     }
   },
   {
     "tool_id": "fee_saver_insights",
-    "description": "Get insights on how to save on transaction fees.",
+    "description": "Open the fee saver tool to get insights on saving transaction fees.",
     "parameters": {}
   },
   {
     "tool_id": "copy_trader",
-    "description": "Copy the trades of another wallet.",
+    "description": "Open the copy-wallet tool to mirror trades from another wallet address.",
     "parameters": {
-        "target_wallet": "The address of the wallet to copy."
+      "target_wallet": "The address of the wallet to copy."
     }
   },
   {
     "tool_id": "navigate_to_tab",
-    "description": "Navigate to a specific tab or section within the Atlas page.",
+    "description": "Navigate to a specific tab or section. 'lab' or 'strategy lab' = Strategy Lab tab. 'quests' or 'tools' = Quests tab.",
     "parameters": {
-        "tab_id": "The ID of the tab to navigate to. Can be 'tools' or 'lab'."
+      "tab_id": "The ID of the tab: 'lab' or 'quests'."
     }
+  },
+  {
+    "tool_id": "price_check",
+    "description": "Check the current price of a token. Examples: 'what is the price of SOL?', 'how much is JUP?', 'SOL price'.",
+    "parameters": {
+      "token": "The symbol of the token to check (e.g. 'SOL', 'JUP', 'BONK')."
+    }
+  },
+  {
+    "tool_id": "show_portfolio",
+    "description": "Show the connected wallet's balance and portfolio overview. Examples: 'show my balance', 'what do I have?', 'my portfolio'.",
+    "parameters": {}
+  },
+  {
+    "tool_id": "market_overview",
+    "description": "Show the market overview with current prices and trends. Examples: 'how is the market?', 'show market pulse', 'market overview'.",
+    "parameters": {}
   }
 ]
 `;
