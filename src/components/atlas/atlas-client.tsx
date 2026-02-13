@@ -235,6 +235,7 @@ export function AtlasClient() {
   const { publicKey, sendTransaction, disconnect } = useWallet();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const isClay = searchParams?.get("style") === "clay";
   const { setVisible } = useWalletModal();
   const { dispatch, lastCommand } = useAtlasCommand();
 
@@ -1975,7 +1976,7 @@ export function AtlasClient() {
                       className="h-8 w-20 text-xs text-center bg-background/30 border-border/30 rounded-lg"
                     />
                     <span className="text-[10px] opacity-40">SOL</span>
-                    <Button size="sm" variant="ghost" onClick={simulate} disabled={loading} className="h-8 px-2 text-[11px]">
+                    <Button size="sm" variant="ghost" onClick={() => simulate()} disabled={loading} className="h-8 px-2 text-[11px]">
                       {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Simulate"}
                     </Button>
                     <Button size="sm" variant="ghost" onClick={shareLink} className="h-8 px-2 text-[11px] opacity-50 hover:opacity-80">Share</Button>

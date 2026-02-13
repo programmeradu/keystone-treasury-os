@@ -116,6 +116,17 @@ export const TreasuryGrowthChart = () => {
 
     const startValue = chartData.length > 0 ? chartData[0].value : 0;
 
+    // Compute Y-axis domain for proper scaling
+    const yDomain = useMemo(() => {
+        if (chartData.length === 0) return [0, 100];
+        const values = chartData.map(d => d.value).filter(v => v > 0);
+        if (values.length === 0) return [0, 100];
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        const padding = (max - min) * 0.1 || max * 0.1;
+        return [Math.max(0, Math.floor(min - padding)), Math.ceil(max + padding)];
+    }, [chartData]);
+
     return (
         <div className={`rounded-2xl bg-card border p-6 backdrop-blur-xl relative group shadow-sm ${simActive ? "border-orange-500/30" : "border-border"}`}>
             <div className="flex justify-between items-start mb-6">
@@ -190,7 +201,7 @@ export const TreasuryGrowthChart = () => {
                             tick={{ fill: "var(--dashboard-muted-foreground)", fontSize: 10, fontWeight: 700 }}
                             minTickGap={40}
                         />
-                        <YAxis hide domain={[(dataMin: number) => Math.floor(dataMin * 0.95), (dataMax: number) => Math.ceil(dataMax * 1.05)]} />
+                        <YAxis hide domain={yDomain} />
                         <Tooltip
                             contentStyle={{
                                 backgroundColor: "var(--dashboard-card, #1a1a1a)",

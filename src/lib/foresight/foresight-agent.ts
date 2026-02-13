@@ -29,6 +29,11 @@ export interface PortfolioSnapshot {
     price: number;
 }
 
+export interface ForesightScenario extends ParsedForesight {
+    generatedCode: string;
+    portfolio: PortfolioSnapshot[];
+}
+
 // ─── Foresight Keywords ─────────────────────────────────────────────
 
 const FORESIGHT_KEYWORDS = [
@@ -373,6 +378,63 @@ export function parseForesightPrompt(prompt: string): ParsedForesight {
     const title = generateTitle(variables);
 
     return { title, description: prompt, variables, timeframeMonths, confidence, parsedSummary };
+}
+
+/**
+ * Generate a full foresight scenario from a natural language prompt and portfolio.
+ * Returns parsed variables + generated preview code for the ForesightPreview iframe.
+ */
+export function generateForesight(prompt: string, portfolio: PortfolioSnapshot[]): ForesightScenario {
+    const parsed = parseForesightPrompt(prompt);
+    const generatedCode = buildForesightCode(parsed, portfolio);
+    return { ...parsed, generatedCode, portfolio };
+}
+
+function buildForesightCode(parsed: ParsedForesight, portfolio: PortfolioSnapshot[]): string {
+    const varsJson = JSON.stringify(parsed.variables);
+    const portfolioJson = JSON.stringify(portfolio);
+    return `
+// Auto-generated Foresight Scenario: ${parsed.title}
+// Timeframe: ${parsed.timeframeMonths} months
+// Variables: ${parsed.variables.length}
+
+const variables = ${varsJson};
+const portfolio = ${portfolioJson};
+const timeframeMonths = ${parsed.timeframeMonths};
+
+function simulate() {
+  const months = Array.from({ length: timeframeMonths }, (_, i) => i + 1);
+  const totalValue = portfolio.reduce((sum, t) => sum + t.amount * t.price, 0);
+  let projectedValue = totalValue;
+
+  const projections = months.map((m) => {
+    let monthValue = totalValue;
+    for (const v of variables) {
+      if (v.type === "price_change") {
+        const factor = 1 + (v.value * m / timeframeMonths);
+        if (v.asset) {
+          const token = portfolio.find(t => t.symbol === v.asset);
+          if (token) monthValue += token.amount * token.price * (factor - 1);
+        } else {
+          monthValue *= factor;
+        }
+      }
+      if (v.type === "burn_rate") monthValue -= v.value * m;
+      if (v.type === "inflow") monthValue += v.value * m;
+      if (v.type === "yield_apy") {
+        monthValue *= Math.pow(1 + v.value / 12, m);
+      }
+    }
+    projectedValue = monthValue;
+    return { month: m, value: Math.max(0, monthValue) };
+  });
+
+  return { projections, finalValue: projectedValue, totalValue };
+}
+
+const result = simulate();
+render({ variables, portfolio, timeframeMonths, result });
+`.trim();
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────

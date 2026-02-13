@@ -1,4 +1,5 @@
 import { Connection, Keypair, PublicKey, Transaction, SystemProgram } from "@solana/web3.js";
+// eslint-disable-next-line import/named
 import { AnchorProvider, Program, Idl, utils } from "@coral-xyz/anchor"; // We might need to check if we have this dependency or use raw web3
 
 // Solana Playground API Base URL

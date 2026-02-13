@@ -11,18 +11,17 @@ interface ContractEditorProps {
 export function ContractEditor({ files, onCompile, isCompiling }: ContractEditorProps) {
     // Filter for .rs files
     const contractFiles = Object.entries(files).filter(([name]) => name.endsWith(".rs"));
+    const [activeFile, setActiveFile] = React.useState(contractFiles[0]?.[0] ?? "");
 
     if (contractFiles.length === 0) {
         return (
             <div className="h-full w-full flex flex-col items-center justify-center text-zinc-500 bg-[#09090b]">
                 <FileCode className="w-12 h-12 mb-4 opacity-20" />
                 <p>No Smart Contract generated yet.</p>
-                <p className="text-xs mt-2 opacity-50">Ask the Architect to "Build a Solana program"</p>
+                <p className="text-xs mt-2 opacity-50">Ask the Architect to &quot;Build a Solana program&quot;</p>
             </div>
         );
     }
-
-    const [activeFile, setActiveFile] = React.useState(contractFiles[0][0]);
 
     return (
         <div className="h-full w-full flex flex-col bg-[#09090b] text-zinc-300">

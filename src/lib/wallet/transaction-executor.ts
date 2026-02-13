@@ -14,6 +14,7 @@ import {
   SystemProgram,
   Keypair
 } from "@solana/web3.js";
+// eslint-disable-next-line import/named
 import { WalletContextState } from "@solana/wallet-adapter-react";
 import type { StrategyType } from "@/lib/agents";
 

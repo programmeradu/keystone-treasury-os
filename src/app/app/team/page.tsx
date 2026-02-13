@@ -378,7 +378,7 @@ function ActivityItem({ user, action, target, time }: any) {
                 <div className="flex flex-col">
                     <span className="text-[10px] text-foreground font-black uppercase">{user}</span>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-tight font-black">
-                        <span className="text-primary">{action}</span> <span className="text-muted-foreground/30 px-1">//</span> {target}
+                        <span className="text-primary">{action}</span> <span className="text-muted-foreground/30 px-1">{"╱╱"}</span> {target}
                     </p>
                 </div>
             </div>

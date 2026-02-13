@@ -1,6 +1,7 @@
 "use client";
 
 import { LogoFilled } from "@/components/icons";
+import { FaDiscord, FaGithub, FaTwitter } from "react-icons/fa6";
 
 const productLinks = [
   { label: "App Dashboard", href: "/app" },
@@ -103,8 +104,32 @@ export function SiteFooter() {
           <div className="text-xs text-white/20">
             &copy; {new Date().getFullYear()} Keystone. All rights reserved.
           </div>
-          <div className="text-xs text-white/20">
-            Non-custodial. Simulation-first. Your keys, your control.
+          
+          <div className="flex items-center gap-4">
+            <a
+              href="https://twitter.com/Keystone_OS"
+              target="_blank"
+              rel="noreferrer"
+              className="text-white/30 hover:text-keystone-green transition-colors"
+            >
+              <FaTwitter size={14} />
+            </a>
+            <a
+              href="https://discord.gg/keystone"
+              target="_blank"
+              rel="noreferrer"
+              className="text-white/30 hover:text-keystone-green transition-colors"
+            >
+              <FaDiscord size={14} />
+            </a>
+            <a
+              href="https://github.com/keystone-org"
+              target="_blank"
+              rel="noreferrer"
+              className="text-white/30 hover:text-keystone-green transition-colors"
+            >
+              <FaGithub size={14} />
+            </a>
           </div>
         </div>
       </div>

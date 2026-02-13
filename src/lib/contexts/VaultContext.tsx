@@ -332,7 +332,6 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
                     price: solMeta.price || 0,
                     change24h: solMeta.change24h || 0,
                     value: stakedSolValue,
-                    isStaked: true, // marker for UI differentiation
                 });
                 console.log(`[VaultSync] Added Staked SOL entry: ${stakedSolAmount.toLocaleString()} SOL ($${stakedSolValue.toLocaleString()})`);
             }

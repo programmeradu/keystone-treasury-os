@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { LogoFilled } from "@/components/icons";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ArrowRight } from "lucide-react";
 
 const navLinks = [
   { label: "Platform", href: "#pillars" },
@@ -15,29 +15,16 @@ const navLinks = [
 ];
 
 export function SiteHeader() {
-  const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
   return (
-    <header
-      className={`sticky top-0 z-50 w-full transition-all duration-300 ${
-        scrolled
-          ? "bg-[#0B0C10]/80 backdrop-blur-xl border-b border-white/[0.06] shadow-[0_4px_30px_rgba(0,0,0,0.3)]"
-          : "bg-transparent"
-      }`}
-    >
+    <header className="fixed top-0 left-0 right-0 z-50 w-full bg-transparent">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <a href="#content" className="flex items-center gap-2.5 group" aria-label="Keystone Home">
             <LogoFilled size={28} />
-            <span className="text-base font-semibold tracking-wide text-white group-hover:text-[#36e27b] transition-colors">
+            <span className="text-base font-semibold tracking-wide text-white group-hover:text-keystone-green transition-colors">
               Keystone
             </span>
           </a>
@@ -65,13 +52,23 @@ export function SiteHeader() {
             >
               <a href="/atlas">Try Atlas</a>
             </Button>
-            <Button
-              size="sm"
-              asChild
-              className="bg-[#36e27b] text-[#0B0C10] hover:bg-[#36e27b]/90 font-semibold shadow-[0_0_20px_rgba(54,226,123,0.25)]"
+            <a
+              href="/app"
+              className="group relative inline-flex items-center gap-2 font-semibold text-xs px-4 py-2 rounded-lg overflow-hidden transition-all duration-300"
             >
-              <a href="/app">Open App</a>
-            </Button>
+              {/* Metallic keystone-green gradient background */}
+              <span className="absolute inset-0 bg-gradient-to-b from-white/30 via-white/5 to-transparent" />
+              <span className="absolute inset-0 bg-gradient-to-br from-[#5aff9d] via-[#36e27b] to-[#1a9c4e]" />
+              {/* Shine highlight */}
+              <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+              {/* Inner shadow for depth */}
+              <span className="absolute inset-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.3)]" />
+              {/* Border */}
+              <span className="absolute inset-0 rounded-lg border border-white/20" />
+              {/* Content */}
+              <span className="relative text-black font-semibold tracking-wide">Open App</span>
+              <ArrowRight className="relative h-3 w-3 text-black/70 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-black" />
+            </a>
           </div>
 
           {/* Mobile menu button */}
@@ -92,7 +89,7 @@ export function SiteHeader() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-[#0B0C10]/95 backdrop-blur-xl border-t border-white/[0.06]"
+            className="md:hidden bg-keystone-void/95 backdrop-blur-xl border-t border-white/[0.06]"
           >
             <div className="px-4 py-4 space-y-1">
               {navLinks.map((link) => (
@@ -109,13 +106,23 @@ export function SiteHeader() {
                 <Button variant="ghost" size="sm" asChild className="justify-center text-white/80">
                   <a href="/atlas">Try Atlas</a>
                 </Button>
-                <Button
-                  size="sm"
-                  asChild
-                  className="justify-center bg-[#36e27b] text-[#0B0C10] hover:bg-[#36e27b]/90 font-semibold"
+                <a
+                  href="/app"
+                  className="group relative inline-flex items-center justify-center gap-2 font-semibold text-xs px-4 py-2.5 rounded-lg overflow-hidden transition-all duration-300"
                 >
-                  <a href="/app">Open App</a>
-                </Button>
+                  {/* Metallic keystone-green gradient background */}
+                  <span className="absolute inset-0 bg-gradient-to-b from-white/30 via-white/5 to-transparent" />
+                  <span className="absolute inset-0 bg-gradient-to-br from-[#5aff9d] via-[#36e27b] to-[#1a9c4e]" />
+                  {/* Shine highlight */}
+                  <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+                  {/* Inner shadow for depth */}
+                  <span className="absolute inset-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.3)]" />
+                  {/* Border */}
+                  <span className="absolute inset-0 rounded-lg border border-white/20" />
+                  {/* Content */}
+                  <span className="relative text-black font-semibold tracking-wide">Open App</span>
+                  <ArrowRight className="relative h-3 w-3 text-black/70 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-black" />
+                </a>
               </div>
             </div>
           </motion.div>

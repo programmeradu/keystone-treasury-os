@@ -2,27 +2,35 @@
 
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
-import { AlertTriangle, ArrowRight, Layers } from "lucide-react";
 
 const fragmentedTools = [
-  "Squads",
-  "Jupiter",
-  "Birdeye",
-  "Dune",
-  "Kamino",
-  "Discord",
-  "Phantom",
-  "Marinade",
+  { name: "Squads", status: "pending", detail: "3/5 sigs", logo: "/logos/squads.png" },
+  { name: "Jupiter", status: "loading", detail: "Route...", logo: "/logos/jup.png" },
+  { name: "Birdeye", status: "ok", detail: "$81.29", logo: "/logos/birdeye.png" },
+  { name: "Dune", status: "stale", detail: "2h ago", logo: "/logos/dune.png" },
+  { name: "Kamino", status: "ok", detail: "4.2% APY", logo: "/logos/kamino.png" },
+  { name: "Discord", status: "unread", detail: "14 msgs", logo: "/logos/discord.png" },
+  { name: "Phantom", status: "waiting", detail: "Sign?", logo: "/logos/phantom.png" },
+  { name: "Marinade", status: "ok", detail: "Staked", logo: "/logos/marinade.png" },
 ];
 
 const keystoneModules = [
-  { label: "Command", color: "from-[#36e27b]/20 to-[#36e27b]/5" },
-  { label: "Treasury", color: "from-blue-500/20 to-blue-500/5" },
-  { label: "Studio", color: "from-purple-500/20 to-purple-500/5" },
-  { label: "Foresight", color: "from-amber-500/20 to-amber-500/5" },
-  { label: "Atlas", color: "from-cyan-500/20 to-cyan-500/5" },
-  { label: "Agents", color: "from-rose-500/20 to-rose-500/5" },
+  { label: "Command", accent: "#36e27b", sub: "Natural language ops" },
+  { label: "Treasury", accent: "#60a5fa", sub: "Balances & distributions" },
+  { label: "Studio", accent: "#a78bfa", sub: "Build & deploy apps" },
+  { label: "Foresight", accent: "#fbbf24", sub: "Scenario modeling" },
+  { label: "Atlas", accent: "#22d3ee", sub: "DeFi toolkit" },
+  { label: "Agents", accent: "#f43f5e", sub: "Autonomous policies" },
 ];
+
+const statusColors: Record<string, string> = {
+  pending: "bg-amber-400",
+  loading: "bg-blue-400 animate-pulse",
+  ok: "bg-emerald-400",
+  stale: "bg-red-400",
+  unread: "bg-red-400",
+  waiting: "bg-amber-400 animate-pulse",
+};
 
 export function ProblemSection() {
   const ref = useRef(null);
@@ -30,91 +38,180 @@ export function ProblemSection() {
 
   return (
     <section className="relative border-t border-white/[0.04] scroll-mt-24" ref={ref}>
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 md:py-28">
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-24 md:py-32">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
           className="text-center max-w-3xl mx-auto"
         >
-          <div className="inline-flex items-center gap-2 text-amber-400/80 text-sm font-medium mb-4">
-            <AlertTriangle className="h-4 w-4" />
+          <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-amber-400/50 mb-5">
             The Problem
-          </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
+          </p>
+          <h2 className="text-3xl md:text-5xl font-bold text-white tracking-[-0.02em]">
             Death by Fragmentation
           </h2>
-          <p className="mt-4 text-white/50 text-base md:text-lg leading-relaxed max-w-2xl mx-auto">
+          <p className="mt-5 text-white/30 text-base md:text-lg leading-relaxed max-w-2xl mx-auto">
             Treasury teams juggle 8+ disconnected tools. Every tab switch is a context-switch risk.
             Blind signing hex strings. Opportunities lost to slow coordination.
           </p>
         </motion.div>
 
-        {/* Before / After comparison */}
-        <div className="mt-16 grid md:grid-cols-[1fr_auto_1fr] gap-8 md:gap-6 items-start">
-          {/* Before */}
+        <div className="mt-20 grid md:grid-cols-2 gap-px bg-white/[0.04] rounded-2xl overflow-hidden">
+          {/* ── BEFORE: Chaotic tool windows ── */}
           <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={inView ? { opacity: 1, x: 0 } : {}}
+            initial={{ opacity: 0 }}
+            animate={inView ? { opacity: 1 } : {}}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="rounded-2xl border border-red-500/10 bg-red-500/[0.03] p-6"
+            className="bg-keystone-void p-6 md:p-8"
           >
-            <div className="text-sm font-semibold text-red-400/80 mb-4 uppercase tracking-wider">Before: 8+ Tabs</div>
-            <div className="grid grid-cols-2 gap-2">
-              {fragmentedTools.map((tool, i) => (
-                <motion.div
-                  key={tool}
-                  initial={{ opacity: 0 }}
-                  animate={inView ? { opacity: 1 } : {}}
-                  transition={{ delay: 0.3 + i * 0.05 }}
-                  className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-sm text-white/50"
-                >
-                  <div className="h-2 w-2 rounded-full bg-red-400/40" />
-                  {tool}
-                </motion.div>
-              ))}
+            <p className="text-[10px] font-mono uppercase tracking-[0.25em] text-red-400/40 mb-5">
+              Before — 8+ tabs open
+            </p>
+
+            {/* Fake browser tab bar */}
+            <div className="rounded-lg border border-white/[0.04] overflow-hidden mb-4">
+              <div className="flex items-center gap-0 bg-white/[0.02] border-b border-white/[0.04] px-1 py-1">
+                {fragmentedTools.slice(0, 5).map((t, i) => (
+                  <div
+                    key={t.name}
+                    className={`text-[8px] font-mono px-2 py-1 rounded-t truncate max-w-[70px] ${
+                      i === 0 ? "bg-white/[0.03] text-white/30" : "text-white/10"
+                    }`}
+                  >
+                    {t.name}
+                  </div>
+                ))}
+                <div className="text-[8px] text-white/10 px-1">+3</div>
+              </div>
+
+              {/* Scattered mini-windows grid */}
+              <div className="grid grid-cols-2 gap-px bg-white/[0.03] p-px">
+                {fragmentedTools.map((tool, i) => (
+                  <motion.div
+                    key={tool.name}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={inView ? { opacity: 1, scale: 1 } : {}}
+                    transition={{ delay: 0.3 + i * 0.05 }}
+                    className="bg-keystone-void p-3 relative"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={tool.logo}
+                          alt=""
+                          loading="lazy"
+                          className="h-3.5 w-3.5 rounded-sm opacity-50"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                        />
+                        <span className="text-[10px] font-mono text-white/25">{tool.name}</span>
+                      </div>
+                      <div className={`h-1 w-1 rounded-full ${statusColors[tool.status]} opacity-60`} />
+                    </div>
+                    <div className="text-[9px] font-mono text-white/10">{tool.detail}</div>
+                    {tool.status === "waiting" && (
+                      <div className="mt-1.5 text-[8px] font-mono text-amber-400/30 bg-amber-400/[0.05] px-1.5 py-0.5 rounded inline-block">
+                        Action needed
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+              </div>
             </div>
-            <p className="mt-4 text-xs text-white/30">Context switching, blind signing, missed opportunities</p>
+
+            <p className="text-[11px] text-white/10 leading-relaxed">
+              Context switching · Blind signing · Missed opportunities · No audit trail
+            </p>
           </motion.div>
 
-          {/* Arrow */}
+          {/* ── AFTER: Unified Keystone dashboard ── */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={inView ? { opacity: 1, scale: 1 } : {}}
-            transition={{ duration: 0.4, delay: 0.4 }}
-            className="hidden md:flex items-center justify-center self-center"
+            initial={{ opacity: 0 }}
+            animate={inView ? { opacity: 1 } : {}}
+            transition={{ duration: 0.6, delay: 0.35 }}
+            className="bg-keystone-void p-6 md:p-8"
           >
-            <div className="rounded-full bg-[#36e27b]/10 p-3">
-              <ArrowRight className="h-5 w-5 text-[#36e27b]" />
-            </div>
-          </motion.div>
+            <p className="text-[10px] font-mono uppercase tracking-[0.25em] text-keystone-green/40 mb-5">
+              After — One Keystone
+            </p>
 
-          {/* After */}
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={inView ? { opacity: 1, x: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="rounded-2xl border border-[#36e27b]/10 bg-[#36e27b]/[0.03] p-6"
-          >
-            <div className="text-sm font-semibold text-[#36e27b]/80 mb-4 uppercase tracking-wider flex items-center gap-2">
-              <Layers className="h-4 w-4" />
-              After: One Keystone
+            {/* Unified dashboard mock */}
+            <div className="rounded-lg border border-keystone-green/10 overflow-hidden">
+              {/* App chrome */}
+              <div className="flex items-center gap-3 px-4 py-2.5 border-b border-white/[0.04] bg-white/[0.01]">
+                <div className="h-1.5 w-1.5 rounded-full bg-keystone-green/40" />
+                <span className="text-[9px] font-mono text-white/20 tracking-wider">keystone://treasury</span>
+                <div className="ml-auto flex items-center gap-1.5">
+                  <span className="h-1 w-1 rounded-full bg-emerald-500/50" />
+                  <span className="text-[8px] font-mono text-white/15">Connected</span>
+                </div>
+              </div>
+
+              {/* Module sidebar + main area */}
+              <div className="grid grid-cols-[120px_1fr]">
+                {/* Sidebar */}
+                <div className="border-r border-white/[0.03] p-3 space-y-1">
+                  {keystoneModules.map((mod, i) => (
+                    <motion.div
+                      key={mod.label}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={inView ? { opacity: 1, x: 0 } : {}}
+                      transition={{ delay: 0.5 + i * 0.06 }}
+                      className={`flex items-center gap-2 px-2 py-1.5 rounded ${
+                        i === 0 ? "bg-white/[0.03]" : ""
+                      }`}
+                    >
+                      <div
+                        className="h-1 w-1 rounded-full shrink-0"
+                        style={{ backgroundColor: mod.accent, opacity: i === 0 ? 0.7 : 0.3 }}
+                      />
+                      <span className={`text-[10px] font-medium ${i === 0 ? "text-white/50" : "text-white/15"}`}>
+                        {mod.label}
+                      </span>
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* Main content area — mini dashboard */}
+                <div className="p-3 space-y-2">
+                  {/* Command bar */}
+                  <div className="flex items-center gap-2 rounded bg-white/[0.02] border border-white/[0.03] px-3 py-2">
+                    <span className="text-keystone-green/40 text-[10px] font-mono">$</span>
+                    <span className="text-[10px] font-mono text-white/20">Swap 500 SOL → USDC</span>
+                    <span className="ml-auto text-[8px] font-mono text-keystone-green/30 bg-keystone-green/[0.06] px-1.5 py-0.5 rounded">
+                      Passed
+                    </span>
+                  </div>
+
+                  {/* Mini stats row */}
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { label: "Balance", value: "$2.2M" },
+                      { label: "Runway", value: "14 mo" },
+                      { label: "Risk", value: "3.2/10" },
+                    ].map((s) => (
+                      <div key={s.label} className="rounded bg-white/[0.015] border border-white/[0.02] px-2 py-1.5 text-center">
+                        <div className="text-[7px] font-mono text-white/10 uppercase">{s.label}</div>
+                        <div className="text-[11px] font-bold text-white/35">{s.value}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Mini chart */}
+                  <div className="rounded bg-white/[0.015] border border-white/[0.02] p-2">
+                    <svg viewBox="0 0 200 30" className="w-full h-auto">
+                      <path d="M 0 25 L 25 22 L 50 20 L 75 18 L 100 19 L 125 15 L 150 12 L 175 10 L 200 8" fill="none" stroke="#36e27b" strokeWidth="1" opacity="0.3" />
+                      <path d="M 0 25 L 25 22 L 50 20 L 75 18 L 100 19 L 125 15 L 150 12 L 175 10 L 200 8 L 200 30 L 0 30 Z" fill="#36e27b" opacity="0.03" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              {keystoneModules.map((mod, i) => (
-                <motion.div
-                  key={mod.label}
-                  initial={{ opacity: 0 }}
-                  animate={inView ? { opacity: 1 } : {}}
-                  transition={{ delay: 0.4 + i * 0.05 }}
-                  className={`flex items-center gap-2 rounded-lg border border-[#36e27b]/10 bg-gradient-to-r ${mod.color} px-3 py-2 text-sm text-white/70 font-medium`}
-                >
-                  <div className="h-2 w-2 rounded-full bg-[#36e27b]/60" />
-                  {mod.label}
-                </motion.div>
-              ))}
-            </div>
-            <p className="mt-4 text-xs text-[#36e27b]/40">One screen. One command. Full control.</p>
+
+            <p className="mt-4 text-[11px] text-keystone-green/25 leading-relaxed">
+              One screen · One command · Full control
+            </p>
           </motion.div>
         </div>
       </div>

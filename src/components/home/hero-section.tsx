@@ -2,16 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { ArrowRight, Terminal } from "lucide-react";
-import { LogoFilled } from "@/components/icons";
-
-const stats = [
-  { value: "Solana Native", label: "Built for Speed" },
-  { value: "5 Agents", label: "Orchestrated AI" },
-  { value: "<2s", label: "Avg Response" },
-  { value: "0", label: "Security Incidents" },
-];
+import { ArrowRight, ArrowDown } from "lucide-react";
+import Image from "next/image";
 
 export function HeroSection() {
   const [solPrice, setSolPrice] = useState<number | null>(null);
@@ -40,113 +32,126 @@ export function HeroSection() {
   return (
     <section
       id="content"
-      className="relative scroll-mt-24 overflow-hidden"
+      className="relative h-dvh max-h-dvh flex flex-col overflow-hidden"
       aria-labelledby="hero-heading"
     >
-      {/* Background glow effects */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-[#36e27b]/[0.04] rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-[#36e27b]/[0.03] rounded-full blur-[100px]" />
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#36e27b]/20 to-transparent" />
-      </div>
+      {/* Gradient mesh removed - now in shared parent */}
 
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-20 pb-24 md:pt-32 md:pb-32">
-        <div className="max-w-4xl">
-          {/* Badge */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 rounded-full border border-[#36e27b]/20 bg-[#36e27b]/[0.06] px-3 py-1.5 text-xs font-medium text-[#36e27b] mb-6"
-          >
-            <LogoFilled size={14} />
-            <span>The Sovereign OS for Digital Assets</span>
-            {solPrice && (
-              <span className="ml-1 text-white/50">
-                SOL ${solPrice.toFixed(2)}
+      <div className="relative flex-1 mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 pt-20 pb-6">
+        {/* ── Centered Eyebrow at top ── */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+          className="text-center text-[11px] font-mono uppercase tracking-[0.3em] text-keystone-green/60 mb-8"
+        >
+          The Sovereign OS for Digital Assets
+          {solPrice && (
+            <span className="ml-4 text-white/25">SOL ${solPrice.toFixed(2)}</span>
+          )}
+        </motion.p>
+
+        {/* ── Two column content ── */}
+        <div className="w-full grid lg:grid-cols-2 gap-8 lg:gap-12 xl:gap-16">
+          {/* Left column: Heading + Subtitle */}
+          <div>
+            <motion.h1
+              id="hero-heading"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.1 }}
+              className="text-[clamp(2.75rem,5vw,5rem)] font-bold tracking-[-0.03em] leading-[1.1] text-white flex flex-col items-start"
+            >
+              <span>From</span>
+              <span>Click-Ops <span className="text-keystone-green">to</span></span>
+              <span className="bg-gradient-to-r from-keystone-green via-emerald-400 to-keystone-green/50 bg-clip-text text-transparent">
+                Command-Ops.
               </span>
-            )}
-          </motion.div>
+            </motion.h1>
 
-          {/* Heading */}
-          <motion.h1
-            id="hero-heading"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.08] text-white"
-          >
-            From Click-Ops{" "}
-            <br className="hidden sm:block" />
-            to{" "}
-            <span className="bg-gradient-to-r from-[#36e27b] via-[#36e27b]/80 to-[#36e27b]/60 bg-clip-text text-transparent">
-              Command-Ops.
-            </span>
-          </motion.h1>
-
-          {/* Subtitle */}
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="mt-6 text-lg md:text-xl text-white/60 max-w-2xl leading-relaxed"
-          >
-            Stop juggling Squads, Jupiter, and Birdeye across 10 tabs.
-            Keystone turns complex treasury operations into simple, declarative commands.
-            Humans set intent, machines handle complexity.
-          </motion.p>
-
-          {/* CTA Buttons */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="mt-8 flex flex-wrap items-center gap-4"
-          >
-            <Button
-              size="lg"
-              asChild
-              className="bg-[#36e27b] text-[#0B0C10] hover:bg-[#36e27b]/90 font-semibold shadow-[0_0_30px_rgba(54,226,123,0.3)] hover:shadow-[0_0_40px_rgba(54,226,123,0.4)] transition-all"
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.25 }}
+              className="mt-8 text-lg lg:text-xl text-white/35 max-w-xl leading-relaxed font-light"
             >
-              <a href="/app" className="inline-flex items-center gap-2">
-                Open App <ArrowRight className="h-4 w-4" />
-              </a>
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              asChild
-              className="border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.06] hover:border-white/20"
-            >
-              <a href="#demo" className="inline-flex items-center gap-2">
-                <Terminal className="h-4 w-4" />
-                Try a Command
-              </a>
-            </Button>
-          </motion.div>
+              Stop juggling Squads, Jupiter, and Birdeye across 10 tabs.
+              One command. Full treasury control.
+            </motion.p>
+          </div>
 
-          {/* Stats */}
+          {/* ── Right column: Image showcase ── */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.45 }}
-            className="mt-14 grid grid-cols-2 md:grid-cols-4 gap-4"
+            transition={{ duration: 0.8, delay: 0.55 }}
+            className="relative hidden lg:flex items-center justify-center"
           >
-            {stats.map((stat, i) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.5 + i * 0.08 }}
-                className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 backdrop-blur-sm"
-              >
-                <div className="text-lg font-semibold text-white">{stat.value}</div>
-                <div className="text-xs text-white/40 mt-0.5">{stat.label}</div>
-              </motion.div>
-            ))}
+            {/* Glow behind the image */}
+            <div className="absolute -inset-8 bg-keystone-green/[0.03] blur-[80px] rounded-full pointer-events-none" />
+
+            <div className="relative w-full max-w-lg">
+              <Image
+                src="/images/hero-command.png"
+                alt="AI Command Interface - Swap 500 SOL to USDC via Jupiter"
+                width={600}
+                height={400}
+                className="w-full h-auto rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] border border-white/[0.06]"
+                priority
+              />
+            </div>
           </motion.div>
         </div>
+
+        {/* ── Centered CTA below content ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="mt-12 flex items-center justify-center gap-6"
+        >
+          <a
+            href="/app"
+            className="group relative inline-flex items-center gap-2.5 font-semibold text-xs px-5 py-2.5 rounded-lg overflow-hidden transition-all duration-300"
+          >
+            {/* Metallic keystone-green gradient background */}
+            <span className="absolute inset-0 bg-gradient-to-b from-white/30 via-white/5 to-transparent" />
+            <span className="absolute inset-0 bg-gradient-to-br from-[#5aff9d] via-[#36e27b] to-[#1a9c4e]" />
+            {/* Shine highlight */}
+            <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+            {/* Inner shadow for depth */}
+            <span className="absolute inset-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.3)]" />
+            {/* Border */}
+            <span className="absolute inset-0 rounded-lg border border-white/20" />
+            {/* Content */}
+            <span className="relative text-black font-semibold tracking-wide">Open App</span>
+            <ArrowRight className="relative h-3.5 w-3.5 text-black/70 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-black" />
+          </a>
+          <a
+            href="#demo"
+            className="text-sm text-white/30 hover:text-white/60 transition-colors duration-300 font-medium"
+          >
+            or try a command &darr;
+          </a>
+        </motion.div>
+
+        {/* ── Centered Stats below CTA ── */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.75 }}
+          className="mt-10 flex items-center justify-center gap-6 text-xs font-mono tracking-wide text-white/15"
+        >
+          <span>2,847+ TPS</span>
+          <span className="h-3 w-px bg-white/[0.06]" />
+          <span>5 Agents Online</span>
+          <span className="h-3 w-px bg-white/[0.06]" />
+          <span>0 Security Incidents</span>
+        </motion.div>
       </div>
+
+      {/* Bottom edge */}
+      <div className="shrink-0 h-px" />
     </section>
   );
 }

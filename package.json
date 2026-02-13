@@ -116,6 +116,8 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@tailwindcss/postcss": "^4",
+    "@types/babel__standalone": "^7.1.9",
+    "@types/bs58": "^4.0.4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

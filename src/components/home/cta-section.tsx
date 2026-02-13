@@ -2,9 +2,7 @@
 
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { ArrowRight, Compass } from "lucide-react";
-import { LogoFilled } from "@/components/icons";
+import { ArrowRight } from "lucide-react";
 
 export function CTASection() {
   const ref = useRef(null);
@@ -13,60 +11,61 @@ export function CTASection() {
   return (
     <section
       id="contact"
-      className="relative border-t border-white/[0.04] scroll-mt-24"
+      className="relative border-t border-white/[0.04] scroll-mt-24 overflow-hidden"
       ref={ref}
     >
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-24 md:py-32">
-        {/* Background glow */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#36e27b]/[0.04] rounded-full blur-[120px]" />
-        </div>
+      {/* Ambient glow — no RetroGrid library */}
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+        <div className="absolute bottom-[-20%] left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-keystone-green/[0.05] rounded-full blur-[150px]" />
+        <div className="absolute inset-0 grid-pattern opacity-20" />
+      </div>
 
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-28 md:py-40">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
           className="relative text-center max-w-3xl mx-auto"
         >
-          <LogoFilled size={40} className="mx-auto mb-6 opacity-60" />
-
-          <h2 className="text-3xl md:text-5xl font-bold text-white tracking-tight leading-tight">
+          <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white tracking-[-0.03em] leading-[0.95]">
             Ready to command{" "}
-            <span className="bg-gradient-to-r from-[#36e27b] to-[#36e27b]/60 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-keystone-green via-emerald-400 to-keystone-green/50 bg-clip-text text-transparent">
               your treasury?
             </span>
           </h2>
 
-          <p className="mt-5 text-white/50 text-base md:text-lg max-w-xl mx-auto leading-relaxed">
-            Join treasury teams building on Keystone. Open the app to explore or request
-            enterprise access for your organization.
+          <p className="mt-8 text-white/30 text-lg md:text-xl max-w-lg mx-auto leading-relaxed font-light">
+            Join treasury teams building on Keystone.
           </p>
 
-          <div className="mt-8 flex flex-wrap justify-center gap-4">
-            <Button
-              size="lg"
-              asChild
-              className="bg-[#36e27b] text-[#0B0C10] hover:bg-[#36e27b]/90 font-semibold shadow-[0_0_30px_rgba(54,226,123,0.25)] hover:shadow-[0_0_40px_rgba(54,226,123,0.35)] transition-all"
+          <div className="mt-10 flex flex-wrap justify-center items-center gap-6">
+            <a
+              href="/app"
+              className="group relative inline-flex items-center gap-2.5 font-semibold text-xs px-5 py-2.5 rounded-lg overflow-hidden transition-all duration-300"
             >
-              <a href="/app" className="inline-flex items-center gap-2">
-                Open App <ArrowRight className="h-4 w-4" />
-              </a>
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              asChild
-              className="border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.06] hover:border-white/20"
+              {/* Metallic keystone-green gradient background */}
+              <span className="absolute inset-0 bg-gradient-to-b from-white/30 via-white/5 to-transparent" />
+              <span className="absolute inset-0 bg-gradient-to-br from-[#5aff9d] via-[#36e27b] to-[#1a9c4e]" />
+              {/* Shine highlight */}
+              <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+              {/* Inner shadow for depth */}
+              <span className="absolute inset-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.3)]" />
+              {/* Border */}
+              <span className="absolute inset-0 rounded-lg border border-white/20" />
+              {/* Content */}
+              <span className="relative text-black font-semibold tracking-wide">Open App</span>
+              <ArrowRight className="relative h-3.5 w-3.5 text-black/70 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-black" />
+            </a>
+            <a
+              href="/atlas"
+              className="text-sm text-white/30 hover:text-white/60 transition-colors duration-300 font-medium"
             >
-              <a href="/atlas" className="inline-flex items-center gap-2">
-                <Compass className="h-4 w-4" />
-                Explore Atlas
-              </a>
-            </Button>
+              Explore Atlas &rarr;
+            </a>
           </div>
 
-          <p className="mt-6 text-xs text-white/25">
-            Non-custodial. Simulation-first. Your keys, your control.
+          <p className="mt-12 text-[10px] font-mono uppercase tracking-[0.3em] text-white/10">
+            Non-custodial · Simulation-first · Multisig-native
           </p>
         </motion.div>
       </div>
