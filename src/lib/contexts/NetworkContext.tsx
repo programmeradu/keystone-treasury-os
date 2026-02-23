@@ -15,14 +15,18 @@ interface NetworkContextType {
 const NetworkContext = createContext<NetworkContextType | undefined>(undefined);
 
 // Ordered fallback chain — first reachable endpoint wins.
-// User-configured env var always takes priority.
-const MAINNET_FALLBACKS: string[] = [
-    process.env.NEXT_PUBLIC_SOLANA_RPC_URL,
-    "https://api.mainnet-beta.solana.com",
-    "https://solana-mainnet.g.alchemy.com/v2/demo",
-    "https://rpc.ankr.com/solana",
-    "https://solana.public-rpc.com",
-].filter(Boolean) as string[];
+// The local proxy (/api/solana/rpc) forwards to Helius server-side,
+// avoiding CORS and API key exposure issues in the browser.
+function getMainnetFallbacks(): string[] {
+    const candidates: (string | undefined)[] = [
+        process.env.NEXT_PUBLIC_SOLANA_RPC_URL,
+        // Local proxy — always works in dev & prod, no CORS
+        typeof window !== "undefined" ? `${window.location.origin}/api/solana/rpc` : undefined,
+        "https://api.mainnet-beta.solana.com",
+    ];
+    return candidates.filter(Boolean) as string[];
+}
+const MAINNET_FALLBACKS: string[] = getMainnetFallbacks();
 
 const DEVNET_FALLBACKS: string[] = [
     clusterApiUrl("devnet"),

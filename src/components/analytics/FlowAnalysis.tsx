@@ -5,6 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLin
 import { useVault } from "@/lib/contexts/VaultContext";
 import { useSimulationStore } from "@/lib/stores/simulation-store";
 import { ArrowDownLeft, ArrowUpRight, Loader2, Repeat, TrendingUp } from "lucide-react";
+import { Logo } from "@/components/icons";
 
 interface FlowPeriod {
     date: string;
@@ -52,16 +53,53 @@ export const FlowAnalysis = () => {
         return () => { cancelled = true; };
     }, [activeVault, granularity]);
 
+    const simActive = sim.active && !!sim.result;
+
+    // Extract projected monthly flows from sim variables
+    const simFlows = useMemo(() => {
+        if (!simActive || !sim.result?.metadata?.variables) return null;
+        let monthlyBurn = 0;
+        let monthlyInflow = 0;
+        for (const v of sim.result.metadata.variables) {
+            if (v.type === "burn_rate" || v.type === "outflow") monthlyBurn += v.value;
+            if (v.type === "inflow") monthlyInflow += v.value;
+        }
+        return { monthlyBurn, monthlyInflow, net: monthlyInflow - monthlyBurn };
+    }, [simActive, sim.result]);
+
     const chartData = useMemo(() => {
-        return flows.map(f => ({
+        const realData = flows.map(f => ({
             date: granularity === "monthly"
                 ? f.date
                 : new Date(f.date).toLocaleDateString("default", { month: "short", day: "numeric" }),
             Inflow: Math.round(f.inflow),
-            Outflow: Math.round(f.outflow), // keep positive — chart uses separate bars
+            Outflow: Math.round(f.outflow),
             Net: Math.round(f.net),
+            SimInflow: null as number | null,
+            SimOutflow: null as number | null,
+            SimNet: null as number | null,
         }));
-    }, [flows, granularity]);
+
+        // Append projected months from sim
+        if (simFlows && simActive) {
+            const months = sim.result?.metadata?.timeframeMonths || 6;
+            const now = new Date();
+            for (let i = 1; i <= Math.min(months, 12); i++) {
+                const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                realData.push({
+                    date: d.toLocaleDateString("default", { month: "short", year: "2-digit" }),
+                    Inflow: 0,
+                    Outflow: 0,
+                    Net: 0,
+                    SimInflow: Math.round(simFlows.monthlyInflow),
+                    SimOutflow: Math.round(simFlows.monthlyBurn),
+                    SimNet: Math.round(simFlows.net),
+                });
+            }
+        }
+
+        return realData;
+    }, [flows, granularity, simFlows, simActive, sim.result]);
 
     const formatUsd = (v: number) => {
         if (Math.abs(v) >= 1000000) return `$${(v / 1000000).toFixed(1)}M`;
@@ -85,11 +123,12 @@ export const FlowAnalysis = () => {
         <div className={`rounded-2xl bg-card border p-6 backdrop-blur-xl shadow-sm ${sim.active ? "border-orange-500/30" : "border-border"}`}>
             <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-2">
-                    <Repeat size={14} className="text-primary" />
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">
-                        Inflow / Outflow Analysis
+                    <Repeat size={14} className={simActive ? "text-orange-500" : "text-primary"} />
+                    <span className={`text-[10px] uppercase tracking-widest font-semibold ${simActive ? "text-orange-500" : "text-muted-foreground"}`}>
+                        {simActive ? "Projected Flows" : "Inflow / Outflow Analysis"}
                     </span>
                     {loading && <Loader2 size={10} className="animate-spin text-primary" />}
+                    {simActive && <Logo size={10} fillColor="#f97316" />}
                 </div>
                 <div className="flex gap-1">
                     {(["weekly", "monthly"] as const).map(g => (
@@ -149,9 +188,12 @@ export const FlowAnalysis = () => {
                                     name,
                                 ]}
                             />
-                            <Bar dataKey="Inflow" fill="var(--dashboard-accent, #36e27b)" fillOpacity={0.7} radius={[3, 3, 0, 0]} barSize={16} />
-                            <Bar dataKey="Outflow" fill="var(--destructive, #ef4444)" fillOpacity={0.7} radius={[3, 3, 0, 0]} barSize={16} />
+                            <Bar dataKey="Inflow" fill="var(--dashboard-accent, #36e27b)" fillOpacity={simActive ? 0.3 : 0.7} radius={[3, 3, 0, 0]} barSize={16} />
+                            <Bar dataKey="Outflow" fill="var(--destructive, #ef4444)" fillOpacity={simActive ? 0.3 : 0.7} radius={[3, 3, 0, 0]} barSize={16} />
+                            {simActive && <Bar dataKey="SimInflow" fill="#f97316" fillOpacity={0.6} radius={[3, 3, 0, 0]} barSize={16} name="Sim Inflow" />}
+                            {simActive && <Bar dataKey="SimOutflow" fill="#ef4444" fillOpacity={0.6} radius={[3, 3, 0, 0]} barSize={16} name="Sim Outflow" />}
                             <Line type="monotone" dataKey="Net" stroke="var(--primary, #8b5cf6)" strokeWidth={2} dot={false} />
+                            {simActive && <Line type="monotone" dataKey="SimNet" stroke="#f97316" strokeWidth={2} dot={false} strokeDasharray="4 2" name="Sim Net" />}
                         </ComposedChart>
                     </ResponsiveContainer>
                 )}

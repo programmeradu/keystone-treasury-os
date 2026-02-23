@@ -169,14 +169,14 @@ export const YieldEngine = {
     },
 
     /**
-     * Calls /api/agent for AI-generated reasoning logs
+     * Calls /api/command for AI-generated reasoning logs
      */
     async generateAIReasoning(amountLamports: number, signal?: AbortSignal) {
         const strategyList = this.strategies
             .map(s => `- ${s.name} (${s.projectedApy}% APY, Risk: ${s.riskScore}/10)`)
             .join("\n");
 
-        const response = await fetch("/api/agent", {
+        const response = await fetch("/api/command", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             signal,

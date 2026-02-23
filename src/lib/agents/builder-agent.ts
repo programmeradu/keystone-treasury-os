@@ -7,6 +7,7 @@ import type {
   RebalancePortfolioInput
 } from "./types";
 import { BaseAgent } from "./base-agent";
+import { KnowledgeBase } from "@/lib/knowledge";
 
 /**
  * Builder Agent - Assembles complex operations from building blocks
@@ -36,7 +37,7 @@ export class BuilderAgent extends BaseAgent {
         backoffMultiplier: 2
       },
       endpoints: {
-        jupiter: "https://quote-api.jup.ag/v6"
+        jupiter: "https://lite-api.jup.ag/swap/v1"
       },
       ...config
     };
@@ -74,6 +75,28 @@ export class BuilderAgent extends BaseAgent {
         return this.optimizeTaxHarvesting(params, context);
 
       default:
+        // ─── Knowledge Fallback: research unknown protocols ──────
+        console.log(`[BuilderAgent] Unknown action "${action}", invoking Knowledge System...`);
+        try {
+          const kb = new KnowledgeBase();
+          const research = await kb.study(`${action} Solana protocol transaction instructions`);
+          if (research.rawContent) {
+            this.setContextData(context, "knowledge_research", {
+              query: action,
+              summary: research.summary,
+              sources: research.sources,
+            });
+            return {
+              action,
+              status: "researched",
+              summary: research.summary,
+              sources: research.sources,
+              rawContentLength: research.rawContent.length,
+            };
+          }
+        } catch (kbErr) {
+          console.warn(`[BuilderAgent] Knowledge fallback failed:`, kbErr);
+        }
         throw new Error(`Unknown builder action: ${action}`);
     }
   }
@@ -102,8 +125,12 @@ export class BuilderAgent extends BaseAgent {
       }
 
       // Call Jupiter API
+      const jupiterApiKey = process.env.NEXT_PUBLIC_JUPITER_API_KEY || "";
+      const fetchHeaders: Record<string, string> = {};
+      if (jupiterApiKey) fetchHeaders["x-api-key"] = jupiterApiKey;
+
       const response = await fetch(
-        `${this.config.endpoints?.jupiter || "https://quote-api.jup.ag/v6"}/quote?` +
+        `${this.config.endpoints?.jupiter || "https://lite-api.jup.ag/swap/v1"}/quote?` +
           new URLSearchParams({
             inputMint: inMint,
             outputMint: outMint,
@@ -111,7 +138,8 @@ export class BuilderAgent extends BaseAgent {
             slippageBps: String(Math.round(slippage * 100)),
             onlyDirectRoutes: "false",
             asLegacyTransaction: "false"
-          })
+          }),
+        { headers: fetchHeaders }
       );
 
       if (!response.ok) {

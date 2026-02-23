@@ -4,6 +4,7 @@ import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { Logo } from "@/components/icons";
 import { Terminal, Activity, TrendingUp, Search, ExternalLink, Loader2, RefreshCw } from "lucide-react";
 import { useVault } from "@/lib/contexts/VaultContext";
+import { useSimulationStore } from "@/lib/stores/simulation-store";
 import { AppEventBus } from "@/lib/events";
 import { toast } from "@/lib/toast-notifications";
 
@@ -15,6 +16,8 @@ interface FearGreedData {
 
 export const MarketSentiment = () => {
     const { vaultTokens, vaultValue, vaultChange24h, activeVault } = useVault();
+    const sim = useSimulationStore();
+    const simActive = sim.active && !!sim.result;
     const [fearGreed, setFearGreed] = useState<FearGreedData | null>(null);
     const [fgLoading, setFgLoading] = useState(false);
     const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
@@ -156,21 +159,32 @@ Response format: JSON { "observation": "...", "suggestion": "..." }`;
         toast.success("Strategy sent to Agent", { description: "The tactical suggestion has been forwarded to the command pipeline" });
     };
 
+    // Sim-aware observation overlay
+    const simObservation = useMemo(() => {
+        if (!simActive || !sim.result) return null;
+        const { deltaPercent, runwayMonths, riskFlags } = sim.result.summary;
+        const months = sim.result.metadata.timeframeMonths;
+        let text = `Foresight projects ${deltaPercent >= 0 ? "+" : ""}${deltaPercent.toFixed(1)}% over ${months}mo.`;
+        if (runwayMonths != null) text += ` Treasury depletes in ~${runwayMonths.toFixed(1)} months.`;
+        if (riskFlags.length > 0) text += ` Flags: ${riskFlags.join(", ").replace(/_/g, " ").toLowerCase()}.`;
+        return text;
+    }, [simActive, sim.result]);
+
     return (
-        <div className="h-full rounded-2xl bg-card border border-border p-5 flex flex-col relative overflow-hidden group shadow-sm">
+        <div className={`h-full rounded-2xl bg-card border p-5 flex flex-col relative overflow-hidden group shadow-sm ${simActive ? "border-orange-500/30" : "border-border"}`}>
             {/* 1. Terminal Header */}
             <div className="flex items-center justify-between mb-5 border-b border-border pb-3">
                 <div className="flex items-center gap-3">
                     <div className="relative">
-                        <div className="absolute inset-0 bg-primary blur-[15px] opacity-20" />
-                        <Logo size={28} fillColor="var(--dashboard-accent)" />
+                        <div className={`absolute inset-0 blur-[15px] opacity-20 ${simActive ? "bg-orange-500" : "bg-primary"}`} />
+                        <Logo size={28} fillColor={simActive ? "#f97316" : "var(--dashboard-accent)"} />
                     </div>
                     <div>
                         <h3 className="text-sm font-bold text-foreground tracking-tight uppercase">Keystone Intelligence</h3>
                         <div className="flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                            <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${simActive ? "bg-orange-500" : "bg-primary"}`} />
                             <span className="text-[9px] text-muted-foreground font-mono">
-                                {vaultTokens.length > 0 ? `LIVE // ${vaultTokens.length} ASSETS` : "AWAITING VAULT"}
+                                {simActive ? "SIMULATION MODE" : vaultTokens.length > 0 ? `LIVE // ${vaultTokens.length} ASSETS` : "AWAITING VAULT"}
                                 {fearGreed && ` // F&G: ${fearGreed.value}`}
                             </span>
                         </div>
@@ -218,10 +232,11 @@ Response format: JSON { "observation": "...", "suggestion": "..." }`;
                 <div className="space-y-4 relative z-10">
                     <div>
                         <span className="text-muted-foreground uppercase font-bold text-[9px] mb-1 block flex items-center gap-1">
-                            <Search size={10} /> Market Observation
-                            {aiObservation && <span className="text-primary text-[7px] ml-1">AI-POWERED</span>}
+                            <Search size={10} /> {simActive ? "Foresight Analysis" : "Market Observation"}
+                            {simActive && <span className="text-orange-500 text-[7px] ml-1">SIM</span>}
+                            {!simActive && aiObservation && <span className="text-primary text-[7px] ml-1">AI-POWERED</span>}
                         </span>
-                        <p className="text-foreground/90 leading-relaxed font-bold">{observation}</p>
+                        <p className="text-foreground/90 leading-relaxed font-bold">{simActive && simObservation ? simObservation : observation}</p>
                     </div>
 
                     <div className="w-full h-px bg-border" />

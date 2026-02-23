@@ -253,7 +253,7 @@ export class SquadsClient {
             console.log(`[TokenMeta] Fetching prices for ${noPriceMints.length} tokens from Jupiter Price API...`);
             try {
                 const ids = noPriceMints.join(",");
-                const res = await fetch(`https://api.jup.ag/price/v2?ids=${ids}`, { signal: AbortSignal.timeout(5000) });
+                const res = await fetch(`https://lite-api.jup.ag/price/v2?ids=${ids}`, { signal: AbortSignal.timeout(5000) });
                 if (res.ok) {
                     const json = await res.json();
                     if (json.data) {

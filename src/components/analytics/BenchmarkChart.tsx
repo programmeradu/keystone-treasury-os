@@ -3,7 +3,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from "recharts";
 import { useVault } from "@/lib/contexts/VaultContext";
+import { useSimulationStore } from "@/lib/stores/simulation-store";
 import { Loader2, BarChart3 } from "lucide-react";
+import { Logo } from "@/components/icons";
 
 const BENCHMARK_COLORS: Record<string, string> = {
     Portfolio: "var(--dashboard-accent, #36e27b)",
@@ -20,6 +22,8 @@ const MONTHS_OPTIONS = [
 
 export const BenchmarkChart = () => {
     const { activeVault } = useVault();
+    const sim = useSimulationStore();
+    const simActive = sim.active && !!sim.result;
     const [benchmarks, setBenchmarks] = useState<any[]>([]);
     const [portfolioHistory, setPortfolioHistory] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -74,9 +78,13 @@ export const BenchmarkChart = () => {
         // Sample every Nth point for readability
         const sampleRate = refBenchmark.data.length > 90 ? 7 : refBenchmark.data.length > 30 ? 3 : 1;
 
+        // Foresight projected % change series
+        const simProjection = simActive && sim.result?.projection ? sim.result.projection : null;
+        const simStartVal = simProjection?.[0]?.totalValue || 0;
+
         return refBenchmark.data
             .filter((_: any, i: number) => i % sampleRate === 0 || i === refBenchmark.data.length - 1)
-            .map((d: any) => {
+            .map((d: any, idx: number) => {
                 const point: Record<string, any> = {
                     date: new Date(d.date).toLocaleDateString("default", { month: "short", day: "numeric" }),
                 };
@@ -86,9 +94,18 @@ export const BenchmarkChart = () => {
                 // Find closest portfolio date
                 const portfolioPct = portfolioLookup[d.date];
                 point["Portfolio"] = portfolioPct !== undefined ? portfolioPct : null;
+
+                // Foresight projection overlay (spread across data points)
+                if (simProjection && simStartVal > 0) {
+                    const simIdx = Math.round((idx / Math.max(1, refBenchmark.data.length / sampleRate - 1)) * (simProjection.length - 1));
+                    const simPoint = simProjection[Math.min(simIdx, simProjection.length - 1)];
+                    if (simPoint) {
+                        point["Foresight"] = Math.round(((simPoint.totalValue - simStartVal) / simStartVal) * 10000) / 100;
+                    }
+                }
                 return point;
             });
-    }, [benchmarks, portfolioHistory]);
+    }, [benchmarks, portfolioHistory, simActive, sim.result]);
 
     // Performance summary
     const performanceSummary = useMemo(() => {
@@ -120,15 +137,16 @@ export const BenchmarkChart = () => {
     }
 
     return (
-        <div className="rounded-2xl bg-card border border-border p-6 backdrop-blur-xl shadow-sm">
+        <div className={`rounded-2xl bg-card border p-6 backdrop-blur-xl shadow-sm ${simActive ? "border-orange-500/30" : "border-border"}`}>
             <div className="flex justify-between items-start mb-4">
                 <div>
                     <div className="flex items-center gap-2 mb-1">
-                        <BarChart3 size={14} className="text-primary" />
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">
-                            Benchmark Comparison
+                        <BarChart3 size={14} className={simActive ? "text-orange-500" : "text-primary"} />
+                        <span className={`text-[10px] uppercase tracking-widest font-semibold ${simActive ? "text-orange-500" : "text-muted-foreground"}`}>
+                            {simActive ? "Simulated Benchmark" : "Benchmark Comparison"}
                         </span>
                         {loading && <Loader2 size={10} className="animate-spin text-primary" />}
+                        {simActive && <Logo size={10} fillColor="#f97316" />}
                     </div>
                     {performanceSummary && (
                         <p className="text-[9px] text-muted-foreground">
@@ -196,7 +214,8 @@ export const BenchmarkChart = () => {
                             iconSize={8}
                             wrapperStyle={{ fontSize: "9px", fontWeight: 700 }}
                         />
-                        <Line type="monotone" dataKey="Portfolio" stroke={BENCHMARK_COLORS.Portfolio} strokeWidth={3} dot={false} connectNulls />
+                        <Line type="monotone" dataKey="Portfolio" stroke={BENCHMARK_COLORS.Portfolio} strokeWidth={simActive ? 1.5 : 3} dot={false} connectNulls />
+                        {simActive && <Line type="monotone" dataKey="Foresight" stroke="#f97316" strokeWidth={3} dot={false} connectNulls />}
                         <Line type="monotone" dataKey="SOL" stroke={BENCHMARK_COLORS.SOL} strokeWidth={1.5} dot={false} strokeDasharray="4 2" connectNulls />
                         <Line type="monotone" dataKey="BTC" stroke={BENCHMARK_COLORS.BTC} strokeWidth={1.5} dot={false} strokeDasharray="4 2" connectNulls />
                         <Line type="monotone" dataKey="ETH" stroke={BENCHMARK_COLORS.ETH} strokeWidth={1.5} dot={false} strokeDasharray="4 2" connectNulls />

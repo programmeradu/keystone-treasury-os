@@ -153,6 +153,9 @@ export const ConcentrationRisk = () => {
     const { activeVault, vaultTokens, stakeAccounts, vaultChange24h } = useVault();
     const sim = useSimulationStore();
 
+    const simActive = sim.active;
+    const simResult = sim.result;
+
     const risk = useMemo((): RiskResult => {
         if (!activeVault || vaultTokens.length === 0) {
             return { overallScore: 0, overallLabel: "N/A", factors: [] };
@@ -160,8 +163,37 @@ export const ConcentrationRisk = () => {
         return computeMultiFactorRisk(vaultTokens, stakeAccounts, vaultChange24h);
     }, [activeVault, vaultTokens, stakeAccounts, vaultChange24h]);
 
-    // Treemap data
+    // Simulated risk: overlay risk flags from foresight onto base risk
+    const displayRisk = useMemo((): RiskResult => {
+        if (!simActive || !simResult) return risk;
+        const flags = simResult.summary.riskFlags;
+        let score = risk.overallScore;
+        if (flags.includes("DEPLETION_RISK")) score += 4;
+        if (flags.includes("MAJOR_DRAWDOWN")) score += 2;
+        if (flags.includes("HIGH_BURN_RATE")) score += 1;
+        for (const f of flags) { if (f.endsWith("_SEVERE_DECLINE")) score += 1; }
+        score = Math.min(10, score);
+        const overallLabel = score > 7 ? "CRITICAL" : score > 5 ? "HIGH" : score > 3 ? "MODERATE" : "LOW";
+        return { overallScore: score, overallLabel, factors: risk.factors };
+    }, [simActive, simResult, risk]);
+
+    // Treemap data — use simulated end-state allocation when foresight is active
     const treemapData = useMemo(() => {
+        // Simulated allocation from projection endpoint breakdown
+        if (simActive && simResult?.projection?.length) {
+            const endPoint = simResult.projection[simResult.projection.length - 1];
+            if (endPoint?.breakdown) {
+                const entries = Object.entries(endPoint.breakdown).filter(([, v]) => (v as number) > 0);
+                const totalValue = entries.reduce((s, [, v]) => s + (v as number), 0);
+                return entries.map(([name, value]) => {
+                    const v = value as number;
+                    const pct = totalValue > 0 ? (v / totalValue) * 100 : 0;
+                    const isStable = STABLECOINS.has(name.toUpperCase());
+                    const score = pct > 60 ? 8 : pct > 40 ? 6 : pct > 20 ? 4 : isStable ? 1 : 3;
+                    return { name, value: Math.round(v), score, pct: pct.toFixed(1), color: getTokenColor(name) };
+                });
+            }
+        }
         if (vaultTokens.length === 0) return [];
         const totalValue = vaultTokens.reduce((s, t) => s + (t.value || 0), 0);
         return vaultTokens
@@ -178,7 +210,7 @@ export const ConcentrationRisk = () => {
                     color: getTokenColor(t.symbol || "SPL"),
                 };
             });
-    }, [vaultTokens]);
+    }, [vaultTokens, simActive, simResult]);
 
     if (!activeVault) {
         return (
@@ -192,14 +224,16 @@ export const ConcentrationRisk = () => {
         );
     }
 
-    const scoreColor = risk.overallScore > 7 ? "text-destructive" : risk.overallScore > 5 ? "text-orange-500" : risk.overallScore > 3 ? "text-orange-400" : "text-primary";
-    const ScoreIcon = risk.overallScore > 5 ? AlertTriangle : risk.overallScore > 3 ? ShieldAlert : CheckCircle;
+    const scoreColor = displayRisk.overallScore > 7 ? "text-destructive" : displayRisk.overallScore > 5 ? "text-orange-500" : displayRisk.overallScore > 3 ? "text-orange-400" : "text-primary";
+    const ScoreIcon = displayRisk.overallScore > 5 ? AlertTriangle : displayRisk.overallScore > 3 ? ShieldAlert : CheckCircle;
 
     return (
-        <div className={`rounded-2xl bg-card border p-6 backdrop-blur-xl shadow-sm ${risk.overallScore > 6 ? "border-destructive/30" : "border-border"}`}>
+        <div className={`rounded-2xl bg-card border p-6 backdrop-blur-xl shadow-sm ${displayRisk.overallScore > 6 ? "border-destructive/30" : simActive ? "border-orange-500/30" : "border-border"}`}>
             <div className="flex items-center gap-2 mb-4">
                 <ShieldAlert size={14} className={scoreColor} />
-                <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Concentration Risk</span>
+                <span className={`text-[10px] uppercase tracking-widest font-semibold ${simActive ? "text-orange-500" : "text-muted-foreground"}`}>
+                    {simActive ? "Projected Concentration" : "Concentration Risk"}
+                </span>
             </div>
 
             {/* Treemap */}
@@ -222,7 +256,7 @@ export const ConcentrationRisk = () => {
 
             {/* Risk Factors Table */}
             <div className="space-y-1.5">
-                {risk.factors.map(f => (
+                {displayRisk.factors.map(f => (
                     <div key={f.name} className="flex items-center justify-between">
                         <div className="flex items-center gap-2 min-w-0">
                             <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
@@ -251,10 +285,12 @@ export const ConcentrationRisk = () => {
             <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <ScoreIcon size={12} className={scoreColor} />
-                    <span className="text-[9px] font-black uppercase text-muted-foreground">Overall Risk</span>
+                    <span className={`text-[9px] font-black uppercase ${simActive ? "text-orange-500" : "text-muted-foreground"}`}>
+                        {simActive ? "Sim Risk" : "Overall Risk"}
+                    </span>
                 </div>
                 <span className={`text-sm font-black ${scoreColor}`}>
-                    {risk.overallScore}/10 {risk.overallLabel}
+                    {displayRisk.overallScore}/10 {displayRisk.overallLabel}
                 </span>
             </div>
         </div>

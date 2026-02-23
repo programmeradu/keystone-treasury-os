@@ -5,6 +5,8 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceL
 import { toast } from "@/lib/toast-notifications";
 import { useVault } from "@/lib/contexts/VaultContext";
 import { PlayCircle, Loader2, RefreshCw, Shield, WifiOff, Wifi, DollarSign, Users, Percent } from "lucide-react";
+import { Logo } from "@/components/icons";
+import { useSimulationStore } from "@/lib/stores/simulation-store";
 import { Slider } from "@/components/ui/slider";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -66,6 +68,8 @@ const generateBaselineData = (startAmount: number, monthlyBurn: number) => {
 
 export const PredictiveRunway = () => {
     const { activeVault, vaultBalance, vaultTokens } = useVault();
+    const foresight = useSimulationStore();
+    const foresightActive = foresight.active && !!foresight.result;
     const [burnRate, setBurnRate] = useState(45000);
     const [newHires, setNewHires] = useState(0);
     const [revenueImpact, setRevenueImpact] = useState(0);
@@ -240,6 +244,21 @@ export const PredictiveRunway = () => {
     const baselineData = useMemo(() => generateBaselineData(treasuryBalance, burnRate), [treasuryBalance, burnRate]);
 
     const chartData = useMemo(() => {
+        // When Foresight simulation is active, overlay its projection as a third line
+        if (foresightActive && foresight.result?.projection) {
+            const fProj = foresight.result.projection;
+            const internalProj = simData?.projection;
+            // Use foresight projection length as reference
+            return fProj.map((point, i) => {
+                const dateObj = new Date(point.date);
+                return {
+                    date: dateObj.toLocaleString('default', { month: 'short', year: '2-digit' }),
+                    value: internalProj?.[i] ? Math.round(internalProj[i].totalValue) : 0,
+                    foresight: Math.round(point.totalValue),
+                    baseline: baselineData[i]?.baseline ?? 0,
+                };
+            });
+        }
         if (!simData?.projection) return baselineData;
 
         return simData.projection.map((point, i) => {
@@ -250,16 +269,18 @@ export const PredictiveRunway = () => {
                 baseline: baselineData[i]?.baseline ?? 0,
             };
         });
-    }, [simData, baselineData]);
+    }, [simData, baselineData, foresightActive, foresight.result]);
 
-    const runwayMonths = simData?.summary?.runwayMonths;
+    // Use foresight runway when active, otherwise internal sim
+    const effectiveSummary = foresightActive ? foresight.result!.summary : simData?.summary;
+    const runwayMonths = effectiveSummary?.runwayMonths ?? null;
     const hasDepletion = runwayMonths !== null && runwayMonths !== undefined;
     const confidence = simData?.metadata?.confidence ?? 0;
     const stablePct = simData?.metadata?.stablecoinPct ?? 0;
 
     const runwayLabel = hasDepletion
         ? `${runwayMonths.toFixed(1)} Months`
-        : simData ? "18+ Months" : "—";
+        : (simData || foresightActive) ? "18+ Months" : "—";
 
     // ─── Empty state ─────────────────────────────────────────────
     if (!hasVault) {
@@ -281,13 +302,16 @@ export const PredictiveRunway = () => {
     }
 
     return (
-        <div className="rounded-2xl bg-card border border-border p-6 backdrop-blur-xl relative group overflow-hidden shadow-sm">
+        <div className={`rounded-2xl bg-card border p-6 backdrop-blur-xl relative group overflow-hidden shadow-sm ${foresightActive ? "border-orange-500/30" : "border-border"}`}>
             <div className="flex flex-col xl:flex-row justify-between items-start mb-6 gap-8">
                 <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                        <PlayCircle className="text-primary animate-pulse" size={14} />
-                        <span className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.3em]">Predictive Intelligence</span>
+                        <PlayCircle className={`${foresightActive ? "text-orange-500" : "text-primary"} animate-pulse`} size={14} />
+                        <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${foresightActive ? "text-orange-500" : "text-muted-foreground"}`}>
+                            {foresightActive ? "Foresight Overlay" : "Predictive Intelligence"}
+                        </span>
                         {simLoading && <Loader2 size={10} className="animate-spin text-primary" />}
+                        {foresightActive && <Logo size={10} fillColor="#f97316" />}
                     </div>
                     <h3 className="text-3xl font-black tracking-tighter text-foreground uppercase">
                         {runwayLabel} Runway
@@ -467,11 +491,22 @@ export const PredictiveRunway = () => {
                             type="monotone"
                             dataKey="value"
                             stroke={hasDepletion ? "var(--destructive)" : "var(--dashboard-accent)"}
-                            strokeWidth={3}
-                            fillOpacity={1}
+                            strokeWidth={foresightActive ? 1.5 : 3}
+                            fillOpacity={foresightActive ? 0.3 : 1}
                             fill="url(#colorRunway)"
-                            name="Projected"
+                            name="Burn Model"
                         />
+                        {foresightActive && (
+                            <Area
+                                type="monotone"
+                                dataKey="foresight"
+                                stroke="#f97316"
+                                strokeWidth={3}
+                                fillOpacity={0.15}
+                                fill="#f9731620"
+                                name="Foresight"
+                            />
+                        )}
                     </AreaChart>
                 </ResponsiveContainer>
             </div>

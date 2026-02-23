@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Sparkles } from "@/components/icons";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTransactionExecutor } from "@/lib/hooks/useTransactionExecutor";
+import { toast } from "@/lib/toast-notifications";
 
 export function LandingCommandBar() {
     const [open, setOpen] = useState(false);
@@ -10,6 +12,7 @@ export function LandingCommandBar() {
     const [loading, setLoading] = useState(false);
     const [plan, setPlan] = useState<any>(null);
     const [executing, setExecuting] = useState(false);
+    const txExecutor = useTransactionExecutor();
 
     // Close on Escape
     useEffect(() => {
@@ -27,7 +30,7 @@ export function LandingCommandBar() {
         if (!input.trim() || loading) return;
         setLoading(true);
         try {
-            const res = await fetch("/api/agent", {
+            const res = await fetch("/api/command", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ prompt: input }),
@@ -35,6 +38,10 @@ export function LandingCommandBar() {
             const data = await res.json();
 
             if (data.plan && data.plan.actions) {
+                if (data.execution) {
+                    data.plan._execution = data.execution;
+                    data.plan._mode = data.mode;
+                }
                 setPlan(data.plan);
             }
         } catch (error) {
@@ -47,12 +54,66 @@ export function LandingCommandBar() {
     const handleConfirm = async () => {
         if (!plan) return;
         setExecuting(true);
-        // Simulate execution delay for landing page demo
-        await new Promise((r) => setTimeout(r, 1500));
-        setExecuting(false);
-        setOpen(false);
-        setPlan(null);
-        setInput("");
+        try {
+            const firstAction = plan.actions?.[0];
+            const op = firstAction?.operation?.toLowerCase() || "";
+
+            // ─── Swap → wallet sign or Squads proposal ─────────────
+            if (op === "swap" && firstAction?.parameters) {
+                if (!txExecutor.isWalletConnected && !txExecutor.isMultisig) {
+                    toast.error("Wallet Not Connected", {
+                        description: "Connect a wallet to sign this transaction.",
+                    });
+                    return;
+                }
+                const result = await txExecutor.executeSwap({
+                    inputToken: firstAction.parameters.inputToken || "SOL",
+                    outputToken: firstAction.parameters.outputToken || "USDC",
+                    amount: firstAction.parameters.amount || 0,
+                });
+                if (!result.success) throw new Error(result.error);
+            }
+            // ─── Transfer → wallet sign or Squads proposal ─────────
+            else if (op === "transfer" && firstAction?.parameters) {
+                if (!txExecutor.isWalletConnected && !txExecutor.isMultisig) {
+                    toast.error("Wallet Not Connected", {
+                        description: "Connect a wallet to sign this transaction.",
+                    });
+                    return;
+                }
+                const result = await txExecutor.executeTransfer({
+                    recipient: firstAction.parameters.recipient,
+                    token: firstAction.parameters.token || "SOL",
+                    amount: firstAction.parameters.amount || 0,
+                });
+                if (!result.success) throw new Error(result.error);
+            }
+            // ─── Other tx ops → proposal or toast ──────────────────
+            else if (["bridge", "yield_deposit", "yield_withdraw", "rebalance", "stake"].includes(op)) {
+                if (txExecutor.isMultisig) {
+                    const result = await txExecutor.createProposal(
+                        `${op}: ${JSON.stringify(firstAction.parameters)}`
+                    );
+                    if (!result.success) throw new Error(result.error);
+                } else if (!txExecutor.isWalletConnected) {
+                    toast.error("Wallet Not Connected", {
+                        description: "Connect a wallet to execute this action.",
+                    });
+                    return;
+                }
+            }
+
+            setOpen(false);
+            setPlan(null);
+            setInput("");
+        } catch (error: any) {
+            console.error("Execution failed:", error);
+            toast.error("Execution Failed", {
+                description: error.message || "Check console for details.",
+            });
+        } finally {
+            setExecuting(false);
+        }
     };
 
     return (

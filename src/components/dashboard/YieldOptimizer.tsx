@@ -1,10 +1,12 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import { AlertTriangle, TrendingUp, Target, X, Zap, Shield, Cpu, Wallet } from "lucide-react";
+import { AlertTriangle, TrendingUp, Target, X, Zap, Shield, Cpu, Wallet, Check, Users, ArrowRight } from "lucide-react";
 import { useVault } from "@/lib/contexts/VaultContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { AppEventBus, useAppEvent } from "@/lib/events";
 import { YieldEngine } from "@/lib/agents/YieldEngine";
 import { classifyToken, YIELD_MINTS, type TokenCategory } from "@/lib/yield-registry";
+import { toast } from "@/lib/toast-notifications";
+import { useTransactionExecutor } from "@/lib/hooks/useTransactionExecutor";
 
 // ─── Types ──────────────────────────────────────────────────────────
 interface YieldRate {
@@ -24,8 +26,10 @@ function safeDivide(num: number, den: number): number {
 
 // ─── Component ──────────────────────────────────────────────────────
 export const YieldOptimizer = () => {
-    const { activeVault, vaultTokens, vaultValue, loading } = useVault();
+    const { activeVault, vaultTokens, vaultValue, loading, isMultisig, sqClient, vaultConfig } = useVault();
+    const txExecutor = useTransactionExecutor();
     const [showStrategy, setShowStrategy] = useState(false);
+    const [deploying, setDeploying] = useState(false);
     const [strategyStep, setStrategyStep] = useState<"IDLE" | "ANALYZING" | "RESULT">("IDLE");
     const [liveData, setLiveData] = useState<{
         strategyName: string;
@@ -445,16 +449,38 @@ export const YieldOptimizer = () => {
                                     </div>
                                 ) : (
                                     <>
-                                        <div className="space-y-6">
+                                        <div className="space-y-5">
+                                            {/* Execution Mode Indicator */}
+                                            <div className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider ${
+                                                isMultisig
+                                                    ? "bg-blue-500/10 border border-blue-500/20 text-blue-400"
+                                                    : "bg-primary/10 border border-primary/20 text-primary"
+                                            }`}>
+                                                {isMultisig ? <Users size={12} /> : <Wallet size={12} />}
+                                                {isMultisig ? "Multisig — Creates proposal for team approval" : "Direct — Executes via connected wallet"}
+                                            </div>
+
+                                            {/* Target Allocation */}
                                             <div className="p-4 rounded-2xl bg-muted/30 border border-border">
-                                                <div className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
-                                                    <Shield size={12} className="text-primary" />
+                                                <div className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mb-3">
                                                     Target Allocation
                                                 </div>
                                                 <div className="flex items-end justify-between gap-4">
                                                     <div className="flex-1">
-                                                        <div className="flex justify-between text-[11px] mb-1 font-mono">
-                                                            <span>Liquid Staking ({liveData.strategyName})</span>
+                                                        <div className="flex justify-between text-[11px] mb-1 font-mono items-center">
+                                                            <span className="flex items-center gap-1.5">
+                                                                <img
+                                                                    src={
+                                                                        liveData.strategyName === "mSOL" ? "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So/logo.png"
+                                                                        : liveData.strategyName === "JitoSOL" ? "https://storage.googleapis.com/token-metadata/JitoSOL-256.png"
+                                                                        : liveData.strategyName === "bSOL" ? "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1/logo.png"
+                                                                        : "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So/logo.png"
+                                                                    }
+                                                                    alt={liveData.strategyName}
+                                                                    className="w-4 h-4 rounded-full"
+                                                                />
+                                                                Liquid Staking ({liveData.strategyName})
+                                                            </span>
                                                             <span className="text-primary">85%</span>
                                                         </div>
                                                         <div className="h-1.5 w-full bg-background rounded-full overflow-hidden">
@@ -462,8 +488,15 @@ export const YieldOptimizer = () => {
                                                         </div>
                                                     </div>
                                                     <div className="flex-1">
-                                                        <div className="flex justify-between text-[11px] mb-1 font-mono">
-                                                            <span>Operational Buffer</span>
+                                                        <div className="flex justify-between text-[11px] mb-1 font-mono items-center">
+                                                            <span className="flex items-center gap-1.5">
+                                                                <img
+                                                                    src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png"
+                                                                    alt="SOL"
+                                                                    className="w-4 h-4 rounded-full"
+                                                                />
+                                                                Operational Buffer
+                                                            </span>
                                                             <span>15%</span>
                                                         </div>
                                                         <div className="h-1.5 w-full bg-background rounded-full overflow-hidden">
@@ -473,18 +506,16 @@ export const YieldOptimizer = () => {
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="p-4 rounded-2xl border border-border bg-background/50 relative overflow-hidden">
-                                                    <div className="absolute top-0 right-0 p-2 opacity-10">
-                                                        <TrendingUp size={40} />
-                                                    </div>
+                                            {/* Stats Grid */}
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="p-4 rounded-2xl border border-border bg-background/50">
                                                     <div className="text-[9px] uppercase font-black tracking-widest text-muted-foreground mb-1">
                                                         {liveData.source === "live" ? "Live Market APY" : "Estimated APY"}
                                                     </div>
                                                     <div className="text-2xl font-black text-primary">
                                                         +{liveData.apy}%
                                                     </div>
-                                                    <div className="text-[9px] text-muted-foreground mt-1">
+                                                    <div className="text-[9px] text-muted-foreground mt-1 flex items-center gap-1">
                                                         {liveData.source === "live"
                                                             ? "Source: Sanctum / Marinade"
                                                             : "Source: Conservative estimate"}
@@ -494,8 +525,9 @@ export const YieldOptimizer = () => {
                                                     <div className="text-[9px] uppercase font-black tracking-widest text-muted-foreground mb-1">
                                                         Execution Route
                                                     </div>
-                                                    <div className="text-base font-black text-foreground break-all truncate">
-                                                        {liveData.quote ? "Via Jupiter (Best Price)" : "Scanning..."}
+                                                    <div className="text-base font-black text-foreground flex items-center gap-2">
+                                                        <img src="https://static.jup.ag/jup/icon.png" alt="Jupiter" className="w-4 h-4 rounded-full" />
+                                                        {liveData.quote ? "Jupiter (Best Price)" : "Scanning..."}
                                                     </div>
                                                     <div className="text-[9px] text-primary mt-1">
                                                         Impact: &lt; 0.1%
@@ -503,35 +535,123 @@ export const YieldOptimizer = () => {
                                                 </div>
                                             </div>
 
-                                            <div className="space-y-3">
-                                                <p className="text-xs text-muted-foreground leading-relaxed">
-                                                    Agent detected{" "}
-                                                    <span className="text-foreground font-bold font-mono">
-                                                        ${(stats.idle * 0.85).toLocaleString()}
-                                                    </span>{" "}
-                                                    idle. Recommendation: Swap to{" "}
-                                                    <span className="text-primary font-bold">
-                                                        {liveData.strategyName}
-                                                    </span>{" "}
-                                                    immediately to capture {liveData.apy}% yield.
-                                                </p>
-                                            </div>
+                                            {/* Recommendation */}
+                                            <p className="text-xs text-muted-foreground leading-relaxed">
+                                                Agent detected{" "}
+                                                <span className="text-foreground font-bold font-mono">
+                                                    ${(stats.idle * 0.85).toLocaleString()}
+                                                </span>{" "}
+                                                idle. Recommendation: Swap to{" "}
+                                                <span className="text-primary font-bold">
+                                                    {liveData.strategyName}
+                                                </span>{" "}
+                                                immediately to capture {liveData.apy}% yield.
+                                            </p>
                                         </div>
 
-                                        <div className="mt-8 flex gap-3">
+                                        {/* Execute Button — Wired to real execution */}
+                                        <div className="mt-6 flex gap-3">
                                             <button
-                                                onClick={() => {
-                                                    setShowStrategy(false);
-                                                    AppEventBus.emit("AGENT_COMMAND", {
-                                                        command: `Deploy $${(stats.idle * 0.85).toFixed(0)} into ${liveData.strategyName} strategy`,
-                                                        source: "YieldOptimizer:StrategyModal",
-                                                    });
+                                                disabled={deploying}
+                                                onClick={async () => {
+                                                    setDeploying(true);
+                                                    try {
+                                                        if (!txExecutor.isWalletConnected && !txExecutor.isMultisig) {
+                                                            toast.error("No Wallet Connected", {
+                                                                description: "Connect a wallet to execute this deployment.",
+                                                            });
+                                                            return;
+                                                        }
+
+                                                        const solPrice = vaultTokens.find(t => t.symbol === 'SOL')?.price || 150;
+                                                        const idleSol = stats.idle / solPrice;
+                                                        const deployAmount = idleSol * 0.85;
+
+                                                        AppEventBus.emit("AGENT_LOG", {
+                                                            message: txExecutor.isMultisig
+                                                                ? `📋 Creating multisig proposal: Deploy ${deployAmount.toFixed(4)} SOL → ${liveData.strategyName}`
+                                                                : `🔐 Requesting wallet signature: Deploy ${deployAmount.toFixed(4)} SOL → ${liveData.strategyName}`,
+                                                            level: "SYSTEM",
+                                                        });
+
+                                                        // Shared hook handles both multisig (Squads proposal) and individual (wallet sign+send)
+                                                        const result = await txExecutor.executeSwap({
+                                                            inputToken: "SOL",
+                                                            outputToken: liveData.strategyName,
+                                                            amount: deployAmount,
+                                                        });
+
+                                                        if (!result.success) {
+                                                            throw new Error(result.error || "Execution failed");
+                                                        }
+
+                                                        AppEventBus.emit("AGENT_LOG", {
+                                                            message: result.signature
+                                                                ? `✅ Deployment confirmed! Signature: ${result.signature}`
+                                                                : `✅ Proposal created: ${result.proposalKey}. Awaiting ${vaultConfig?.threshold || "N/A"} signatures.`,
+                                                            level: "SUCCESS",
+                                                        });
+                                                    } catch (err: any) {
+                                                        console.error("Deployment failed:", err);
+                                                        toast.error("Deployment Failed", {
+                                                            description: err.message || "Check console for details.",
+                                                        });
+                                                        AppEventBus.emit("AGENT_LOG", {
+                                                            message: `❌ Deployment failed: ${err.message}`,
+                                                            level: "ERROR",
+                                                        });
+                                                    } finally {
+                                                        setDeploying(false);
+                                                        setShowStrategy(false);
+                                                    }
                                                 }}
-                                                className="flex-1 py-4 rounded-2xl bg-primary text-primary-foreground font-black uppercase text-xs tracking-widest hover:shadow-[0_0_30px_var(--primary)/30] transition-all flex items-center justify-center gap-2"
+                                                className={`flex-1 py-4 rounded-2xl font-black uppercase text-xs tracking-widest transition-all flex items-center justify-center gap-2 ${
+                                                    deploying
+                                                        ? "bg-muted text-muted-foreground cursor-wait"
+                                                        : isMultisig
+                                                            ? "bg-blue-500 text-white hover:shadow-[0_0_30px_rgba(59,130,246,0.3)]"
+                                                            : "bg-primary text-primary-foreground hover:shadow-[0_0_30px_var(--primary)/30]"
+                                                }`}
                                             >
-                                                Execute Deployment
-                                                <Zap size={14} className="fill-current" />
+                                                {deploying ? (
+                                                    <>
+                                                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                                        {isMultisig ? "Creating Proposal..." : "Preparing Transaction..."}
+                                                    </>
+                                                ) : isMultisig ? (
+                                                    <>
+                                                        <Users size={14} />
+                                                        Create Proposal
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Zap size={14} className="fill-current" />
+                                                        Execute Deployment
+                                                    </>
+                                                )}
                                             </button>
+                                        </div>
+
+                                        {/* Infrastructure Footer */}
+                                        <div className="flex items-center justify-center gap-4 mt-5 pt-3 border-t border-border">
+                                            <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground/50">
+                                                <img src="https://static.jup.ag/jup/icon.png" alt="Jupiter" className="w-3 h-3 rounded-full opacity-50" />
+                                                Jupiter
+                                            </div>
+                                            <div className="w-0.5 h-0.5 rounded-full bg-muted-foreground/20" />
+                                            <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground/50">
+                                                <img src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" alt="Solana" className="w-3 h-3 rounded-full opacity-50" />
+                                                Solana
+                                            </div>
+                                            {isMultisig && (
+                                                <>
+                                                    <div className="w-0.5 h-0.5 rounded-full bg-muted-foreground/20" />
+                                                    <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground/50">
+                                                        <img src="https://pbs.twimg.com/profile_images/1654868465684652032/HkyaITC-_normal.png" alt="Squads" className="w-3 h-3 rounded-full opacity-50" />
+                                                        Squads Protocol
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
                                     </>
                                 )}

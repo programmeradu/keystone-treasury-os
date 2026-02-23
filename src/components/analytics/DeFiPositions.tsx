@@ -5,6 +5,8 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { useVault } from "@/lib/contexts/VaultContext";
 import { classifyToken, YIELD_MINTS, NATIVE_STAKING_MINT } from "@/lib/yield-registry";
 import { Loader2, Layers, Shield, TrendingUp } from "lucide-react";
+import { Logo } from "@/components/icons";
+import { useSimulationStore } from "@/lib/stores/simulation-store";
 import { getTokenColor } from "@/lib/token-colors";
 
 interface YieldRate {
@@ -16,6 +18,8 @@ interface YieldRate {
 
 export const DeFiPositions = () => {
     const { activeVault, vaultTokens, stakeAccounts, totalStakedSol } = useVault();
+    const sim = useSimulationStore();
+    const simActive = sim.active && !!sim.result;
     const [yieldRates, setYieldRates] = useState<Record<string, YieldRate>>({});
     const [solPrice, setSolPrice] = useState(0);
     const [loading, setLoading] = useState(false);
@@ -153,12 +157,25 @@ export const DeFiPositions = () => {
         );
     }
 
+    // Simulated yield override from foresight variables
+    const simYieldApy = useMemo(() => {
+        if (!simActive || !sim.result?.metadata?.variables) return null;
+        const yieldVar = sim.result.metadata.variables.find((v: any) => v.type === "yield_apy");
+        return yieldVar ? yieldVar.value * 100 : null; // convert decimal to %
+    }, [simActive, sim.result]);
+
+    const displayApy = simYieldApy != null ? simYieldApy : weightedApy;
+    const displayMonthly = simYieldApy != null ? (totalTvl * simYieldApy / 100) / 12 : totalMonthlyYield;
+
     return (
-        <div className="rounded-2xl bg-card border border-border p-6 backdrop-blur-xl shadow-sm flex flex-col">
+        <div className={`rounded-2xl bg-card border p-6 backdrop-blur-xl shadow-sm flex flex-col ${simActive ? "border-orange-500/30" : "border-border"}`}>
             <div className="flex items-center gap-2 mb-4">
-                <Layers size={14} className="text-primary" />
-                <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">DeFi Positions</span>
+                <Layers size={14} className={simActive ? "text-orange-500" : "text-primary"} />
+                <span className={`text-[10px] uppercase tracking-widest font-semibold ${simActive ? "text-orange-500" : "text-muted-foreground"}`}>
+                    {simActive ? "Projected Positions" : "DeFi Positions"}
+                </span>
                 {loading && <Loader2 size={10} className="animate-spin text-primary" />}
+                {simActive && <Logo size={10} fillColor="#f97316" />}
             </div>
 
             {/* Summary Bar */}
@@ -167,13 +184,13 @@ export const DeFiPositions = () => {
                     <span className="text-[8px] text-muted-foreground uppercase font-black block">Total TVL</span>
                     <span className="text-[12px] font-bold text-foreground">${totalTvl >= 1000 ? `${(totalTvl / 1000).toFixed(1)}K` : totalTvl.toFixed(0)}</span>
                 </div>
-                <div className="p-2 rounded-lg bg-muted/30 border border-border text-center">
-                    <span className="text-[8px] text-muted-foreground uppercase font-black block">Avg APY</span>
-                    <span className="text-[12px] font-bold text-primary">{weightedApy.toFixed(1)}%</span>
+                <div className={`p-2 rounded-lg border text-center ${simActive && simYieldApy != null ? "bg-orange-500/5 border-orange-500/20" : "bg-muted/30 border-border"}`}>
+                    <span className="text-[8px] text-muted-foreground uppercase font-black block">{simActive && simYieldApy != null ? "Sim APY" : "Avg APY"}</span>
+                    <span className={`text-[12px] font-bold ${simActive && simYieldApy != null ? "text-orange-500" : "text-primary"}`}>{displayApy.toFixed(1)}%</span>
                 </div>
-                <div className="p-2 rounded-lg bg-muted/30 border border-border text-center">
+                <div className={`p-2 rounded-lg border text-center ${simActive && simYieldApy != null ? "bg-orange-500/5 border-orange-500/20" : "bg-muted/30 border-border"}`}>
                     <span className="text-[8px] text-muted-foreground uppercase font-black block">Monthly</span>
-                    <span className="text-[12px] font-bold text-primary">+${totalMonthlyYield.toFixed(0)}</span>
+                    <span className={`text-[12px] font-bold ${simActive && simYieldApy != null ? "text-orange-500" : "text-primary"}`}>+${displayMonthly.toFixed(0)}</span>
                 </div>
             </div>
 

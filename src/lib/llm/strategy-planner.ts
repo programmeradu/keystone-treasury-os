@@ -3,14 +3,13 @@
  * Converts natural language user requests into structured execution plans
  * for deterministic agents to execute
  * 
- * Supports multiple LLM providers:
- * - Groq (mixtral-8x7b-32768): Free tier available
- * - GitHub Models (gpt-4o): Via Microsoft Azure endpoint
- * - Anthropic (claude-3-5-sonnet): Via Anthropic SDK
+ * Uses Groq (llama-3.3-70b-versatile) as the LLM provider
+ * Falls back to a deterministic local parser when Groq is unavailable
  */
 
 import Groq from "groq-sdk";
 import OpenAI from "openai";
+import { PluginRegistry } from "@/lib/plugins/registry";
 
 export interface ActionItem {
   operation: string;
@@ -28,27 +27,285 @@ export interface StrategyPlan {
   isChain?: boolean;
 }
 
-type LLMProvider = "openai" | "groq" | "github";
+// ─── Deterministic Local Parser (works without LLM) ──────────────────
+// Handles common intents so the agent is functional from birth.
 
-/**
- * Get the best available LLM provider
- */
-function getProvider(): LLMProvider {
-  // Prefer OpenAI (User provided key)
-  if (process.env.OPENAI_API_KEY) return "openai";
-  // Fall back to Groq (fast, free tier)
-  if (process.env.GROQ_API_KEY) return "groq";
-  // Fall back to GitHub Models
-  if (process.env.GITHUB_TOKEN) return "github";
-  // Default to OpenAI (will throw error if no key, but reasonable default)
-  return "openai";
+const TOKEN_ALIASES: Record<string, string> = {
+  sol: "SOL", solana: "SOL",
+  usdc: "USDC", usdt: "USDT",
+  eth: "ETH", ethereum: "ETH",
+  btc: "BTC", bitcoin: "BTC",
+  bonk: "BONK", jup: "JUP", jupiter: "JUP",
+  ray: "RAY", raydium: "RAY",
+  orca: "ORCA", msol: "MSOL", jito: "JITO",
+  wif: "WIF", trump: "TRUMP", pyth: "PYTH",
+};
+
+function resolveToken(word: string): string {
+  return TOKEN_ALIASES[word.toLowerCase()] || word.toUpperCase();
+}
+
+function localParsePlan(prompt: string): StrategyPlan | null {
+  const lower = prompt.toLowerCase().trim();
+
+  // ─── Multi-step chains: "swap X and stake Y", "swap X then send Y" ─
+  // Detect chain keywords splitting multiple intents
+  const chainSplit = lower.split(/\s+(?:and\s+then|then|and|,\s*then)\s+/);
+  if (chainSplit.length >= 2) {
+    const actions: ActionItem[] = [];
+    const logs: string[] = [];
+    let prevOutputToken: string | null = null;
+    let prevAmount: number | null = null;
+
+    for (const segment of chainSplit) {
+      const seg = segment.trim();
+
+      // Parse swap segment
+      const swapSeg = seg.match(
+        /(?:swap|convert|exchange|trade)\s+([\d,.]+)\s*[k]?\s+(\w+)\s+(?:to|into|for|->|→)\s+(\w+)/i
+      );
+      if (swapSeg) {
+        let amt = parseFloat(swapSeg[1].replace(/,/g, ""));
+        if (/k/i.test(swapSeg[0]) && amt < 10000) amt *= 1000;
+        const inTok = resolveToken(swapSeg[2]);
+        const outTok = resolveToken(swapSeg[3]);
+        actions.push({ operation: "swap", parameters: { inputToken: inTok, outputToken: outTok, amount: amt } });
+        logs.push(`Step ${actions.length}: Swap ${amt} ${inTok} → ${outTok}`);
+        prevOutputToken = outTok;
+        prevAmount = amt;
+        continue;
+      }
+
+      // Parse stake segment — "stake half via marinade", "stake 15 sol"
+      const stakeSeg = seg.match(
+        /(?:stake)\s+([\d,.]+|half|all|rest)\s*(?:sol|solana)?\s*(?:(?:with|on|via|through)\s+(\w+))?/i
+      );
+      if (stakeSeg) {
+        let amt: number;
+        const amtStr = stakeSeg[1].toLowerCase();
+        if (amtStr === "half" && prevAmount) amt = prevAmount / 2;
+        else if (amtStr === "all" && prevAmount) amt = prevAmount;
+        else if (amtStr === "rest" && prevAmount) amt = prevAmount;
+        else amt = parseFloat(amtStr.replace(/,/g, "")) || 0;
+        const provider = stakeSeg[2] || "marinade";
+        // If previous step swapped to a token, stake that token
+        const stakeToken = prevOutputToken || "SOL";
+        actions.push({ operation: "stake", parameters: { amount: amt, provider, token: stakeToken } });
+        logs.push(`Step ${actions.length}: Stake ${amt} ${stakeToken} via ${provider}`);
+        continue;
+      }
+
+      // Parse transfer segment — "send half to <address>", "send 15 usdc to <addr>"
+      const transferSeg = seg.match(
+        /(?:send|transfer|pay)\s+([\d,.]+|half|all|rest)\s*(\w+)?\s+to\s+([A-Za-z0-9]{32,44})/i
+      );
+      if (transferSeg) {
+        let amt: number;
+        const amtStr = transferSeg[1].toLowerCase();
+        if (amtStr === "half" && prevAmount) amt = prevAmount / 2;
+        else if (amtStr === "all" && prevAmount) amt = prevAmount;
+        else amt = parseFloat(amtStr.replace(/,/g, "")) || 0;
+        const token = transferSeg[2] ? resolveToken(transferSeg[2]) : (prevOutputToken || "SOL");
+        const recipient = transferSeg[3];
+        actions.push({ operation: "transfer", parameters: { recipient, token, amount: amt } });
+        logs.push(`Step ${actions.length}: Transfer ${amt} ${token} → ${recipient.slice(0, 8)}...`);
+        continue;
+      }
+
+      // Parse yield deposit — "deposit X into marinade/drift/etc"
+      const yieldSeg = seg.match(
+        /(?:deposit|lend)\s+([\d,.]+|half|all|rest)\s*(\w+)?\s+(?:into|on|to|via)\s+(\w+)/i
+      );
+      if (yieldSeg) {
+        let amt: number;
+        const amtStr = yieldSeg[1].toLowerCase();
+        if (amtStr === "half" && prevAmount) amt = prevAmount / 2;
+        else if (amtStr === "all" && prevAmount) amt = prevAmount;
+        else amt = parseFloat(amtStr.replace(/,/g, "")) || 0;
+        const token = yieldSeg[2] ? resolveToken(yieldSeg[2]) : (prevOutputToken || "SOL");
+        const protocol = yieldSeg[3];
+        actions.push({ operation: "yield_deposit", parameters: { amount: amt, token, protocol } });
+        logs.push(`Step ${actions.length}: Deposit ${amt} ${token} into ${protocol}`);
+        continue;
+      }
+    }
+
+    if (actions.length >= 2) {
+      return {
+        actions,
+        reasoning: `Local parser: ${actions.length}-step chain detected`,
+        logs,
+        warnings: ["Multi-step execution — each step requires wallet approval"],
+        estimatedOutcome: logs.join(" → "),
+        confidence: "medium",
+        isChain: true,
+      };
+    }
+  }
+
+  // ─── Swap: "swap 50 sol to usdc", "convert 1000 usdc into sol" ─────
+  const swapMatch = lower.match(
+    /(?:swap|convert|exchange|trade)\s+([\d,.]+)\s*[k]?\s+(\w+)\s+(?:to|into|for|->|→)\s+(\w+)/i
+  );
+  if (swapMatch) {
+    let amount = parseFloat(swapMatch[1].replace(/,/g, ""));
+    if (/k/i.test(swapMatch[0]) && amount < 10000) amount *= 1000;
+    const inputToken = resolveToken(swapMatch[2]);
+    const outputToken = resolveToken(swapMatch[3]);
+    return {
+      actions: [{ operation: "swap", parameters: { inputToken, outputToken, amount } }],
+      reasoning: `Local parser: swap ${amount} ${inputToken} → ${outputToken}`,
+      logs: [`Parsed swap: ${amount} ${inputToken} → ${outputToken}`],
+      warnings: ["Parsed locally without LLM — add GROQ_API_KEY for smarter planning"],
+      estimatedOutcome: `Swap ${amount} ${inputToken} to ${outputToken} via Jupiter`,
+      confidence: "medium",
+      isChain: false,
+    };
+  }
+
+  // ─── Transfer: "send 10 sol to <address>" ──────────────────────────
+  const transferMatch = lower.match(
+    /(?:send|transfer|pay)\s+([\d,.]+)\s*[k]?\s+(\w+)\s+to\s+([A-Za-z0-9]{32,44})/i
+  );
+  if (transferMatch) {
+    let amount = parseFloat(transferMatch[1].replace(/,/g, ""));
+    if (/k/i.test(transferMatch[0]) && amount < 10000) amount *= 1000;
+    const token = resolveToken(transferMatch[2]);
+    const recipient = transferMatch[3];
+    return {
+      actions: [{ operation: "transfer", parameters: { recipient, token, amount } }],
+      reasoning: `Local parser: transfer ${amount} ${token} to ${recipient}`,
+      logs: [`Parsed transfer: ${amount} ${token} → ${recipient}`],
+      warnings: ["Parsed locally without LLM"],
+      estimatedOutcome: `Transfer ${amount} ${token} to ${recipient.slice(0, 8)}...`,
+      confidence: "medium",
+      isChain: false,
+    };
+  }
+
+  // ─── Stake: "stake 100 sol", "stake 50 sol with marinade" ──────────
+  const stakeMatch = lower.match(
+    /(?:stake)\s+([\d,.]+)\s*[k]?\s+(?:sol|solana)(?:\s+(?:with|on|via)\s+(\w+))?/i
+  );
+  if (stakeMatch) {
+    let amount = parseFloat(stakeMatch[1].replace(/,/g, ""));
+    const provider = stakeMatch[2] || "marinade";
+    return {
+      actions: [{ operation: "stake", parameters: { amount, provider } }],
+      reasoning: `Local parser: stake ${amount} SOL with ${provider}`,
+      logs: [`Parsed stake: ${amount} SOL via ${provider}`],
+      warnings: ["Parsed locally without LLM"],
+      estimatedOutcome: `Stake ${amount} SOL with ${provider}`,
+      confidence: "medium",
+      isChain: false,
+    };
+  }
+
+  // ─── Navigate: "go to dashboard", "show analytics", "open settings" ─
+  const navMap: Record<string, string> = {
+    dashboard: "/app", home: "/app",
+    team: "/app/team", members: "/app/team",
+    settings: "/app/settings", config: "/app/settings",
+    analytics: "/app/analytics", foresight: "/app/analytics",
+  };
+  const navMatch = lower.match(/(?:go\s+to|show|open|navigate\s+to|view)\s+(\w+)/i);
+  if (navMatch) {
+    const target = navMatch[1].toLowerCase();
+    const path = navMap[target];
+    if (path) {
+      return {
+        actions: [{ operation: "navigate", parameters: { path } }],
+        reasoning: `Local parser: navigate to ${path}`,
+        logs: [`Navigate to ${path}`],
+        warnings: [],
+        estimatedOutcome: `Navigating to ${target}`,
+        confidence: "high",
+        isChain: false,
+      };
+    }
+  }
+
+  // ─── Refresh: "refresh", "sync vault" ──────────────────────────────
+  if (/^(?:refresh|sync|reload|update)/.test(lower)) {
+    return {
+      actions: [{ operation: "refresh", parameters: {} }],
+      reasoning: "Local parser: refresh dashboard",
+      logs: ["Dashboard refresh"],
+      warnings: [],
+      estimatedOutcome: "Dashboard data refreshed",
+      confidence: "high",
+      isChain: false,
+    };
+  }
+
+  // ─── Learn protocol: "learn drift", "register protocol marginfi" ───
+  const learnMatch = lower.match(
+    /(?:learn|register|discover|add\s+protocol)\s+(?:protocol\s+)?([\w.-]+)/i
+  );
+  if (learnMatch) {
+    const name = learnMatch[1];
+    return {
+      actions: [{ operation: "plugin_register", parameters: { name, searchQuery: `${name} Solana protocol SDK` } }],
+      reasoning: `Local parser: learn protocol ${name} via Infinite Discovery Stack`,
+      logs: [`Initiating discovery for ${name}`],
+      warnings: ["Will attempt live web research via Tavily/Jina/Firecrawl"],
+      estimatedOutcome: `Learn and register ${name} protocol capabilities`,
+      confidence: "medium",
+      isChain: false,
+    };
+  }
+
+  // ─── Governance: "list proposals", "approve proposal 2" ────────────
+  if (/(?:list|show|pending)\s*proposal/i.test(lower)) {
+    return {
+      actions: [{ operation: "governance_list", parameters: {} }],
+      reasoning: "Local parser: list governance proposals",
+      logs: ["Fetching proposals"],
+      warnings: [],
+      estimatedOutcome: "List all pending governance proposals",
+      confidence: "high",
+      isChain: false,
+    };
+  }
+  const approveMatch = lower.match(/(?:approve|sign)\s+proposal\s+#?(\d+)/i);
+  if (approveMatch) {
+    return {
+      actions: [{ operation: "governance_approve", parameters: { proposalIndex: parseInt(approveMatch[1]) } }],
+      reasoning: `Local parser: approve proposal ${approveMatch[1]}`,
+      logs: [`Approving proposal #${approveMatch[1]}`],
+      warnings: ["This will sign the proposal on-chain"],
+      estimatedOutcome: `Approve proposal #${approveMatch[1]}`,
+      confidence: "high",
+      isChain: false,
+    };
+  }
+
+  // ─── Monitor: "alert me when sol > 200" ────────────────────────────
+  const monitorMatch = lower.match(
+    /(?:alert|notify|monitor|watch)\s+(?:me\s+)?(?:when|if)\s+(\w+)\s*([><])\s*\$?([\d,.]+)/i
+  );
+  if (monitorMatch) {
+    const target = resolveToken(monitorMatch[1]);
+    const operator = monitorMatch[2] as ">" | "<";
+    const value = parseFloat(monitorMatch[3].replace(/,/g, ""));
+    return {
+      actions: [{ operation: "monitor", parameters: { type: "PRICE", target, operator, value } }],
+      reasoning: `Local parser: monitor ${target} ${operator} $${value}`,
+      logs: [`Setting price alert: ${target} ${operator} $${value}`],
+      warnings: [],
+      estimatedOutcome: `Alert when ${target} ${operator} $${value}`,
+      confidence: "high",
+      isChain: false,
+    };
+  }
+
+  return null; // Not parseable locally
 }
 
 /**
  * Plan a strategy based on natural language user request
  * Returns structured JSON that agents can deterministically execute
- * 
- * Supports: Groq (fastest), GitHub Models, Anthropic (most capable)
+ * Uses Groq as the sole LLM, with local parser fallback
  */
 export async function planStrategy(
   userRequest: string,
@@ -56,10 +313,29 @@ export async function planStrategy(
     balances: Record<string, number>;
     portfolio: Record<string, number>;
     totalValue?: number;
-  },
-  provider?: LLMProvider
+  }
 ): Promise<StrategyPlan> {
-  const selectedProvider = provider || getProvider();
+  const apiKey = process.env.GROQ_API_KEY;
+
+  // ─── No Groq key → local parser only ──────────────────────────
+  if (!apiKey) {
+    console.log("[StrategyPlanner] GROQ_API_KEY not set, using local parser");
+    const localPlan = localParsePlan(userRequest);
+    if (localPlan) return localPlan;
+    throw new Error(
+      "GROQ_API_KEY not configured and local parser could not understand this request. " +
+      "Set GROQ_API_KEY in .env.local for full AI capabilities."
+    );
+  }
+
+  // ─── Build dynamic system prompt with learned plugins ─────────────
+  const learnedPlugins = PluginRegistry.getPlugins();
+  const pluginContext = learnedPlugins.length > 0
+    ? `\n\nLearned Protocols (available for execution):\n` +
+      learnedPlugins.map(p =>
+        `- "${p.name}": ${p.description} [programId: ${p.programId}] ops: ${p.operations.map(o => o.name).join(", ")}`
+      ).join("\n")
+    : "";
 
   const systemPrompt = `You are a professional crypto portfolio advisor. Your job is to understand user requests
 and create structured execution plans for deterministic agents.
@@ -107,7 +383,7 @@ You can learn ANY new protocol seamlessly using the "Infinite Discovery Stack":
 2. Use **r.jina.ai/[URL]** for instant markdown conversion of a specific documentation page.
 3. Use **Firecrawl** if a single page is insufficient (e.g., complex GitBooks) to recursively crawl the entire site for all technical instructions.
 Action: First "plugin_register" the learned capabilities, then execute.
-For rebalance, always include a targetAllocations object like: { "SOL": 50, "USDC": 30, "JUP": 20 }`;
+For rebalance, always include a targetAllocations object like: { "SOL": 50, "USDC": 30, "JUP": 20 }${pluginContext}`;
 
   const userPrompt = `User request: "${userRequest}"
 
@@ -119,95 +395,22 @@ ${walletState.totalValue ? `Total portfolio value: $${walletState.totalValue.toL
 Create an execution plan. Return ONLY JSON, no markdown.`;
 
   try {
-    let responseText = "";
+    const groq = new Groq({ apiKey });
+    const message = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      max_tokens: 1024,
+      temperature: 0.3,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ]
+    });
 
-    if (selectedProvider === "openai") {
-      const apiKey = process.env.OPENAI_API_KEY;
-      if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
-
-      const client = new OpenAI({ apiKey });
-      const message = await client.chat.completions.create({
-        model: "gpt-4o",
-        max_tokens: 1024,
-        temperature: 0.3,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ]
-      });
-      responseText = message.choices[0]?.message?.content || "";
-
-    } else if (selectedProvider === "groq") {
-      const apiKey = process.env.GROQ_API_KEY;
-      if (!apiKey) {
-        throw new Error("GROQ_API_KEY not configured");
-      }
-
-      const groq = new Groq({ apiKey });
-      const message = await groq.chat.completions.create({
-        model: "mixtral-8x7b-32768",
-        max_tokens: 1024,
-        temperature: 0.3, // Lower for more deterministic planning
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },
-          {
-            role: "user",
-            content: userPrompt
-          }
-        ]
-      });
-
-      const content = message.choices[0]?.message?.content;
-      if (!content) {
-        throw new Error("No response from Groq");
-      }
-      responseText = content;
-    } else if (selectedProvider === "github") {
-      const apiKey = process.env.GITHUB_TOKEN;
-      if (!apiKey) {
-        throw new Error("GITHUB_TOKEN not configured");
-      }
-
-      const client = new OpenAI({
-        baseURL: "https://models.inference.ai.azure.com",
-        apiKey: apiKey,
-        defaultHeaders: {
-          "user-agent": "keystone-treasury-os/1.0"
-        }
-      });
-
-      const message = await client.chat.completions.create({
-        model: "gpt-4o",
-        max_tokens: 1024,
-        temperature: 0.3,
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },
-          {
-            role: "user",
-            content: userPrompt
-          }
-        ]
-      });
-
-      const content = message.choices[0]?.message?.content;
-      if (!content) {
-        throw new Error("No response from GitHub Models");
-      }
-      responseText = content;
-    } else {
-      throw new Error(`Unknown provider: ${selectedProvider}`);
-    }
+    const responseText = message.choices[0]?.message?.content;
+    if (!responseText) throw new Error("No response from Groq");
 
     // Parse response - handle markdown code blocks
     let jsonText = responseText.trim();
-
-    // Remove markdown code blocks if present
     if (jsonText.includes("```json")) {
       jsonText = jsonText.split("```json")[1].split("```")[0].trim();
     } else if (jsonText.includes("```")) {
@@ -216,15 +419,26 @@ Create an execution plan. Return ONLY JSON, no markdown.`;
 
     const plan = JSON.parse(jsonText) as StrategyPlan;
 
-    // Validate required fields
     if (!plan.actions || !plan.reasoning || !plan.logs || !plan.warnings || !plan.estimatedOutcome) {
       throw new Error("Invalid plan structure from LLM");
     }
 
+    console.log("[StrategyPlanner] Success via Groq");
     return plan;
+
   } catch (error) {
+    // Groq failed — try local parser as fallback
+    console.warn("[StrategyPlanner] Groq failed, trying local parser:", error);
+    const localPlan = localParsePlan(userRequest);
+    if (localPlan) {
+      localPlan.warnings = [
+        ...(localPlan.warnings || []),
+        `Groq unavailable (${error instanceof Error ? error.message : String(error)}), used local parser`
+      ];
+      return localPlan;
+    }
     if (error instanceof SyntaxError) {
-      throw new Error(`Failed to parse LLM response as JSON: ${error.message}`);
+      throw new Error(`Failed to parse Groq response as JSON: ${error.message}`);
     }
     throw error;
   }
@@ -239,10 +453,10 @@ export async function getStrategyRecommendations(
   walletState: {
     balances: Record<string, number>;
     portfolio: Record<string, number>;
-  },
-  provider?: LLMProvider
+  }
 ): Promise<string> {
-  const selectedProvider = provider || getProvider();
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) throw new Error("GROQ_API_KEY not configured. Set it in .env.local");
 
   const systemPrompt = `You are a crypto portfolio advisor. Provide 2-3 specific, actionable recommendations.
 Be concise and direct. Reference specific tokens and percentages when possible.`;
@@ -256,64 +470,18 @@ Portfolio: ${JSON.stringify(walletState.portfolio)}
 What strategies should I consider? (2-3 specific recommendations)`;
 
   try {
-    let responseText = "";
+    const groq = new Groq({ apiKey });
+    const message = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      max_tokens: 512,
+      temperature: 0.5,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ]
+    });
 
-    if (selectedProvider === "openai") {
-      const apiKey = process.env.OPENAI_API_KEY;
-      if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
-
-      const client = new OpenAI({ apiKey });
-      const message = await client.chat.completions.create({
-        model: "gpt-4o",
-        max_tokens: 512,
-        temperature: 0.5,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ]
-      });
-      responseText = message.choices[0]?.message?.content || "";
-
-    } else if (selectedProvider === "groq") {
-      const apiKey = process.env.GROQ_API_KEY;
-      if (!apiKey) throw new Error("GROQ_API_KEY not configured");
-
-      const groq = new Groq({ apiKey });
-      const message = await groq.chat.completions.create({
-        model: "mixtral-8x7b-32768",
-        max_tokens: 512,
-        temperature: 0.5,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ]
-      });
-
-      responseText = message.choices[0]?.message?.content || "";
-    } else if (selectedProvider === "github") {
-      const apiKey = process.env.GITHUB_TOKEN;
-      if (!apiKey) throw new Error("GITHUB_TOKEN not configured");
-
-      const client = new OpenAI({
-        baseURL: "https://models.inference.ai.azure.com",
-        apiKey: apiKey,
-        defaultHeaders: { "user-agent": "keystone-treasury-os/1.0" }
-      });
-
-      const message = await client.chat.completions.create({
-        model: "gpt-4o",
-        max_tokens: 512,
-        temperature: 0.5,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ]
-      });
-
-      responseText = message.choices[0]?.message?.content || "";
-    }
-
-    return responseText;
+    return message.choices[0]?.message?.content || "";
   } catch (error) {
     throw new Error(`Failed to get recommendations: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -328,13 +496,13 @@ export async function validateStrategy(
   walletState: {
     balances: Record<string, number>;
     portfolio: Record<string, number>;
-  },
-  provider?: LLMProvider
+  }
 ): Promise<{
   valid: boolean;
   reason?: string;
 }> {
-  const selectedProvider = provider || getProvider();
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) return { valid: true }; // Skip validation if no key
 
   const systemPrompt = `You are a security validator. Check if a planned operation is reasonable.
 Return JSON only: { "valid": true/false, "reason": "explanation if invalid" }`;
@@ -345,62 +513,18 @@ Current portfolio: ${JSON.stringify(walletState.portfolio)}
 Is this plan reasonable and safe?`;
 
   try {
-    let responseText = "";
+    const groq = new Groq({ apiKey });
+    const message = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      max_tokens: 256,
+      temperature: 0.2,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ]
+    });
 
-    if (selectedProvider === "openai") {
-      const apiKey = process.env.OPENAI_API_KEY;
-      if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
-
-      const client = new OpenAI({ apiKey });
-      const message = await client.chat.completions.create({
-        model: "gpt-4o",
-        max_tokens: 256,
-        temperature: 0.2,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ]
-      });
-      responseText = message.choices[0]?.message?.content || "";
-
-    } else if (selectedProvider === "groq") {
-      const apiKey = process.env.GROQ_API_KEY;
-      if (!apiKey) throw new Error("GROQ_API_KEY not configured");
-
-      const groq = new Groq({ apiKey });
-      const message = await groq.chat.completions.create({
-        model: "mixtral-8x7b-32768",
-        max_tokens: 256,
-        temperature: 0.2,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ]
-      });
-
-      responseText = message.choices[0]?.message?.content || "";
-    } else if (selectedProvider === "github") {
-      const apiKey = process.env.GITHUB_TOKEN;
-      if (!apiKey) throw new Error("GITHUB_TOKEN not configured");
-
-      const client = new OpenAI({
-        baseURL: "https://models.inference.ai.azure.com",
-        apiKey: apiKey,
-        defaultHeaders: { "user-agent": "keystone-treasury-os/1.0" }
-      });
-
-      const message = await client.chat.completions.create({
-        model: "gpt-4o",
-        max_tokens: 256,
-        temperature: 0.2,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ]
-      });
-
-      responseText = message.choices[0]?.message?.content || "";
-    }
+    const responseText = message.choices[0]?.message?.content || "";
 
     try {
       let jsonText = responseText.trim();
@@ -409,8 +533,7 @@ Is this plan reasonable and safe?`;
       } else if (jsonText.includes("```")) {
         jsonText = jsonText.split("```")[1].split("```")[0].trim();
       }
-      const result = JSON.parse(jsonText);
-      return result;
+      return JSON.parse(jsonText);
     } catch {
       return { valid: true }; // Assume valid if parsing fails
     }

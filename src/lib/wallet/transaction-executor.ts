@@ -207,9 +207,13 @@ export class WalletTransactionExecutor {
         maxAccounts: "64"
       });
 
+      const jupiterApiKey = process.env.NEXT_PUBLIC_JUPITER_API_KEY || "";
+      const quoteHeaders: Record<string, string> = {};
+      if (jupiterApiKey) quoteHeaders["x-api-key"] = jupiterApiKey;
+
       const response = await fetch(
-        `https://quote-api.jup.ag/v6/quote?${params_str}`,
-        { method: "GET" }
+        `https://lite-api.jup.ag/swap/v1/quote?${params_str}`,
+        { method: "GET", headers: quoteHeaders }
       );
 
       if (!response.ok) {
@@ -232,7 +236,11 @@ export class WalletTransactionExecutor {
     wrapUnwrapSOL: boolean;
   }) {
     try {
-      const response = await fetch("https://quote-api.jup.ag/v6/swap-instructions", {
+      const swapJupiterApiKey = process.env.NEXT_PUBLIC_JUPITER_API_KEY || "";
+      const swapHeaders: Record<string, string> = { "Content-Type": "application/json" };
+      if (swapJupiterApiKey) swapHeaders["x-api-key"] = swapJupiterApiKey;
+
+      const response = await fetch("https://lite-api.jup.ag/swap/v1/swap-instructions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

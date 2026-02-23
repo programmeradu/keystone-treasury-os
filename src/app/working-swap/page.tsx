@@ -11,7 +11,7 @@ import {
 import { Wallet2, ArrowRightLeft, Settings2, TrendingUp, Zap } from 'lucide-react';
 
 const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
-const JUPITER_API = 'https://quote-api.jup.ag/v6';
+const JUPITER_API = 'https://lite-api.jup.ag/swap/v1';
 
 const TOKENS = {
   SOL: { mint: 'So11111111111111111111111111111111111111112', name: 'SOL', icon: '◎', decimals: 9 },

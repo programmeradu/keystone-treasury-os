@@ -1,3 +1,9 @@
+/**
+ * @deprecated Use /api/command instead.
+ * This legacy route only does LLM planning via planStrategy().
+ * The new /api/command route uses ExecutionCoordinator with real agents
+ * (LookupAgent, BuilderAgent, TransactionAgent) + Simulation Firewall.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { planStrategy } from "@/lib/llm/strategy-planner";
 

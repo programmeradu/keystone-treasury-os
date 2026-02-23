@@ -16,9 +16,10 @@ import { NextRequest, NextResponse } from "next/server";
 const GLOBAL_ALLOWLIST = new Set([
   // Jupiter (Swap aggregator)
   "api.jup.ag",
-  "quote-api.jup.ag",
+  "quote-api.jup.ag", // Legacy — kept for backwards compatibility
   "price.jup.ag",
   "token.jup.ag",
+  "dev.jup.ag",
 
   // Raydium
   "api.raydium.io",

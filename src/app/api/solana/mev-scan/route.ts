@@ -163,9 +163,13 @@ export async function GET(req: Request) {
                 const quoteController = new AbortController();
                 const quoteTimeout = setTimeout(() => quoteController.abort(), 3000);
                 
+                const mevJupiterKey = process.env.NEXT_PUBLIC_JUPITER_API_KEY || "";
+                const mevHeaders: Record<string, string> = {};
+                if (mevJupiterKey) mevHeaders["x-api-key"] = mevJupiterKey;
+
                 const jupiterQuote = await fetch(
-                  `https://quote-api.jup.ag/v6/quote?inputMint=${token.mint}&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=${amount}&slippageBps=50`,
-                  { signal: quoteController.signal }
+                  `https://lite-api.jup.ag/swap/v1/quote?inputMint=${token.mint}&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=${amount}&slippageBps=50`,
+                  { signal: quoteController.signal, headers: mevHeaders }
                 );
                 
                 clearTimeout(quoteTimeout);

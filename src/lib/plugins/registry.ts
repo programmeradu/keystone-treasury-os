@@ -1,5 +1,3 @@
-"use client";
-
 export interface PluginOperation {
     name: string;
     description: string;

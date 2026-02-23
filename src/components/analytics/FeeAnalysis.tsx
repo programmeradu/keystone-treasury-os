@@ -3,11 +3,14 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { BarChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ComposedChart, PieChart, Pie, Cell } from "recharts";
 import { useVault } from "@/lib/contexts/VaultContext";
+import { useSimulationStore } from "@/lib/stores/simulation-store";
 import { Loader2, Receipt, ExternalLink } from "lucide-react";
 import { getTokenColor } from "@/lib/token-colors";
 
 export const FeeAnalysis = () => {
     const { activeVault } = useVault();
+    const sim = useSimulationStore();
+    const simActive = sim.active;
     const [feeData, setFeeData] = useState<any>(null);
     const [loading, setLoading] = useState(false);
 
@@ -72,10 +75,12 @@ export const FeeAnalysis = () => {
     }
 
     return (
-        <div className="rounded-2xl bg-card border border-border p-6 backdrop-blur-xl shadow-sm">
+        <div className={`rounded-2xl bg-card border p-6 backdrop-blur-xl shadow-sm ${simActive ? "border-orange-500/30" : "border-border"}`}>
             <div className="flex items-center gap-2 mb-4">
-                <Receipt size={14} className="text-primary" />
-                <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Fee / Cost Analysis</span>
+                <Receipt size={14} className={simActive ? "text-orange-500" : "text-primary"} />
+                <span className={`text-[10px] uppercase tracking-widest font-semibold ${simActive ? "text-orange-500" : "text-muted-foreground"}`}>
+                    {simActive ? "Historical Fees (Pre-Sim)" : "Fee / Cost Analysis"}
+                </span>
                 {loading && <Loader2 size={10} className="animate-spin text-primary" />}
             </div>
 

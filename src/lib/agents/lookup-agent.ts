@@ -37,7 +37,7 @@ export class LookupAgent extends BaseAgent {
         backoffMultiplier: 2
       },
       endpoints: {
-        jupiter: "https://api.jup.ag/price/v2",
+        jupiter: "https://lite-api.jup.ag/price/v3",
         moralis: "https://deep-index.moralis.io/api/v2.2"
       },
       ...config
@@ -150,25 +150,31 @@ export class LookupAgent extends BaseAgent {
       // Fetch uncached prices
       if (uncachedMints.length > 0) {
         const mintsParam = uncachedMints.join(",");
+        const jupiterApiKey = process.env.NEXT_PUBLIC_JUPITER_API_KEY || "";
+        const headers: Record<string, string> = {};
+        if (jupiterApiKey) headers["x-api-key"] = jupiterApiKey;
+
         const response = await fetch(
-          `${this.config.endpoints?.jupiter || "https://api.jup.ag/price/v2"}?ids=${mintsParam}`
+          `${this.config.endpoints?.jupiter || "https://lite-api.jup.ag/price/v3"}?ids=${mintsParam}`,
+          { headers }
         );
 
         if (!response.ok) {
-          throw new Error("Failed to fetch prices from Jupiter");
+          throw new Error(`Failed to fetch prices from Jupiter: ${response.status}`);
         }
 
         const data = await response.json();
 
+        // v3 response: { "mint": { usdPrice, decimals, priceChange24h } }
         for (const mint of uncachedMints) {
-          const priceData = data.data?.[mint];
+          const priceData = data[mint] || data.data?.[mint];
           if (priceData) {
             const price: TokenPrice = {
               mint,
-              price: parseFloat(priceData.price) || 0,
-              source: "jupiter",
+              price: parseFloat(priceData.usdPrice || priceData.price) || 0,
+              source: "jupiter-v3",
               timestamp: Date.now(),
-              change24h: priceData.percentChange?.h24
+              change24h: priceData.priceChange24h
             };
             prices.push(price);
             this.priceCache.set(mint, price);
@@ -275,7 +281,7 @@ export class LookupAgent extends BaseAgent {
       this.addStep(context, "fetch_liquidity");
 
       // Query Jupiter for liquidity info
-      const response = await fetch(`https://api.jup.ag/stats/locked-tokens`);
+      const response = await fetch(`https://lite-api.jup.ag/stats/locked-tokens`);
 
       if (!response.ok) {
         return { mint, liquidity: 0, status: "unknown" };

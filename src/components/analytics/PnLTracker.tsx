@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useVault } from "@/lib/contexts/VaultContext";
+import { useSimulationStore } from "@/lib/stores/simulation-store";
 import { TrendingUp, TrendingDown, Loader2, DollarSign } from "lucide-react";
+import { Logo } from "@/components/icons";
 import { getTokenColor } from "@/lib/token-colors";
 
 interface FlowTx {
@@ -36,6 +38,8 @@ interface TokenPnL {
 
 export const PnLTracker = () => {
     const { activeVault, vaultTokens } = useVault();
+    const sim = useSimulationStore();
+    const simActive = sim.active && !!sim.result;
     const [flowData, setFlowData] = useState<FlowTx[] | null>(null);
     const [loading, setLoading] = useState(false);
 
@@ -161,14 +165,41 @@ export const PnLTracker = () => {
     }
 
     return (
-        <div className="rounded-2xl bg-card border border-border p-6 backdrop-blur-xl shadow-sm flex flex-col">
+        <div className={`rounded-2xl bg-card border p-6 backdrop-blur-xl shadow-sm flex flex-col ${simActive ? "border-orange-500/30" : "border-border"}`}>
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                    <DollarSign size={14} className="text-primary" />
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">P&L / Cost Basis</span>
+                    <DollarSign size={14} className={simActive ? "text-orange-500" : "text-primary"} />
+                    <span className={`text-[10px] uppercase tracking-widest font-semibold ${simActive ? "text-orange-500" : "text-muted-foreground"}`}>
+                        {simActive ? "Projected P&L" : "P&L / Cost Basis"}
+                    </span>
                     {loading && <Loader2 size={10} className="animate-spin text-primary" />}
+                    {simActive && <Logo size={10} fillColor="#f97316" />}
                 </div>
             </div>
+
+            {/* Simulation Projected P&L */}
+            {simActive && sim.result && (
+                <div className="mb-4 p-3 rounded-xl bg-orange-500/5 border border-orange-500/20">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <span className="text-[9px] text-orange-500 font-bold uppercase">Sim Projected P&L</span>
+                            <div className={`text-lg font-bold tracking-tight ${sim.result.summary.delta >= 0 ? "text-primary" : "text-destructive"}`}>
+                                {fmtUsd(sim.result.summary.delta)}
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <span className="text-[9px] text-orange-500 font-bold uppercase">Sim Return</span>
+                            <div className={`text-base font-bold ${sim.result.summary.deltaPercent >= 0 ? "text-primary" : "text-destructive"} flex items-center gap-1 justify-end`}>
+                                {sim.result.summary.deltaPercent >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                                {sim.result.summary.deltaPercent >= 0 ? "+" : ""}{sim.result.summary.deltaPercent.toFixed(1)}%
+                            </div>
+                        </div>
+                    </div>
+                    <p className="text-[8px] text-muted-foreground/60 mt-1.5 font-mono">
+                        Based on Foresight scenario over {sim.result.metadata.timeframeMonths}mo
+                    </p>
+                </div>
+            )}
 
             {/* Portfolio Total */}
             {pnlData.length > 0 && (

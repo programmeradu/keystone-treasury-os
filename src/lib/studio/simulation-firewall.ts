@@ -33,6 +33,20 @@ export interface SimulationResult {
   humanSummary: string;      // e.g., "You lose 5 SOL, You gain 5000 USDC"
 }
 
+/**
+ * Pre-flight report returned by protect() — quote-level validation
+ * before actual on-chain simulation.
+ */
+export interface FirewallReport {
+  passed: boolean;
+  riskLevel: "low" | "medium" | "high" | "critical";
+  checks: Record<string, "pass" | "fail" | "warn">;
+  blockedReason?: string;
+  priceImpact: number;
+  outputAmount: string;
+  humanSummary: string;
+}
+
 // ─── Risk Assessment ────────────────────────────────────────────────
 
 function assessRisk(changes: BalanceChange[], fee: number): SimulationResult["riskLevel"] {
@@ -76,13 +90,83 @@ function buildHumanSummary(changes: BalanceChange[], fee: number): string {
 // ─── Simulation Engine ──────────────────────────────────────────────
 
 export class SimulationFirewall {
+  private static instance: SimulationFirewall;
   private connection: Connection;
 
-  constructor(rpcUrl?: string) {
-    this.connection = new Connection(
-      rpcUrl || process.env.HELIUS_RPC_URL || "https://api.devnet.solana.com",
-      "confirmed"
-    );
+  private constructor(rpcUrl?: string) {
+    // Use HIGH-FIDELITY endpoint (Helius/Triton), never public RPC for simulation
+    const endpoint = rpcUrl
+      || process.env.HELIUS_RPC_URL
+      || (process.env.HELIUS_API_KEY
+        ? `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`
+        : process.env.NEXT_PUBLIC_SOLANA_RPC_URL
+          || "https://api.mainnet-beta.solana.com");
+    this.connection = new Connection(endpoint, "confirmed");
+  }
+
+  public static getInstance(): SimulationFirewall {
+    if (!SimulationFirewall.instance) {
+      SimulationFirewall.instance = new SimulationFirewall();
+    }
+    return SimulationFirewall.instance;
+  }
+
+  /**
+   * Pre-flight protection: validates a Jupiter quote BEFORE on-chain simulation.
+   * This is the method called by the ExecutionCoordinator during the SIMULATING state.
+   * It does NOT require actual transaction bytes — works on quote data alone.
+   */
+  protect(quote: {
+    priceImpactPct?: string;
+    inAmount?: string;
+    outAmount?: string;
+    outAmountWithSlippage?: string;
+    routePlan?: any[];
+  }): FirewallReport {
+    const priceImpact = parseFloat(quote.priceImpactPct || "0");
+    const outAmount = parseFloat(quote.outAmount || "0");
+    const inAmount = parseFloat(quote.inAmount || "0");
+
+    const checks: Record<string, "pass" | "fail" | "warn"> = {
+      priceImpact: priceImpact > 5 ? "fail" : priceImpact > 1 ? "warn" : "pass",
+      outputNonZero: outAmount > 0 ? "pass" : "fail",
+      inputNonZero: inAmount > 0 ? "pass" : "fail",
+      routeExists: (quote.routePlan?.length || 0) > 0 ? "pass" : "fail",
+      slippageGuard: quote.outAmountWithSlippage ? "pass" : "warn",
+    };
+
+    const hasFail = Object.values(checks).includes("fail");
+
+    // Risk level
+    let riskLevel: FirewallReport["riskLevel"] = "low";
+    if (priceImpact > 5 || outAmount <= 0) riskLevel = "critical";
+    else if (priceImpact > 2) riskLevel = "high";
+    else if (priceImpact > 0.5) riskLevel = "medium";
+
+    // Human summary
+    const parts: string[] = [];
+    if (hasFail) {
+      const failedChecks = Object.entries(checks)
+        .filter(([, v]) => v === "fail")
+        .map(([k]) => k);
+      parts.push(`BLOCKED: Failed checks: ${failedChecks.join(", ")}`);
+    } else {
+      parts.push(`All pre-flight checks passed`);
+    }
+    parts.push(`Price impact: ${priceImpact}%`);
+    parts.push(`Risk: ${riskLevel}`);
+
+    return {
+      passed: !hasFail,
+      riskLevel,
+      checks,
+      blockedReason: hasFail
+        ? `Simulation Firewall blocked: ${Object.entries(checks).filter(([,v]) => v === "fail").map(([k]) => k).join(", ")} failed`
+        : undefined,
+      priceImpact,
+      outputAmount: quote.outAmount || "0",
+      humanSummary: parts.join(" | "),
+    };
   }
 
   /**
@@ -106,14 +190,20 @@ export class SimulationFirewall {
       if (transactionData && typeof transactionData === "object" && "serialize" in (transactionData as object)) {
         // Already a Transaction/VersionedTransaction object
         const tx = transactionData as VersionedTransaction;
-        simulationResponse = await this.connection.simulateTransaction(tx);
+        simulationResponse = await this.connection.simulateTransaction(tx, {
+          sigVerify: false,
+          replaceRecentBlockhash: true,
+        });
       } else if (typeof transactionData === "string" || transactionData instanceof Uint8Array) {
         // Serialized transaction bytes
         const bytes = typeof transactionData === "string"
           ? Buffer.from(transactionData, "base64")
           : transactionData;
         const tx = VersionedTransaction.deserialize(bytes);
-        simulationResponse = await this.connection.simulateTransaction(tx);
+        simulationResponse = await this.connection.simulateTransaction(tx, {
+          sigVerify: false,
+          replaceRecentBlockhash: true,
+        });
       } else {
         // Cannot parse — return a mock simulation for demo purposes
         return this.mockSimulation(transactionData, signerPublicKey);
@@ -237,5 +327,6 @@ export class SimulationFirewall {
 }
 
 // ─── Singleton ──────────────────────────────────────────────────────
-
-export const simulationFirewall = new SimulationFirewall();
+// Use SimulationFirewall.getInstance() for the proper singleton.
+// Legacy export kept for backwards compatibility.
+export const simulationFirewall = SimulationFirewall.getInstance();

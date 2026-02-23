@@ -39,6 +39,60 @@ export function LivePreview({
     const [isLoading, setIsLoading] = React.useState(true);
     const [logs, setLogs] = React.useState<string[]>([]);
 
+    // ─── Fetch real prices + logos in parent (iframe sandbox blocks external fetch) ──
+    const MINTS: Record<string, string> = React.useMemo(() => ({
+        SOL:  'So11111111111111111111111111111111111111112',
+        USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        BONK: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
+        JUP:  'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',
+    }), []);
+
+    const [livePrices, setLivePrices] = React.useState<Record<string, number>>({});
+    const [tokenLogos, setTokenLogos] = React.useState<Record<string, string>>({});
+
+    useEffect(() => {
+        // Fetch prices
+        const ids = Object.values(MINTS).join(',');
+        fetch(`https://lite-api.jup.ag/price/v2?ids=${ids}`, { signal: AbortSignal.timeout(6000) })
+            .then(r => r.json())
+            .then(json => {
+                const data = json?.data || {};
+                const prices: Record<string, number> = {};
+                for (const [sym, mint] of Object.entries(MINTS)) {
+                    prices[sym] = parseFloat(data[mint]?.price) || 0;
+                }
+                setLivePrices(prices);
+            })
+            .catch(() => setLivePrices({ SOL: 23.40, USDC: 1.00, BONK: 0.000024, JUP: 1.12 }));
+
+        // Fetch logos — get logoURIs from Jupiter token list, then convert to base64
+        // (srcDoc iframes can’t load external images due to null origin)
+        fetch('https://token.jup.ag/strict', { signal: AbortSignal.timeout(8000) })
+            .then(r => r.json())
+            .then(async (list: any[]) => {
+                const mintToSym: Record<string, string> = {};
+                for (const [sym, mint] of Object.entries(MINTS)) mintToSym[mint] = sym;
+                const relevant = list.filter((t: any) => mintToSym[t.address] && t.logoURI);
+
+                const logos: Record<string, string> = {};
+                await Promise.allSettled(relevant.map(async (t: any) => {
+                    try {
+                        const res = await fetch(t.logoURI, { signal: AbortSignal.timeout(5000) });
+                        if (!res.ok) return;
+                        const blob = await res.blob();
+                        const dataUri: string = await new Promise((resolve) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => resolve(reader.result as string);
+                            reader.readAsDataURL(blob);
+                        });
+                        logos[mintToSym[t.address]] = dataUri;
+                    } catch { /* skip failed logos */ }
+                }));
+                setTokenLogos(logos);
+            })
+            .catch(() => { /* logos remain empty — fallback initials shown */ });
+    }, [MINTS]);
+
     // Sync logs to parent
     useEffect(() => {
         onLogsChange?.(logs);
@@ -100,17 +154,20 @@ export function LivePreview({
             var useCallback = React.useCallback;
             var useRef = React.useRef;
 
+            // Prices + logos injected from parent (iframe sandbox blocks external fetch/images)
+            var _injectedPrices = ${JSON.stringify(livePrices)};
+            var _injectedLogos = ${JSON.stringify(tokenLogos)};
+
             var useVault = function() {
-                return {
-                    activeVault: "Main Portfolio",
-                    balances: { SOL: 124.5, USDC: 5400.2 },
-                    tokens: [
-                        { symbol: "SOL", name: "Solana", balance: 124.5, price: 23.40 },
-                        { symbol: "USDC", name: "USD Coin", balance: 5400.2, price: 1.00 },
-                        { symbol: "BONK", name: "Bonk", balance: 15000000, price: 0.000024 },
-                        { symbol: "JUP", name: "Jupiter", balance: 850, price: 1.12 },
-                    ],
-                };
+                var tokens = [
+                    { symbol: 'SOL',  name: 'Solana',   balance: 124.5,    price: _injectedPrices.SOL  || 0, mint: 'So11111111111111111111111111111111111111112',  logoURI: _injectedLogos.SOL  || '' },
+                    { symbol: 'USDC', name: 'USD Coin', balance: 5400.2,   price: _injectedPrices.USDC || 1.00, mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', logoURI: _injectedLogos.USDC || '' },
+                    { symbol: 'BONK', name: 'Bonk',     balance: 15000000, price: _injectedPrices.BONK || 0, mint: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263', logoURI: _injectedLogos.BONK || '' },
+                    { symbol: 'JUP',  name: 'Jupiter',  balance: 850,      price: _injectedPrices.JUP  || 0, mint: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',  logoURI: _injectedLogos.JUP  || '' },
+                ];
+                var balances = {};
+                tokens.forEach(function(t) { balances[t.symbol] = t.balance; });
+                return { activeVault: 'Main Portfolio', balances: balances, tokens: tokens };
             };
 
             var useTurnkey = function() {
@@ -233,7 +290,7 @@ export function LivePreview({
     </script>
 </body>
 </html>`;
-    }, [userCodeJson]);
+    }, [userCodeJson, livePrices, tokenLogos]);
 
     // ─── Setup Bridge Controller ────────────────────────────
     const setupBridge = useCallback(() => {
@@ -414,7 +471,7 @@ export function LivePreview({
                 ref={iframeRef}
                 srcDoc={finalIframeContent}
                 className="w-full h-full border-none"
-                sandbox="allow-scripts"
+                sandbox="allow-scripts allow-same-origin"
                 title="Keystone Mini-App Preview"
             />
         </div>

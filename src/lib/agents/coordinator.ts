@@ -6,11 +6,13 @@ import type {
   ProgressCallback,
   AgentConfig
 } from "./types";
-import { ExecutionStatus } from "./types";
+import { ExecutionStatus, ErrorSeverity } from "./types";
 import { TransactionAgent } from "./transaction-agent";
 import { LookupAgent } from "./lookup-agent";
 import { AnalysisAgent } from "./analysis-agent";
 import { BuilderAgent } from "./builder-agent";
+import { SimulationFirewall } from "@/lib/studio/simulation-firewall";
+import type { FirewallReport } from "@/lib/studio/simulation-firewall";
 
 /**
  * Execution Coordinator - Orchestrates all agents and manages execution state
@@ -85,6 +87,13 @@ export class ExecutionCoordinator {
       const context = this.executionContexts.get(executionId);
       if (context) {
         context.state = ExecutionStatus.FAILED;
+        context.errors.push({
+          code: "STRATEGY_FAILED",
+          message: error.message || String(error),
+          severity: ErrorSeverity.ERROR,
+          timestamp: Date.now(),
+          retryable: false,
+        });
         this.updateProgress(context);
       }
 
@@ -95,7 +104,7 @@ export class ExecutionCoordinator {
         strategy,
         status: ExecutionStatus.FAILED,
         success: false,
-        errors: context?.errors || [],
+        errors: context?.errors || [{ code: "UNKNOWN", message: error.message, severity: ErrorSeverity.ERROR, timestamp: Date.now(), retryable: false }],
         duration: Date.now() - startTime,
         timestamp: Date.now()
       };
@@ -146,11 +155,15 @@ export class ExecutionCoordinator {
 
   /**
    * Execute swap strategy - REAL Jupiter integration
+   * State machine: RUNNING → SIMULATION → APPROVAL_REQUIRED (or FAILED)
    */
   private async executeSwap(
     context: ExecutionContext,
     input: any
   ): Promise<void> {
+    // ═══════════════════════════════════════════════════════════════════
+    // Phase 1: PLANNING — Fetch data and build route
+    // ═══════════════════════════════════════════════════════════════════
     context.state = ExecutionStatus.RUNNING;
     this.updateProgress(context);
 
@@ -193,28 +206,121 @@ export class ExecutionCoordinator {
 
       context.progress = 50;
       this.updateProgress(context);
-
-      // Store quote for later use
       context.data.swap_quote = quote;
 
-      // Step 4: Get swap instructions from Jupiter
-      this.log(context.executionId, "Building real swap transaction...");
+      // Step 4: Build swap instructions
+      this.log(context.executionId, "Building swap instructions...");
       const swapInstructions = await this.builderAgent.executeAgent(context, {
         action: "build_swap_instructions",
         params: { quote }
       });
 
-      context.progress = 70;
+      context.progress = 65;
       this.updateProgress(context);
 
-      // Step 5: Ready for signing (don't simulate yet, let wallet do that)
+      // ═══════════════════════════════════════════════════════════════════
+      // Phase 2: SIMULATION — The "Missing Link"
+      // SimulationFirewall.protect() for pre-flight + TransactionAgent for tx sim
+      // ═══════════════════════════════════════════════════════════════════
+      context.state = ExecutionStatus.SIMULATION;
+      this.updateProgress(context);
+      this.log(context.executionId, "Entering SIMULATION state — running Simulation Firewall...");
+
+      // 5a. Pre-flight protection via SimulationFirewall singleton
+      const firewall = SimulationFirewall.getInstance();
+      const firewallReport: FirewallReport = firewall.protect(quote);
+
+      context.progress = 75;
+      this.updateProgress(context);
+
+      // 5b. HARD BLOCK — if firewall fails, execution stops here
+      if (!firewallReport.passed) {
+        context.state = ExecutionStatus.FAILED;
+        context.errors.push({
+          code: "SIMULATION_FIREWALL_BLOCKED",
+          message: firewallReport.blockedReason || "Simulation Firewall blocked this transaction",
+          severity: ErrorSeverity.CRITICAL,
+          timestamp: Date.now(),
+          retryable: false,
+          context: {
+            checks: firewallReport.checks,
+            priceImpact: firewallReport.priceImpact,
+            riskLevel: firewallReport.riskLevel,
+          },
+        });
+        this.updateProgress(context);
+        this.log(context.executionId, `BLOCKED by Simulation Firewall: ${firewallReport.blockedReason}`);
+
+        // Store the firewall report for the API response
+        context.data.simulation = {
+          passed: false,
+          firewallReport,
+        };
+        context.data.swap_result = {
+          inputMint: input.inputMint || input.inMint,
+          outputMint: input.outputMint || input.outMint,
+          inAmount: quote.inAmount,
+          outAmount: quote.outAmount,
+          priceImpact: quote.priceImpactPct,
+          riskLevel: firewallReport.riskLevel,
+          simulationPassed: false,
+          ready: false,
+          requiresApproval: false,
+        };
+
+        throw new Error(`Simulation Firewall BLOCKED: ${firewallReport.blockedReason}`);
+      }
+
+      // 5c. On-chain simulation via TransactionAgent (if tx bytes are available)
+      let txSimulationResult = null;
+      const txData = context.data.transaction_prepared;
+      if (txData) {
+        this.log(context.executionId, "Running on-chain transaction simulation via TransactionAgent...");
+        try {
+          txSimulationResult = await this.transactionAgent.executeAgent(context, {
+            transaction: txData,
+            simulateOnly: true,
+            feeLimitSol: 0.1,
+          });
+          this.log(context.executionId, `TransactionAgent simulation: ${txSimulationResult.simulated ? "PASSED" : "FAILED"}`);
+        } catch (txSimErr: any) {
+          // TransactionAgent simulation failed — hard block
+          context.state = ExecutionStatus.FAILED;
+          context.errors.push({
+            code: "TX_SIMULATION_FAILED",
+            message: txSimErr.message,
+            severity: ErrorSeverity.CRITICAL,
+            timestamp: Date.now(),
+            retryable: false,
+          });
+          this.updateProgress(context);
+          context.data.simulation = { passed: false, firewallReport, txSimError: txSimErr.message };
+          throw new Error(`Transaction simulation FAILED: ${txSimErr.message}`);
+        }
+      } else {
+        this.log(context.executionId, "No raw tx bytes yet — pre-flight checks passed, deferring on-chain sim to wallet signing");
+      }
+
+      context.progress = 85;
+      this.updateProgress(context);
+      this.log(context.executionId, `Simulation Firewall PASSED: risk=${firewallReport.riskLevel}, priceImpact=${firewallReport.priceImpact}%`);
+
+      // Store the full simulation report (the "Green Shield" data for the UI)
+      context.data.simulation = {
+        passed: true,
+        firewallReport,
+        txSimulation: txSimulationResult,
+      };
+
+      // ═══════════════════════════════════════════════════════════════════
+      // Phase 3: APPROVAL — Only reachable if simulation passed
+      // ═══════════════════════════════════════════════════════════════════
       context.approvalRequired = true;
       context.state = ExecutionStatus.APPROVAL_REQUIRED;
       this.updateProgress(context);
 
       this.log(context.executionId, `Swap prepared: ${quote.outAmountWithSlippage} output with ${quote.priceImpactPct}% price impact`);
       
-      // Return data for wallet to display
       context.data.swap_result = {
         inputMint: input.inputMint || input.inMint,
         outputMint: input.outputMint || input.outMint,
@@ -222,9 +328,13 @@ export class ExecutionCoordinator {
         outAmount: quote.outAmount,
         outAmountWithSlippage: quote.outAmountWithSlippage,
         priceImpact: quote.priceImpactPct,
+        riskLevel: firewallReport.riskLevel,
+        simulationPassed: true,
+        firewallChecks: firewallReport.checks,
+        humanSummary: firewallReport.humanSummary,
         instructions: swapInstructions.instructions,
         ready: true,
-        requiresApproval: true
+        requiresApproval: true,
       };
     } catch (error: any) {
       this.log(context.executionId, `Swap failed: ${error.message}`);
@@ -474,7 +584,7 @@ export class ExecutionCoordinator {
       executionId: context.executionId,
       strategy: context.strategy,
       status: context.state,
-      success: context.state === ExecutionStatus.SUCCESS,
+      success: context.state === ExecutionStatus.SUCCESS || context.state === ExecutionStatus.APPROVAL_REQUIRED,
       result: context.data,
       errors: context.errors,
       transactionSignature: context.transactionSignature,

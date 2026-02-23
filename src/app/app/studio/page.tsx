@@ -86,9 +86,16 @@ export default function App() {
       <div className="grid gap-3 mb-12">
         {tokens.map((token) => (
           <div key={token.symbol} className="flex items-center justify-between p-4 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-emerald-400/20 transition-all">
-            <div>
-              <p className="font-bold text-white">{token.symbol}</p>
-              <p className="text-xs text-zinc-500">{token.name}</p>
+            <div className="flex items-center gap-3">
+              {token.logoURI ? (
+                <img src={token.logoURI} alt={token.symbol} className="w-8 h-8 rounded-full" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-400">{token.symbol[0]}</div>
+              )}
+              <div>
+                <p className="font-bold text-white">{token.symbol}</p>
+                <p className="text-xs text-zinc-500">{token.name}</p>
+              </div>
             </div>
             <div className="text-right">
               <p className="font-mono font-bold text-white">{token.balance.toLocaleString()}</p>

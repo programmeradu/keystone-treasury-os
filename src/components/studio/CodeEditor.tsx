@@ -243,7 +243,7 @@ export function CodeEditor({ code, language, onChange, fileName, allFiles = {} }
                         module: monaco.languages.typescript.ModuleKind.ESNext,
                         noEmit: true,
                         esModuleInterop: true,
-                        jsx: monaco.languages.typescript.JsxEmit.ReactJSX,
+                        jsx: monaco.languages.typescript.JsxEmit.React,
                         reactNamespace: "React",
                         allowJs: true,
                         strict: true,

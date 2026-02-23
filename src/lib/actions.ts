@@ -7,6 +7,8 @@ import { JinaClient } from "./jina";
 import { FirecrawlClient } from "./firecrawl";
 import { TavilyClient } from "./tavily";
 import { HeliusClient } from "./helius";
+import { KnowledgeBase } from "./knowledge";
+import { simulationFirewall } from "./studio/simulation-firewall";
 
 export interface ActionContext {
     connection: Connection;
@@ -25,12 +27,23 @@ export async function executeAction(plan: any, context: ActionContext): Promise<
     }
 
     const results = [];
+    const txOps = new Set(["swap", "transfer", "stake", "bridge", "yield_deposit", "yield_withdraw"]);
+
     for (const action of actions) {
-        // Phase 11.2: Simulate before execution
-        console.log(`[ActionRegistry] Pre-execution Simulation for ${action.operation}...`);
-        // Note: Real simulation would build a Transaction object first
-        // const simulation = await context.heliusClient.simulateTransaction(tx);
-        // if (!simulation.success) throw new Error(`Simulation failed: ${simulation.error}`);
+        const op = action.operation.toLowerCase();
+
+        // Simulation Firewall: log pre-execution check for transaction-producing ops
+        if (txOps.has(op)) {
+            console.log(`[ActionRegistry] Simulation Firewall active for ${op}`);
+            // Full transaction simulation happens after the tx is built — see SimulationFirewall.simulate()
+            // Pre-check: ensure the operation has required parameters
+            if (op === "swap" && (!action.parameters?.inputToken || !action.parameters?.outputToken)) {
+                throw new Error(`Simulation Firewall BLOCKED: swap missing inputToken/outputToken`);
+            }
+            if (op === "transfer" && !action.parameters?.recipient) {
+                throw new Error(`Simulation Firewall BLOCKED: transfer missing recipient`);
+            }
+        }
 
         const result = await executeSingleAction(action.operation, action.parameters, context, plan);
         results.push(result);
@@ -118,36 +131,45 @@ async function executeSingleAction(operation: string, parameters: any, context: 
             return `Monitor ID: ${intent.id}`;
         case "plugin_register":
             // Infinite Discovery Stack (Phase 10.3)
+            let learnedIntelligence = "";
             if (parameters.discoveryUrl || parameters.searchQuery || parameters.name) {
                 console.log(`[ActionRegistry] Initiating Multi-Tier Discovery...`);
 
-                if (!parameters.discoveryUrl && (parameters.searchQuery || parameters.name)) {
-                    console.log(`[ActionRegistry] Tier 1: Tavily Semantic Search for docs...`);
-                    // const tavily = new TavilyClient(process.env.TAVILY_API_KEY!);
-                    // const results = await tavily.search(parameters.searchQuery || parameters.name);
-                    // ... set discoveryUrl = results[0].url ...
-                }
+                try {
+                    const knowledgeBase = new KnowledgeBase();
+                    const query = parameters.searchQuery || `${parameters.name} Solana protocol SDK documentation`;
+                    const research = await knowledgeBase.study(query);
 
-                if (parameters.recursive) {
-                    console.log(`[ActionRegistry] Tier 2: Firecrawl Deep Crawl...`);
-                    // const firecrawl = new FirecrawlClient(process.env.FIRECRAWL_API_KEY!);
-                    // await firecrawl.crawl(parameters.discoveryUrl);
-                } else {
-                    console.log(`[ActionRegistry] Tier 3: Jina Reader Ingestion...`);
-                    // const jina = new JinaClient(process.env.JINA_API_KEY!);
-                    // await jina.readUrl(parameters.discoveryUrl);
+                    if (research.rawContent) {
+                        learnedIntelligence = research.rawContent;
+                        console.log(`[ActionRegistry] Knowledge acquired: ${research.sources.length} sources, ${research.rawContent.length} chars`);
+
+                        // Auto-enrich operations from learned intelligence if not provided
+                        if (!parameters.operations || parameters.operations.length === 0) {
+                            parameters.operations = [{
+                                name: `${parameters.name}_default`,
+                                description: research.summary || `Interact with ${parameters.name}`,
+                                parameters: {}
+                            }];
+                        }
+                        if (!parameters.description) {
+                            parameters.description = research.summary || `Learned protocol: ${parameters.name}`;
+                        }
+                    }
+                } catch (err) {
+                    console.warn(`[ActionRegistry] Discovery Stack failed, registering with provided data:`, err);
                 }
             }
 
             const plugin = PluginRegistry.register({
                 name: parameters.name,
-                description: parameters.description,
-                programId: parameters.programId,
-                operations: parameters.operations,
+                description: parameters.description || `Learned protocol: ${parameters.name}`,
+                programId: parameters.programId || "unknown",
+                operations: parameters.operations || [],
                 isLearned: true
             });
             AppEventBus.emit("UI_NOTIFICATION", {
-                message: `God-Mode Active: Learned protocol ${plugin.name} (${plugin.programId.substr(0, 4)}...)`
+                message: `God-Mode Active: Learned protocol ${plugin.name}${learnedIntelligence ? " (with intelligence)" : ""} (${plugin.programId.substring(0, 4)}...)`
             });
             return `Plugin Registered: ${plugin.id}`;
         default:
@@ -181,12 +203,15 @@ async function executeSwap(params: any, context: ActionContext): Promise<string>
 
     // 2. Get Quote from Jupiter
     const amountInSmallestUnit = Math.floor(amount * (inputToken === "USDC" ? 1e6 : 1e9)); // Simple decimal assumption
-    const quoteUrl = `https://quote-api.jup.ag/v6/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amountInSmallestUnit}&slippageBps=50`;
+    const jupiterApiKey = process.env.NEXT_PUBLIC_JUPITER_API_KEY || "";
+    const jupiterHeaders: Record<string, string> = { "Content-Type": "application/json" };
+    if (jupiterApiKey) jupiterHeaders["x-api-key"] = jupiterApiKey;
+    const quoteUrl = `https://lite-api.jup.ag/swap/v1/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amountInSmallestUnit}&slippageBps=50`;
 
     let instructionsData;
 
     try {
-        const quoteRes = await fetch(quoteUrl);
+        const quoteRes = await fetch(quoteUrl, { headers: jupiterHeaders });
         const quoteData = await quoteRes.json();
 
         if (!quoteData || quoteData.error) {
@@ -194,7 +219,7 @@ async function executeSwap(params: any, context: ActionContext): Promise<string>
         }
 
         // 3. Get Instructions
-        const instructionsRes = await fetch("https://quote-api.jup.ag/v6/swap-instructions", {
+        const instructionsRes = await fetch("https://lite-api.jup.ag/swap/v1/swap-instructions", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

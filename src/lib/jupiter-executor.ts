@@ -35,7 +35,8 @@ export async function getJupiterQuote(
   slippageBps: number = 50 // 0.5% default
 ): Promise<JupiterQuote | null> {
   try {
-    const url = new URL('https://quote-api.jup.ag/v6/quote');
+    const jupiterApiKey = process.env.NEXT_PUBLIC_JUPITER_API_KEY || '';
+    const url = new URL('https://lite-api.jup.ag/swap/v1/quote');
     url.searchParams.append('inputMint', inputMint);
     url.searchParams.append('outputMint', outputMint);
     url.searchParams.append('amount', amountInSmallestUnit.toString());
@@ -43,10 +44,11 @@ export async function getJupiterQuote(
     url.searchParams.append('onlyDirectRoutes', 'false');
     url.searchParams.append('asLegacyTransaction', 'false');
 
+    const fetchHeaders: Record<string, string> = { 'Accept': 'application/json' };
+    if (jupiterApiKey) fetchHeaders['x-api-key'] = jupiterApiKey;
+
     const response = await fetch(url.toString(), {
-      headers: {
-        'Accept': 'application/json',
-      },
+      headers: fetchHeaders,
     });
 
     if (!response.ok) {
@@ -260,7 +262,11 @@ export async function executeSwap(params: {
     }
 
     // Get swap transaction from Jupiter
-    const swapResponse = await fetch('https://quote-api.jup.ag/v6/swap', {
+    const swapHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+    const swapApiKey = process.env.NEXT_PUBLIC_JUPITER_API_KEY || '';
+    if (swapApiKey) swapHeaders['x-api-key'] = swapApiKey;
+
+    const swapResponse = await fetch('https://lite-api.jup.ag/swap/v1/swap', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

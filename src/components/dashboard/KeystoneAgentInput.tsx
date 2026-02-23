@@ -25,7 +25,7 @@ export function KeystoneAgentInput() {
             // 2. Think (Call LLM)
             AppEventBus.emit("AGENT_LOG", { message: "🤔 Agent thinking...", level: "INFO" });
 
-            const response = await fetch("/api/agent", {
+            const response = await fetch("/api/command", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
