@@ -8,19 +8,13 @@ import {
 } from "@/components/ui/resizable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
-    Save,
-    Play,
-    Upload,
-    Zap,
     Eye,
     Terminal,
     FileCode,
     FileText,
     Hash,
     Cpu,
-    Settings,
     Shield,
 
     Loader2,
@@ -28,7 +22,6 @@ import {
 } from "lucide-react";
 import { useSelf } from "@/liveblocks.config";
 import { getAvatarUrl } from "@/lib/avatars";
-import { Logo, ArchitectIcon } from "@/components/icons";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PromptChat } from "@/components/studio/PromptChat";
 import { CodeEditor } from "@/components/studio/CodeEditor";
@@ -175,8 +168,19 @@ export default function StudioPage() {
     const [currentAppId, setCurrentAppId] = useState<string | undefined>(undefined);
     const [showProjectBrowser, setShowProjectBrowser] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [projectBrowserUserId, setProjectBrowserUserId] = useState("Operator");
 
     const searchParams = useSearchParams();
+
+
+
+    useEffect(() => {
+
+        const resolvedUserId = localStorage.getItem("keystone_wallet_id") || user?.info?.name || "Operator";
+
+        setProjectBrowserUserId(resolvedUserId);
+
+    }, [user?.info?.name]);
 
     // Load project from ?appId= query param on mount
     useEffect(() => {
@@ -265,7 +269,7 @@ export default function StudioPage() {
         const toastId = toast.loading("Saving project...");
 
         try {
-            const appId = currentAppId || "proj_" + Math.random().toString(36).substring(2, 15);
+            const appId = currentAppId || "app_" + Math.random().toString(36).substring(2, 15);
             const creatorWallet = localStorage.getItem("keystone_wallet_id") || user?.info?.name || "Operator";
 
             const projectCode = {
@@ -342,6 +346,8 @@ export default function StudioPage() {
             });
         }
         setFiles(loadedFiles);
+        const loadedFileNames = Object.keys(loadedFiles);
+        setActiveFile(loadedFileNames[0] || "App.tsx");
         toast.success(`Loaded "${project.name}"`);
     };
 
@@ -418,10 +424,9 @@ export default function StudioPage() {
 
     const handleCompile = async () => {
         setIsCompiling(true);
-        toast.loading("Compiling Anchor program...");
+        const toastId = toast.loading("Compiling Anchor program...");
         try {
             const result = await compileProgram(files as any); // Type cast for now
-            toast.dismiss();
             toast.success("Compilation complete! IDL generated.");
 
             // Add IDL to files so user can see it
@@ -438,9 +443,9 @@ export default function StudioPage() {
             setProgramBuffer(Buffer.from("Mock Program Binary"));
 
         } catch (e) {
-            toast.dismiss();
             toast.error("Compilation failed.");
         } finally {
+            toast.dismiss(toastId);
             setIsCompiling(false);
         }
     };
@@ -451,7 +456,7 @@ export default function StudioPage() {
             <header className="h-12 border-b border-border bg-muted/40 flex items-center justify-between px-6 shrink-0">
                 <div className="flex items-center gap-8">
                     <div className="flex items-center gap-3 pr-6 border-r border-border/60">
-                        <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_10px_rgba(54,226,-123,0.5)]" />
+                        <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_10px_rgba(54,226,123,0.5)]" />
                         <span className="text-[10px] font-black tracking-[0.2em] text-foreground/90 uppercase">
                             Keystone OS // Studio Node
                         </span>
@@ -659,7 +664,7 @@ export default function StudioPage() {
 
 
             <ProjectBrowser
-                userId="7KeY...StUdIo"
+                userId={projectBrowserUserId}
                 isOpen={showProjectBrowser}
                 onClose={() => setShowProjectBrowser(false)}
                 onLoadProject={handleLoadProject}
