@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { dcaBots, dcaExecutions } from "@/db/schema";
 import { eq, and, lte, gte } from "drizzle-orm";
-import { executeSwap, getJupiterQuote } from "@/lib/jupiter-executor";
+import { executeSwapWithSigning, getJupiterQuote, validateDelegation } from "@/lib/jupiter-executor";
+import bs58 from "bs58";
+import { Keypair } from "@solana/web3.js";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // 5 minutes max execution time
@@ -111,17 +113,19 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
     //   return { success: false, error: "Insufficient balance" };
     // }
 
-    // Phase 2 TODO: Validate delegation
-    // const delegation = await validateDelegation(bot.walletAddress, bot.paymentTokenMint);
-    // if (!delegation.isValid) {
-    //   await pauseBot(bot.id, "Delegation expired");
-    //   return { success: false, error: "Delegation expired" };
-    // }
-
     // Get Jupiter quote
     const USDC_DECIMALS = 6;
     const amountInSmallestUnit = Math.floor(bot.amountUsd * Math.pow(10, USDC_DECIMALS));
     const slippageBps = Math.floor((bot.maxSlippage || 0.5) * 100);
+
+    // Validate delegation before proceeding
+    console.log(`[Bot ${bot.id}] Validating delegation...`);
+    const delegation = await validateDelegation(bot.walletAddress, bot.paymentTokenMint, amountInSmallestUnit);
+    if (!delegation.isValid) {
+      console.error(`[Bot ${bot.id}] Delegation validation failed: ${delegation.error}`);
+      await recordFailedExecution(bot, `Insufficient Delegation: ${delegation.error}`);
+      return { success: false, error: "Insufficient Delegation" };
+    }
 
     console.log(`[Bot ${bot.id}] Getting Jupiter quote...`);
     const quote = await getJupiterQuote(
@@ -145,21 +149,32 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
       return { success: false, error: "Slippage too high" };
     }
 
-    // Phase 2 TODO: Execute the swap
-    // For now, we'll just simulate success
+    // Execute the actual swap
     console.log(`[Bot ${bot.id}] Executing swap...`);
     
-    // Simulated execution result
-    const executionResult = {
-      success: true,
-      txSignature: `sim_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-      inAmount: parseFloat(quote.inAmount),
-      outAmount: parseFloat(quote.outAmount),
-      price: parseFloat(quote.inAmount) > 0 
-        ? parseFloat(quote.outAmount) / parseFloat(quote.inAmount) 
-        : 0,
-      slippage: quotedSlippagePct,
-    };
+    const delegatePrivateKeyBase58 = process.env.DELEGATE_WALLET_PRIVATE_KEY;
+    if (!delegatePrivateKeyBase58) {
+      console.error(`[Bot ${bot.id}] Delegate wallet private key not configured`);
+      await recordFailedExecution(bot, "Server configuration error");
+      return { success: false, error: "Configuration error" };
+    }
+
+    const signerKeypair = Keypair.fromSecretKey(bs58.decode(delegatePrivateKeyBase58));
+
+    const executionResult = await executeSwapWithSigning({
+      inputMint: bot.paymentTokenMint,
+      outputMint: bot.buyTokenMint,
+      amountInSmallestUnit,
+      slippageBps,
+      userWallet: bot.walletAddress,
+      signerKeypair,
+    });
+
+    if (!executionResult.success) {
+      console.error(`[Bot ${bot.id}] Swap execution failed: ${executionResult.error}`);
+      await recordFailedExecution(bot, `Execution Failed: ${executionResult.error}`);
+      return { success: false, error: executionResult.error };
+    }
 
     // Record successful execution
     await db.insert(dcaExecutions).values({

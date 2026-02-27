@@ -2,6 +2,7 @@
  * Jupiter Swap Executor
  * Handles getting quotes and executing swaps via Jupiter API
  */
+import { Connection, PublicKey, VersionedTransaction } from '@solana/web3.js';
 
 export interface JupiterQuote {
   inputMint: string;
@@ -345,18 +346,28 @@ export async function executeSwapWithSigning(params: {
       return swapResult;
     }
 
-    // Step 2: Sign and send transaction
-    // TODO: Implement delegation mechanism for non-custodial signing
-    // For now, this is a placeholder showing the flow
-    
     if (!params.signerKeypair) {
       return {
         ...swapResult,
         success: false,
-        error: 'Delegation mechanism required - cannot sign without user approval'
+        error: 'Signer keypair required to execute transaction',
       };
     }
 
+    // Step 2: The Simulation Firewall (Pre-flight validation)
+    const transactionBuffer = Buffer.from(swapResult.txSignature as string, 'base64');
+    const transaction = VersionedTransaction.deserialize(transactionBuffer);
+
+    const simulation = await simulateBotTransaction(transaction);
+    if (!simulation.success) {
+      return {
+        ...swapResult,
+        success: false,
+        error: simulation.error || 'Simulation Firewall blocked the transaction',
+      };
+    }
+
+    // Step 3: Sign and send transaction
     const { sendVersionedTransaction } = await import('./solana-rpc');
     
     const result = await sendVersionedTransaction(
@@ -372,7 +383,7 @@ export async function executeSwapWithSigning(params: {
       };
     }
 
-    // Step 3: Return success with transaction signature
+    // Step 4: Return success with transaction signature
     return {
       ...swapResult,
       success: true,
@@ -467,5 +478,97 @@ export async function validateBotConfig(config: {
     return { valid: true };
   } catch (error: any) {
     return { valid: false, error: error.message || 'Validation failed' };
+  }
+}
+
+/**
+ * Validate that the user has delegated sufficient spending authority to the platform wallet
+ */
+export async function validateDelegation(
+  userWallet: string,
+  tokenMint: string,
+  requiredAmount: number
+): Promise<{ isValid: boolean; error?: string }> {
+  try {
+    const delegatePublicKeyBase58 = process.env.DELEGATE_WALLET_PUBLIC_KEY;
+    if (!delegatePublicKeyBase58) {
+      return { isValid: false, error: 'DELEGATE_WALLET_PUBLIC_KEY not configured' };
+    }
+
+    const { getConnection } = await import('./solana-rpc');
+    const connection = getConnection();
+
+    const userPubkey = new PublicKey(userWallet);
+    const mintPubkey = new PublicKey(tokenMint);
+
+    // Get parsed token accounts for the user and token mint
+    const accounts = await connection.getParsedTokenAccountsByOwner(userPubkey, { mint: mintPubkey });
+
+    if (accounts.value.length === 0) {
+      return { isValid: false, error: 'User does not have a token account for this mint' };
+    }
+
+    // Iterate through all token accounts for this mint
+    for (const { account } of accounts.value) {
+      const parsedInfo = account.data.parsed?.info;
+
+      if (!parsedInfo) continue;
+
+      const delegate = parsedInfo.delegate;
+      const delegatedAmount = Number(parsedInfo.delegatedAmount);
+
+      if (delegate && delegate === delegatePublicKeyBase58) {
+        if (delegatedAmount >= requiredAmount) {
+          return { isValid: true };
+        } else {
+          return {
+            isValid: false,
+            error: `Insufficient delegation. Required: ${requiredAmount}, Delegated: ${delegatedAmount}`
+          };
+        }
+      }
+    }
+
+    return { isValid: false, error: 'No sufficient delegation found for platform wallet' };
+  } catch (error: any) {
+    console.error('Delegation validation failed:', error);
+    return { isValid: false, error: error.message || 'Delegation validation failed' };
+  }
+}
+
+/**
+ * The Simulation Firewall: pre-flight check for server-side automated execution.
+ * Hard-blocks execution if the transaction would revert on chain.
+ */
+export async function simulateBotTransaction(
+  transaction: VersionedTransaction
+): Promise<{ success: boolean; error?: string; logs?: string[] }> {
+  try {
+    const { getConnection } = await import('./solana-rpc');
+    const connection = getConnection();
+
+    const simulationResponse = await connection.simulateTransaction(transaction, {
+      sigVerify: false,
+      replaceRecentBlockhash: true,
+    });
+
+    const result = simulationResponse.value;
+
+    if (result.err) {
+      console.error('Simulation Firewall Blocked Execution. RPC Error:', result.err);
+      return {
+        success: false,
+        error: `Simulation blocked: Transaction would fail: ${JSON.stringify(result.err)}`,
+        logs: result.logs || [],
+      };
+    }
+
+    return { success: true, logs: result.logs || [] };
+  } catch (error: any) {
+    console.error('Simulation Firewall Failed to simulate:', error);
+    return {
+      success: false,
+      error: `Simulation blocked: Could not simulate transaction. ${error.message || ''}`,
+    };
   }
 }
