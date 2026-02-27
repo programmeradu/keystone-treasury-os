@@ -433,8 +433,25 @@ export class SquadsClient {
                     const signatures = slice.map(t => t.signature);
                     parsedTxsResponse = await this.connection.getParsedTransactions(signatures, { maxSupportedTransactionVersion: 0 });
                 } catch (error) {
-                    console.error("[Squads] Failed to fetch parsed transactions batch:", error);
-                    continue; // Skip this batch on error
+                    console.error("[Squads] Failed to fetch parsed transactions batch, falling back to per-signature fetch:", error);
+
+                    const signatures = slice.map(t => t.signature);
+                    parsedTxsResponse = await Promise.all(
+                        signatures.map(async (signature) => {
+                            try {
+                                return await this.connection.getParsedTransaction(signature, {
+                                    maxSupportedTransactionVersion: 0,
+                                });
+                            } catch (singleError) {
+                                console.error(
+                                    "[Squads] Failed to fetch parsed transaction for signature:",
+                                    signature,
+                                    singleError
+                                );
+                                return null;
+                            }
+                        })
+                    );
                 }
 
                 parsedTxsResponse.forEach((tx, i) => {
