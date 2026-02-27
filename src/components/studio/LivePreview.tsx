@@ -471,7 +471,7 @@ export function LivePreview({
                 ref={iframeRef}
                 srcDoc={finalIframeContent}
                 className="w-full h-full border-none"
-                sandbox="allow-scripts allow-same-origin"
+                sandbox="allow-scripts"
                 title="Keystone Mini-App Preview"
             />
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ExecutionStatus } from "@/lib/agents";
+import { ExecutionStatus } from "@/lib/agents/types";
 
 interface ActiveExecution {
   executionId: string;

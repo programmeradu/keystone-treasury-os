@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ExecutionStatus } from "@/lib/agents";
+import { ExecutionStatus } from "@/lib/agents/types";
 import { formatDistanceToNow } from "date-fns";
 
 interface Execution {

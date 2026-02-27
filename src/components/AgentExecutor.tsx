@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { PublicKey } from "@solana/web3.js";
 import { useAgent } from "@/hooks/use-agent";
-import { ExecutionStatus } from "@/lib/agents";
+import { ExecutionStatus } from "@/lib/agents/types";
 import { LLMApprovalDialog } from "@/components/LLMApprovalDialog";
 import { planStrategy, type StrategyPlan } from "@/lib/llm/strategy-planner";
 import { explainError } from "@/lib/llm/error-explainer";
