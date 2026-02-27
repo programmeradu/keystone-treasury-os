@@ -131,6 +131,13 @@ export const DeFiPositions = () => {
         return items.sort((a, b) => b.value - a.value);
     }, [vaultTokens, stakeAccounts, yieldRates, solPrice, totalStakedSol]);
 
+    // Simulated yield override from foresight variables
+    const simYieldApy = useMemo(() => {
+        if (!simActive || !sim.result?.metadata?.variables) return null;
+        const yieldVar = sim.result.metadata.variables.find((v: any) => v.type === "yield_apy");
+        return yieldVar ? yieldVar.value * 100 : null; // convert decimal to %
+    }, [simActive, sim.result]);
+
     // Summary stats
     const totalTvl = positions.reduce((s, p) => s + p.value, 0);
     const totalMonthlyYield = positions.reduce((s, p) => s + p.monthlyYield, 0);

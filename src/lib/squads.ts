@@ -423,20 +423,45 @@ export class SquadsClient {
             // Parse ALL transactions for detailed info using balance diffs
             const vaultKey = resolvedKey.toBase58();
 
-            // Batch in groups of 10 to avoid overwhelming RPC
-            const BATCH = 10;
+            // Batch in groups of 50 to maximize RPC throughput
+            const BATCH = 50;
             for (let batch = 0; batch < transactions.length; batch += BATCH) {
                 const slice = transactions.slice(batch, batch + BATCH);
-                const parsedTxs = await Promise.allSettled(
-                    slice.map(t =>
-                        this.connection.getParsedTransaction(t.signature, { maxSupportedTransactionVersion: 0 })
-                    )
-                );
 
-                parsedTxs.forEach((result, i) => {
+                let parsedTxsResponse: any[] = [];
+                try {
+                    const signatures = slice.map(t => t.signature);
+                    parsedTxsResponse = await this.connection.getParsedTransactions(signatures, { maxSupportedTransactionVersion: 0 });
+                } catch (error) {
+                    console.error("[Squads] Failed to fetch parsed transactions batch, falling back to per-signature fetch:", error);
+
+                    const signatures = slice.map(t => t.signature);
+                    parsedTxsResponse = await Promise.all(
+                        signatures.map(async (signature) => {
+                            try {
+                                return await this.connection.getParsedTransaction(signature, {
+                                    maxSupportedTransactionVersion: 0,
+                                });
+                            } catch (singleError) {
+                                console.error(
+                                    "[Squads] Failed to fetch parsed transaction for signature:",
+                                    signature,
+                                    singleError
+                                );
+                                return null;
+                            }
+                        })
+                    );
+                }
+
+                parsedTxsResponse.forEach((tx, i) => {
                     const idx = batch + i;
-                    if (result.status !== "fulfilled" || !result.value) return;
-                    const tx = result.value;
+
+                    if (!tx) {
+                        console.warn(`[Squads] getParsedTransactions returned null for signature: ${slice[i].signature}`);
+                        return;
+                    }
+
                     const meta = tx.meta;
                     const accountKeys = tx.transaction.message.accountKeys.map((k: any) =>
                         typeof k === "string" ? k : k.pubkey?.toBase58?.() || String(k)
