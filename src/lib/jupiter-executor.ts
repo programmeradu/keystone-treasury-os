@@ -515,7 +515,7 @@ export async function validateDelegation(
       if (!parsedInfo) continue;
 
       const delegate = parsedInfo.delegate;
-      const delegatedAmount = Number(parsedInfo.delegatedAmount?.amount);
+      const delegatedAmount = Number(parsedInfo.delegatedAmount);
 
       if (delegate && delegate === delegatePublicKeyBase58) {
         if (delegatedAmount >= requiredAmount) {
