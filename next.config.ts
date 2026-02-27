@@ -15,13 +15,6 @@ const nextConfig: NextConfig = {
     }
     return config;
   },
-  // V8 HACK: Bypass strict checks to allow baseline docs to merge despite pre-existing errors
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
 };
 
 export default nextConfig;

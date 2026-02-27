@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { agentExecutions, agentApprovals } from "@/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
-import { ExecutionStatus } from "@/lib/agents";
+import { ExecutionStatus } from "@/lib/agents/types";
 
 // Database guard
 function ensureDb() {

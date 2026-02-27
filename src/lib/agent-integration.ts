@@ -1,4 +1,4 @@
-import { ExecutionStatus, StrategyType } from "@/lib/agents";
+import { ExecutionStatus, StrategyType } from "@/lib/agents/types";
 import { PublicKey } from "@solana/web3.js";
 
 interface AtlasAgentIntegration {
