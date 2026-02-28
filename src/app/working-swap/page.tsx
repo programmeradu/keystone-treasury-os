@@ -91,7 +91,7 @@ export default function WorkingSwap() {
       if (!response.ok) throw new Error('Failed to fetch quote');
       const data: QuoteResponse = await response.json();
       setQuote(data);
-      setStatusMessage('Quote received ✓');
+      setStatusMessage('Quote received ');
       setProgress(30);
       setTimeout(() => setStatusMessage(''), 2000);
     } catch (err) {
@@ -163,7 +163,7 @@ export default function WorkingSwap() {
 
       setSuccessHash(signature);
       setProgress(100);
-      setStatusMessage('Swap completed successfully! ✓');
+      setStatusMessage('Swap completed successfully! ');
       setQuote(null);
       setInputAmount('');
       setTimeout(() => setStatusMessage(''), 3000);
@@ -234,7 +234,7 @@ export default function WorkingSwap() {
               {/* Connected Status */}
               {connected && (
                 <div className="mb-6 p-3 bg-green-500/10 border border-green-500/20 rounded-lg flex items-center justify-between">
-                  <span className="text-green-300 text-sm font-medium">✓ Wallet Connected</span>
+                  <span className="text-green-300 text-sm font-medium"> Wallet Connected</span>
                   <span className="text-xs text-green-400">{publicKey?.toString().slice(0, 4)}...{publicKey?.toString().slice(-4)}</span>
                 </div>
               )}
@@ -347,14 +347,14 @@ export default function WorkingSwap() {
               {/* Error Message */}
               {error && (
                 <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300 text-sm">
-                  ⚠ {error}
+                   {error}
                 </div>
               )}
 
               {/* Success Message */}
               {successHash && (
                 <div className="mb-4 p-4 bg-green-500/10 border border-green-500/30 rounded-lg space-y-2">
-                  <div className="text-green-300 text-sm font-semibold">✓ Swap Successful!</div>
+                  <div className="text-green-300 text-sm font-semibold"> Swap Successful!</div>
                   <a
                     href={`https://solscan.io/tx/${successHash}?cluster=devnet`}
                     target="_blank"
@@ -444,10 +444,10 @@ export default function WorkingSwap() {
               </div>
 
               <div className="pt-4 border-t border-slate-700/50 space-y-2 text-xs text-slate-400">
-                <p>✓ Real Jupiter API integration</p>
-                <p>✓ Live Solana blockchain execution</p>
-                <p>✓ Actual wallet signing</p>
-                <p>✓ On-chain confirmation tracking</p>
+                <p> Real Jupiter API integration</p>
+                <p> Live Solana blockchain execution</p>
+                <p> Actual wallet signing</p>
+                <p> On-chain confirmation tracking</p>
                 <p className="text-slate-500 text-xs mt-3 pt-3 border-t border-slate-700">
                   <strong>Network:</strong> Requires external network access to Jupiter API and Solana RPC. If you see "ERR_NAME_NOT_RESOLVED", ensure your environment has internet access.
                 </p>

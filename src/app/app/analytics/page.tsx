@@ -446,7 +446,7 @@ export default function AnalyticsPage() {
                                 activityLog.slice(0, 5).map(entry => (
                                     <div key={entry.id} className="flex gap-3 items-start opacity-80">
                                         <div className="w-6 h-6 rounded bg-muted border border-border flex items-center justify-center text-[10px] font-mono text-foreground shrink-0">
-                                            {entry.type === "AGENT_COMMAND" ? "⚡" : entry.type === "REFRESH_DASHBOARD" ? "↻" : "•"}
+                                            {entry.type === "AGENT_COMMAND" ? "" : entry.type === "REFRESH_DASHBOARD" ? "↻" : "•"}
                                         </div>
                                         <div className="min-w-0">
                                             <p className="text-[10px] leading-tight text-foreground font-medium truncate">{entry.text}</p>

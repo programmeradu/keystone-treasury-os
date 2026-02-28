@@ -14,10 +14,10 @@ const info = [];
 
 function checkFile(filePath, description) {
   if (fs.existsSync(filePath)) {
-    info.push(`✅ ${description} exists: ${filePath}`);
+    info.push(` ${description} exists: ${filePath}`);
     return true;
   } else {
-    errors.push(`❌ ${description} missing: ${filePath}`);
+    errors.push(` ${description} missing: ${filePath}`);
     return false;
   }
 }
@@ -32,29 +32,29 @@ function checkPackageJson() {
     // Check Next.js version
     const nextVersion = pkg.dependencies?.next;
     if (nextVersion) {
-      info.push(`✅ Next.js version: ${nextVersion}`);
+      info.push(` Next.js version: ${nextVersion}`);
     } else {
-      errors.push(`❌ Next.js not found in dependencies`);
+      errors.push(` Next.js not found in dependencies`);
     }
     
     // Check Netlify plugin
     const netlifyPlugin = pkg.dependencies?.['@netlify/plugin-nextjs'];
     if (netlifyPlugin) {
-      info.push(`✅ Netlify Next.js plugin: ${netlifyPlugin}`);
+      info.push(` Netlify Next.js plugin: ${netlifyPlugin}`);
     } else {
-      errors.push(`❌ @netlify/plugin-nextjs not found in dependencies`);
+      errors.push(` @netlify/plugin-nextjs not found in dependencies`);
     }
     
     // Check Node engine
     const nodeEngine = pkg.engines?.node;
     if (nodeEngine) {
-      info.push(`✅ Node.js engine requirement: ${nodeEngine}`);
+      info.push(` Node.js engine requirement: ${nodeEngine}`);
     } else {
-      warnings.push(`⚠️  No Node.js engine specified in package.json`);
+      warnings.push(`  No Node.js engine specified in package.json`);
     }
     
   } catch (e) {
-    errors.push(`❌ Error reading package.json: ${e.message}`);
+    errors.push(` Error reading package.json: ${e.message}`);
   }
 }
 
@@ -67,37 +67,37 @@ function checkNetlifyToml() {
     
     // Check for plugin
     if (content.includes('@netlify/plugin-nextjs')) {
-      info.push(`✅ Netlify Next.js plugin configured in netlify.toml`);
+      info.push(` Netlify Next.js plugin configured in netlify.toml`);
     } else {
-      errors.push(`❌ @netlify/plugin-nextjs not found in netlify.toml`);
+      errors.push(` @netlify/plugin-nextjs not found in netlify.toml`);
     }
     
     // Check for problematic publish directory
     if (content.includes('publish =')) {
-      warnings.push(`⚠️  Publish directory set in netlify.toml - this may conflict with Next.js plugin`);
+      warnings.push(`  Publish directory set in netlify.toml - this may conflict with Next.js plugin`);
     }
     
     // Check for manual API redirects
     if (content.includes('from = "/api/*"')) {
-      warnings.push(`⚠️  Manual API redirects found - these may conflict with Next.js plugin`);
+      warnings.push(`  Manual API redirects found - these may conflict with Next.js plugin`);
     }
     
     // Check Node version
     if (content.includes('NODE_VERSION') && content.includes('20')) {
-      info.push(`✅ Node.js 20 configured in netlify.toml`);
+      info.push(` Node.js 20 configured in netlify.toml`);
     } else {
-      warnings.push(`⚠️  Node.js 20+ not explicitly set in netlify.toml`);
+      warnings.push(`  Node.js 20+ not explicitly set in netlify.toml`);
     }
     
   } catch (e) {
-    errors.push(`❌ Error reading netlify.toml: ${e.message}`);
+    errors.push(` Error reading netlify.toml: ${e.message}`);
   }
 }
 
 function checkApiRoutes() {
   const apiDir = './src/app/api';
   if (!fs.existsSync(apiDir)) {
-    errors.push(`❌ API routes directory not found: ${apiDir}`);
+    errors.push(` API routes directory not found: ${apiDir}`);
     return;
   }
   
@@ -115,13 +115,13 @@ function checkApiRoutes() {
         }
       }
     } catch (e) {
-      warnings.push(`⚠️  Error reading directory "${dir}": ${e.message}`);
+      warnings.push(`  Error reading directory "${dir}": ${e.message}`);
     }
     return count;
   };
   
   const routeCount = countRoutes(apiDir);
-  info.push(`✅ Found ${routeCount} API routes in ${apiDir}`);
+  info.push(` Found ${routeCount} API routes in ${apiDir}`);
   
   // Check for common problematic routes
   const criticalRoutes = [
@@ -132,9 +132,9 @@ function checkApiRoutes() {
   for (const route of criticalRoutes) {
     const routePath = path.join(apiDir, route);
     if (fs.existsSync(routePath)) {
-      info.push(`✅ Critical route exists: /api/${route.replace('/route.ts', '')}`);
+      info.push(` Critical route exists: /api/${route.replace('/route.ts', '')}`);
     } else {
-      warnings.push(`⚠️  Critical route missing: /api/${route.replace('/route.ts', '')}`);
+      warnings.push(`  Critical route missing: /api/${route.replace('/route.ts', '')}`);
     }
   }
 }
@@ -142,11 +142,11 @@ function checkApiRoutes() {
 function checkBuildOutput() {
   const buildDir = './.next';
   if (!fs.existsSync(buildDir)) {
-    warnings.push(`⚠️  No build output found. Run 'npm run build' first.`);
+    warnings.push(`  No build output found. Run 'npm run build' first.`);
     return;
   }
   
-  info.push(`✅ Build output exists: ${buildDir}`);
+  info.push(` Build output exists: ${buildDir}`);
   
   // Check server routes
   const serverApiDir = './.next/server/app/api';
@@ -171,46 +171,46 @@ function checkBuildOutput() {
     };
     
     const serverRouteCount = countServerRoutes(serverApiDir);
-    info.push(`✅ Built ${serverRouteCount} serverless functions for API routes`);
+    info.push(` Built ${serverRouteCount} serverless functions for API routes`);
   } else {
-    warnings.push(`⚠️  No server-side API routes found in build output`);
+    warnings.push(`  No server-side API routes found in build output`);
   }
 }
 
-console.log('🔍 Netlify Deployment Debug Check\n');
+console.log(' Netlify Deployment Debug Check\n');
 
 checkPackageJson();
 checkNetlifyToml();
 checkApiRoutes();
 checkBuildOutput();
 
-console.log('\n📋 Results:\n');
+console.log('\n Results:\n');
 
 if (info.length > 0) {
-  console.log('ℹ️  Information:');
+  console.log('ℹ  Information:');
   info.forEach(msg => console.log(`  ${msg}`));
   console.log('');
 }
 
 if (warnings.length > 0) {
-  console.log('⚠️  Warnings:');
+  console.log('  Warnings:');
   warnings.forEach(msg => console.log(`  ${msg}`));
   console.log('');
 }
 
 if (errors.length > 0) {
-  console.log('❌ Errors:');
+  console.log(' Errors:');
   errors.forEach(msg => console.log(`  ${msg}`));
   console.log('');
 }
 
 if (errors.length === 0) {
-  console.log('🎉 No critical errors found! Your configuration should work on Netlify.');
+  console.log(' No critical errors found! Your configuration should work on Netlify.');
   console.log('If you still see 404s, check:');
   console.log('  1. Build logs in Netlify dashboard');
   console.log('  2. Function logs in Netlify dashboard');
   console.log('  3. Environment variables are set correctly');
 } else {
-  console.log('🚨 Critical errors found. Fix these before deploying to Netlify.');
+  console.log(' Critical errors found. Fix these before deploying to Netlify.');
   process.exit(1);
 }

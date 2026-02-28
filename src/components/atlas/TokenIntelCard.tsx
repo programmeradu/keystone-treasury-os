@@ -323,7 +323,7 @@ export function TokenIntelCard({
                         </div>
                         <div className="rounded p-2 bg-card/40">
                           <div className="text-[11px] opacity-70">Distribution</div>
-                          <div className="font-mono font-bold text-sm text-emerald-400">{dasCount > 1000 ? "✓ Healthy" : dasCount > 100 ? "⚠ Fair" : "✗ Risky"}</div>
+                          <div className="font-mono font-bold text-sm text-emerald-400">{dasCount > 1000 ? " Healthy" : dasCount > 100 ? " Fair" : " Risky"}</div>
                         </div>
                       </div>
                       {dasData && Array.isArray(dasData) && dasData.length > 0 && (

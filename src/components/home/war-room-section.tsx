@@ -332,7 +332,7 @@ export function WarRoomSection() {
 
                         <div className="flex items-center justify-between px-4 py-2 border-t border-white/[0.04] text-[9px] font-mono text-white/20">
                           <span>Gas ~$0.12</span>
-                          <span className="text-keystone-green/50">Foresight 5/5 ✓</span>
+                          <span className="text-keystone-green/50">Foresight 5/5 </span>
                         </div>
                       </div>
 
@@ -359,7 +359,7 @@ export function WarRoomSection() {
                               <AnimatePresence mode="wait">
                                 {hasSigned ? (
                                   <motion.div key="ok" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400 }} className="px-2.5 py-1 rounded-md bg-keystone-green/10 border border-keystone-green/20 text-[9px] font-bold text-keystone-green">
-                                    ✓ Approved
+                                     Approved
                                   </motion.div>
                                 ) : (
                                   <motion.div key="btn" className="px-2.5 py-1 rounded-md bg-keystone-green text-black text-[9px] font-bold" animate={{ opacity: [0.7, 1, 0.7] }} transition={{ duration: 2, repeat: Infinity }}>
@@ -451,7 +451,7 @@ export function WarRoomSection() {
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img src={getAvatarUrl(u.name)} alt={u.name} className="w-full h-full" />
                             </div>
-                            <span className="text-keystone-green/40">✓</span>
+                            <span className="text-keystone-green/40"></span>
                           </div>
                         ))}
                       </motion.div>

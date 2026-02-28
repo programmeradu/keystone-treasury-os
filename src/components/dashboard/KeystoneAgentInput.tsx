@@ -23,7 +23,7 @@ export function KeystoneAgentInput() {
 
         try {
             // 2. Think (Call LLM)
-            AppEventBus.emit("AGENT_LOG", { message: "🤔 Agent thinking...", level: "INFO" });
+            AppEventBus.emit("AGENT_LOG", { message: " Agent thinking...", level: "INFO" });
 
             const response = await fetch("/api/command", {
                 method: "POST",
@@ -46,7 +46,7 @@ export function KeystoneAgentInput() {
                     AppEventBus.emit("AGENT_LOG", { message: `${plan.direct_answer}`, level: "SUCCESS" });
                     await new Promise(r => setTimeout(r, 800));
                 } else if (plan.reasoning) {
-                    AppEventBus.emit("AGENT_LOG", { message: `💡 ${plan.reasoning}`, level: "INFO" });
+                    AppEventBus.emit("AGENT_LOG", { message: ` ${plan.reasoning}`, level: "INFO" });
                     await new Promise(r => setTimeout(r, 800));
                 }
 
@@ -73,7 +73,7 @@ export function KeystoneAgentInput() {
                         case "swap":
                             // Currently we just log acceptance as Swap UI is not yet event-driven
                             // Ideally: AppEventBus.emit("OPEN_SWAP_MODAL", action.parameters);
-                            AppEventBus.emit("AGENT_LOG", { message: `🛠️ Preparing Swap UI [${action.parameters.inputToken} -> ${action.parameters.outputToken}]`, level: "INFO" });
+                            AppEventBus.emit("AGENT_LOG", { message: ` Preparing Swap UI [${action.parameters.inputToken} -> ${action.parameters.outputToken}]`, level: "INFO" });
                             break;
                         default:
                             AppEventBus.emit("AGENT_LOG", { message: `Executing tool: ${action.operation}...`, level: "INFO" });

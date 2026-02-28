@@ -81,21 +81,21 @@ async function testEndpoint(endpoint) {
         }
       }
       
-      console.log(`✅ ${endpoint.name} - OK`);
+      console.log(` ${endpoint.name} - OK`);
       return true;
     } else if (endpoint.optional) {
-      console.log(`⚠️  ${endpoint.name} - Optional endpoint not available (${response.status})`);
+      console.log(`  ${endpoint.name} - Optional endpoint not available (${response.status})`);
       return true;
     }
     
   } catch (error) {
-    console.log(`❌ ${endpoint.name} - FAILED: ${error.message}`);
+    console.log(` ${endpoint.name} - FAILED: ${error.message}`);
     return false;
   }
 }
 
 async function main() {
-  console.log(`🚀 Testing Netlify deployment readiness against: ${baseUrl}\n`);
+  console.log(` Testing Netlify deployment readiness against: ${baseUrl}\n`);
   
   let passed = 0;
   let total = criticalEndpoints.length;
@@ -109,10 +109,10 @@ async function main() {
   console.log(`Results: ${passed}/${total} endpoints working`);
   
   if (passed === total) {
-    console.log('🎉 All critical endpoints are working correctly! Netlify deployment should be successful.');
+    console.log(' All critical endpoints are working correctly! Netlify deployment should be successful.');
     process.exit(0);
   } else {
-    console.log('⚠️  Some critical endpoints failed. Check the errors above before deploying to Netlify.');
+    console.log('  Some critical endpoints failed. Check the errors above before deploying to Netlify.');
     process.exit(1);
   }
 }

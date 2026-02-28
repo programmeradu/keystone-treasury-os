@@ -372,7 +372,7 @@ export function parseForesightPrompt(prompt: string): ParsedForesight {
             unit: "percent",
         });
         confidence = 0.15; // very low — the parser didn't understand the prompt
-        parsedSummary.push("⚠ Could not fully parse prompt — using default -20% market stress test");
+        parsedSummary.push(" Could not fully parse prompt — using default -20% market stress test");
     }
 
     const title = generateTitle(variables);

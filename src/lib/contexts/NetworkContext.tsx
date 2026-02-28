@@ -68,13 +68,13 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
         for (const url of candidates) {
             const ok = await probeRpc(url);
             if (ok) {
-                console.log(`[RPC] ✓ Using: ${url}`);
+                console.log(`[RPC]  Using: ${url}`);
                 setEndpoint(url);
                 setRpcHealth("ok");
                 probing.current = false;
                 return;
             }
-            console.warn(`[RPC] ✗ Unreachable: ${url}`);
+            console.warn(`[RPC]  Unreachable: ${url}`);
         }
 
         // All failed — use first as fallback anyway

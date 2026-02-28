@@ -569,8 +569,8 @@ export const YieldOptimizer = () => {
 
                                                         AppEventBus.emit("AGENT_LOG", {
                                                             message: txExecutor.isMultisig
-                                                                ? `📋 Creating multisig proposal: Deploy ${deployAmount.toFixed(4)} SOL → ${liveData.strategyName}`
-                                                                : `🔐 Requesting wallet signature: Deploy ${deployAmount.toFixed(4)} SOL → ${liveData.strategyName}`,
+                                                                ? ` Creating multisig proposal: Deploy ${deployAmount.toFixed(4)} SOL → ${liveData.strategyName}`
+                                                                : ` Requesting wallet signature: Deploy ${deployAmount.toFixed(4)} SOL → ${liveData.strategyName}`,
                                                             level: "SYSTEM",
                                                         });
 
@@ -587,8 +587,8 @@ export const YieldOptimizer = () => {
 
                                                         AppEventBus.emit("AGENT_LOG", {
                                                             message: result.signature
-                                                                ? `✅ Deployment confirmed! Signature: ${result.signature}`
-                                                                : `✅ Proposal created: ${result.proposalKey}. Awaiting ${vaultConfig?.threshold || "N/A"} signatures.`,
+                                                                ? ` Deployment confirmed! Signature: ${result.signature}`
+                                                                : ` Proposal created: ${result.proposalKey}. Awaiting ${vaultConfig?.threshold || "N/A"} signatures.`,
                                                             level: "SUCCESS",
                                                         });
                                                     } catch (err: any) {
@@ -597,7 +597,7 @@ export const YieldOptimizer = () => {
                                                             description: err.message || "Check console for details.",
                                                         });
                                                         AppEventBus.emit("AGENT_LOG", {
-                                                            message: `❌ Deployment failed: ${err.message}`,
+                                                            message: ` Deployment failed: ${err.message}`,
                                                             level: "ERROR",
                                                         });
                                                     } finally {

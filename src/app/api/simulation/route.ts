@@ -283,7 +283,7 @@ function runProjection(req: SimulationRequest): SimulationResponse {
     const events: string[] = [];
     if (i === 0) events.push("Current state");
     if (pointTotal <= currentValue * 0.1 && runwayMonths === null && prevPointTotal > currentValue * 0.1) {
-      events.push("⚠ Below 10% of initial value");
+      events.push(" Below 10% of initial value");
     }
     // Flag when stablecoins run out
     const currentStableVal = stableTokens.reduce((s, t) => s + (breakdown[t.symbol] || 0), 0);
@@ -294,7 +294,7 @@ function runProjection(req: SimulationRequest): SimulationResponse {
             return s + (prevBd[t.symbol] || 0);
           }, 0)
         : stablecoinValue;
-      if (prevStableVal > 0) events.push("⚠ Stablecoin reserves depleted — selling volatile assets");
+      if (prevStableVal > 0) events.push(" Stablecoin reserves depleted — selling volatile assets");
     }
 
     projection.push({
