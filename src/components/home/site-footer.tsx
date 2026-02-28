@@ -109,7 +109,7 @@ export function SiteFooter() {
             <a
               href="https://twitter.com/Keystone_OS"
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="text-white/30 hover:text-keystone-green transition-colors"
             >
               <FaTwitter size={14} />
@@ -117,7 +117,7 @@ export function SiteFooter() {
             <a
               href="https://discord.gg/keystone"
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="text-white/30 hover:text-keystone-green transition-colors"
             >
               <FaDiscord size={14} />
@@ -125,7 +125,7 @@ export function SiteFooter() {
             <a
               href="https://github.com/keystone-org"
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="text-white/30 hover:text-keystone-green transition-colors"
             >
               <FaGithub size={14} />
