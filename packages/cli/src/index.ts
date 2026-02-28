@@ -102,7 +102,9 @@ program
   .option("--api-url <url>", "Keystone OS API URL (e.g. https://keystone.example.com)")
   .option("-c, --category <cat>", "Category (default: utility)", "utility")
   .option("--skip-arweave", "Skip Arweave cold path upload")
-  .action(async (dir: string = ".", opts: { name: string; description: string; wallet: string; apiUrl?: string; category?: string; skipArweave?: boolean }) => {
+  .option("--register-marketplace", "Register on KeystoneMarket (requires api-url + Arweave)")
+  .option("--price-usdc <cents>", "Price in USDC cents for marketplace listing", (v) => parseInt(v, 10))
+  .action(async (dir: string = ".", opts: { name: string; description: string; wallet: string; apiUrl?: string; category?: string; skipArweave?: boolean; registerMarketplace?: boolean; priceUsdc?: number }) => {
     try {
       const result = await runPublish({
         dir,
@@ -112,12 +114,15 @@ program
         apiUrl: opts.apiUrl,
         category: opts.category,
         skipArweave: opts.skipArweave,
+        registerMarketplace: opts.registerMarketplace,
+        priceUsdc: opts.priceUsdc,
       });
       if (result.ok) {
         console.log("Published:", result.appId);
         if (result.arweaveTxId) console.log("Arweave:", result.arweaveTxId);
         if (result.codeHash) console.log("Code hash:", result.codeHash);
         if (result.securityScore !== undefined) console.log("Security score:", result.securityScore);
+        if (result.marketplaceRegisterUrl) console.log("Marketplace register:", result.marketplaceRegisterUrl);
       } else {
         console.error(result.error);
         process.exit(1);

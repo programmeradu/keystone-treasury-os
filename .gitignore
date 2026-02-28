@@ -39,3 +39,6 @@ bfg.jar
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# anchor / solana
+/target

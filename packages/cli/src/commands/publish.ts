@@ -17,6 +17,9 @@ export interface PublishOptions {
   apiUrl?: string;
   category?: string;
   skipArweave?: boolean;
+  /** Register on KeystoneMarket (requires apiUrl). Pass price in USDC cents. */
+  registerMarketplace?: boolean;
+  priceUsdc?: number;
 }
 
 export interface PublishResult {
@@ -25,6 +28,7 @@ export interface PublishResult {
   arweaveTxId?: string;
   codeHash?: string;
   securityScore?: number;
+  marketplaceRegisterUrl?: string;
   error?: string;
 }
 
@@ -128,11 +132,32 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
     appId = reg?.appId;
   }
 
+  const finalAppId = appId ?? `app_${Date.now().toString(36)}`;
+  let marketplaceRegisterUrl: string | undefined;
+  if (options.registerMarketplace && options.apiUrl && arweaveTxId) {
+    marketplaceRegisterUrl = `${options.apiUrl.replace(/\/$/, "")}/api/studio/marketplace/register`;
+    try {
+      await fetch(marketplaceRegisterUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appId: finalAppId,
+          priceUsdc: options.priceUsdc ?? 0,
+          ipfsCid: arweaveTxId,
+          developerWallet: options.creatorWallet,
+        }),
+      });
+    } catch {
+      // Non-fatal: marketplace registration is optional
+    }
+  }
+
   return {
     ok: true,
-    appId: appId ?? `app_${Date.now().toString(36)}`,
+    appId: finalAppId,
     arweaveTxId: arweaveTxId ?? undefined,
     codeHash,
     securityScore: gatekeeper.securityScore,
+    marketplaceRegisterUrl,
   };
 }

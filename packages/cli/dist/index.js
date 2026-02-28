@@ -366,12 +366,31 @@ ${gatekeeper.errors.map((e) => `  ${e.file}:${e.line} \u2014 ${e.message}`).join
     });
     appId = reg?.appId;
   }
+  const finalAppId = appId ?? `app_${Date.now().toString(36)}`;
+  let marketplaceRegisterUrl;
+  if (options.registerMarketplace && options.apiUrl && arweaveTxId) {
+    marketplaceRegisterUrl = `${options.apiUrl.replace(/\/$/, "")}/api/studio/marketplace/register`;
+    try {
+      await fetch(marketplaceRegisterUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appId: finalAppId,
+          priceUsdc: options.priceUsdc ?? 0,
+          ipfsCid: arweaveTxId,
+          developerWallet: options.creatorWallet
+        })
+      });
+    } catch {
+    }
+  }
   return {
     ok: true,
-    appId: appId ?? `app_${Date.now().toString(36)}`,
+    appId: finalAppId,
     arweaveTxId: arweaveTxId ?? void 0,
     codeHash,
-    securityScore: gatekeeper.securityScore
+    securityScore: gatekeeper.securityScore,
+    marketplaceRegisterUrl
   };
 }
 
@@ -438,7 +457,7 @@ program.command("build [dir]").description("Build Mini-App (optional Arweave col
     process.exit(1);
   }
 });
-program.command("publish [dir]").description("Publish Mini-App: Gatekeeper \u2192 Arweave (Cold) \u2192 Registry (Hot)").requiredOption("-n, --name <name>", "App name").requiredOption("-d, --description <desc>", "App description").requiredOption("-w, --wallet <address>", "Creator wallet address").option("--api-url <url>", "Keystone OS API URL (e.g. https://keystone.example.com)").option("-c, --category <cat>", "Category (default: utility)", "utility").option("--skip-arweave", "Skip Arweave cold path upload").action(async (dir = ".", opts) => {
+program.command("publish [dir]").description("Publish Mini-App: Gatekeeper \u2192 Arweave (Cold) \u2192 Registry (Hot)").requiredOption("-n, --name <name>", "App name").requiredOption("-d, --description <desc>", "App description").requiredOption("-w, --wallet <address>", "Creator wallet address").option("--api-url <url>", "Keystone OS API URL (e.g. https://keystone.example.com)").option("-c, --category <cat>", "Category (default: utility)", "utility").option("--skip-arweave", "Skip Arweave cold path upload").option("--register-marketplace", "Register on KeystoneMarket (requires api-url + Arweave)").option("--price-usdc <cents>", "Price in USDC cents for marketplace listing", (v) => parseInt(v, 10)).action(async (dir = ".", opts) => {
   try {
     const result = await runPublish({
       dir,
@@ -447,13 +466,16 @@ program.command("publish [dir]").description("Publish Mini-App: Gatekeeper \u219
       creatorWallet: opts.wallet,
       apiUrl: opts.apiUrl,
       category: opts.category,
-      skipArweave: opts.skipArweave
+      skipArweave: opts.skipArweave,
+      registerMarketplace: opts.registerMarketplace,
+      priceUsdc: opts.priceUsdc
     });
     if (result.ok) {
       console.log("Published:", result.appId);
       if (result.arweaveTxId) console.log("Arweave:", result.arweaveTxId);
       if (result.codeHash) console.log("Code hash:", result.codeHash);
       if (result.securityScore !== void 0) console.log("Security score:", result.securityScore);
+      if (result.marketplaceRegisterUrl) console.log("Marketplace register:", result.marketplaceRegisterUrl);
     } else {
       console.error(result.error);
       process.exit(1);
