@@ -29,11 +29,22 @@ export async function GET(req: Request) {
         .where(eq(dcaBots.userId, userId))
         .orderBy(desc(dcaBots.createdAt));
 
+      // ⚡ Bolt Optimization: Batch fetch token prices for unique mints
+      // Reduces redundant Jupiter API calls for identical tokens across multiple bots
+      const uniqueMints = Array.from(new Set(bots.map(bot => bot.buyTokenMint as string)));
+      const priceMap = new Map<string, number>();
+
+      await Promise.all(
+        uniqueMints.map(async (mint) => {
+          const price = await getTokenPrice(mint as string);
+          priceMap.set(mint as string, price || 0);
+        })
+      );
+
       // Calculate current stats for each bot
-      const botsWithStats = await Promise.all(
-        bots.map(async (bot) => {
-          // Get current price
-          const currentPrice = await getTokenPrice(bot.buyTokenMint);
+      const botsWithStats = bots.map((bot) => {
+          // Get cached current price
+          const currentPrice = priceMap.get(bot.buyTokenMint as string) || 0;
           
           // Calculate average price
           const avgPrice = bot.totalReceived > 0 
@@ -63,8 +74,7 @@ export async function GET(req: Request) {
             executionCount: bot.executionCount,
             createdAt: bot.createdAt,
           };
-        })
-      );
+        });
 
       // Calculate summary
       const totalInvested = botsWithStats.reduce((sum, bot) => sum + bot.totalInvested, 0);
