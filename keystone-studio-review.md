@@ -25,7 +25,7 @@ This report analyzes the current state of the Keystone Studio, `@keystone-os/sdk
 ### 1.4. Publishing & Marketplace Friction
 **Gap:** `keystone publish` has a `--register-marketplace` flag, but it currently just fires a POST request into the void. There is no feedback loop providing the user with a direct link to view their listed app on the marketplace.
 **Impact:** Developers don't get the immediate gratification of seeing their published app, reducing engagement.
-**Resolution:** The CLI should output a direct, clickable URL to the marketplace listing (e.g., `https://keystone.example.com/marketplace/app/<appId>`) upon successful publication.
+**Resolution:** The CLI should output a direct, clickable URL to the marketplace listing (e.g., `<MARKETPLACE_BASE_URL>/marketplace/app/<appId>`) upon successful publication.
 
 ---
 
