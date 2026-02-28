@@ -118,12 +118,24 @@ program
         priceUsdc: opts.priceUsdc,
       });
       if (result.ok) {
-        console.log("Published:", result.appId);
-        if (result.arweaveTxId) console.log("Arweave:", result.arweaveTxId);
-        if (result.codeHash) console.log("Code hash:", result.codeHash);
-        if (result.securityScore !== undefined) console.log("Security score:", result.securityScore);
-        if (result.marketplaceRegisterUrl) console.log("Marketplace register:", result.marketplaceRegisterUrl);
+        console.log("\n🚀 Successfully published to Keystone OS!");
+        console.log(`\n📦 App ID: ${result.appId}`);
+        if (result.arweaveTxId) console.log(`❄️  Cold Storage (Arweave): ${result.arweaveTxId}`);
+        if (result.codeHash) console.log(`🔒 Code Hash: ${result.codeHash}`);
+        if (result.securityScore !== undefined) console.log(`🛡️  Security Score: ${result.securityScore}/100`);
+
+        if (opts.apiUrl && result.appId) {
+          const appUrl = `${opts.apiUrl.replace(/\/$/, "")}/app/working-swap?appId=${result.appId}`;
+          console.log(`\n🔗 View in App Store: ${appUrl}`);
+        }
+
+        if (result.marketplaceRegisterUrl) {
+          console.log(`\n🛒 Marketplace Registration Triggered!`);
+          console.log(`Users can now purchase your app for ${opts.priceUsdc ? (opts.priceUsdc / 100).toFixed(2) : "0.00"} USDC.`);
+        }
+        console.log("\n");
       } else {
+        console.error(`\n❌ Publish Failed:`);
         console.error(result.error);
         process.exit(1);
       }

@@ -219,14 +219,83 @@ export function LivePreview({
                 },
             };
 
+            var useEncryptedSecret = function() {
+                var encrypt = function(plaintext, keyId) { return keystoneBridge.call('lit.encryptSecret', { plaintext: plaintext, keyId: keyId || 'default' }); };
+                var decrypt = function(ciphertext, keyId) { return keystoneBridge.call('lit.decryptSecret', { ciphertext: ciphertext, keyId: keyId || 'default' }); };
+                return { encrypt: encrypt, decrypt: decrypt, loading: false, error: null };
+            };
+
+            var useACEReport = function(options) {
+                var fetchReport = function() { return keystoneBridge.call('ace.report', { since: options && options.since ? options.since.toISOString() : undefined }); };
+                return { report: [], loading: false, error: null, refetch: fetchReport };
+            };
+
+            var useAgentHandoff = function(fromAgent) {
+                return { handoffTo: function(toAgent, context) { return keystoneBridge.call('agent.handoff', { fromAgent: fromAgent, toAgent: toAgent, context: context }); } };
+            };
+
+            var useMCPClient = function(serverUrl) {
+                return { call: function(tool, params) { return keystoneBridge.call('mcp.call', { serverUrl: serverUrl, tool: tool, params: params || {} }); }, loading: false, error: null };
+            };
+
+            var useMCPServer = function(tools, handlers) {
+                var registerTools = function() { keystoneBridge.notify('mcp.serve', { tools: tools }); };
+                var handleCall = function(tool, params) { return handlers[tool] ? handlers[tool](params) : Promise.reject(new Error('Unknown tool')); };
+                return { registerTools: registerTools, handleCall: handleCall };
+            };
+
+            var useSIWS = function() {
+                return {
+                    signIn: function() { return keystoneBridge.call('siws.sign', {}); },
+                    verify: function(msg, sig) { return keystoneBridge.call('siws.verify', { message: msg, signature: sig }); },
+                    session: null
+                };
+            };
+
+            var useJupiterSwap = function() {
+                return {
+                    swap: function(params) { return keystoneBridge.call('jupiter.swap', params); },
+                    getQuote: function(params) { return keystoneBridge.call('jupiter.quote', params); },
+                    loading: false, error: null
+                };
+            };
+
+            var useImpactReport = function() {
+                return { simulate: function(tx) { return keystoneBridge.call('simulation.impactReport', { transaction: tx }); }, report: null, loading: false, error: null };
+            };
+
+            var useTaxForensics = function(options) {
+                return { result: null, loading: false, error: null, refetch: function() { return Promise.resolve(); } };
+            };
+
+            var useYieldOptimizer = function(asset) {
+                return { paths: [], loading: false, error: null, refetch: function() { return Promise.resolve(); } };
+            };
+
+            var useGaslessTx = function() {
+                return { submit: function(tx, desc) { return keystoneBridge.call('gasless.submit', { transaction: tx, description: desc }); }, loading: false, error: null };
+            };
+
             // Register as requireable module
-            window.__keystoneSDK = {
+            var exportsObj = {
                 useVault: useVault,
                 useTurnkey: useTurnkey,
                 useFetch: useFetch,
                 AppEventBus: AppEventBus,
-                default: { useVault: useVault, useTurnkey: useTurnkey, useFetch: useFetch, AppEventBus: AppEventBus },
+                useEncryptedSecret: useEncryptedSecret,
+                useACEReport: useACEReport,
+                useAgentHandoff: useAgentHandoff,
+                useMCPClient: useMCPClient,
+                useMCPServer: useMCPServer,
+                useSIWS: useSIWS,
+                useJupiterSwap: useJupiterSwap,
+                useImpactReport: useImpactReport,
+                useTaxForensics: useTaxForensics,
+                useYieldOptimizer: useYieldOptimizer,
+                useGaslessTx: useGaslessTx
             };
+
+            window.__keystoneSDK = Object.assign({}, exportsObj, { default: exportsObj });
             window.__keystoneSDK.__esModule = true;
         })();
     </script>
