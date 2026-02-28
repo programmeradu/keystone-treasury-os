@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
     ResizableHandle,
     ResizablePanel,
@@ -171,21 +171,19 @@ export default function StudioPage() {
     const [projectBrowserUserId, setProjectBrowserUserId] = useState("Operator");
 
     const searchParams = useSearchParams();
-
-
+    const hasLoadedFromUrl = useRef(false);
 
     useEffect(() => {
-
         const resolvedUserId = localStorage.getItem("keystone_wallet_id") || user?.info?.name || "Operator";
-
         setProjectBrowserUserId(resolvedUserId);
-
     }, [user?.info?.name]);
 
     // Load project from ?appId= query param on mount
     useEffect(() => {
+        if (hasLoadedFromUrl.current) return;
         const appIdParam = searchParams.get("appId");
         if (!appIdParam) return;
+        hasLoadedFromUrl.current = true;
 
         // Try localStorage saved projects first
         try {
@@ -195,7 +193,7 @@ export default function StudioPage() {
                 handleLoadProject(found);
                 return;
             }
-        } catch {}
+        } catch (e) { console.warn("[Studio] Failed to load from saved projects:", e); }
 
         // Try localStorage library apps
         try {
@@ -205,7 +203,7 @@ export default function StudioPage() {
                 handleLoadProject(found);
                 return;
             }
-        } catch {}
+        } catch (e) { console.warn("[Studio] Failed to load from library apps:", e); }
 
         // Try DB as last resort
         (async () => {
@@ -213,9 +211,9 @@ export default function StudioPage() {
                 const { getProject } = await import("@/actions/studio-actions");
                 const project = await getProject(appIdParam);
                 if (project) handleLoadProject(project);
-            } catch {}
+            } catch (e) { console.warn("[Studio] Failed to load from DB:", e); }
         })();
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleNewProject = () => {
         setAppName("Untitled Mini-App");
@@ -225,6 +223,8 @@ export default function StudioPage() {
         setRuntimeLogs([]);
         setProgramBuffer(null);
         setActiveTab("preview");
+        // Clear ?appId= so refresh doesn't resurrect old project
+        window.history.replaceState({}, "", "/app/studio");
         toast.info("New project created.");
     };
 
@@ -310,8 +310,8 @@ export default function StudioPage() {
                     { name: appName, description: "Created in Keystone Studio" },
                     appId
                 );
-            } catch {
-                // DB not available, localStorage is the fallback
+            } catch (e) {
+                console.warn("[Studio] DB save failed, using localStorage fallback:", e);
             }
 
             setCurrentAppId(appId);
@@ -396,8 +396,8 @@ export default function StudioPage() {
                     { name: appName, description: libraryEntry.description },
                     appId
                 );
-            } catch {
-                // DB not available, localStorage is the fallback
+            } catch (e) {
+                console.warn("[Studio] DB save failed, using localStorage fallback:", e);
             }
 
             setCurrentAppId(appId);
