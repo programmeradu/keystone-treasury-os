@@ -229,7 +229,7 @@ function WarRoom({ vaultAddress }: { vaultAddress: string }) {
     useEventListener(({ event }) => {
         if (event.type === "SIMULATION_RESULT") {
             AppEventBus.emit("UI_NOTIFICATION", {
-                message: `🔬 Team Broadcast: Simulation for Proposal #${event.payload.proposalId} resulted in SUCCESS. Net change: +0.4 SOL`,
+                message: ` Team Broadcast: Simulation for Proposal #${event.payload.proposalId} resulted in SUCCESS. Net change: +0.4 SOL`,
             });
         }
     });
@@ -243,7 +243,7 @@ function WarRoom({ vaultAddress }: { vaultAddress: string }) {
                 payload: { proposalId, result: { success: true, netChange: 0.4 } }
             });
             AppEventBus.emit("UI_NOTIFICATION", {
-                message: "🔬 Simulation complete. Results broadcast to team.",
+                message: " Simulation complete. Results broadcast to team.",
             });
         }, 2000);
     };

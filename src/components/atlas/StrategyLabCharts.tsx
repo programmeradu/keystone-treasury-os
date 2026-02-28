@@ -180,9 +180,9 @@ export function YieldProjectionChart({
 // ── Risk Indicator Bar ───────────────────────────────────────────────
 export function RiskBar({ level, label }: { level: "low" | "medium" | "high"; label?: string }) {
   const config = {
-    low: { w: "25%", color: "bg-emerald-500", text: "Low Risk", emoji: "🟢" },
-    medium: { w: "55%", color: "bg-amber-500", text: "Medium Risk", emoji: "🟡" },
-    high: { w: "85%", color: "bg-red-500", text: "High Risk", emoji: "🔴" },
+    low: { w: "25%", color: "bg-emerald-500", text: "Low Risk", emoji: "" },
+    medium: { w: "55%", color: "bg-amber-500", text: "Medium Risk", emoji: "" },
+    high: { w: "85%", color: "bg-red-500", text: "High Risk", emoji: "" },
   };
   const c = config[level];
   return (

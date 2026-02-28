@@ -288,27 +288,27 @@ export function explainHolderDistribution(
   totalHolders: number
 ): string {
   if (topHolderPercent > 50) {
-    return `⚠️ CRITICAL: One wallet owns ${topHolderPercent.toFixed(1)}% of this token. They could crash the price anytime. Avoid this token.`;
+    return ` CRITICAL: One wallet owns ${topHolderPercent.toFixed(1)}% of this token. They could crash the price anytime. Avoid this token.`;
   }
 
   if (topHolderPercent > 30) {
-    return `⚠️ RISK: Top holder controls ${topHolderPercent.toFixed(1)}% of supply. This is heavily concentrated. Proceed with caution.`;
+    return ` RISK: Top holder controls ${topHolderPercent.toFixed(1)}% of supply. This is heavily concentrated. Proceed with caution.`;
   }
 
   if (topHolderPercent > 10) {
-    return `✓ ACCEPTABLE: Top holder has ${topHolderPercent.toFixed(1)}% of supply. Reasonable diversification with ${totalHolders} total holders.`;
+    return ` ACCEPTABLE: Top holder has ${topHolderPercent.toFixed(1)}% of supply. Reasonable diversification with ${totalHolders} total holders.`;
   }
 
-  return `✓ GOOD: ${topHolderPercent.toFixed(1)}% held by largest wallet with ${totalHolders} total holders. Well distributed.`;
+  return ` GOOD: ${topHolderPercent.toFixed(1)}% held by largest wallet with ${totalHolders} total holders. Well distributed.`;
 }
 
 /**
  * Get quick risk assessment without LLM
  */
 export function quickRiskAssessment(riskScore: number): string {
-  if (riskScore > 80) return "🔴 CRITICAL RISK - DO NOT TRADE";
-  if (riskScore > 60) return "🟠 HIGH RISK - Proceed with extreme caution";
-  if (riskScore > 40) return "🟡 MEDIUM RISK - Review flags carefully";
-  if (riskScore > 20) return "🟢 LOW RISK - Generally safe";
-  return "✅ VERY LOW RISK - Safe to trade";
+  if (riskScore > 80) return " CRITICAL RISK - DO NOT TRADE";
+  if (riskScore > 60) return " HIGH RISK - Proceed with extreme caution";
+  if (riskScore > 40) return " MEDIUM RISK - Review flags carefully";
+  if (riskScore > 20) return " LOW RISK - Generally safe";
+  return " VERY LOW RISK - Safe to trade";
 }

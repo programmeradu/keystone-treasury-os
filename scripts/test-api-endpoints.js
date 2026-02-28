@@ -79,11 +79,11 @@ async function testEndpoint(endpoint) {
       throw new Error(`Response validation failed`);
     }
     
-    console.log(`✅ ${endpoint.name} - OK`);
+    console.log(` ${endpoint.name} - OK`);
     return true;
     
   } catch (error) {
-    console.log(`❌ ${endpoint.name} - FAILED: ${error.message}`);
+    console.log(` ${endpoint.name} - FAILED: ${error.message}`);
     return false;
   }
 }
@@ -103,10 +103,10 @@ async function main() {
   console.log(`Results: ${passed}/${total} endpoints working`);
   
   if (passed === total) {
-    console.log('🎉 All API endpoints are working correctly!');
+    console.log(' All API endpoints are working correctly!');
     process.exit(0);
   } else {
-    console.log('⚠️  Some API endpoints failed. Check the errors above.');
+    console.log('  Some API endpoints failed. Check the errors above.');
     process.exit(1);
   }
 }

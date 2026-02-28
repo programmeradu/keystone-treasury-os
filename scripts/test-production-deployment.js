@@ -10,7 +10,7 @@
 const PROD_URL = process.env.PROD_URL || process.argv[2] || 'https://keystone.stauniverse.tech';
 
 console.log(`\n${'='.repeat(70)}`);
-console.log(`🧪 Testing Netlify Deployment: ${PROD_URL}`);
+console.log(` Testing Netlify Deployment: ${PROD_URL}`);
 console.log('='.repeat(70) + '\n');
 
 async function testEndpoint(name, url, options = {}) {
@@ -35,29 +35,29 @@ async function testEndpoint(name, url, options = {}) {
     console.log(`  Status: ${response.status} ${response.statusText}`);
     
     if (response.status === 404) {
-      console.log('  ❌ FAIL: Got 404 - endpoint not deployed correctly\n');
+      console.log('   FAIL: Got 404 - endpoint not deployed correctly\n');
       return false;
     } else if (response.status === 403) {
-      console.log('  ❌ FAIL: Got 403 - RPC authentication issue\n');
+      console.log('   FAIL: Got 403 - RPC authentication issue\n');
       return false;
     } else if (response.ok || response.status === 500) {
       // 500 is OK for some endpoints if upstream is down but route exists
-      console.log('  ✅ PASS: Endpoint is deployed and reachable');
+      console.log('   PASS: Endpoint is deployed and reachable');
       if (typeof data === 'object' && data !== null) {
         console.log(`  Response type: ${Array.isArray(data) ? 'Array' : 'Object'}`);
       }
       console.log('');
       return true;
     } else {
-      console.log(`  ⚠️  WARN: Unexpected status ${response.status}\n`);
+      console.log(`    WARN: Unexpected status ${response.status}\n`);
       return true; // Still counts as deployed
     }
   } catch (error) {
     if (error.name === 'TimeoutError') {
-      console.log('  ⚠️  WARN: Request timed out (endpoint may be slow)\n');
+      console.log('    WARN: Request timed out (endpoint may be slow)\n');
       return true;
     }
-    console.log(`  ❌ FAIL: ${error.message}\n`);
+    console.log(`   FAIL: ${error.message}\n`);
     return false;
   }
 }
@@ -109,7 +109,7 @@ async function testBitqueryPrice() {
 }
 
 async function main() {
-  console.log('📋 Running endpoint tests...\n');
+  console.log(' Running endpoint tests...\n');
   
   const results = await Promise.all([
     testHomePage(),
@@ -123,22 +123,22 @@ async function main() {
   const failed = results.filter(r => !r).length;
   
   console.log('='.repeat(70));
-  console.log('📊 Test Results:');
+  console.log(' Test Results:');
   console.log('='.repeat(70));
-  console.log(`  ✅ Passed: ${passed}`);
-  console.log(`  ❌ Failed: ${failed}`);
+  console.log(`   Passed: ${passed}`);
+  console.log(`   Failed: ${failed}`);
   console.log(`  Total:  ${results.length}`);
   console.log('='.repeat(70) + '\n');
   
   if (failed === 0) {
-    console.log('🎉 All tests passed! Deployment looks good.\n');
+    console.log(' All tests passed! Deployment looks good.\n');
     console.log('Key findings:');
     console.log('  • All API routes are deployed as serverless functions');
     console.log('  • Solana RPC proxy is working (no 403 errors expected)');
     console.log('  • Client will use /api/solana/rpc instead of public RPC\n');
     return 0;
   } else {
-    console.log('⚠️  Some tests failed. Check the output above.\n');
+    console.log('  Some tests failed. Check the output above.\n');
     console.log('Common issues:');
     console.log('  • 404 errors: Netlify plugin may not be configured correctly');
     console.log('  • 403 errors: Check HELIUS_API_KEY in Netlify env vars');

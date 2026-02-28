@@ -31,7 +31,7 @@ export function useSquadsMultisig(vaultAddress: string) {
     useEventListener(({ event }) => {
         if (event.type === "PROPOSAL_SIGNED") {
             AppEventBus.emit("UI_NOTIFICATION", {
-                message: `📢 ${event.payload.signer} just signed Proposal #${event.payload.proposalId}`,
+                message: ` ${event.payload.signer} just signed Proposal #${event.payload.proposalId}`,
             });
             fetchProposals(); // Refresh to show new signature count
         }
@@ -55,7 +55,7 @@ export function useSquadsMultisig(vaultAddress: string) {
             });
 
             AppEventBus.emit("UI_NOTIFICATION", {
-                message: "✅ You signed the proposal. Syncing with team...",
+                message: " You signed the proposal. Syncing with team...",
             });
 
             await fetchProposals();

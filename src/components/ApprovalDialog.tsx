@@ -170,7 +170,7 @@ export function ApprovalDialog({
           {approval.riskLevel === "high" && (
             <div className="bg-red-500/10 border border-red-500/30 rounded p-4">
               <p className="text-red-300 text-sm">
-                ⚠️ This transaction carries high risk. Please review carefully
+                 This transaction carries high risk. Please review carefully
                 before approving.
               </p>
             </div>

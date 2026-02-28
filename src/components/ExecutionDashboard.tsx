@@ -33,14 +33,14 @@ const statusColors = {
 const statusIcons = {
   [ExecutionStatus.PENDING]: "⏳",
   [ExecutionStatus.RUNNING]: "▶",
-  [ExecutionStatus.SIMULATION]: "🔍",
-  [ExecutionStatus.APPROVAL_REQUIRED]: "⚠️",
-  [ExecutionStatus.APPROVED]: "✓",
-  [ExecutionStatus.EXECUTING]: "⚙️",
-  [ExecutionStatus.CONFIRMING]: "📝",
-  [ExecutionStatus.SUCCESS]: "✅",
-  [ExecutionStatus.FAILED]: "❌",
-  [ExecutionStatus.CANCELLED]: "⏹️"
+  [ExecutionStatus.SIMULATION]: "",
+  [ExecutionStatus.APPROVAL_REQUIRED]: "",
+  [ExecutionStatus.APPROVED]: "",
+  [ExecutionStatus.EXECUTING]: "",
+  [ExecutionStatus.CONFIRMING]: "",
+  [ExecutionStatus.SUCCESS]: "",
+  [ExecutionStatus.FAILED]: "",
+  [ExecutionStatus.CANCELLED]: "⏹"
 };
 
 const strategyLabels = {

@@ -89,7 +89,7 @@ export function AirdropScoutCard({
                           <Badge variant="secondary" className="text-[10px] whitespace-nowrap">{a.source}</Badge>
                         }
                         <Badge variant={a.status === "eligible" ? "default" : "secondary"} className="text-[10px] whitespace-nowrap">
-                          {a.status === "eligible" ? "✓ Eligible" : a.status.replace("_", " ")}
+                          {a.status === "eligible" ? " Eligible" : a.status.replace("_", " ")}
                         </Badge>
                       </div>
                     </div>
@@ -110,7 +110,7 @@ export function AirdropScoutCard({
                         <div className="font-medium flex-1 min-w-0 break-words pr-2">{sel.name}</div>
                         <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
                           {sel.source && <Badge variant="secondary" className="text-[10px] whitespace-nowrap">{sel.source}</Badge>}
-                          <Badge variant={sel.status === "eligible" ? "default" : "secondary"} className="text-[10px] whitespace-nowrap">{sel.status === "eligible" ? "✓ Eligible" : sel.status}</Badge>
+                          <Badge variant={sel.status === "eligible" ? "default" : "secondary"} className="text-[10px] whitespace-nowrap">{sel.status === "eligible" ? " Eligible" : sel.status}</Badge>
                           {sel.endsAt &&
                             <span className="text-[10px] opacity-70 whitespace-nowrap">Ends {new Date(sel.endsAt).toLocaleDateString()}</span>
                           }

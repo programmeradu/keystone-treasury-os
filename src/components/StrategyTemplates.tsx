@@ -84,7 +84,7 @@ export function StrategyTemplates({ onTemplateSelect, isLoading = false }: Strat
                 {selectedTemplate.riskLevel.toUpperCase()} RISK
               </Badge>
               <Badge variant="outline" className="border-slate-500 text-slate-300">
-                ⏱️ {selectedTemplate.estimatedTime}
+                ⏱ {selectedTemplate.estimatedTime}
               </Badge>
             </div>
           </div>
@@ -324,7 +324,7 @@ function TemplateCard({
 
         {/* Meta */}
         <div className="flex items-center justify-between pt-2 border-t border-slate-600">
-          <span className="text-xs text-slate-400">⏱️ {template.estimatedTime}</span>
+          <span className="text-xs text-slate-400">⏱ {template.estimatedTime}</span>
           <span className="text-xs text-slate-500 group-hover:text-slate-300 transition-colors">
             Use Template →
           </span>

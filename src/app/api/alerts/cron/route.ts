@@ -123,9 +123,9 @@ export async function POST(request: NextRequest) {
             await resend.emails.send({
               from: emailFrom,
               to: alert.email,
-              subject: '⛽ Gas Alert: Low prices detected!',
+              subject: ' Gas Alert: Low prices detected!',
               html: `
-                <h2>🎉 Gas prices are low!</h2>
+                <h2> Gas prices are low!</h2>
                 <p>Great news! Gas prices have dropped below your threshold.</p>
                 
                 <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">

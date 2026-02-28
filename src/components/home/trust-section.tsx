@@ -160,7 +160,7 @@ export function TrustSection() {
                     transition={{ delay: 1.8, type: "spring", stiffness: 200 }}
                     className="text-3xl font-bold text-keystone-green/40 font-mono"
                   >
-                    ✓
+
                   </motion.div>
                   <div className="text-[10px] font-mono text-keystone-green/25 mt-2">All clear</div>
                 </div>
