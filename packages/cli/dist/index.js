@@ -471,12 +471,26 @@ program.command("publish [dir]").description("Publish Mini-App: Gatekeeper \u219
       priceUsdc: opts.priceUsdc
     });
     if (result.ok) {
-      console.log("Published:", result.appId);
-      if (result.arweaveTxId) console.log("Arweave:", result.arweaveTxId);
-      if (result.codeHash) console.log("Code hash:", result.codeHash);
-      if (result.securityScore !== void 0) console.log("Security score:", result.securityScore);
-      if (result.marketplaceRegisterUrl) console.log("Marketplace register:", result.marketplaceRegisterUrl);
+      console.log("\n\u{1F680} Successfully published to Keystone OS!");
+      console.log(`
+\u{1F4E6} App ID: ${result.appId}`);
+      if (result.arweaveTxId) console.log(`\u2744\uFE0F  Cold Storage (Arweave): ${result.arweaveTxId}`);
+      if (result.codeHash) console.log(`\u{1F512} Code Hash: ${result.codeHash}`);
+      if (result.securityScore !== void 0) console.log(`\u{1F6E1}\uFE0F  Security Score: ${result.securityScore}/100`);
+      if (opts.apiUrl && result.appId) {
+        const appUrl = `${opts.apiUrl.replace(/\/$/, "")}/app/working-swap?appId=${result.appId}`;
+        console.log(`
+\u{1F517} View in App Store: ${appUrl}`);
+      }
+      if (result.marketplaceRegisterUrl) {
+        console.log(`
+\u{1F6D2} Marketplace Registration Triggered!`);
+        console.log(`Users can now purchase your app for ${opts.priceUsdc ? (opts.priceUsdc / 100).toFixed(2) : "0.00"} USDC.`);
+      }
+      console.log("\n");
     } else {
+      console.error(`
+\u274C Publish Failed:`);
       console.error(result.error);
       process.exit(1);
     }

@@ -62,11 +62,170 @@ declare module '@keystone-os/sdk' {
   }
 
   export const AppEventBus: EventBus;
+
+  // ─── Sovereign OS 2026 Hooks ────────────────────────────
+
+  export interface UseEncryptedSecretResult {
+    encrypt: (plaintext: string, keyId?: string) => Promise<string>;
+    decrypt: (ciphertext: string, keyId?: string) => Promise<string>;
+    loading: boolean;
+    error: string | null;
+  }
+  export function useEncryptedSecret(): UseEncryptedSecretResult;
+
+  export interface ACEReportEntry {
+    timestamp: string;
+    action: string;
+    actor: string;
+    resource: string;
+    allowed: boolean;
+    policyId?: string;
+  }
+  export interface UseACEReportResult {
+    report: ACEReportEntry[];
+    loading: boolean;
+    error: string | null;
+    refetch: () => Promise<void>;
+  }
+  export function useACEReport(options?: { since?: Date }): UseACEReportResult;
+
+  export interface UseAgentHandoffResult {
+    handoffTo: (toAgent: string, context: Record<string, unknown>) => Promise<unknown>;
+  }
+  export function useAgentHandoff(fromAgent: string): UseAgentHandoffResult;
+
+  export interface UseMCPClientResult {
+    call: (tool: string, params?: Record<string, unknown>) => Promise<unknown>;
+    loading: boolean;
+    error: string | null;
+  }
+  export function useMCPClient(serverUrl: string): UseMCPClientResult;
+
+  export interface MCPTool {
+    name: string;
+    description: string;
+    params?: Record<string, { type: string; description?: string }>;
+  }
+  export interface UseMCPServerResult {
+    registerTools: (tools: MCPTool[]) => void;
+    handleCall: (tool: string, params: Record<string, unknown>) => Promise<unknown>;
+  }
+  export function useMCPServer(
+    tools: MCPTool[],
+    handlers: Record<string, (params: Record<string, unknown>) => Promise<unknown>>
+  ): UseMCPServerResult;
+
+  export interface SIWSState {
+    signIn: () => Promise<{ message: string; signature: string }>;
+    verify: (message: string, signature: string) => Promise<boolean>;
+    session: { address: string; chainId: number } | null;
+  }
+  export function useSIWS(): SIWSState;
+
+  export interface JupiterSwapParams {
+    inputMint: string;
+    outputMint: string;
+    amount: string;
+    slippageBps?: number;
+  }
+  export interface JupiterQuote {
+    inputMint: string;
+    outputMint: string;
+    inAmount: string;
+    outAmount: string;
+    priceImpactPct: number;
+    routePlan: unknown[];
+  }
+  export interface JupiterSwapResult {
+    swapTransaction: string;
+    lastValidBlockHeight: number;
+    prioritizationFeeLamports?: number;
+  }
+  export interface UseJupiterSwapResult {
+    swap: (params: JupiterSwapParams) => Promise<JupiterSwapResult>;
+    getQuote: (params: JupiterSwapParams) => Promise<JupiterQuote | null>;
+    loading: boolean;
+    error: string | null;
+  }
+  export function useJupiterSwap(): UseJupiterSwapResult;
+
+  export interface ImpactReport {
+    before: VaultState;
+    after: VaultState;
+    diff: { symbol: string; delta: number; percentChange: number }[];
+    simulationHash?: string;
+    zkspProof?: string;
+  }
+  export interface UseImpactReportResult {
+    report: ImpactReport | null;
+    loading: boolean;
+    error: string | null;
+    simulate: (transaction: unknown) => Promise<ImpactReport>;
+  }
+  export function useImpactReport(): UseImpactReportResult;
+
+  export interface TaxLot {
+    mint: string;
+    amount: number;
+    costBasis: number;
+    acquiredAt: string;
+  }
+  export interface TaxForensicsResult {
+    lots: TaxLot[];
+    totalCostBasis: number;
+    unrealizedGainLoss: number;
+    realizedGainLoss: number;
+  }
+  export interface UseTaxForensicsResult {
+    result: TaxForensicsResult | null;
+    loading: boolean;
+    error: string | null;
+    refetch: () => Promise<void>;
+  }
+  export function useTaxForensics(options?: { since?: Date }): UseTaxForensicsResult;
+
+  export interface YieldPath {
+    protocol: string;
+    apy: number;
+    riskScore: number;
+    tvl: number;
+    instructions: unknown[];
+  }
+  export interface UseYieldOptimizerResult {
+    paths: YieldPath[];
+    loading: boolean;
+    error: string | null;
+    refetch: () => Promise<void>;
+  }
+  export function useYieldOptimizer(asset: string): UseYieldOptimizerResult;
+
+  export interface UseGaslessTxResult {
+    submit: (transaction: unknown, description?: string) => Promise<{ signature: string }>;
+    loading: boolean;
+    error: string | null;
+  }
+  export function useGaslessTx(): UseGaslessTxResult;
 }
 
 // Backward-compat alias
 declare module './keystone' {
-  export { useVault, useTurnkey, AppEventBus } from '@keystone-os/sdk';
+  export {
+    useVault,
+    useTurnkey,
+    useFetch,
+    AppEventBus,
+    useEncryptedSecret,
+    useACEReport,
+    useAgentHandoff,
+    useMCPClient,
+    useMCPServer,
+    useSIWS,
+    useJupiterSwap,
+    useImpactReport,
+    useTaxForensics,
+    useYieldOptimizer,
+    useGaslessTx
+  } from '@keystone-os/sdk';
 }
 `;
 
