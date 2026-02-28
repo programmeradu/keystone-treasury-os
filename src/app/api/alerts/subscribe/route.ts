@@ -75,8 +75,10 @@ export async function POST(request: NextRequest) {
       const generateToken = () => {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
         let token = '';
+        const randomValues = new Uint32Array(12);
+        crypto.getRandomValues(randomValues);
         for (let i = 0; i < 12; i++) {
-          token += chars.charAt(Math.floor(Math.random() * chars.length));
+          token += chars.charAt(randomValues[i] % chars.length);
         }
         return token;
       };

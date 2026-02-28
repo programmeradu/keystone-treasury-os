@@ -29,7 +29,9 @@ function saveKeys(keys: ApiKey[]) {
 function generateKeyString(env: "live" | "test"): string {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     let result = `pk_${env}_`;
-    for (let i = 0; i < 32; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+    const randomValues = new Uint32Array(32);
+    window.crypto.getRandomValues(randomValues);
+    for (let i = 0; i < 32; i++) result += chars.charAt(randomValues[i] % chars.length);
     return result;
 }
 

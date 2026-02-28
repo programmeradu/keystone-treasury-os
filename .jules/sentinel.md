@@ -1,0 +1,4 @@
+## 2025-02-28 - Insecure Randomness in API Keys and Tokens
+**Vulnerability:** `Math.random()` was being used to generate API keys in `src/components/settings/ApiKeysView.tsx` and email verification tokens in `src/app/api/alerts/subscribe/route.ts`. `Math.random()` is not cryptographically secure, allowing potential predictability of sensitive keys and tokens.
+**Learning:** Even for non-production environments or seemingly low-risk tokens, utilizing standard cryptographic libraries is essential to maintain a strong security posture. Generating keys client-side also introduces a vector where `Math.random()` values can be exposed or manipulated more easily.
+**Prevention:** Always use Web Crypto API (`window.crypto.getRandomValues`) on the client-side or Node.js `crypto` module (`crypto.getRandomValues` or `crypto.randomBytes`) on the server-side for any token, secret, or key generation.
