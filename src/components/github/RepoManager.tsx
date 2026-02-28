@@ -195,7 +195,7 @@ export default function RepoManager() {
                         <td className="p-2">{r.archived ? "yes" : "no"}</td>
                         <td className="p-2">{r.stargazers_count}</td>
                         <td className="p-2">{new Date(r.pushed_at).toLocaleDateString()}</td>
-                        <td className="p-2"><a className="text-primary underline" href={r.html_url} target="_blank" rel="noreferrer">Open</a></td>
+                        <td className="p-2"><a className="text-primary underline" href={r.html_url} target="_blank" rel="noopener noreferrer">Open</a></td>
                       </tr>
                     ))}
                     {repos.length === 0 && (

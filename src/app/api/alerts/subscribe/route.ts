@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
           <h2>Verify your gas price alert</h2>
           <p>Thank you for subscribing to gas price alerts!</p>
           <p>Please click the link below to verify your email address and activate your alert:</p>
-          <p><a href="${verificationUrl}" target="_blank">Verify Email Address</a></p>
+          <p><a href="${verificationUrl}" target="_blank" rel="noopener noreferrer">Verify Email Address</a></p>
           <p>If the link doesn't work, copy and paste this URL into your browser:</p>
           <p>${verificationUrl}</p>
           <p>Your alert settings:</p>
