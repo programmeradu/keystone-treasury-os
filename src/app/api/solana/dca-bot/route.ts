@@ -37,7 +37,7 @@ export async function GET(req: Request) {
       await Promise.all(
         uniqueMints.map(async (mint) => {
           const price = await getTokenPrice(mint as string);
-          priceMap.set(mint as string, price || 0);
+          priceMap.set(mint as string, price ?? 0);
         })
       );
 
