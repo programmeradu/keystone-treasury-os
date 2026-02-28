@@ -1,16 +1,16 @@
 # Keystone Studio & SDK: Architectural Review & Roadmap to "The Cursor for Web3"
 
 ## Executive Summary
-This report analyzes the current state of the Keystone Studio, `@keystone-os/sdk`, and `@keystone-os/cli` following the "Sovereign OS 2026" updates. The goal is to identify gaps, blindspots, and provide actionable improvements to elevate Keystone Studio into the ultimate IDE for Web3 mini-apps (the "Cursor for Web3").
+This report analyzes the current state of the Keystone Studio, `@keystone-os/sdk`, and `@keystone-os/cli` following the "Sovereign OS 2026" updates. The goal is to identify gaps and blind spots and provide actionable improvements to elevate Keystone Studio into the ultimate IDE for Web3 mini-apps (the "Cursor for Web3").
 
 ---
 
-## 1. Gaps and Blindspots in Current Implementation
+## 1. Gaps and Blind Spots in Current Implementation
 
 ### 1.1. Incomplete Studio Editor Introspection (The "Blind" Editor)
 **Gap:** The new hooks introduced in the SDK (`useEncryptedSecret`, `useACEReport`, `useAgentHandoff`, `useMCPClient`, `useMCPServer`, `useSIWS`, `useJupiterSwap`, `useImpactReport`, `useTaxForensics`, `useYieldOptimizer`, `useGaslessTx`) are currently invisible to the Studio's Monaco editor (`CodeEditor.tsx`).
 **Impact:** Developers building in Keystone Studio get zero autocomplete, type checking, or tooltip documentation for the most powerful features of Sovereign OS 2026. This leads to a frustrating developer experience and runtime errors.
-**Resolution:** Update the injected `KEYSTONE_SDK_TYPES` string in `CodeEditor.tsx` to include the full interface definitions from `packages/sdk/src/types.ts` and the corresponding function signatures.
+**Resolution:** Introduce a build-time generation step that derives the injected `KEYSTONE_SDK_TYPES` consumed by `CodeEditor.tsx` from the source-of-truth SDK definitions in `packages/sdk/src/types.ts` (including the full interfaces and corresponding hook signatures), so Monaco always reflects the current SDK without manual string duplication.
 
 ### 1.2. Broken Iframe Bridge Implementations (The "Phantom" Hooks)
 **Gap:** While the SDK defines the hooks and routes them via `keystoneBridge.call(BridgeMethods.*)`, the actual iframe implementation in `LivePreview.tsx` (`VIRTUAL_SDK_MODULE` and `__keystoneSDK`) does not expose or handle these new hooks.
