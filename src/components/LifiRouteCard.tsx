@@ -228,7 +228,7 @@ export function LifiRouteCard() {
               {JSON.stringify(route, null, 2)}
             </pre>
             <Button size="sm" onClick={simulateRoute} disabled={simLoading} className="w-full" aria-disabled={simLoading}>
-              {simLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "⚡ Simulate & Project"}
+              {simLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : " Simulate & Project"}
               {simLoading ? "Simulating…" : null}
             </Button>
             {simError && <span className="block mt-1 text-[11px] text-destructive">{simError}</span>}

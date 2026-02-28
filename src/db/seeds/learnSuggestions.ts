@@ -57,9 +57,9 @@ async function main() {
 
     await db!.insert(learnSuggestions).values(sampleSuggestions);
     
-    console.log('✅ LearnSuggestions seeder completed successfully');
+    console.log(' LearnSuggestions seeder completed successfully');
 }
 
 main().catch((error) => {
-    console.error('❌ Seeder failed:', error);
+    console.error(' Seeder failed:', error);
 });

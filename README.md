@@ -16,7 +16,7 @@ While competitors build better dashboards, we're eliminating the need for them e
   - The enterprise vision for our core product, targeting DAOs, protocols, and VCs.
   - Website: https://keystone.stauniverse.tech
 
-## 📚 Core Documentation
+## Core Documentation
 
 - **[Project Overview (Master)](file:///c:/Users/USER/Documents/GitHub/keystone-treasury-os/docs/PROJECT_OVERVIEW.md)**: The ultimate guide to Keystone architecture, agents, and roadmap.
 - **[System Master Specification](file:///c:/Users/USER/Documents/GitHub/keystone-treasury-os/docs/KEYSTONE_SYSTEM_MASTER_SPEC.md)**: The "OS" vision and design philosophy.

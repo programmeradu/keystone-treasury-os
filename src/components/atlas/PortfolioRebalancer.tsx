@@ -484,7 +484,7 @@ export function PortfolioRebalancer() {
                   {/* Tax Strategy Recommendation */}
                   {taxAnalysis.rebalanceTaxImpact.taxOptimizedStrategy && (
                     <div className="rounded-md p-2 bg-purple-500/10 border border-purple-500/20">
-                      <div className="text-[10px] font-medium text-purple-300 mb-1">💡 Tax Optimization</div>
+                      <div className="text-[10px] font-medium text-purple-300 mb-1"> Tax Optimization</div>
                       <div className="text-[10px] text-purple-200">
                         {taxAnalysis.rebalanceTaxImpact.taxOptimizedStrategy}
                       </div>
@@ -496,7 +496,7 @@ export function PortfolioRebalancer() {
                       {/* Wash Sale Warnings */}
                       {taxAnalysis.washSaleRisks.length > 0 && (
                         <div className="space-y-1">
-                          <div className="text-[10px] font-medium">⚠️ Wash Sale Risks</div>
+                          <div className="text-[10px] font-medium"> Wash Sale Risks</div>
                           {taxAnalysis.washSaleRisks.map((risk, idx) => (
                             <div
                               key={idx}
@@ -516,7 +516,7 @@ export function PortfolioRebalancer() {
                       {/* Tax Loss Harvesting Opportunities */}
                       {taxAnalysis.taxLossHarvestingOpportunities.length > 0 && (
                         <div className="space-y-1">
-                          <div className="text-[10px] font-medium">🌱 Tax Loss Harvesting</div>
+                          <div className="text-[10px] font-medium"> Tax Loss Harvesting</div>
                           {taxAnalysis.taxLossHarvestingOpportunities.map((opp, idx) => (
                             <div
                               key={idx}

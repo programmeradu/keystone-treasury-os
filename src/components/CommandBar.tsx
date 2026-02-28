@@ -181,7 +181,7 @@ export function CommandBar() {
 
         toast.loading("Running simulation...", {
             id: "foresight-sim",
-            description: `${parserUsed === "llm" ? "🧠 " : ""}${title}`,
+            description: `${parserUsed === "llm" ? " " : ""}${title}`,
         });
 
         // Warn user if confidence is low
@@ -216,7 +216,7 @@ export function CommandBar() {
             const deltaStr = `${result.summary.deltaPercent >= 0 ? "+" : ""}${result.summary.deltaPercent.toFixed(1)}%`;
             toast.success("Foresight simulation ready", {
                 id: "foresight-sim",
-                description: `${parserUsed === "llm" ? "🧠 " : ""}${title} • ${deltaStr} projected`,
+                description: `${parserUsed === "llm" ? " " : ""}${title} • ${deltaStr} projected`,
             });
         } catch (err: any) {
             simStore.setError(err.message || "Simulation failed");

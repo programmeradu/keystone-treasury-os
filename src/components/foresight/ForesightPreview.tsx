@@ -220,7 +220,7 @@ export function ForesightPreview({
 
                 // Safety guardrail: flag misleading projections
                 if (result.summary?.riskFlags?.includes("UNREALISTIC_YIELD_ASSUMPTION")) {
-                    setLogs(prev => [...prev.slice(-200), `[foresight] ⚠ WARNING: Unrealistic yield assumption detected`]);
+                    setLogs(prev => [...prev.slice(-200), `[foresight]  WARNING: Unrealistic yield assumption detected`]);
                 }
 
                 setLogs(prev => [...prev.slice(-200),

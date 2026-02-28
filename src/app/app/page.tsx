@@ -70,7 +70,7 @@ export default function AppPortalPage() {
             console.log(`[AgentPulse] TRIGGERED: ${monitor.type} for ${monitor.condition.target}`);
 
             AppEventBus.emit("UI_NOTIFICATION", {
-              message: `🚨 Proactive Alert: ${monitor.condition.target} has hit your threshold (${monitor.condition.operator}${monitor.condition.value}). Current: $${currentPrice.toFixed(2)}`
+              message: ` Proactive Alert: ${monitor.condition.target} has hit your threshold (${monitor.condition.operator}${monitor.condition.value}). Current: $${currentPrice.toFixed(2)}`
             });
 
             IntentRegistry.markTriggered(monitor.id);

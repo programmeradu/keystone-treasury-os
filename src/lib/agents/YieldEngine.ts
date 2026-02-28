@@ -57,12 +57,12 @@ export const YieldEngine = {
             }
 
             AppEventBus.emit("AGENT_LOG", {
-                message: `📡 Live rates loaded: ${this.strategies.map(s => `${s.name} ${s.projectedApy}%`).join(", ")}`,
+                message: ` Live rates loaded: ${this.strategies.map(s => `${s.name} ${s.projectedApy}%`).join(", ")}`,
                 level: "INFO",
             });
         } catch {
             AppEventBus.emit("AGENT_LOG", {
-                message: `⚠️ Could not fetch live rates — using conservative estimates`,
+                message: ` Could not fetch live rates — using conservative estimates`,
                 level: "WARNING",
             });
         }
@@ -80,7 +80,7 @@ export const YieldEngine = {
 
         // 1. "THINKING"
         AppEventBus.emit("AGENT_LOG", {
-            message: `🤔 Reasoning: Analyzing ${this.strategies.length} yield strategies for ${(amountLamports / 1e9).toFixed(2)} SOL...`,
+            message: ` Reasoning: Analyzing ${this.strategies.length} yield strategies for ${(amountLamports / 1e9).toFixed(2)} SOL...`,
             level: "INFO",
         });
 
@@ -90,7 +90,7 @@ export const YieldEngine = {
         } catch (e) {
             if (signal?.aborted) throw e;
             AppEventBus.emit("AGENT_LOG", {
-                message: `⚠️ AI Intelligence Offline (Missing Key?). Using quantitative fallback.`,
+                message: ` AI Intelligence Offline (Missing Key?). Using quantitative fallback.`,
                 level: "WARNING",
             });
         }
@@ -105,7 +105,7 @@ export const YieldEngine = {
 
             try {
                 AppEventBus.emit("AGENT_LOG", {
-                    message: `🛠️ MarketScanner: Fetching live quotes for ${strategy.name} (${strategy.projectedApy}% APY)...`,
+                    message: ` MarketScanner: Fetching live quotes for ${strategy.name} (${strategy.projectedApy}% APY)...`,
                     level: "SYSTEM",
                 });
 
@@ -121,7 +121,7 @@ export const YieldEngine = {
 
                 if (!quote.outAmount) {
                     AppEventBus.emit("AGENT_LOG", {
-                        message: `❌ ${strategy.name}: Insufficient liquidity on Jupiter.`,
+                        message: ` ${strategy.name}: Insufficient liquidity on Jupiter.`,
                         level: "WARNING",
                     });
                     continue;
@@ -131,7 +131,7 @@ export const YieldEngine = {
                 const score = strategy.projectedApy - (strategy.riskScore * 0.1);
 
                 AppEventBus.emit("AGENT_LOG", {
-                    message: `✅ ${strategy.name}: Quote valid. APY: ${strategy.projectedApy}% | Score: ${score.toFixed(2)}`,
+                    message: ` ${strategy.name}: Quote valid. APY: ${strategy.projectedApy}% | Score: ${score.toFixed(2)}`,
                     level: "INFO",
                 });
 
@@ -148,7 +148,7 @@ export const YieldEngine = {
                 if (signal?.aborted) break;
                 console.error(`Failed to analyze ${strategy.name}`, e);
                 AppEventBus.emit("AGENT_LOG", {
-                    message: `❌ Error analyzing ${strategy.name}: ${e.message}`,
+                    message: ` Error analyzing ${strategy.name}: ${e.message}`,
                     level: "ERROR",
                 });
             }
@@ -157,7 +157,7 @@ export const YieldEngine = {
         // 3. "DECIDING"
         if (bestOption) {
             AppEventBus.emit("AGENT_LOG", {
-                message: `💡 Decision: Recommending ${bestOption.name} at ${bestOption.projectedApy}% APY (Score: ${bestScore.toFixed(2)})`,
+                message: ` Decision: Recommending ${bestOption.name} at ${bestOption.projectedApy}% APY (Score: ${bestScore.toFixed(2)})`,
                 level: "SUCCESS",
             });
         }
@@ -196,7 +196,7 @@ export const YieldEngine = {
 
         if (data.plan && data.plan.reasoning) {
             AppEventBus.emit("AGENT_LOG", {
-                message: `🧠 AI Thought: "${data.plan.reasoning}"`,
+                message: ` AI Thought: "${data.plan.reasoning}"`,
                 level: "INFO",
             });
         }
