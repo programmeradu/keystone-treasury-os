@@ -152,7 +152,6 @@ export const DeFiPositions = () => {
             .map(p => ({ name: p.name, value: Math.round(p.value) }));
     }, [positions]);
 
-
     if (!activeVault) {
         return (
             <div className="rounded-2xl bg-card border border-border p-6 backdrop-blur-xl shadow-sm">

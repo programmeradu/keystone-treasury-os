@@ -75,8 +75,18 @@ export async function POST(request: NextRequest) {
       const generateToken = () => {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
         let token = '';
+        const randomValues = new Uint32Array(12);
+        globalThis.crypto.getRandomValues(randomValues);
         for (let i = 0; i < 12; i++) {
-          token += chars.charAt(Math.floor(Math.random() * chars.length));
+          const max = 256 - (256 % chars.length);
+          let token = '';
+          const buf = new Uint8Array(128);
+          while (token.length < 12) {
+            crypto.getRandomValues(buf);
+            for (let j = 0; j < buf.length && token.length < 12; j++) {
+              if (buf[j] < max) token += chars.charAt(buf[j] % chars.length);
+            }
+          }
         }
         return token;
       };
@@ -124,7 +134,7 @@ export async function POST(request: NextRequest) {
           <h2>Verify your gas price alert</h2>
           <p>Thank you for subscribing to gas price alerts!</p>
           <p>Please click the link below to verify your email address and activate your alert:</p>
-          <p><a href="${verificationUrl}" target="_blank">Verify Email Address</a></p>
+          <p><a href="${verificationUrl}" target="_blank" rel="noopener noreferrer">Verify Email Address</a></p>
           <p>If the link doesn't work, copy and paste this URL into your browser:</p>
           <p>${verificationUrl}</p>
           <p>Your alert settings:</p>
