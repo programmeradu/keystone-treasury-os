@@ -36,7 +36,7 @@ To truly become the "Cursor for Web3", Keystone Studio must move beyond just bei
 ### 2.1. AI Architect Contextual Awareness (Cursor-like features)
 - **Problem:** The current `PromptChat.tsx` (AI Architect) is a side panel chat. It is not deeply integrated into the editor.
 - **Improvement:**
-  - **Inline Code Generation:** Allow users to highlight code in the Monaco editor, press `Cmd+K` (or similar), and have the AI Architect generate/edit code inline.
+  - **Inline Code Generation:** Allow users to highlight code in the Monaco editor, press `Ctrl/Cmd+K` (or similar), and have the AI Architect generate/edit code inline.
   - **Contextual Web3 Knowledge:** Inject the ABI of uploaded smart contracts (via `ContractEditor.tsx`) directly into the AI Architect's system prompt. If a user uploads a Solana IDL, the AI should auto-generate the frontend integration using `useTurnkey` and `@coral-xyz/anchor` without being asked.
   - **Error Auto-Fixing (Ouroboros Loop Integration):** When `LivePreview.tsx` throws a runtime error or `Gatekeeper` fails, the error stack trace should automatically be fed to the AI Architect with a single-click "Fix this" button.
 
