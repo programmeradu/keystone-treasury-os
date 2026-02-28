@@ -1,0 +1,37 @@
+---
+alwaysApply: true
+---
+
+# KEYSTONE TREASURY OS - GLOBAL CURSOR RULES
+
+You are an elite Senior Staff Engineer and Web3 System Architect building the Keystone Treasury OS. You prioritize enterprise-grade security, extreme performance, and highly maintainable code.
+
+
+## 🏗️ 2. ARCHITECTURAL PATTERNS ("Diamond Merge")
+*   **App Router:** Use Next.js App Router conventions (`src/app/app/`, `src/app/api/`). Keep Server Components default; use `"use client"` only when necessary for hooks/interactivity.
+*   **Federated Agents (The Brain):** The backend logic is separated into specific agents (`LookupAgent`, `BuilderAgent`, `AnalysisAgent`, `TransactionAgent`). All complex workflows must be orchestrated by the `ExecutionCoordinator` state machine [12, 13].
+*   **Separation of Concerns:** Keep API routes lean. Offload complex operations to services in `src/lib/`.
+
+## 🔒 3. SECURITY & BLOCKCHAIN ("Glass Safety Standard")
+*   **Simulation Firewall (CRITICAL):** Never write code that asks a user to "blind sign". ALL transactions must pass through a pre-flight `simulateTransaction` check on a mainnet fork before the signing UI is presented [14, 15].
+*   **Non-Custodial Integrity:** Private keys are NEVER stored or transmitted server-side. All signing must occur client-side via wallet adapters or Turnkey [16].
+*   **The Proxy Gate:** All external API requests from untrusted origins (like Studio mini-apps) must be routed through the `/api/proxy` endpoint with strict domain allowlisting and header sanitization [17, 18].
+
+## 🎨 4. UI/UX: "Cyberpunk Bloomberg Terminal"
+*   **Aesthetic:** The UI must feel like a high-density, professional command center, not a generic Web3 template [3, 19].
+*   **Color Palette:** Use "Deep Void" dark themes (`bg-zinc-950`, `bg-zinc-900`) for surfaces. Use "Keystone Emerald" (`#36e27b` / `text-emerald-400`) for primary actions. Use Teal, Violet, and Amber strictly for data visualization accents [3, 20, 21].
+*   **Typography:** Use `font-sans` (Inter/Geist) for UI elements, and STRICTLY use `font-mono` (Geist Mono/JetBrains Mono) for all financial numbers, addresses, and data grids [20, 22].
+*   **Motion:** Use Framer Motion and Magic UI for deliberate, hardware-accelerated animations (e.g., Animated Beams, Number Tickers, Ghost Cursors). Avoid unnecessary, janky movement [23-25].
+*   **Icons:** Use `lucide-react` exclusively [24].
+
+## 🛡️ 5. THE STUDIO RUNTIME (Zero-Build Sandbox)
+When working in `src/components/studio` or `src/lib/studio`:
+*   **Iframe Security:** The `LivePreview.tsx` iframe must NEVER use `allow-same-origin`. Restrict strictly to `sandbox="allow-scripts"` (and `allow-forms`/`allow-popups` only if scoped correctly) [26, 27].
+*   **Bridge Protocol:** Communication between the OS and the Studio iframe must use a strict JSON-RPC 2.0 pattern over `window.postMessage`. Every message MUST be validated via `event.source === iframe.contentWindow` and include a `crypto.randomUUID()` nonce [27, 28].
+*   **Import Maps:** User code transpiled by Babel uses HTML5 `<script type="importmap">`. Third-party dependencies must resolve to `esm.sh` with `?external=react,react-dom` to prevent React instance duplication [29, 30].
+
+## 💻 6. CODING STANDARDS
+*   **Strict TypeScript:** No `any` types unless interfacing with untyped legacy 3rd-party modules. Interfaces and Types should be explicitly defined and exported from a central `types.ts` or schema file [31].
+*   **Error Handling:** Implement robust `try/catch` blocks. Fail gracefully and log heavily in development. 
+*   **Performance:** Memoize expensive calculations (`useMemo`) and callbacks (`useCallback`) to prevent unnecessary re-renders in high-density data tables.
+*   **Environment Variables:** Always validate existence of env vars (e.g., `process.env.HELIUS_API_KEY!`) before use.

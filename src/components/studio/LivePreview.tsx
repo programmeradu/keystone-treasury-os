@@ -356,6 +356,10 @@ export function LivePreview({
 
         // ─── Proxy Gate (Phase 2.3) ──────────────────────
         bridge.on(BridgeMethods.PROXY_REQUEST, async (params) => {
+            const { observability, ...rest } = params as Record<string, unknown>;
+            if (observability) {
+                setLogs(prev => [...prev.slice(-500), `[info] [Observability] ${JSON.stringify(observability)}`]);
+            }
             const { url, method, headers, body } = params as {
                 url: string;
                 method?: string;
@@ -393,6 +397,59 @@ export function LivePreview({
             setLogs(prev => [...prev.slice(-500), `[event] ${params.type}: ${JSON.stringify(params.payload)}`]);
             return null;
         });
+
+        // ─── Sovereign OS 2026 (stub handlers — implement per roadmap) ──
+        const notImpl = (method: string) => () => {
+            setLogs(prev => [...prev.slice(-500), `[warn] ${method} not yet implemented`]);
+            throw new Error(`${method} not yet implemented. See SOVEREIGN_OS_2026_ROADMAP.md`);
+        };
+        bridge.on(BridgeMethods.LIT_ENCRYPT, notImpl("lit.encryptSecret"));
+        bridge.on(BridgeMethods.LIT_DECRYPT, notImpl("lit.decryptSecret"));
+        bridge.on(BridgeMethods.ACE_REPORT, async () => []);
+        bridge.on(BridgeMethods.ZKSP_VERIFY, async () => ({ verified: false }));
+        bridge.on(BridgeMethods.AGENT_HANDOFF, async (p) => {
+            setLogs(prev => [...prev.slice(-500), `[agent] handoff ${(p as { fromAgent?: string }).fromAgent} → ${(p as { toAgent?: string }).toAgent}`]);
+            return { status: "handoff_received" };
+        });
+        bridge.on(BridgeMethods.MCP_CALL, notImpl("mcp.call"));
+        bridge.on(BridgeMethods.MCP_SERVE, async (p) => {
+            setLogs(prev => [...prev.slice(-500), `[mcp] serve tools: ${((p as { tools?: unknown[] }).tools ?? []).length}`]);
+            return null;
+        });
+        bridge.on(BridgeMethods.IMPACT_REPORT, async (p) => {
+            const tx = (p as { transaction?: unknown }).transaction;
+            setLogs(prev => [...prev.slice(-500), `[simulation] impact report for tx`]);
+            return {
+                before: { activeVault: "Main", balances: {}, tokens: [] },
+                after: { activeVault: "Main", balances: {}, tokens: [] },
+                diff: [],
+                simulationHash: tx ? "0x" + Math.random().toString(16).slice(2) : undefined,
+            };
+        });
+        bridge.on(BridgeMethods.SIWS_SIGN, async () => ({
+            message: "Sign in with Solana",
+            signature: "mock_sig",
+            address: walletAddress || "mock",
+            chainId: 101,
+        }));
+        bridge.on(BridgeMethods.SIWS_VERIFY, async () => true);
+        bridge.on(BridgeMethods.JUPITER_SWAP, notImpl("jupiter.swap"));
+        bridge.on(BridgeMethods.JUPITER_QUOTE, notImpl("jupiter.quote"));
+        bridge.on(BridgeMethods.YIELD_OPTIMIZE, async () => []);
+        bridge.on(BridgeMethods.GASLESS_SUBMIT, async (p) => {
+            setLogs(prev => [...prev.slice(-500), `[gasless] submit (stub — implement fee payer)`]);
+            return { signature: "gasless_mock_" + crypto.randomUUID().slice(0, 8) };
+        });
+        bridge.on(BridgeMethods.BLINK_EXPORT, async (p) => ({
+            url: `https://blink.solana.com/action?label=${encodeURIComponent((p as { label?: string }).label ?? "action")}`,
+            actionId: crypto.randomUUID(),
+        }));
+        bridge.on(BridgeMethods.TAX_FORENSICS, async () => ({
+            lots: [],
+            totalCostBasis: 0,
+            unrealizedGainLoss: 0,
+            realizedGainLoss: 0,
+        }));
 
         bridge.start();
         bridgeRef.current = bridge;

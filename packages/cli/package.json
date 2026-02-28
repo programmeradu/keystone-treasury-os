@@ -1,0 +1,39 @@
+{
+  "name": "@keystone-os/cli",
+  "version": "0.1.0",
+  "description": "CLI for Keystone Studio Mini-Apps — init, validate",
+  "main": "dist/index.js",
+  "bin": {
+    "keystone": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup src/index.ts --format cjs --dts --watch"
+  },
+  "dependencies": {
+    "@irys/sdk": "^0.2.11",
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.8.0"
+  },
+  "keywords": [
+    "keystone",
+    "web3",
+    "treasury",
+    "studio",
+    "mini-app",
+    "cli"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/programmeradu/keystone-treasury-os.git",
+    "directory": "packages/cli"
+  }
+}

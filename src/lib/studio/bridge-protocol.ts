@@ -49,6 +49,24 @@ export const BridgeMethods = {
 
   // Event bus
   EVENT_EMIT: "event.emit",
+
+  // Sovereign OS 2026
+  LIT_ENCRYPT: "lit.encryptSecret",
+  LIT_DECRYPT: "lit.decryptSecret",
+  ACE_REPORT: "ace.report",
+  ZKSP_VERIFY: "zksp.verify",
+  AGENT_HANDOFF: "agent.handoff",
+  MCP_CALL: "mcp.call",
+  MCP_SERVE: "mcp.serve",
+  IMPACT_REPORT: "simulation.impactReport",
+  SIWS_SIGN: "siws.sign",
+  SIWS_VERIFY: "siws.verify",
+  JUPITER_SWAP: "jupiter.swap",
+  JUPITER_QUOTE: "jupiter.quote",
+  YIELD_OPTIMIZE: "yield.optimize",
+  GASLESS_SUBMIT: "gasless.submit",
+  BLINK_EXPORT: "blink.export",
+  TAX_FORENSICS: "tax.forensics",
 } as const;
 
 export type BridgeMethod = (typeof BridgeMethods)[keyof typeof BridgeMethods];
