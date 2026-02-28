@@ -152,13 +152,6 @@ export const DeFiPositions = () => {
             .map(p => ({ name: p.name, value: Math.round(p.value) }));
     }, [positions]);
 
-    // Simulated yield override from foresight variables
-    const simYieldApy = useMemo(() => {
-        if (!simActive || !sim.result?.metadata?.variables) return null;
-        const yieldVar = sim.result.metadata.variables.find((v: any) => v.type === "yield_apy");
-        return yieldVar ? yieldVar.value * 100 : null; // convert decimal to %
-    }, [simActive, sim.result]);
-
     if (!activeVault) {
         return (
             <div className="rounded-2xl bg-card border border-border p-6 backdrop-blur-xl shadow-sm">
