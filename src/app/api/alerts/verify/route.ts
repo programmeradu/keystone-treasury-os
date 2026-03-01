@@ -19,9 +19,9 @@ export async function GET(request: NextRequest) {
     if (!token || typeof token !== 'string') {
       const appUrl = process.env.APP_URL;
       if (!appUrl) {
-        return NextResponse.json({ 
+        return NextResponse.json({
           error: "APP_URL environment variable is not configured",
-          code: "MISSING_APP_URL" 
+          code: "MISSING_APP_URL"
         }, { status: 500 });
       }
       return NextResponse.redirect(`${appUrl}/oracle?error=invalid_token`);
@@ -30,9 +30,9 @@ export async function GET(request: NextRequest) {
     // Check if APP_URL is configured
     const appUrl = process.env.APP_URL;
     if (!appUrl) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: "APP_URL environment variable is not configured",
-        code: "MISSING_APP_URL" 
+        code: "MISSING_APP_URL"
       }, { status: 500 });
     }
 
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       .set({
         verified: true,
         verifyToken: null,
-        updatedAt: Date.now()
+        updatedAt: new Date()
       })
       .where(eq(alerts.verifyToken, token))
       .returning();
@@ -65,15 +65,15 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('GET error:', error);
-    
+
     const appUrl = process.env.APP_URL;
     if (!appUrl) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: "APP_URL environment variable is not configured",
-        code: "MISSING_APP_URL" 
+        code: "MISSING_APP_URL"
       }, { status: 500 });
     }
-    
+
     return NextResponse.redirect(`${appUrl}/oracle?error=invalid_token`);
   }
 }

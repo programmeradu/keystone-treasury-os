@@ -36,7 +36,6 @@ export async function POST(request: NextRequest) {
     }
 
     const id = `app_${Math.random().toString(36).substring(2, 10)}`;
-    const now = Date.now();
 
     await db.insert(miniApps).values({
       id,
@@ -45,16 +44,14 @@ export async function POST(request: NextRequest) {
       code: JSON.parse(code) as Record<string, unknown>,
       creatorWallet,
       version: "1.0.0",
-      creatorShare: 0.8,
+      creatorShare: '0.8',
       isPublished: true,
-      priceUsdc: 0,
+      priceUsdc: '0',
       category: category ?? "utility",
       codeHash: codeHash ?? null,
       arweaveTxId: arweaveTxId ?? null,
       securityScore: securityScore ?? null,
-      lastScanAt: now,
-      createdAt: now,
-      updatedAt: now,
+      lastScanAt: new Date(),
     });
 
     return NextResponse.json({ appId: id });

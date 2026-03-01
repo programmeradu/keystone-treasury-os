@@ -110,6 +110,7 @@ const PROVIDERS: ProviderConfig[] = [
         models: [
             { id: "@cf/qwen/qwen3-30b-a3b-fp8", name: "Qwen3-30B MoE", recommended: true },
             { id: "@cf/openai/gpt-oss-120b", name: "GPT-OSS 120B" },
+            { id: "@cf/zai-org/glm-4.7-flash", name: "GLM-4.7 Flash" },
             { id: "@cf/qwen/qwen2.5-coder-32b-instruct", name: "Qwen2.5-Coder 32B" },
             { id: "@cf/meta/llama-3.3-70b-instruct-fp8-fast", name: "Llama 3.3 70B" },
         ],

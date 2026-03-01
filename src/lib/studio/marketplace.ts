@@ -23,10 +23,8 @@ export const marketplace = {
             description: data.description,
             code: data.code,
             creatorWallet: data.creatorWallet,
-            priceUsdc: data.priceUsdc || 0,
+            priceUsdc: String(data.priceUsdc || 0),
             category: data.category || "utility",
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
             isPublished: false,
         });
 
@@ -37,7 +35,7 @@ export const marketplace = {
     publishApp: async (appId: string, creatorWallet: string) => {
         if (!db) throw new Error("Database not initialized");
         await db.update(miniApps)
-            .set({ isPublished: true, updatedAt: Date.now() })
+            .set({ isPublished: true, updatedAt: new Date() })
             .where(and(eq(miniApps.id, appId), eq(miniApps.creatorWallet, creatorWallet)));
     },
 
@@ -83,10 +81,9 @@ export const marketplace = {
             appId: payment.appId,
             buyerWallet: payment.buyerWallet,
             txSignature: payment.txSignature,
-            amountUsdc: payment.amountUsdc,
-            creatorPayout: payment.creatorPayout,
-            keystoneFee: payment.keystoneFee,
-            createdAt: Date.now(),
+            amountUsdc: String(payment.amountUsdc),
+            creatorPayout: String(payment.creatorPayout),
+            keystoneFee: String(payment.keystoneFee),
         });
 
         // Increment install count

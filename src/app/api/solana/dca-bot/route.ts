@@ -43,46 +43,48 @@ export async function GET(req: Request) {
 
       // Calculate current stats for each bot
       const botsWithStats = bots.map((bot) => {
-          // Get cached current price
-          const currentPrice = priceMap.get(bot.buyTokenMint as string) || 0;
-          
-          // Calculate average price
-          const avgPrice = bot.totalReceived > 0 
-            ? bot.totalInvested / bot.totalReceived 
-            : 0;
-          
-          // Calculate P/L
-          const currentValue = currentPrice ? bot.totalReceived * currentPrice : 0;
-          const pnlPercent = bot.totalInvested > 0
-            ? ((currentValue - bot.totalInvested) / bot.totalInvested) * 100
-            : 0;
+        // Get cached current price
+        const currentPrice = priceMap.get(bot.buyTokenMint as string) || 0;
 
-          return {
-            id: bot.id,
-            name: bot.name,
-            status: bot.status,
-            fromToken: bot.paymentTokenSymbol,
-            toToken: bot.buyTokenSymbol,
-            amount: bot.amountUsd,
-            frequency: bot.frequency,
-            nextExecution: bot.nextExecution,
-            totalInvested: bot.totalInvested,
-            totalReceived: bot.totalReceived,
-            avgPrice,
-            currentPrice: currentPrice || 0,
-            pnlPercent,
-            executionCount: bot.executionCount,
-            createdAt: bot.createdAt,
-          };
-        });
+        // Calculate average price
+        const totalInvest = Number(bot.totalInvested) || 0;
+        const totalRecv = Number(bot.totalReceived) || 0;
+        const avgPrice = totalRecv > 0
+          ? totalInvest / totalRecv
+          : 0;
+
+        // Calculate P/L
+        const currentValue = currentPrice ? totalRecv * currentPrice : 0;
+        const pnlPercent = totalInvest > 0
+          ? ((currentValue - totalInvest) / totalInvest) * 100
+          : 0;
+
+        return {
+          id: bot.id,
+          name: bot.name,
+          status: bot.status,
+          fromToken: bot.paymentTokenSymbol,
+          toToken: bot.buyTokenSymbol,
+          amount: Number(bot.amountUsd),
+          frequency: bot.frequency,
+          nextExecution: bot.nextExecution,
+          totalInvested: totalInvest,
+          totalReceived: totalRecv,
+          avgPrice,
+          currentPrice: currentPrice || 0,
+          pnlPercent,
+          executionCount: bot.executionCount,
+          createdAt: bot.createdAt,
+        };
+      });
 
       // Calculate summary
       const totalInvested = botsWithStats.reduce((sum, bot) => sum + bot.totalInvested, 0);
       const totalValue = botsWithStats.reduce((sum, bot) => {
         return sum + (bot.totalReceived * bot.currentPrice);
       }, 0);
-      const overallPnl = totalInvested > 0 
-        ? ((totalValue - totalInvested) / totalInvested) * 100 
+      const overallPnl = totalInvested > 0
+        ? ((totalValue - totalInvested) / totalInvested) * 100
         : 0;
 
       return NextResponse.json({
@@ -153,9 +155,9 @@ export async function POST(req: Request) {
 
       // Create bot ID
       const botId = `dca_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      const now = Date.now();
+      const now = new Date();
       const startDate = now;
-      const nextExecution = calculateNextExecution(startDate, frequency as any);
+      const nextExecution = new Date(calculateNextExecution(Date.now(), frequency as any));
 
       // Insert into database
       await db.insert(dcaBots).values({
@@ -166,19 +168,17 @@ export async function POST(req: Request) {
         buyTokenSymbol,
         paymentTokenMint,
         paymentTokenSymbol,
-        amountUsd,
+        amountUsd: String(amountUsd),
         frequency,
         startDate,
         endDate: null,
-        maxSlippage: maxSlippage || 0.5,
+        maxSlippage: String(maxSlippage || 0.5),
         status: "active",
         walletAddress,
         nextExecution,
         executionCount: 0,
-        totalInvested: 0,
-        totalReceived: 0,
-        createdAt: now,
-        updatedAt: now,
+        totalInvested: '0',
+        totalReceived: '0',
       });
 
       return NextResponse.json({
@@ -195,13 +195,13 @@ export async function POST(req: Request) {
     // PAUSE BOT
     if (action === "pause") {
       const { botId } = body;
-      
+
       await db
         .update(dcaBots)
-        .set({ 
+        .set({
           status: "paused",
           nextExecution: null,
-          updatedAt: Date.now(),
+          updatedAt: new Date(),
         })
         .where(and(
           eq(dcaBots.id, botId),
@@ -214,7 +214,7 @@ export async function POST(req: Request) {
     // RESUME BOT
     if (action === "resume") {
       const { botId } = body;
-      
+
       const bot = await db
         .select()
         .from(dcaBots)
@@ -231,14 +231,14 @@ export async function POST(req: Request) {
         );
       }
 
-      const nextExecution = calculateNextExecution(Date.now(), bot[0].frequency as any);
-      
+      const nextExecution = new Date(calculateNextExecution(Date.now(), bot[0].frequency as any));
+
       await db
         .update(dcaBots)
-        .set({ 
+        .set({
           status: "active",
           nextExecution,
-          updatedAt: Date.now(),
+          updatedAt: new Date(),
         })
         .where(eq(dcaBots.id, botId));
 
@@ -248,7 +248,7 @@ export async function POST(req: Request) {
     // EXECUTE BOT (Manual execution)
     if (action === "execute") {
       const { botId } = body;
-      
+
       const bot = await db
         .select()
         .from(dcaBots)

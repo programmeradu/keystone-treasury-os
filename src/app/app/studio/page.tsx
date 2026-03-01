@@ -33,6 +33,7 @@ import { saveProject } from "@/actions/studio-actions";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "@/lib/toast-notifications";
 import { ProjectBrowser } from "@/components/studio/ProjectBrowser";
+import { StudioToolbar } from "@/components/studio/StudioToolbar";
 import { useSearchParams } from "next/navigation";
 
 interface StudioFile {
@@ -507,16 +508,13 @@ export default function StudioPage() {
                         <Button variant="ghost" size="sm" onClick={handleSave} disabled={isSaving} className="h-8 text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground">
                             {isSaving ? "SAVING..." : "SAVE"}
                         </Button>
-                        <Button
-                            variant="default"
-                            size="sm"
-                            onClick={handleShip}
-                            disabled={isDeploying}
-                            className="h-8 text-[10px] font-black uppercase tracking-[0.2em] px-6 rounded-sm shadow-lg transition-all bg-primary hover:bg-primary/90 text-background shadow-primary/10"
-                        >
-                            {isDeploying ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : null}
-                            {isDeploying ? "SHIPPING..." : "SHIP"}
-                        </Button>
+                        <div className="h-4 w-px bg-border/60 mx-1" />
+                        <StudioToolbar
+                            files={files}
+                            appName={appName}
+                            onShip={handleShip}
+                            isShipping={isDeploying}
+                        />
                     </div>
                 </div>
             </header>

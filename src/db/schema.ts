@@ -1,92 +1,120 @@
-import { sqliteTable, integer, text, real, index } from 'drizzle-orm/sqlite-core';
+import {
+  pgTable,
+  serial,
+  text,
+  numeric,
+  boolean,
+  timestamp,
+  integer,
+  uuid,
+  index,
+  jsonb,
+} from 'drizzle-orm/pg-core';
 
-export const runs = sqliteTable('runs', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+// ─── Users (SIWS Auth — synced from Supabase Auth) ────────────────────
+export const users = pgTable('users', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  walletAddress: text('wallet_address').notNull().unique(),
+  displayName: text('display_name'),
+  avatarUrl: text('avatar_url'),
+  role: text('role').notNull().default('user'), // user | creator | admin
+  supabaseUserId: text('supabase_user_id').unique(), // Supabase Auth uid
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  lastLoginAt: timestamp('last_login_at').defaultNow().notNull(),
+}, (table) => ({
+  walletIdx: index('users_wallet_idx').on(table.walletAddress),
+  supabaseIdx: index('users_supabase_idx').on(table.supabaseUserId),
+}));
+
+// ─── AI Runs ──────────────────────────────────────────────────────────
+export const runs = pgTable('runs', {
+  id: serial('id').primaryKey(),
   shortId: text('short_id').notNull().unique(),
   prompt: text('prompt').notNull(),
-  planResult: text('plan_result', { mode: 'json' }).notNull(),
-  toolResult: text('tool_result', { mode: 'json' }),
-  createdAt: integer('created_at').notNull(),
-  updatedAt: integer('updated_at').notNull(),
-  userId: integer('user_id'),
+  planResult: jsonb('plan_result').notNull(),
+  toolResult: jsonb('tool_result'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  userId: uuid('user_id').references(() => users.id),
   runLabel: text('run_label'),
-  meta: text('meta', { mode: 'json' }),
+  meta: jsonb('meta'),
 });
 
-export const learnInputs = sqliteTable('learn_inputs', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+// ─── Learn Tables ─────────────────────────────────────────────────────
+export const learnInputs = pgTable('learn_inputs', {
+  id: serial('id').primaryKey(),
   text: text('text').notNull(),
   intent: text('intent'),
-  createdAt: integer('created_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-export const learnClicks = sqliteTable('learn_clicks', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const learnClicks = pgTable('learn_clicks', {
+  id: serial('id').primaryKey(),
   text: text('text').notNull(),
-  createdAt: integer('created_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-export const learnKeywords = sqliteTable('learn_keywords', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const learnKeywords = pgTable('learn_keywords', {
+  id: serial('id').primaryKey(),
   keyword: text('keyword').notNull().unique(),
-  score: real('score').notNull(),
-  updatedAt: integer('updated_at').notNull(),
+  score: numeric('score', { precision: 10, scale: 4 }).notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-export const learnSuggestions = sqliteTable('learn_suggestions', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const learnSuggestions = pgTable('learn_suggestions', {
+  id: serial('id').primaryKey(),
   text: text('text').notNull().unique(),
-  weight: real('weight').notNull(),
+  weight: numeric('weight', { precision: 10, scale: 4 }).notNull(),
   source: text('source').notNull(),
-  createdAt: integer('created_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-export const alerts = sqliteTable('alerts', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+// ─── Alerts ───────────────────────────────────────────────────────────
+export const alerts = pgTable('alerts', {
+  id: serial('id').primaryKey(),
   email: text('email').notNull(),
   conditionType: text('condition_type').notNull().default('gas_below_usd_per_100k'),
-  thresholdUsd: real('threshold_usd').notNull(),
+  thresholdUsd: numeric('threshold_usd', { precision: 18, scale: 6 }).notNull(),
   minGasUnits: integer('min_gas_units').notNull().default(100000),
-  verified: integer('verified', { mode: 'boolean' }).notNull().default(false),
+  verified: boolean('verified').notNull().default(false),
   verifyToken: text('verify_token').unique(),
-  active: integer('active', { mode: 'boolean' }).notNull().default(true),
-  lastNotifiedAt: integer('last_notified_at'),
-  createdAt: integer('created_at').notNull(),
-  updatedAt: integer('updated_at').notNull(),
+  active: boolean('active').notNull().default(true),
+  lastNotifiedAt: timestamp('last_notified_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
   emailIdx: index('alerts_email_idx').on(table.email),
   activeIdx: index('alerts_active_idx').on(table.active),
   verifiedIdx: index('alerts_verified_idx').on(table.verified),
 }));
 
-// DCA Bot Tables
-export const dcaBots = sqliteTable('dca_bots', {
+// ─── DCA Bots ─────────────────────────────────────────────────────────
+export const dcaBots = pgTable('dca_bots', {
   id: text('id').primaryKey(), // dca_abc123
-  userId: text('user_id').notNull(), // User identifier (wallet address or user ID)
+  userId: uuid('user_id').notNull().references(() => users.id),
   name: text('name').notNull(),
-  buyTokenMint: text('buy_token_mint').notNull(), // Token to buy (e.g., SOL mint address)
-  buyTokenSymbol: text('buy_token_symbol').notNull(), // For display (e.g., "SOL")
-  paymentTokenMint: text('payment_token_mint').notNull(), // Token to pay with (e.g., USDC)
-  paymentTokenSymbol: text('payment_token_symbol').notNull(), // For display
-  amountUsd: real('amount_usd').notNull(), // Amount in USD to spend per execution
-  frequency: text('frequency').notNull(), // 'daily', 'weekly', 'biweekly', 'monthly'
-  startDate: integer('start_date').notNull(), // Unix timestamp
-  endDate: integer('end_date'), // Optional end date
-  maxSlippage: real('max_slippage').notNull().default(0.5), // Percentage (0.5 = 0.5%)
-  status: text('status').notNull().default('active'), // 'active', 'paused', 'completed', 'failed'
-  walletAddress: text('wallet_address').notNull(), // User's wallet public key
-  nextExecution: integer('next_execution'), // Unix timestamp for next scheduled execution
+  buyTokenMint: text('buy_token_mint').notNull(),
+  buyTokenSymbol: text('buy_token_symbol').notNull(),
+  paymentTokenMint: text('payment_token_mint').notNull(),
+  paymentTokenSymbol: text('payment_token_symbol').notNull(),
+  amountUsd: numeric('amount_usd', { precision: 18, scale: 6 }).notNull(),
+  frequency: text('frequency').notNull(), // daily, weekly, biweekly, monthly
+  startDate: timestamp('start_date').notNull(),
+  endDate: timestamp('end_date'),
+  maxSlippage: numeric('max_slippage', { precision: 6, scale: 4 }).notNull().default('0.5'),
+  status: text('status').notNull().default('active'), // active, paused, completed, failed
+  walletAddress: text('wallet_address').notNull(),
+  nextExecution: timestamp('next_execution'),
   executionCount: integer('execution_count').notNull().default(0),
-  totalInvested: real('total_invested').notNull().default(0), // Total USD spent
-  totalReceived: real('total_received').notNull().default(0), // Total tokens received
-  // Phase 2 fields
-  delegationAmount: real('delegation_amount'), // Approved delegation amount in payment token
-  delegationExpiry: integer('delegation_expiry'), // When delegation expires
-  lastExecutionAttempt: integer('last_execution_attempt'), // Last execution attempt timestamp
-  failedAttempts: integer('failed_attempts').notNull().default(0), // Consecutive failures
-  pauseReason: text('pause_reason'), // Why bot was paused
-  createdAt: integer('created_at').notNull(),
-  updatedAt: integer('updated_at').notNull(),
+  totalInvested: numeric('total_invested', { precision: 18, scale: 6 }).notNull().default('0'),
+  totalReceived: numeric('total_received', { precision: 18, scale: 6 }).notNull().default('0'),
+  delegationAmount: numeric('delegation_amount', { precision: 18, scale: 6 }),
+  delegationExpiry: timestamp('delegation_expiry'),
+  lastExecutionAttempt: timestamp('last_execution_attempt'),
+  failedAttempts: integer('failed_attempts').notNull().default(0),
+  pauseReason: text('pause_reason'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
   userIdx: index('dca_bots_user_idx').on(table.userId),
   walletIdx: index('dca_bots_wallet_idx').on(table.walletAddress),
@@ -94,63 +122,53 @@ export const dcaBots = sqliteTable('dca_bots', {
   nextExecutionIdx: index('dca_bots_next_execution_idx').on(table.nextExecution),
 }));
 
-export const dcaExecutions = sqliteTable('dca_executions', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const dcaExecutions = pgTable('dca_executions', {
+  id: serial('id').primaryKey(),
   botId: text('bot_id').notNull().references(() => dcaBots.id, { onDelete: 'cascade' }),
-  executedAt: integer('executed_at').notNull(),
-  paymentAmount: real('payment_amount').notNull(), // Amount of payment token spent
-  receivedAmount: real('received_amount').notNull(), // Amount of buy token received
-  price: real('price').notNull(), // Execution price (payment per buy token)
-  slippage: real('slippage').notNull(), // Actual slippage percentage
-  txSignature: text('tx_signature'), // Solana transaction signature
-  gasUsed: real('gas_used').notNull(), // SOL spent on gas
-  status: text('status').notNull(), // 'success', 'failed', 'pending'
+  executedAt: timestamp('executed_at').defaultNow().notNull(),
+  paymentAmount: numeric('payment_amount', { precision: 18, scale: 6 }).notNull(),
+  receivedAmount: numeric('received_amount', { precision: 18, scale: 6 }).notNull(),
+  price: numeric('price', { precision: 18, scale: 6 }).notNull(),
+  slippage: numeric('slippage', { precision: 6, scale: 4 }).notNull(),
+  txSignature: text('tx_signature'),
+  gasUsed: numeric('gas_used', { precision: 18, scale: 9 }).notNull(),
+  status: text('status').notNull(), // success, failed, pending
   errorMessage: text('error_message'),
-  jupiterQuoteId: text('jupiter_quote_id'), // For debugging
-  // Phase 2 fields
-  errorCode: text('error_code'), // Error type if failed
-  retryCount: integer('retry_count').notNull().default(0), // How many retries
-  jupiterRoute: text('jupiter_route'), // JSON of swap route used
-  createdAt: integer('created_at').notNull(),
+  jupiterQuoteId: text('jupiter_quote_id'),
+  errorCode: text('error_code'),
+  retryCount: integer('retry_count').notNull().default(0),
+  jupiterRoute: jsonb('jupiter_route'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
   botIdx: index('dca_executions_bot_idx').on(table.botId),
   statusIdx: index('dca_executions_status_idx').on(table.status),
   executedAtIdx: index('dca_executions_executed_at_idx').on(table.executedAt),
 }));
 
-// Agent Execution History
-export const agentExecutions = sqliteTable('agent_executions', {
+// ─── Agent Executions ─────────────────────────────────────────────────
+export const agentExecutions = pgTable('agent_executions', {
   id: text('id').primaryKey(), // exec_abc123xyz
-  userId: text('user_id').notNull(), // User identifier (wallet address)
-  walletAddress: text('wallet_address').notNull(), // User's wallet public key
-  strategy: text('strategy').notNull(), // Strategy type: swap_token, rebalance_portfolio, etc.
+  userId: uuid('user_id').notNull().references(() => users.id),
+  walletAddress: text('wallet_address').notNull(),
+  strategy: text('strategy').notNull(),
   status: text('status').notNull(), // PENDING, RUNNING, SUCCESS, FAILED, CANCELLED
-  progress: integer('progress').notNull().default(0), // 0-100
-
-  // Input and output
-  input: text('input', { mode: 'json' }).notNull(), // Input parameters
-  result: text('result', { mode: 'json' }), // Execution result
-  error: text('error'), // Error message if failed
-
-  // Execution details
-  estimatedGas: real('estimated_gas'), // Estimated SOL cost
-  actualGas: real('actual_gas'), // Actual SOL cost
-  transactionSignature: text('transaction_signature'), // Solana tx signature
-
-  // Approval workflow
-  approvalRequired: integer('approval_required', { mode: 'boolean' }).notNull().default(false),
-  approvalId: text('approval_id'), // Reference to approval if needed
-  approvedAt: integer('approved_at'), // When user approved
-
-  // Metadata
-  duration: integer('duration'), // Execution time in milliseconds
+  progress: integer('progress').notNull().default(0),
+  input: jsonb('input').notNull(),
+  result: jsonb('result'),
+  error: text('error'),
+  estimatedGas: numeric('estimated_gas', { precision: 18, scale: 9 }),
+  actualGas: numeric('actual_gas', { precision: 18, scale: 9 }),
+  transactionSignature: text('transaction_signature'),
+  approvalRequired: boolean('approval_required').notNull().default(false),
+  approvalId: text('approval_id'),
+  approvedAt: timestamp('approved_at'),
+  duration: integer('duration'),
   retryCount: integer('retry_count').notNull().default(0),
-  steps: text('steps', { mode: 'json' }), // Array of execution steps
-
-  createdAt: integer('created_at').notNull(),
-  startedAt: integer('started_at'),
-  completedAt: integer('completed_at'),
-  updatedAt: integer('updated_at').notNull(),
+  steps: jsonb('steps'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  startedAt: timestamp('started_at'),
+  completedAt: timestamp('completed_at'),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
   userIdx: index('agent_executions_user_idx').on(table.userId),
   walletIdx: index('agent_executions_wallet_idx').on(table.walletAddress),
@@ -159,115 +177,111 @@ export const agentExecutions = sqliteTable('agent_executions', {
   createdAtIdx: index('agent_executions_created_at_idx').on(table.createdAt),
 }));
 
-// Agent Approvals
-export const agentApprovals = sqliteTable('agent_approvals', {
-  id: text('id').primaryKey(), // approval_abc123xyz
+export const agentApprovals = pgTable('agent_approvals', {
+  id: text('id').primaryKey(),
   executionId: text('execution_id').notNull().references(() => agentExecutions.id, { onDelete: 'cascade' }),
-  userId: text('user_id').notNull(),
+  userId: uuid('user_id').notNull().references(() => users.id),
   walletAddress: text('wallet_address').notNull(),
-
-  // Approval details
-  message: text('message').notNull(), // What user is approving
-  details: text('details', { mode: 'json' }), // Transaction details
-  estimatedFee: real('estimated_fee'), // Estimated fee in SOL
-  riskLevel: text('risk_level'), // low, medium, high
-
-  // Response
-  approved: integer('approved', { mode: 'boolean' }), // null = pending, true = approved, false = rejected
-  signature: text('signature'), // User's signature
+  message: text('message').notNull(),
+  details: jsonb('details'),
+  estimatedFee: numeric('estimated_fee', { precision: 18, scale: 9 }),
+  riskLevel: text('risk_level'),
+  approved: boolean('approved'),
+  signature: text('signature'),
   rejectionReason: text('rejection_reason'),
-
-  // Metadata
-  expiresAt: integer('expires_at').notNull(), // Approval expires
-  respondedAt: integer('responded_at'),
-  createdAt: integer('created_at').notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  respondedAt: timestamp('responded_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
   executionIdx: index('agent_approvals_execution_idx').on(table.executionId),
   userIdx: index('agent_approvals_user_idx').on(table.userId),
   expiresAtIdx: index('agent_approvals_expires_at_idx').on(table.expiresAt),
 }));
 
-// Marketplace Tables
-
-export const miniApps = sqliteTable('mini_apps', {
+// ─── Marketplace ──────────────────────────────────────────────────────
+export const miniApps = pgTable('mini_apps', {
   id: text('id').primaryKey(), // app_abc123
   name: text('name').notNull(),
   description: text('description').notNull(),
-  code: text('code', { mode: 'json' }).notNull(), // { files: { ... } }
-  contractCode: text('contract_code'), // Anchor/Rust source
-  programId: text('program_id'), // Deployed program address
-  version: text('version').notNull().default("1.0.0"),
- 
+  code: jsonb('code').notNull(), // { files: { ... } }
+  contractCode: text('contract_code'),
+  programId: text('program_id'),
+  version: text('version').notNull().default('1.0.0'),
+
   // Creator
+  creatorId: uuid('creator_id').references(() => users.id),
   creatorWallet: text('creator_wallet').notNull(),
-  creatorShare: real('creator_share').notNull().default(0.8), // 80%
- 
+  creatorShare: numeric('creator_share', { precision: 4, scale: 2 }).notNull().default('0.80'),
+
   // Marketplace
-  isPublished: integer('is_published', { mode: 'boolean' }).notNull().default(false),
-  priceUsdc: real('price_usdc').notNull().default(0),
-  category: text('category').notNull().default("utility"),
-  tags: text('tags', { mode: 'json' }), // Array of strings
- 
-  // Hybrid Storage [OPUS Phase 3.1]
-  codeHash: text('code_hash'),           // SHA-256 of the source bundle for integrity
-  arweaveTxId: text('arweave_tx_id'),    // Arweave transaction ID for immutable cold storage
-  manifest: text('manifest', { mode: 'json' }), // keystone.manifest.json { allowedDomains, permissions, etc. }
- 
-  // Security [OPUS Phase 2]
-  securityScore: integer('security_score'), // 0-100 from 5-stage scan pipeline
-  lastScanAt: integer('last_scan_at'),      // Timestamp of last security scan
- 
+  isPublished: boolean('is_published').notNull().default(false),
+  priceUsdc: numeric('price_usdc', { precision: 18, scale: 6 }).notNull().default('0'),
+  category: text('category').notNull().default('utility'),
+  tags: jsonb('tags'), // string[]
+
+  // Hybrid Storage
+  codeHash: text('code_hash'),
+  arweaveTxId: text('arweave_tx_id'),
+  manifest: jsonb('manifest'),
+  screenshotUrl: text('screenshot_url'), // Supabase Storage URL
+
+  // Security
+  securityScore: integer('security_score'),
+  lastScanAt: timestamp('last_scan_at'),
+
   // Stats
   installs: integer('installs').notNull().default(0),
-  rating: real('rating'), // Average rating
- 
-  createdAt: integer('created_at').notNull(),
-  updatedAt: integer('updated_at').notNull(),
+  rating: numeric('rating', { precision: 3, scale: 2 }),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
   creatorIdx: index('mini_apps_creator_idx').on(table.creatorWallet),
+  creatorIdIdx: index('mini_apps_creator_id_idx').on(table.creatorId),
   categoryIdx: index('mini_apps_category_idx').on(table.category),
   isPublishedIdx: index('mini_apps_is_published_idx').on(table.isPublished),
 }));
 
-// User-installed apps with dock ordering [OPUS Phase 3.1]
-export const userInstalledApps = sqliteTable('user_installed_apps', {
-  id: text('id').primaryKey(), // install_abc123
-  userId: text('user_id').notNull(),
+export const userInstalledApps = pgTable('user_installed_apps', {
+  id: text('id').primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id),
   appId: text('app_id').notNull().references(() => miniApps.id, { onDelete: 'cascade' }),
-  installedAt: integer('installed_at').notNull(),
-  uninstalledAt: integer('uninstalled_at'), // null = currently installed
-  dockOrder: integer('dock_order').notNull().default(0), // Position in user's dock
-  pinned: integer('pinned', { mode: 'boolean' }).notNull().default(false),
-  lastOpenedAt: integer('last_opened_at'),
-  settings: text('settings', { mode: 'json' }), // Per-user app settings
+  installedAt: timestamp('installed_at').defaultNow().notNull(),
+  uninstalledAt: timestamp('uninstalled_at'),
+  dockOrder: integer('dock_order').notNull().default(0),
+  pinned: boolean('pinned').notNull().default(false),
+  lastOpenedAt: timestamp('last_opened_at'),
+  settings: jsonb('settings'),
 }, (table) => ({
   userIdx: index('user_installed_apps_user_idx').on(table.userId),
   appIdx: index('user_installed_apps_app_idx').on(table.appId),
   userAppIdx: index('user_installed_apps_user_app_idx').on(table.userId, table.appId),
 }));
 
-export const reviews = sqliteTable('reviews', {
+export const reviews = pgTable('reviews', {
   id: text('id').primaryKey(),
   appId: text('app_id').notNull().references(() => miniApps.id, { onDelete: 'cascade' }),
+  reviewerId: uuid('reviewer_id').references(() => users.id),
   reviewerWallet: text('reviewer_wallet').notNull(),
   rating: integer('rating').notNull(), // 1-5
   comment: text('comment'),
-  signature: text('signature').notNull(), // Wallet signature for authenticity
-  createdAt: integer('created_at').notNull(),
+  signature: text('signature').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
   appIdx: index('reviews_app_idx').on(table.appId),
   reviewerIdx: index('reviews_reviewer_idx').on(table.reviewerWallet),
 }));
 
-export const purchases = sqliteTable('purchases', {
+export const purchases = pgTable('purchases', {
   id: text('id').primaryKey(),
   appId: text('app_id').notNull().references(() => miniApps.id),
+  buyerId: uuid('buyer_id').references(() => users.id),
   buyerWallet: text('buyer_wallet').notNull(),
-  txSignature: text('tx_signature').notNull(), // On-chain transaction
-  amountUsdc: real('amount_usdc').notNull(),
-  creatorPayout: real('creator_payout').notNull(),
-  keystoneFee: real('keystone_fee').notNull(),
-  createdAt: integer('created_at').notNull(),
+  txSignature: text('tx_signature').notNull(),
+  amountUsdc: numeric('amount_usdc', { precision: 18, scale: 6 }).notNull(),
+  creatorPayout: numeric('creator_payout', { precision: 18, scale: 6 }).notNull(),
+  keystoneFee: numeric('keystone_fee', { precision: 18, scale: 6 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
   appIdx: index('purchases_app_idx').on(table.appId),
   buyerIdx: index('purchases_buyer_idx').on(table.buyerWallet),

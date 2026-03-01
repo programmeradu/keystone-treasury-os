@@ -11,8 +11,8 @@ export async function POST(request: NextRequest) {
 
     // Extract optional bearer token (but don't validate for MVP)
     const authorization = request.headers.get('authorization');
-    const bearerToken = authorization?.startsWith('Bearer ') 
-      ? authorization.slice(7) 
+    const bearerToken = authorization?.startsWith('Bearer ')
+      ? authorization.slice(7)
       : null;
 
     // Parse request body
@@ -21,9 +21,9 @@ export async function POST(request: NextRequest) {
 
     // Validate text field
     if (!text || typeof text !== 'string') {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: "Text field is required and must be a string",
-        code: "INVALID_TEXT_FIELD" 
+        code: "INVALID_TEXT_FIELD"
       }, { status: 400 });
     }
 
@@ -32,16 +32,16 @@ export async function POST(request: NextRequest) {
 
     // Validate text length (8-512 characters)
     if (sanitizedText.length < 8) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: "Text must be at least 8 characters long",
-        code: "TEXT_TOO_SHORT" 
+        code: "TEXT_TOO_SHORT"
       }, { status: 400 });
     }
 
     if (sanitizedText.length > 512) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: "Text must not exceed 512 characters",
-        code: "TEXT_TOO_LONG" 
+        code: "TEXT_TOO_LONG"
       }, { status: 400 });
     }
 
@@ -49,18 +49,18 @@ export async function POST(request: NextRequest) {
     let sanitizedIntent: string | null = null;
     if (intent !== undefined) {
       if (typeof intent !== 'string') {
-        return NextResponse.json({ 
+        return NextResponse.json({
           error: "Intent must be a string",
-          code: "INVALID_INTENT_TYPE" 
+          code: "INVALID_INTENT_TYPE"
         }, { status: 400 });
       }
 
       sanitizedIntent = intent.trim();
-      
+
       if (sanitizedIntent.length > 64) {
-        return NextResponse.json({ 
+        return NextResponse.json({
           error: "Intent must not exceed 64 characters",
-          code: "INTENT_TOO_LONG" 
+          code: "INTENT_TOO_LONG"
         }, { status: 400 });
       }
 
@@ -74,7 +74,6 @@ export async function POST(request: NextRequest) {
     const insertData = {
       text: sanitizedText,
       intent: sanitizedIntent,
-      createdAt: Date.now()
     };
 
     const newUserInput = await db!.insert(learnInputs)
@@ -92,17 +91,17 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('POST error:', error);
-    
+
     // Handle JSON parsing errors
     if (error instanceof SyntaxError) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: "Invalid JSON in request body",
-        code: "INVALID_JSON" 
+        code: "INVALID_JSON"
       }, { status: 400 });
     }
 
-    return NextResponse.json({ 
-      error: 'Internal server error: ' + error 
+    return NextResponse.json({
+      error: 'Internal server error: ' + error
     }, { status: 500 });
   }
 }

@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   try {
     // Check if database is available
     if (!db) {
-      console.error('Database not available - missing TURSO_CONNECTION_URL or TURSO_AUTH_TOKEN');
+      console.error('Database not available - missing DATABASE_URL');
       return NextResponse.json({
         ok: false,
         error: 'Database configuration error',
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     // Check required environment variables
     const resendApiKey = process.env.RESEND_API_KEY;
     const emailFrom = process.env.EMAIL_FROM;
-    
+
     if (!resendApiKey || !emailFrom) {
       console.error('Missing required environment variables: RESEND_API_KEY or EMAIL_FROM');
       return NextResponse.json({
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
         throw new Error(`Gas API error: ${gasResponse.status}`);
       }
       gasData = await gasResponse.json();
-      
+
       if (!gasData.ok || !gasData.speeds?.fast?.maxFeePerGas) {
         throw new Error('Gas API returned invalid data: missing fast estimate');
       }
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
         throw new Error(`Price API error: ${priceResponse.status}`);
       }
       priceData = await priceResponse.json();
-      
+
       if (!priceData.ethereum?.usd) {
         throw new Error('Price API returned invalid data: missing ethereum USD price');
       }
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
     checked = activeAlerts.length;
 
     // Calculate 6 hours in milliseconds for notification throttling
-    const sixHoursAgo = Date.now() - (6 * 60 * 60 * 1000);
+    const sixHoursAgo = new Date(Date.now() - (6 * 60 * 60 * 1000));
 
     for (const alert of activeAlerts) {
       try {
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
         const usdCost = gweiPerGas * 1e-9 * alert.minGasUnits * ethUsd;
 
         // Check if alert should be triggered
-        const shouldNotify = usdCost < alert.thresholdUsd && 
+        const shouldNotify = Number(usdCost) < Number(alert.thresholdUsd) &&
           (alert.lastNotifiedAt === null || alert.lastNotifiedAt < sixHoursAgo);
 
         if (shouldNotify) {
@@ -133,8 +133,8 @@ export async function POST(request: NextRequest) {
                   <ul>
                     <li><strong>Gas Price (Fast):</strong> ${gweiPerGas.toFixed(2)} gwei</li>
                     <li><strong>ETH Price:</strong> $${ethUsd.toFixed(2)}</li>
-                    <li><strong>Cost for ${alert.minGasUnits.toLocaleString()} gas units:</strong> $${usdCost.toFixed(4)}</li>
-                    <li><strong>Your threshold:</strong> $${alert.thresholdUsd.toFixed(4)}</li>
+                    <li><strong>Cost for ${alert.minGasUnits.toLocaleString()} gas units:</strong> $${Number(usdCost).toFixed(4)}</li>
+                    <li><strong>Your threshold:</strong> $${Number(alert.thresholdUsd).toFixed(4)}</li>
                   </ul>
                 </div>
                 
@@ -150,20 +150,20 @@ export async function POST(request: NextRequest) {
             // Update last_notified_at timestamp
             await db!.update(alerts)
               .set({
-                lastNotifiedAt: Date.now(),
-                updatedAt: Date.now()
+                lastNotifiedAt: new Date(),
+                updatedAt: new Date()
               })
               .where(eq(alerts.id, alert.id));
 
             notified++;
             console.log(`Notification sent to ${alert.email} for alert ${alert.id}`);
-            
+
           } catch (emailError) {
             console.error(`Failed to send email to ${alert.email}:`, emailError);
             errors++;
           }
         }
-        
+
       } catch (alertError) {
         console.error(`Error processing alert ${alert.id}:`, alertError);
         errors++;

@@ -1,0 +1,20 @@
+[package]
+name = "keystone-marketplace"
+version = "0.1.0"
+description = "Keystone OS Marketplace — On-chain app registry with 80/20 revenue split and escrow"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "keystone_marketplace"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = "0.30.1"
+anchor-spl = "0.30.1"

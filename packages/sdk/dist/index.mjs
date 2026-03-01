@@ -429,6 +429,21 @@ function useGaslessTx() {
   return { submit, loading, error };
 }
 
+// src/hooks/usePortfolio.ts
+import { useMemo as useMemo3 } from "react";
+
+// src/hooks/useTheme.ts
+import { useState as useState11, useCallback as useCallback13 } from "react";
+
+// src/hooks/useTokenPrice.ts
+import { useState as useState12, useEffect as useEffect5, useCallback as useCallback14 } from "react";
+
+// src/hooks/useNotification.ts
+import { useState as useState13, useCallback as useCallback15 } from "react";
+
+// src/hooks/useStorage.ts
+import { useState as useState14, useCallback as useCallback16 } from "react";
+
 // src/utils/toBlink.ts
 async function toBlink(action) {
   const bridge = getBridge();

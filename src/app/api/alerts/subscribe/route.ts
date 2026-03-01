@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     const conditionType = 'gas_below_usd_per_100k';
-    const now = Date.now();
+    const now = new Date();
 
     // Check for existing unverified alert with same email and conditionType
     const existingAlert = await db!.select()
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       // Update existing unverified alert
       const updatedAlert = await db!.update(alerts)
         .set({
-          thresholdUsd: finalThresholdUsd,
+          thresholdUsd: String(finalThresholdUsd),
           minGasUnits: finalMinGasUnits,
           active: true,
           updatedAt: now
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
         .values({
           email: email.toLowerCase(),
           conditionType,
-          thresholdUsd: finalThresholdUsd,
+          thresholdUsd: String(finalThresholdUsd),
           minGasUnits: finalMinGasUnits,
           verified: false,
           verifyToken,
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     const resend = new Resend(resendApiKey);
 
     const verificationUrl = `${appUrl}/api/alerts/verify?token=${alertRecord.verifyToken}`;
-    
+
     const emailHtml = `
       <html>
         <body>

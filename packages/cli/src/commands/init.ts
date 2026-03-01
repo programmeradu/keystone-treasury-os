@@ -144,46 +144,68 @@ export function runInit(dir: string): void {
     throw new Error(`Directory ${targetDir} is not empty.`);
   }
 
+  const appName = path.basename(targetDir) || "my-keystone-app";
+
   fs.mkdirSync(targetDir, { recursive: true });
   fs.writeFileSync(path.join(targetDir, "App.tsx"), STARTER_APP);
   fs.writeFileSync(
     path.join(targetDir, "keystone.lock.json"),
     JSON.stringify(LOCKFILE, null, 2)
   );
+
+  // Generate keystone.config.json
+  const config = {
+    name: appName,
+    description: `A Keystone mini-app`,
+    wallet: "",
+    cluster: "devnet",
+    category: "utility",
+    provider: "cloudflare",
+  };
+  fs.writeFileSync(
+    path.join(targetDir, "keystone.config.json"),
+    JSON.stringify(config, null, 2) + "\n"
+  );
+
   fs.writeFileSync(
     path.join(targetDir, "README.md"),
-    `# Keystone Sovereign OS Mini-App
+    `# ${appName}
 
-Built with \`@keystone-os/sdk\` — the Sovereign OS 2026 framework.
+Built with \`@keystone-os/sdk\` — Keystone Sovereign OS.
 
-## Features Used
-- **useVault** — Live token balances with real prices
-- **useJupiterSwap** — Deep-routed token swaps via Jupiter
-- **useImpactReport** — Pre-flight transaction simulation
-- **useTurnkey** — Institutional-grade signing
-
-## Getting Started
+## Quick Start
 \`\`\`bash
-# Validate your app
-keystone validate
-
-# Start local dev server
+# Preview locally
 keystone dev
 
-# Publish to Keystone Marketplace
-keystone publish -n "My App" -d "Description" -w <your-wallet>
+# Ship to marketplace (ONE command)
+keystone ship
 \`\`\`
 
-Open in **Keystone Studio** for the full IDE experience with AI Architect.
+## SDK Hooks Available
+- **useVault** — Token balances
+- **usePortfolio** — Portfolio data with USD values
+- **useJupiterSwap** — Token swaps via Jupiter
+- **useTheme** — Dark/light mode
+- **useTokenPrice** — Live token prices
+- **useNotification** — In-app notifications
+- **useStorage** — Persistent key-value storage
+- **useImpactReport** — Transaction simulation
+- **useTurnkey** — Institutional signing
+
+## Configuration
+Edit \`keystone.config.json\` to set your wallet, app name, and cluster.
 `
   );
 
-  console.log(`\n🏗️  Created Sovereign OS Mini-App in ${targetDir}\n`);
-  console.log("  📄 App.tsx          — Starter app with Vault + Jupiter Swap + Impact Report");
-  console.log("  🔒 keystone.lock.json — Pinned dependency map");
-  console.log("  📖 README.md        — Getting started guide");
-  console.log("\nNext steps:");
-  console.log("  cd " + (dir || "."));
-  console.log("  keystone dev        — Start local dev server");
-  console.log("  keystone validate   — Check safety standards\n");
+  console.log(`\n  Created Keystone Mini-App in ${targetDir}\n`);
+  console.log("  App.tsx              — Starter app with Vault + Jupiter Swap");
+  console.log("  keystone.config.json — Project configuration");
+  console.log("  keystone.lock.json   — Pinned dependency map");
+  console.log("  README.md            — Getting started guide");
+  console.log(`\nNext steps:`);
+  console.log(`  cd ${dir || "."}`);
+  console.log(`  Edit keystone.config.json (set your wallet address)`);
+  console.log(`  keystone dev          — Preview locally`);
+  console.log(`  keystone ship         — Ship to marketplace\n`);
 }

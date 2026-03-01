@@ -1,7 +1,7 @@
 {
   "name": "@keystone-os/sdk",
-  "version": "0.2.0",
-  "description": "SDK for Keystone Studio Mini-Apps — useVault, useTurnkey, useFetch, AppEventBus",
+  "version": "0.3.0",
+  "description": "SDK for Keystone Mini-Apps — 21 hooks including useVault, usePortfolio, useJupiterSwap, useTheme, useNotification, useStorage",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",

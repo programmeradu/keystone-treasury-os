@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 
     // Get all active bots for this wallet with delegations
     const now = Math.floor(Date.now() / 1000);
-    
+
     const bots = await db
       .select()
       .from(dcaBots)
@@ -57,7 +57,8 @@ export async function GET(request: Request) {
 
     for (const bot of bots) {
       const hasDelegation = bot.delegationAmount && bot.delegationExpiry;
-      const isExpired = bot.delegationExpiry ? bot.delegationExpiry < now : true;
+      const expiryTime = bot.delegationExpiry ? (bot.delegationExpiry instanceof Date ? Math.floor(bot.delegationExpiry.getTime() / 1000) : Number(bot.delegationExpiry)) : 0;
+      const isExpired = bot.delegationExpiry ? expiryTime < now : true;
 
       if (!hasDelegation) continue;
 
@@ -83,15 +84,15 @@ export async function GET(request: Request) {
         isExpired
       });
 
-      tokenDelegation.totalRemaining += bot.delegationAmount || 0;
-      
+      tokenDelegation.totalRemaining += Number(bot.delegationAmount) || 0;
+
       if (!isExpired) {
         tokenDelegation.allExpired = false;
       }
 
       if (bot.delegationExpiry) {
-        if (tokenDelegation.earliestExpiry === null || bot.delegationExpiry < tokenDelegation.earliestExpiry) {
-          tokenDelegation.earliestExpiry = bot.delegationExpiry;
+        if (tokenDelegation.earliestExpiry === null || expiryTime < tokenDelegation.earliestExpiry) {
+          tokenDelegation.earliestExpiry = expiryTime;
         }
       }
     }

@@ -3,7 +3,7 @@
 import { db } from "@/db";
 
 import { miniApps, purchases } from "@/db/schema";
-import { eq, desc, or, inArray } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 
 export interface ProjectMetadata {
     name: string;
@@ -28,16 +28,16 @@ export async function saveProject(
         throw new Error("Database connection not available");
     }
 
-    const timestamp = Date.now();
-
     // If appId is provided, we update. Otherwise, we create.
     const id = appId || generateId();
 
     try {
-        const existingApp = appId ? await db.select().from(miniApps).where(eq(miniApps.id, appId)).get() : null;
+        const existingRows = appId
+            ? await db.select().from(miniApps).where(eq(miniApps.id, appId)).limit(1)
+            : [];
+        const existingApp = existingRows[0] ?? null;
 
         // Security check: Ensure user owns the app logic if updating
-        // For MVP, we trust the wallet address passed, but in prod we'd verify session
         if (existingApp && existingApp.creatorWallet !== userId) {
             throw new Error("Unauthorized: You do not own this project");
         }
@@ -50,10 +50,8 @@ export async function saveProject(
                 name: metadata.name,
                 description: metadata.description,
                 code: code,
-                version: "0.1.0", // Draft version
+                version: "0.1.0",
                 isPublished: false,
-                createdAt: existingApp?.createdAt || timestamp,
-                updatedAt: timestamp,
             })
             .onConflictDoUpdate({
                 target: miniApps.id,
@@ -61,7 +59,7 @@ export async function saveProject(
                     name: metadata.name,
                     description: metadata.description,
                     code: code,
-                    updatedAt: timestamp
+                    updatedAt: new Date(),
                 }
             });
 
@@ -93,13 +91,13 @@ export async function getProject(appId: string) {
     if (!db) return null;
 
     try {
-        const project = await db
+        const rows = await db
             .select()
             .from(miniApps)
             .where(eq(miniApps.id, appId))
-            .get();
+            .limit(1);
 
-        return project;
+        return rows[0] ?? null;
     } catch (error) {
         console.error("Failed to fetch project:", error);
         return null;
@@ -136,12 +134,11 @@ export async function getInstalledApps(userId: string) {
         const allApps = [...createdApps, ...purchasedApps];
         const uniqueApps = Array.from(new Map(allApps.map(item => [item.id, item])).values());
 
-        // Sort by updated/created
-        return uniqueApps.sort((a, b) => b.updatedAt - a.updatedAt);
+        // Sort by updated/created (timestamps are Date objects now)
+        return uniqueApps.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
     } catch (error) {
         console.error("Failed to fetch installed apps:", error);
         return [];
     }
 }
-

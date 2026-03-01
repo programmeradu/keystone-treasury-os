@@ -20,7 +20,7 @@ export async function GET(req: Request) {
     // Verify cron secret for security
     const authHeader = req.headers.get("authorization");
     const cronSecret = process.env.CRON_SECRET;
-    
+
     if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
       console.error("Unauthorized cron request");
       return NextResponse.json(
@@ -37,8 +37,8 @@ export async function GET(req: Request) {
       );
     }
 
-    const now = Date.now();
-    console.log(`[DCA Cron] Starting execution check at ${new Date(now).toISOString()}`);
+    const now = new Date();
+    console.log(`[DCA Cron] Starting execution check at ${now.toISOString()}`);
 
     // Find all bots that are due to execute
     const dueBots = await db
@@ -84,9 +84,9 @@ export async function GET(req: Request) {
   } catch (error: any) {
     console.error("[DCA Cron] Fatal error:", error);
     return NextResponse.json(
-      { 
+      {
         error: "Cron execution failed",
-        details: error.message 
+        details: error.message
       },
       { status: 500 }
     );
@@ -151,7 +151,7 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
 
     // Execute the actual swap
     console.log(`[Bot ${bot.id}] Executing swap...`);
-    
+
     const delegatePrivateKeyBase58 = process.env.DELEGATE_WALLET_PRIVATE_KEY;
     if (!delegatePrivateKeyBase58) {
       console.error(`[Bot ${bot.id}] Delegate wallet private key not configured`);
@@ -179,21 +179,19 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
     // Record successful execution
     await db.insert(dcaExecutions).values({
       botId: bot.id,
-      executedAt: Date.now(),
-      paymentAmount: bot.amountUsd,
-      receivedAmount: executionResult.outAmount / Math.pow(10, 9), // Assuming 9 decimals for SOL
-      price: executionResult.price,
-      slippage: executionResult.slippage,
+      paymentAmount: String(bot.amountUsd),
+      receivedAmount: String(executionResult.outAmount / Math.pow(10, 9)),
+      price: String(executionResult.price),
+      slippage: String(executionResult.slippage),
       txSignature: executionResult.txSignature,
-      gasUsed: 0.000005, // Estimated 5000 lamports
+      gasUsed: '0.000005',
       status: "success",
       jupiterQuoteId: quote.routePlan?.[0]?.swapInfo?.ammKey || null,
-      createdAt: Date.now(),
     });
 
     // Update bot statistics
-    const newTotalInvested = bot.totalInvested + bot.amountUsd;
-    const newTotalReceived = bot.totalReceived + (executionResult.outAmount / Math.pow(10, 9));
+    const newTotalInvested = Number(bot.totalInvested) + Number(bot.amountUsd);
+    const newTotalReceived = Number(bot.totalReceived) + (executionResult.outAmount / Math.pow(10, 9));
     const newExecutionCount = bot.executionCount + 1;
     const newNextExecution = calculateNextExecution(bot);
 
@@ -201,12 +199,12 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
       .update(dcaBots)
       .set({
         executionCount: newExecutionCount,
-        totalInvested: newTotalInvested,
-        totalReceived: newTotalReceived,
+        totalInvested: String(newTotalInvested),
+        totalReceived: String(newTotalReceived),
         nextExecution: newNextExecution,
-        lastExecutionAttempt: Date.now(),
-        failedAttempts: 0, // Reset failed attempts on success
-        updatedAt: Date.now(),
+        lastExecutionAttempt: new Date(),
+        failedAttempts: 0,
+        updatedAt: new Date(),
       })
       .where(eq(dcaBots.id, bot.id));
 
@@ -235,16 +233,14 @@ async function recordFailedExecution(bot: any, errorMessage: string) {
     // Record failed execution
     await db.insert(dcaExecutions).values({
       botId: bot.id,
-      executedAt: Date.now(),
-      paymentAmount: bot.amountUsd,
-      receivedAmount: 0,
-      price: 0,
-      slippage: 0,
+      paymentAmount: String(bot.amountUsd),
+      receivedAmount: '0',
+      price: '0',
+      slippage: '0',
       txSignature: null,
-      gasUsed: 0,
+      gasUsed: '0',
       status: "failed",
       errorMessage,
-      createdAt: Date.now(),
     });
 
     // Update bot with failure info
@@ -254,11 +250,11 @@ async function recordFailedExecution(bot: any, errorMessage: string) {
     await db
       .update(dcaBots)
       .set({
-        lastExecutionAttempt: Date.now(),
+        lastExecutionAttempt: new Date(),
         failedAttempts: newFailedAttempts,
         status: shouldPause ? "paused" : bot.status,
         pauseReason: shouldPause ? `Failed ${newFailedAttempts} times: ${errorMessage}` : bot.pauseReason,
-        updatedAt: Date.now(),
+        updatedAt: new Date(),
       })
       .where(eq(dcaBots.id, bot.id));
 
@@ -279,16 +275,16 @@ async function skipExecution(bot: any, reason: string) {
 
   try {
     console.log(`[Bot ${bot.id}] Skipping execution: ${reason}`);
-    
+
     // Just update next execution time without recording failure
     const newNextExecution = calculateNextExecution(bot);
-    
+
     await db
       .update(dcaBots)
       .set({
         nextExecution: newNextExecution,
-        lastExecutionAttempt: Date.now(),
-        updatedAt: Date.now(),
+        lastExecutionAttempt: new Date(),
+        updatedAt: new Date(),
       })
       .where(eq(dcaBots.id, bot.id));
   } catch (error) {
@@ -299,20 +295,20 @@ async function skipExecution(bot: any, reason: string) {
 /**
  * Calculate next execution time based on bot's frequency
  */
-function calculateNextExecution(bot: any): number {
+function calculateNextExecution(bot: any): Date {
   const now = Date.now();
   const frequency = bot.frequency;
-  
+
   switch (frequency) {
     case "daily":
-      return now + (24 * 60 * 60 * 1000); // +1 day
+      return new Date(now + (24 * 60 * 60 * 1000));
     case "weekly":
-      return now + (7 * 24 * 60 * 60 * 1000); // +7 days
+      return new Date(now + (7 * 24 * 60 * 60 * 1000));
     case "biweekly":
-      return now + (14 * 24 * 60 * 60 * 1000); // +14 days
+      return new Date(now + (14 * 24 * 60 * 60 * 1000));
     case "monthly":
-      return now + (30 * 24 * 60 * 60 * 1000); // +30 days
+      return new Date(now + (30 * 24 * 60 * 60 * 1000));
     default:
-      return now + (24 * 60 * 60 * 1000); // Default to daily
+      return new Date(now + (24 * 60 * 60 * 1000));
   }
 }

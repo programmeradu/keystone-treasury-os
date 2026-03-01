@@ -18,7 +18,7 @@ const DEFAULT_PORT = 4200;
 // This is the vanilla JS version of the SDK that runs inside the dev preview.
 
 function buildSDKModule(): string {
-    return `
+  return `
     var React = window.React;
     var useState = React.useState;
     var useEffect = React.useEffect;
@@ -89,12 +89,50 @@ function buildSDKModule(): string {
     var useYieldOptimizer = function() { return { paths: [], loading: false, error: null, refetch: function() { return Promise.resolve(); } }; };
     var useGaslessTx = function() { return { submit: function(tx) { return Promise.resolve({ signature: 'gasless_dev_' + Math.random().toString(36).slice(2, 8) }); }, loading: false, error: null }; };
 
+    var usePortfolio = function() {
+      var vault = useVault();
+      return { data: { tokens: vault.tokens, totalValue: vault.tokens.reduce(function(s,t) { return s + t.balance * t.price; }, 0) }, isLoading: false, error: null, refetch: function() {} };
+    };
+
+    var useTheme = function() {
+      return { isDark: true, theme: 'dark', toggleTheme: function() { console.log('[Theme] Toggle'); } };
+    };
+
+    var useTokenPrice = function(mint) {
+      var prices = { 'So11111111111111111111111111111111111111112': 23.40, 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': 1.00, 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263': 0.000024, 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN': 1.12 };
+      return { price: prices[mint] || 0, loading: false };
+    };
+
+    var useNotification = function() {
+      var _n = useState([]), notifications = _n[0], setNotifications = _n[1];
+      return {
+        notifications: notifications,
+        send: function(title, opts) { var id = 'notif_' + Date.now().toString(36); setNotifications(function(p) { return [{ id: id, type: (opts && opts.type) || 'info', title: title, message: opts && opts.message, timestamp: Date.now(), read: false }].concat(p); }); return id; },
+        dismiss: function(id) { setNotifications(function(p) { return p.filter(function(n) { return n.id !== id; }); }); },
+        markRead: function(id) { setNotifications(function(p) { return p.map(function(n) { return n.id === id ? Object.assign({}, n, { read: true }) : n; }); }); },
+        clearAll: function() { setNotifications([]); },
+        unreadCount: notifications.filter(function(n) { return !n.read; }).length
+      };
+    };
+
+    var useStorage = function(ns) {
+      var prefix = ns ? 'ks_app_' + ns + '_' : 'ks_app_';
+      return {
+        get: function(k) { try { return localStorage.getItem(prefix + k); } catch(e) { return null; } },
+        set: function(k, v) { try { localStorage.setItem(prefix + k, v); } catch(e) {} },
+        remove: function(k) { try { localStorage.removeItem(prefix + k); } catch(e) {} },
+        keys: function() { var r = []; try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && k.indexOf(prefix) === 0) r.push(k.slice(prefix.length)); } } catch(e) {} return r; },
+        clear: function() { try { var rm = []; for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && k.indexOf(prefix) === 0) rm.push(k); } rm.forEach(function(k) { localStorage.removeItem(k); }); } catch(e) {} }
+      };
+    };
+
     var exportsObj = {
       useVault: useVault, useTurnkey: useTurnkey, useFetch: useFetch, AppEventBus: AppEventBus,
       useEncryptedSecret: useEncryptedSecret, useACEReport: useACEReport, useAgentHandoff: useAgentHandoff,
       useMCPClient: useMCPClient, useMCPServer: useMCPServer, useSIWS: useSIWS, useJupiterSwap: useJupiterSwap,
       useImpactReport: useImpactReport, useTaxForensics: useTaxForensics, useYieldOptimizer: useYieldOptimizer,
-      useGaslessTx: useGaslessTx
+      useGaslessTx: useGaslessTx, usePortfolio: usePortfolio, useTheme: useTheme, useTokenPrice: useTokenPrice,
+      useNotification: useNotification, useStorage: useStorage
     };
     window.__keystoneSDK = Object.assign({}, exportsObj, { default: exportsObj });
     window.__keystoneSDK.__esModule = true;
@@ -102,13 +140,13 @@ function buildSDKModule(): string {
 }
 
 function buildHTML(appCode: string): string {
-    const normalizedCode = appCode
-        .replace(/from\s+['"]\.\/keystone['"]/g, 'from "@keystone-os/sdk"')
-        .replace(/from\s+['"]keystone-api['"]/g, 'from "@keystone-os/sdk"');
+  const normalizedCode = appCode
+    .replace(/from\s+['"]\.\/keystone['"]/g, 'from "@keystone-os/sdk"')
+    .replace(/from\s+['"]keystone-api['"]/g, 'from "@keystone-os/sdk"');
 
-    const escapedCode = JSON.stringify(normalizedCode);
+  const escapedCode = JSON.stringify(normalizedCode);
 
-    return `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -175,69 +213,69 @@ function buildHTML(appCode: string): string {
 // ─── Dev Server ─────────────────────────────────────────────────────
 
 export interface DevOptions {
-    port?: number;
-    dir?: string;
+  port?: number;
+  dir?: string;
 }
 
 export function runDev(options: DevOptions = {}): void {
-    const dir = path.resolve(process.cwd(), options.dir || ".");
-    const port = options.port || DEFAULT_PORT;
+  const dir = path.resolve(process.cwd(), options.dir || ".");
+  const port = options.port || DEFAULT_PORT;
 
-    const appPath = path.join(dir, "App.tsx");
-    if (!fs.existsSync(appPath)) {
-        console.error(`\n❌ No App.tsx found in ${dir}`);
-        console.error("   Run 'keystone init' first to scaffold a Mini-App.\n");
-        process.exit(1);
+  const appPath = path.join(dir, "App.tsx");
+  if (!fs.existsSync(appPath)) {
+    console.error(`\n❌ No App.tsx found in ${dir}`);
+    console.error("   Run 'keystone init' first to scaffold a Mini-App.\n");
+    process.exit(1);
+  }
+
+  let contentHash = "";
+
+  function getAppCode(): string {
+    return fs.readFileSync(appPath, "utf-8");
+  }
+
+  function computeHash(content: string): string {
+    // Simple hash — enough for change detection
+    let hash = 0;
+    for (let i = 0; i < content.length; i++) {
+      hash = ((hash << 5) - hash + content.charCodeAt(i)) | 0;
+    }
+    return hash.toString(36);
+  }
+
+  // Watch for changes
+  let watchTimer: NodeJS.Timeout | null = null;
+  fs.watch(dir, { recursive: true }, () => {
+    if (watchTimer) clearTimeout(watchTimer);
+    watchTimer = setTimeout(() => {
+      const code = getAppCode();
+      contentHash = computeHash(code);
+    }, 200);
+  });
+
+  // Initial hash
+  contentHash = computeHash(getAppCode());
+
+  const server = http.createServer((req, res) => {
+    if (req.url === "/__keystone_dev_hash") {
+      res.writeHead(200, { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" });
+      res.end(contentHash);
+      return;
     }
 
-    let contentHash = "";
+    // Serve the preview HTML
+    const appCode = getAppCode();
+    contentHash = computeHash(appCode);
+    const html = buildHTML(appCode);
 
-    function getAppCode(): string {
-        return fs.readFileSync(appPath, "utf-8");
-    }
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.end(html);
+  });
 
-    function computeHash(content: string): string {
-        // Simple hash — enough for change detection
-        let hash = 0;
-        for (let i = 0; i < content.length; i++) {
-            hash = ((hash << 5) - hash + content.charCodeAt(i)) | 0;
-        }
-        return hash.toString(36);
-    }
-
-    // Watch for changes
-    let watchTimer: NodeJS.Timeout | null = null;
-    fs.watch(dir, { recursive: true }, () => {
-        if (watchTimer) clearTimeout(watchTimer);
-        watchTimer = setTimeout(() => {
-            const code = getAppCode();
-            contentHash = computeHash(code);
-        }, 200);
-    });
-
-    // Initial hash
-    contentHash = computeHash(getAppCode());
-
-    const server = http.createServer((req, res) => {
-        if (req.url === "/__keystone_dev_hash") {
-            res.writeHead(200, { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" });
-            res.end(contentHash);
-            return;
-        }
-
-        // Serve the preview HTML
-        const appCode = getAppCode();
-        contentHash = computeHash(appCode);
-        const html = buildHTML(appCode);
-
-        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-        res.end(html);
-    });
-
-    server.listen(port, () => {
-        console.log(`\n🚀 Keystone Dev Server running at http://localhost:${port}`);
-        console.log(`   Watching: ${appPath}`);
-        console.log(`   Auto-reload: enabled (1s poll)`);
-        console.log(`\n   Press Ctrl+C to stop.\n`);
-    });
+  server.listen(port, () => {
+    console.log(`\n🚀 Keystone Dev Server running at http://localhost:${port}`);
+    console.log(`   Watching: ${appPath}`);
+    console.log(`   Auto-reload: enabled (1s poll)`);
+    console.log(`\n   Press Ctrl+C to stop.\n`);
+  });
 }

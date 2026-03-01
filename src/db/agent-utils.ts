@@ -24,9 +24,9 @@ export interface UpdateExecutionInput {
   progress?: number;
   result?: Record<string, any>;
   error?: string;
-  actualGas?: number;
+  actualGas?: string;
   transactionSignature?: string;
-  completedAt?: number;
+  completedAt?: Date;
   duration?: number;
 }
 
@@ -35,8 +35,8 @@ export interface UpdateExecutionInput {
  */
 export async function createExecution(input: CreateExecutionInput) {
   const database = ensureDb();
-  const now = Date.now();
-  
+  const now = new Date();
+
   return database.insert(agentExecutions).values({
     id: input.id,
     userId: input.userId,
@@ -45,8 +45,6 @@ export async function createExecution(input: CreateExecutionInput) {
     input: input.input,
     status: ExecutionStatus.PENDING,
     progress: 0,
-    createdAt: now,
-    updatedAt: now,
   });
 }
 
@@ -58,12 +56,19 @@ export async function updateExecution(
   updates: UpdateExecutionInput
 ) {
   const database = ensureDb();
-  const now = Date.now();
-  
+  const now = new Date();
+
   return database
     .update(agentExecutions)
     .set({
-      ...updates,
+      status: updates.status,
+      progress: updates.progress,
+      result: updates.result,
+      error: updates.error,
+      actualGas: updates.actualGas,
+      transactionSignature: updates.transactionSignature,
+      completedAt: updates.completedAt,
+      duration: updates.duration,
       updatedAt: now,
       startedAt: updates.status === ExecutionStatus.RUNNING ? now : undefined,
     })
@@ -80,7 +85,7 @@ export async function getExecution(executionId: string) {
     .from(agentExecutions)
     .where(eq(agentExecutions.id, executionId))
     .limit(1);
-  
+
   return result[0] || null;
 }
 
@@ -117,7 +122,7 @@ export async function getExecutionStats(userId: string) {
     })
     .from(agentExecutions)
     .where(eq(agentExecutions.userId, userId));
-  
+
   return result[0] || {
     total: 0,
     successful: 0,
@@ -160,9 +165,9 @@ export async function createApproval(input: {
   riskLevel?: string;
 }) {
   const database = ensureDb();
-  const now = Date.now();
-  const expiresAt = now + 5 * 60 * 1000; // 5 minutes
-  
+  const now = new Date();
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
   return database.insert(agentApprovals).values({
     id: input.id,
     executionId: input.executionId,
@@ -170,10 +175,9 @@ export async function createApproval(input: {
     walletAddress: input.walletAddress,
     message: input.message,
     details: input.details,
-    estimatedFee: input.estimatedFee,
+    estimatedFee: input.estimatedFee != null ? String(input.estimatedFee) : undefined,
     riskLevel: input.riskLevel,
     expiresAt,
-    createdAt: now,
   });
 }
 
@@ -210,7 +214,7 @@ export async function respondToApproval(
       approved,
       signature,
       rejectionReason,
-      respondedAt: Date.now(),
+      respondedAt: new Date(),
     })
     .where(eq(agentApprovals.id, approvalId));
 }
@@ -225,7 +229,7 @@ export async function getApproval(approvalId: string) {
     .from(agentApprovals)
     .where(eq(agentApprovals.id, approvalId))
     .limit(1);
-  
+
   return result[0] || null;
 }
 
@@ -239,7 +243,7 @@ export async function getApprovalByExecutionId(executionId: string) {
     .from(agentApprovals)
     .where(eq(agentApprovals.executionId, executionId))
     .limit(1);
-  
+
   return result[0] || null;
 }
 
@@ -248,8 +252,8 @@ export async function getApprovalByExecutionId(executionId: string) {
  */
 export async function cleanupExpiredApprovals() {
   const database = ensureDb();
-  const now = Date.now();
-  
+  const now = new Date();
+
   return database
     .delete(agentApprovals)
     .where(sql`${agentApprovals.expiresAt} < ${now} AND ${agentApprovals.approved} IS NULL`);

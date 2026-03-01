@@ -12,103 +12,103 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const limit = Math.min(parseInt(searchParams.get('limit') || '6'), 20);
-    
+
     // Extract bearer token (MVP - just extract, don't validate)
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    
+
     // Calculate date thresholds (in milliseconds for consistency)
-    const fourteenDaysAgo = Date.now() - (14 * 24 * 60 * 60 * 1000);
-    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-    
+    const fourteenDaysAgo = new Date(Date.now() - (14 * 24 * 60 * 60 * 1000));
+    const thirtyDaysAgo = new Date(Date.now() - (30 * 24 * 60 * 60 * 1000));
+
     // Fetch recent user inputs and suggestion clicks (with error handling)
-    let recentInputs: Array<{ text: string, createdAt: number }> = [];
-    let recentClicks: Array<{ text: string, createdAt: number }> = [];
-    
+    let recentInputs: Array<{ text: string, createdAt: Date }> = [];
+    let recentClicks: Array<{ text: string, createdAt: Date }> = [];
+
     try {
       recentInputs = await db!.select({
         text: learnInputs.text,
         createdAt: learnInputs.createdAt
       })
-      .from(learnInputs)
-      .where(gte(learnInputs.createdAt, fourteenDaysAgo));
+        .from(learnInputs)
+        .where(gte(learnInputs.createdAt, fourteenDaysAgo));
     } catch (error) {
       console.log('No learn_inputs table or no data:', error);
       recentInputs = [];
     }
-    
+
     try {
       recentClicks = await db!.select({
         text: learnClicks.text,
         createdAt: learnClicks.createdAt
       })
-      .from(learnClicks)
-      .where(gte(learnClicks.createdAt, fourteenDaysAgo));
+        .from(learnClicks)
+        .where(gte(learnClicks.createdAt, fourteenDaysAgo));
     } catch (error) {
       console.log('No learn_clicks table or no data:', error);
       recentClicks = [];
     }
-    
+
     // Fetch cached suggestions from last 30 days
-    let cachedSuggestions: Array<{ text: string, weight: number }> = [];
+    let cachedSuggestions: Array<{ text: string, weight: string | null }> = [];
     try {
       cachedSuggestions = await db!.select({
         text: learnSuggestions.text,
         weight: learnSuggestions.weight
       })
-      .from(learnSuggestions)
-      .where(gte(learnSuggestions.createdAt, thirtyDaysAgo));
+        .from(learnSuggestions)
+        .where(gte(learnSuggestions.createdAt, thirtyDaysAgo));
     } catch (error) {
       console.log('No learn_suggestions table or no data:', error);
       cachedSuggestions = [];
     }
-    
+
     // Compute frequency maps
     const inputFreq = new Map<string, number>();
     const clickFreq = new Map<string, number>();
-    
+
     // Process user inputs
     recentInputs.forEach(input => {
       const normalizedText = input.text.toLowerCase().trim();
       inputFreq.set(normalizedText, (inputFreq.get(normalizedText) || 0) + 1);
     });
-    
+
     // Process suggestion clicks
     recentClicks.forEach(click => {
       const normalizedText = click.text.toLowerCase().trim();
       clickFreq.set(normalizedText, (clickFreq.get(normalizedText) || 0) + 1);
     });
-    
+
     // Extract bigrams and compute frequencies
     const bigramFreq = new Map<string, number>();
-    
+
     const extractBigrams = (text: string) => {
       const tokens = text.split(/\W+/)
         .filter(token => token.length >= 2)
         .map(token => token.toLowerCase());
-      
+
       for (let i = 0; i < tokens.length - 1; i++) {
         const bigram = `${tokens[i]} ${tokens[i + 1]}`;
         bigramFreq.set(bigram, (bigramFreq.get(bigram) || 0) + 1);
       }
-      
+
       return tokens;
     };
-    
+
     // Extract bigrams from all texts
     [...recentInputs, ...recentClicks].forEach(item => {
       extractBigrams(item.text);
     });
-    
+
     // Generate suggestions from top bigrams
     const generatedSuggestions = new Set<string>();
     const sortedBigrams = Array.from(bigramFreq.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 20); // Top 20 bigrams
-    
+
     sortedBigrams.forEach(([bigram, freq]) => {
       const tokens = bigram.split(' ');
-      
+
       // Pattern matching for common suggestions
       if (tokens.includes('bridge') && tokens.includes('usdc')) {
         generatedSuggestions.add('Bridge small amount of USDC to Base cheaply');
@@ -141,41 +141,41 @@ export async function GET(request: NextRequest) {
         generatedSuggestions.add('Find yield farming opportunities on Base');
       }
     });
-    
+
     // Combine all suggestions
     const allSuggestions = new Map<string, { clickFreq: number, inputFreq: number, cacheWeight: number }>();
-    
+
     // Add generated suggestions
     generatedSuggestions.forEach(suggestion => {
       const lowerSuggestion = suggestion.toLowerCase();
       const clickCount = clickFreq.get(lowerSuggestion) || 0;
       const inputCount = inputFreq.get(lowerSuggestion) || 0;
-      
+
       allSuggestions.set(suggestion, {
         clickFreq: clickCount,
         inputFreq: inputCount,
         cacheWeight: 0
       });
     });
-    
+
     // Add cached suggestions
     cachedSuggestions.forEach(cached => {
       const lowerText = cached.text.toLowerCase();
       const clickCount = clickFreq.get(lowerText) || 0;
       const inputCount = inputFreq.get(lowerText) || 0;
-      
+
       if (allSuggestions.has(cached.text)) {
         const existing = allSuggestions.get(cached.text)!;
-        existing.cacheWeight = Math.max(existing.cacheWeight, cached.weight);
+        existing.cacheWeight = Math.max(existing.cacheWeight, Number(cached.weight) || 0);
       } else {
         allSuggestions.set(cached.text, {
           clickFreq: clickCount,
           inputFreq: inputCount,
-          cacheWeight: cached.weight
+          cacheWeight: Number(cached.weight) || 0
         });
       }
     });
-    
+
     // Add frequent inputs and clicks as suggestions
     inputFreq.forEach((freq, text) => {
       if (freq >= 2 && !allSuggestions.has(text)) {
@@ -187,7 +187,7 @@ export async function GET(request: NextRequest) {
         });
       }
     });
-    
+
     clickFreq.forEach((freq, text) => {
       if (freq >= 2 && !allSuggestions.has(text)) {
         const inputCount = inputFreq.get(text) || 0;
@@ -198,42 +198,42 @@ export async function GET(request: NextRequest) {
         });
       }
     });
-    
+
     // Apply banned regex filter
     const bannedRegex = /(treasury|dao|multi-?sig|governance|payroll|corporate|board|investor|foundation)/i;
     const filteredSuggestions = Array.from(allSuggestions.entries())
       .filter(([text]) => !bannedRegex.test(text))
       .filter(([text]) => text.trim().length > 0);
-    
+
     // Sort by priority: click frequency > input frequency > cache weight
     const sortedSuggestions = filteredSuggestions.sort((a, b) => {
       const [, aStats] = a;
       const [, bStats] = b;
-      
+
       // Primary sort: click frequency
       if (aStats.clickFreq !== bStats.clickFreq) {
         return bStats.clickFreq - aStats.clickFreq;
       }
-      
+
       // Secondary sort: input frequency
       if (aStats.inputFreq !== bStats.inputFreq) {
         return bStats.inputFreq - aStats.inputFreq;
       }
-      
+
       // Tertiary sort: cache weight
       return bStats.cacheWeight - aStats.cacheWeight;
     });
-    
+
     // Extract final suggestions list
     const finalSuggestions = sortedSuggestions
       .slice(0, limit)
       .map(([text]) => text);
-    
+
     return NextResponse.json({
       ok: true,
       suggestions: finalSuggestions
     });
-    
+
   } catch (error) {
     console.error('GET suggestions error:', error);
     return NextResponse.json({

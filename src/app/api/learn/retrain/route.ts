@@ -30,11 +30,11 @@ export async function POST(request: NextRequest) {
     console.log(`Bearer token ${bearerToken ? 'provided' : 'not provided'}`);
 
     // Calculate cutoff timestamp (days ago)
-    const cutoffTimestamp = Date.now() - (days * 24 * 60 * 60 * 1000);
-    console.log(`Processing user inputs from last ${days} days (since ${new Date(cutoffTimestamp).toISOString()})`);
+    const cutoffTimestamp = new Date(Date.now() - (days * 24 * 60 * 60 * 1000));
+    console.log(`Processing user inputs from last ${days} days (since ${cutoffTimestamp.toISOString()})`);
 
     // Step 1: Fetch recent user inputs
-    let recentInputs: Array<{ text: string; createdAt: number }> = [];
+    let recentInputs: Array<{ text: string; createdAt: Date }> = [];
     try {
       recentInputs = await db!.select()
         .from(learnInputs)
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       'bridge': 2,
       'yield': 6
     };
-    
+
     if (recentInputs.length > 0) {
       // Process real input data if available
       for (const input of recentInputs) {
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
           .replace(/[^\w\s]/g, ' ')
           .split(/\s+/)
           .filter(token => token.length >= 3);
-        
+
         for (const token of tokens) {
           keywordCounts[token] = (keywordCounts[token] || 0) + 1;
         }
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
 
     // Step 4: Generate suggestion cache entries
     const bannedRegex = /(treasury|dao|multi-?sig|governance|payroll|corporate|board|investor|foundation)/i;
-    
+
     const suggestionTemplates = [
       "Check my wallet balances on Base",
       "Find best APY for USDC on Base",
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     // Get top keywords for generating dynamic suggestions
     const topKeywords = Object.entries(keywordCounts)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([, a], [, b]) => b - a)
       .slice(0, 10)
       .map(([keyword]) => keyword);
 
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
       console.log('No learn_clicks data:', error);
       clickedSuggestions = [];
     }
-    
+
     const clickedTexts = new Set(clickedSuggestions.map(s => s.text));
     console.log(`Found ${clickedTexts.size} previously clicked suggestions`);
 

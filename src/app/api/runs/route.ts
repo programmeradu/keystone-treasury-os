@@ -51,9 +51,9 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('GET error:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       ok: false,
-      error: 'Internal server error: ' + error 
+      error: 'Internal server error: ' + error
     }, { status: 500 });
   }
 }
@@ -69,94 +69,94 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!prompt) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         ok: false,
         error: "Prompt is required",
-        code: "MISSING_PROMPT" 
+        code: "MISSING_PROMPT"
       }, { status: 400 });
     }
 
     if (!planResult) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         ok: false,
         error: "Plan result is required",
-        code: "MISSING_PLAN_RESULT" 
+        code: "MISSING_PLAN_RESULT"
       }, { status: 400 });
     }
 
     // Validate field types and lengths
     if (typeof prompt !== 'string') {
-      return NextResponse.json({ 
+      return NextResponse.json({
         ok: false,
         error: "Prompt must be a string",
-        code: "INVALID_PROMPT_TYPE" 
+        code: "INVALID_PROMPT_TYPE"
       }, { status: 400 });
     }
 
     if (prompt.trim().length === 0) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         ok: false,
         error: "Prompt cannot be empty",
-        code: "EMPTY_PROMPT" 
+        code: "EMPTY_PROMPT"
       }, { status: 400 });
     }
 
     if (prompt.length > 10000) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         ok: false,
         error: "Prompt must be 10000 characters or less",
-        code: "PROMPT_TOO_LONG" 
+        code: "PROMPT_TOO_LONG"
       }, { status: 400 });
     }
 
     if (typeof planResult !== 'object' || planResult === null) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         ok: false,
         error: "Plan result must be a valid JSON object",
-        code: "INVALID_PLAN_RESULT" 
+        code: "INVALID_PLAN_RESULT"
       }, { status: 400 });
     }
 
     if (toolResult !== undefined && (typeof toolResult !== 'object' || toolResult === null)) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         ok: false,
         error: "Tool result must be a valid JSON object",
-        code: "INVALID_TOOL_RESULT" 
+        code: "INVALID_TOOL_RESULT"
       }, { status: 400 });
     }
 
     if (runLabel !== undefined) {
       if (typeof runLabel !== 'string') {
-        return NextResponse.json({ 
+        return NextResponse.json({
           ok: false,
           error: "Run label must be a string",
-          code: "INVALID_RUN_LABEL_TYPE" 
+          code: "INVALID_RUN_LABEL_TYPE"
         }, { status: 400 });
       }
       if (runLabel.length > 128) {
-        return NextResponse.json({ 
+        return NextResponse.json({
           ok: false,
           error: "Run label must be 128 characters or less",
-          code: "RUN_LABEL_TOO_LONG" 
+          code: "RUN_LABEL_TOO_LONG"
         }, { status: 400 });
       }
     }
 
     // Validate payload sizes
     if (!validateJsonSize(planResult, 1.5 * 1024 * 1024)) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         ok: false,
         error: "Plan result exceeds 1.5MB limit",
-        code: "PLAN_RESULT_TOO_LARGE" 
+        code: "PLAN_RESULT_TOO_LARGE"
       }, { status: 413 });
     }
 
     const totalPayloadSize = Buffer.byteLength(JSON.stringify(body), 'utf8');
     if (totalPayloadSize > 2 * 1024 * 1024) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         ok: false,
         error: "Total payload exceeds 2MB limit",
-        code: "PAYLOAD_TOO_LARGE" 
+        code: "PAYLOAD_TOO_LARGE"
       }, { status: 413 });
     }
 
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
 
     while (attempts < maxAttempts) {
       shortId = generateShortId();
-      
+
       // Check if shortId already exists
       const existing = await db!.select()
         .from(runs)
@@ -184,15 +184,13 @@ export async function POST(request: NextRequest) {
 
       attempts++;
       if (attempts >= maxAttempts) {
-        return NextResponse.json({ 
+        return NextResponse.json({
           ok: false,
           error: "Unable to generate unique short ID",
-          code: "SHORT_ID_GENERATION_FAILED" 
+          code: "SHORT_ID_GENERATION_FAILED"
         }, { status: 500 });
       }
     }
-
-    const now = Date.now();
 
     const newRun = await db!.insert(runs)
       .values({
@@ -200,8 +198,6 @@ export async function POST(request: NextRequest) {
         prompt: sanitizedPrompt,
         planResult: planResult,
         toolResult: toolResult || null,
-        createdAt: now,
-        updatedAt: now,
         runLabel: sanitizedRunLabel,
         meta: null
       })
@@ -216,9 +212,9 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('POST error:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       ok: false,
-      error: 'Internal server error: ' + error 
+      error: 'Internal server error: ' + error
     }, { status: 500 });
   }
 }

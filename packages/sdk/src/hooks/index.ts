@@ -14,3 +14,10 @@ export { useImpactReport } from "./useImpactReport";
 export { useTaxForensics } from "./useTaxForensics";
 export { useYieldOptimizer } from "./useYieldOptimizer";
 export { useGaslessTx } from "./useGaslessTx";
+// Extended SDK — v1.1
+export { usePortfolio } from "./usePortfolio";
+export { useTheme } from "./useTheme";
+export { useTokenPrice } from "./useTokenPrice";
+export { useNotification } from "./useNotification";
+export { useStorage } from "./useStorage";
+

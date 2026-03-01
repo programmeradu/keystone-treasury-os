@@ -1,25 +1,28 @@
-import { drizzle } from 'drizzle-orm/libsql';
-import { createClient } from '@libsql/client';
+import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '@/db/schema';
 
-// Create client only if environment variables are available
-// This prevents build-time errors when deploying to Netlify
+/**
+ * Neon Postgres connection via HTTP (serverless-friendly).
+ * Falls back to null for build-time compatibility.
+ */
 const createDbClient = () => {
-  const url = process.env.TURSO_CONNECTION_URL;
-  const authToken = process.env.TURSO_AUTH_TOKEN;
-  
-  if (!url || !authToken) {
-    // Return a mock client for build-time compatibility
+  const url = process.env.DATABASE_URL;
+  if (!url) {
     return null;
   }
-  
-  return createClient({
-    url,
-    authToken,
-  });
+  const sql = neon(url);
+  return drizzle(sql, { schema });
 };
 
-const client = createDbClient();
-export const db = client ? drizzle(client, { schema }) : null;
-
+export const db = createDbClient();
 export type Database = typeof db;
+
+/**
+ * Create a Drizzle client pointed at a Neon branch.
+ * Used for AI sandbox isolation — ephemeral database clones.
+ */
+export function createBranchDb(branchConnectionUrl: string) {
+  const sql = neon(branchConnectionUrl);
+  return drizzle(sql, { schema });
+}

@@ -58,12 +58,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert into learnClicks table
-    const createdAt = Date.now();
-    
     const result = await db!.insert(learnClicks)
       .values({
         text: sanitizedText,
-        createdAt: createdAt
       })
       .returning();
 
@@ -76,7 +73,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('POST suggestion click error:', error);
-    
+
     // Handle JSON parsing errors
     if (error instanceof SyntaxError) {
       return NextResponse.json({
