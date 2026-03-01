@@ -1,5 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { generateFullSystemPromptAddendum } from "@/lib/studio/framework-spec";
+
+// ─── Provider Helpers ───────────────────────────────────────────────
+
+function getDefaultModel(provider: string): string {
+  switch (provider) {
+    case "openai": return "gpt-4o";
+    case "groq": return "llama-3.3-70b-versatile";
+    case "google": return "gemini-2.0-flash";
+    case "anthropic": return "claude-sonnet-4-20250514";
+    case "cloudflare": return "@cf/qwen/qwen3-30b-a3b-fp8";
+    case "ollama": return "qwen2.5-coder:7b";
+    default: return "gpt-4o";
+  }
+}
 
 const STUDIO_SYSTEM_PROMPT = `You are "The Architect" — an AI code generator for Keystone Studio, the Bloomberg Terminal for Web3.
 
@@ -28,24 +43,7 @@ NEVER use these:
 - eval(), new Function() — blocked by CSP
 - window.open() — blocked by sandbox
 
-═══════════════════════════════════════════════════════════════
-§3. KEYSTONE SDK (@keystone-os/sdk)
-═══════════════════════════════════════════════════════════════
-
-ALWAYS import from '@keystone-os/sdk'. Example:
-  import { useVault, useTurnkey, useFetch, AppEventBus } from '@keystone-os/sdk';
-
-Available hooks:
-- useVault(): { activeVault: string, balances: Record<string,number>, tokens: Token[] }
-  Token = { symbol, name, balance, price, mint?, decimals?, logoURI? }
-
-- useTurnkey(): { getPublicKey: () => Promise<string>, signTransaction: (tx, description?) => Promise<{signature}> }
-
-- useFetch<T>(url, options?): { data: T|null, error: string|null, loading: boolean, refetch: () => void }
-  Routes through Keystone proxy. Allowed domains: api.jup.ag, api.coingecko.com, api.dexscreener.com,
-  public-api.birdeye.so, api.helius.xyz, api.raydium.io, etc.
-
-- AppEventBus: { emit: (type: string, payload?: any) => void }
+${generateFullSystemPromptAddendum()}
 
 ═══════════════════════════════════════════════════════════════
 §4. OUTPUT FORMAT (STRICT JSON)
@@ -76,13 +74,25 @@ If user provides [RUNTIME LOGS] or [TYPESCRIPT ERRORS]:
 - Cyberpunk Bloomberg aesthetic: dense data, monospace numbers, subtle borders.
 - Single-file: ALL components in App.tsx unless user asks for multi-file.
 - Default export required: export default function App() { ... }
-- NO emojis in code or JSON. NO placeholder comments like "// TODO". Write REAL logic.`;
+- NO emojis in code or JSON. NO placeholder comments like "// TODO". Write REAL logic.
+
+═══════════════════════════════════════════════════════════════
+§8. ANTI-PATTERNS (NEVER DO THESE)
+═══════════════════════════════════════════════════════════════
+
+- NEVER use useWallet(), useConnection(), useSolana() — these do NOT exist
+- NEVER import @solana/web3.js, ethers, axios, or any npm package not listed
+- NEVER write Node.js code (no fs, path, process, require, __dirname)
+- NEVER use class components — always use functional components with hooks
+- NEVER generate server-side code — this is a client-side React app in an iframe
+- NEVER use 'export const App' — MUST use 'export default function App()'
+- If unsure whether a hook exists, ONLY use hooks listed in §3 above`;
 
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { prompt, contextFiles } = body;
+    const { prompt, contextFiles, aiConfig } = body;
 
     if (!prompt) {
       return NextResponse.json(
@@ -101,98 +111,171 @@ export async function POST(req: NextRequest) {
       fullPrompt = `CURRENT STUDIO FILES:\n${fileContext}\n\nUSER REQUEST:\n${prompt}`;
     }
 
-    // Try OpenAI first, then GROQ
-    const openaiKey = process.env.OPENAI_API_KEY;
-    const groqKey = process.env.GROQ_API_KEY;
+    // ─── Provider Resolution ────────────────────────────────────────
+    // Priority: BYOK (user's key) → env OpenAI → env/fallback Groq
+    // Groq serves as the always-on free tier so the Architect always works.
 
-    if (!openaiKey && !groqKey) {
-      // Return a demo response if no API keys
-      return NextResponse.json({
-        files: {
-          "App.tsx": `import { useVault } from '@keystone-os/sdk';
+    const byokProvider = aiConfig?.provider;
+    const byokKey = aiConfig?.apiKey;
+    const byokModel = aiConfig?.model;
 
-export default function App() {
-  const { tokens, activeVault } = useVault();
+    // Determine which provider + key + model to use
+    let provider: "openai" | "groq" | "google" | "anthropic" | "cloudflare" | "ollama";
+    let activeKey: string;
+    let activeModel: string;
 
-  const totalValue = tokens.reduce((sum, t) => sum + t.balance * t.price, 0);
-
-  return (
-    <div className="p-6 bg-[#09090b] min-h-screen text-white">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-xl font-bold text-emerald-400 uppercase tracking-wider">
-            Treasury Pulse
-          </h1>
-          <p className="text-xs text-zinc-500 mt-1 font-mono">{activeVault}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-2xl font-mono font-bold text-white">
-            \${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-          </p>
-          <p className="text-[10px] text-emerald-400 uppercase tracking-widest font-bold">Total Value</p>
-        </div>
-      </div>
-      <div className="grid gap-3">
-        {tokens.map((token) => (
-          <div
-            key={token.symbol}
-            className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800 hover:border-emerald-400/20 transition-all"
-          >
-            <div>
-              <p className="font-bold">{token.symbol}</p>
-              <p className="text-xs text-zinc-500">{token.name}</p>
-            </div>
-            <div className="text-right">
-              <p className="font-mono font-bold">{token.balance.toLocaleString()}</p>
-              <p className="text-xs text-emerald-400">
-                \${(token.balance * token.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-      <p className="text-[9px] text-zinc-600 mt-6 text-center uppercase tracking-widest">
-        Configure OPENAI_API_KEY for AI generation
-      </p>
-    </div>
-  );
-}`,
+    if (byokKey && byokProvider) {
+      // 1. User's BYOK key takes top priority (any provider incl. OpenAI)
+      provider = byokProvider as typeof provider;
+      activeKey = byokKey;
+      activeModel = byokModel || getDefaultModel(byokProvider);
+    } else if (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_AI_TOKEN) {
+      // 2. Cloudflare Workers AI — primary free tier (10K neurons/day, your own account)
+      provider = "cloudflare";
+      activeKey = process.env.CLOUDFLARE_AI_TOKEN;
+      activeModel = process.env.CLOUDFLARE_AI_MODEL || "@cf/qwen/qwen3-30b-a3b-fp8";
+    } else if (process.env.GROQ_API_KEY) {
+      // 3. Groq — secondary free fallback (1,000 req/day, fastest inference)
+      provider = "groq";
+      activeKey = process.env.GROQ_API_KEY;
+      activeModel = "llama-3.3-70b-versatile";
+    } else if (process.env.OLLAMA_HOST || process.env.OLLAMA_ENABLED === "true") {
+      // 4. Ollama — local self-hosted (no API key needed, unlimited)
+      provider = "ollama";
+      activeKey = "ollama";
+      activeModel = process.env.OLLAMA_MODEL || "qwen2.5-coder:7b";
+    } else {
+      // No keys at all
+      return NextResponse.json(
+        {
+          error: "no_api_key",
+          details: "No AI API key configured. Open Settings (gear icon) to add your own OpenAI, Google Gemini, Anthropic, or Groq key.",
+          files: {},
+          explanation: "",
         },
-        explanation: "Demo response — Treasury Pulse widget displaying vault balances. Configure OPENAI_API_KEY or GROQ_API_KEY for full AI-powered generation.",
-      });
+        { status: 200 }
+      );
     }
 
+    // ─── LLM Call ───────────────────────────────────────────────────
     let response: string;
 
-    if (openaiKey) {
-      const openai = new OpenAI({ apiKey: openaiKey });
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+    if (provider === "openai" || provider === "groq") {
+      // Both OpenAI and Groq use the OpenAI-compatible SDK
+      const client = new OpenAI({
+        apiKey: activeKey,
+        ...(provider === "groq" && { baseURL: "https://api.groq.com/openai/v1" }),
+      });
+
+      const isOpenAI = provider === "openai";
+      const completion = await client.chat.completions.create({
+        model: activeModel,
         messages: [
-          { role: "system", content: STUDIO_SYSTEM_PROMPT },
+          {
+            role: "system",
+            content: isOpenAI
+              ? STUDIO_SYSTEM_PROMPT
+              : STUDIO_SYSTEM_PROMPT + "\n\nIMPORTANT: Return ONLY raw JSON. Do not wrap in markdown code blocks.",
+          },
           { role: "user", content: fullPrompt },
         ],
         temperature: 0.7,
         max_tokens: 4000,
-        response_format: { type: "json_object" }, // Enforce JSON
+        ...(isOpenAI && { response_format: { type: "json_object" as const } }),
       });
       response = completion.choices[0]?.message?.content || "{}";
+
+    } else if (provider === "google") {
+      // Google Gemini — REST API
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${activeKey}`;
+      const geminiRes = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: STUDIO_SYSTEM_PROMPT }] },
+          contents: [{ parts: [{ text: fullPrompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 4000,
+            responseMimeType: "application/json",
+          },
+        }),
+      });
+      if (!geminiRes.ok) {
+        const err = await geminiRes.json().catch(() => ({}));
+        throw new Error(err.error?.message || `Google API error ${geminiRes.status}`);
+      }
+      const geminiData = await geminiRes.json();
+      response = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+
+    } else if (provider === "anthropic") {
+      // Anthropic Claude — Messages API
+      const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": activeKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: activeModel,
+          max_tokens: 4000,
+          system: STUDIO_SYSTEM_PROMPT + "\n\nIMPORTANT: Return ONLY raw JSON. Do not wrap in markdown code blocks.",
+          messages: [{ role: "user", content: fullPrompt }],
+        }),
+      });
+      if (!claudeRes.ok) {
+        const err = await claudeRes.json().catch(() => ({}));
+        throw new Error(err.error?.message || `Anthropic API error ${claudeRes.status}`);
+      }
+      const claudeData = await claudeRes.json();
+      response = claudeData.content?.[0]?.text || "{}";
+
+    } else if (provider === "cloudflare") {
+      // Cloudflare Workers AI — OpenAI-compatible endpoint
+      const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || byokKey?.split(":")[0];
+      const cfToken = activeKey.includes(":") ? activeKey.split(":")[1] : activeKey;
+
+      const client = new OpenAI({
+        apiKey: cfToken,
+        baseURL: `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1`,
+      });
+      const completion = await client.chat.completions.create({
+        model: activeModel,
+        messages: [
+          {
+            role: "system",
+            content: STUDIO_SYSTEM_PROMPT + "\n\nIMPORTANT: Return ONLY raw JSON. Do not wrap in markdown code blocks.",
+          },
+          { role: "user", content: fullPrompt },
+        ],
+        temperature: 0.7,
+        max_tokens: 4000,
+      });
+      response = completion.choices[0]?.message?.content || "{}";
+
+    } else if (provider === "ollama") {
+      // Ollama — local self-hosted, OpenAI-compatible API
+      const ollamaHost = process.env.OLLAMA_HOST || "http://localhost:11434";
+      const client = new OpenAI({
+        apiKey: "ollama", // Ollama ignores the key
+        baseURL: `${ollamaHost}/v1`,
+      });
+      const completion = await client.chat.completions.create({
+        model: activeModel,
+        messages: [
+          {
+            role: "system",
+            content: STUDIO_SYSTEM_PROMPT + "\n\nIMPORTANT: Return ONLY raw JSON. Do not wrap in markdown code blocks.",
+          },
+          { role: "user", content: fullPrompt },
+        ],
+        temperature: 0.7,
+      });
+      response = completion.choices[0]?.message?.content || "{}";
+
     } else {
-      // Use GROQ
-      const groq = new OpenAI({
-        apiKey: groqKey,
-        baseURL: "https://api.groq.com/openai/v1",
-      });
-      const completion = await groq.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          { role: "system", content: STUDIO_SYSTEM_PROMPT + "\n\nIMPORTANT: Return ONLY raw JSON. Do not wrap in markdown code blocks." },
-          { role: "user", content: fullPrompt },
-        ],
-        temperature: 0.7,
-        max_tokens: 4000,
-      });
-      response = completion.choices[0]?.message?.content || "{}";
+      throw new Error(`Unsupported provider: ${provider}`);
     }
 
     // Parse JSON from response

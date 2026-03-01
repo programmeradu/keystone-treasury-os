@@ -9,6 +9,8 @@
  * [GEMINI-3.0] — The Architect Self-Correction Loop
  */
 
+import { validateFrameworkConformance } from "@/lib/studio/framework-spec";
+
 // ─── State Machine Types ────────────────────────────────────────────
 
 export type ArchitectState =
@@ -87,7 +89,8 @@ export class ArchitectEngine {
     prompt: string,
     contextFiles: Record<string, { content: string }>,
     runtimeLogs?: string[],
-    researchContext?: string
+    researchContext?: string,
+    aiConfig?: { provider: string; apiKey: string; model: string } | null
   ): Promise<void> {
     this.reset();
     this.startedAt = Date.now();
@@ -99,7 +102,8 @@ export class ArchitectEngine {
         prompt,
         contextFiles,
         runtimeLogs,
-        researchContext
+        researchContext,
+        aiConfig
       );
 
       if (!files || Object.keys(files).length === 0) {
@@ -193,7 +197,8 @@ export class ArchitectEngine {
     prompt: string,
     contextFiles: Record<string, { content: string }>,
     runtimeLogs?: string[],
-    researchContext?: string
+    researchContext?: string,
+    aiConfig?: { provider: string; apiKey: string; model: string } | null
   ): Promise<Record<string, string> | null> {
     let fullPrompt = prompt;
 
@@ -216,6 +221,7 @@ export class ArchitectEngine {
       body: JSON.stringify({
         prompt: fullPrompt,
         contextFiles,
+        aiConfig: aiConfig || undefined,
       }),
       signal: this.abortController?.signal,
     });
@@ -226,6 +232,11 @@ export class ArchitectEngine {
     }
 
     const data = await response.json();
+
+    // Handle no-key error from the API
+    if (data.error === "no_api_key") {
+      throw new Error("NO_API_KEY: " + (data.details || "No AI API key configured. Open Settings to add your own key."));
+    }
 
     if (data.explanation) {
       this.callbacks.onExplanation(data.explanation);
@@ -256,8 +267,8 @@ ${errors.join("\n")}
 
 [CURRENT CODE]
 ${Object.entries(currentFiles)
-  .map(([name, content]) => `--- ${name} ---\n${content}`)
-  .join("\n\n")}
+        .map(([name, content]) => `--- ${name} ---\n${content}`)
+        .join("\n\n")}
 
 Fix ONLY the errors listed above. Do not rewrite the entire file unless necessary.
 Return the corrected files in the standard JSON format.`;
@@ -343,6 +354,12 @@ Return the corrected files in the standard JSON format.`;
         }
       }
     }
+
+    // ─── Framework Conformance Gate ──────────────────
+    // Validates imports, SDK hooks, and blocked APIs against
+    // the canonical framework spec (single source of truth).
+    const frameworkErrors = validateFrameworkConformance(appCode);
+    errors.push(...frameworkErrors);
 
     return errors;
   }

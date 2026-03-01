@@ -6,6 +6,7 @@ import { runValidate } from "./commands/validate.js";
 import { validateLockfile } from "./commands/lockfile.js";
 import { runBuild } from "./commands/build.js";
 import { runPublish } from "./commands/publish.js";
+import { runDev } from "./commands/dev.js";
 
 const program = new Command();
 
@@ -20,6 +21,19 @@ program
   .action((dir: string) => {
     try {
       runInit(dir);
+    } catch (err) {
+      console.error(err instanceof Error ? err.message : err);
+      process.exit(1);
+    }
+  });
+
+program
+  .command("dev [dir]")
+  .description("Start local dev server with Keystone SDK sandbox")
+  .option("-p, --port <port>", "Port number (default: 4200)", (v) => parseInt(v, 10))
+  .action((dir: string = ".", opts: { port?: number }) => {
+    try {
+      runDev({ dir, port: opts.port });
     } catch (err) {
       console.error(err instanceof Error ? err.message : err);
       process.exit(1);

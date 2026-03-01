@@ -7,6 +7,20 @@ import {
     BridgeMethods,
     IFRAME_BRIDGE_CLIENT,
 } from "@/lib/studio/bridge-protocol";
+import {
+    stubLitEncrypt,
+    stubLitDecrypt,
+    stubACEReport,
+    stubMCPCall,
+    stubJupiterQuote,
+    stubJupiterSwap,
+    stubImpactReport,
+    stubTaxForensics,
+    stubYieldOptimize,
+    stubGaslessSubmit,
+    stubSIWSSign,
+    stubBlinkExport,
+} from "@/lib/studio/bridge-stubs";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -41,10 +55,10 @@ export function LivePreview({
 
     // ─── Fetch real prices + logos in parent (iframe sandbox blocks external fetch) ──
     const MINTS: Record<string, string> = React.useMemo(() => ({
-        SOL:  'So11111111111111111111111111111111111111112',
+        SOL: 'So11111111111111111111111111111111111111112',
         USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
         BONK: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
-        JUP:  'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',
+        JUP: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',
     }), []);
 
     const [livePrices, setLivePrices] = React.useState<Record<string, number>>({});
@@ -265,11 +279,33 @@ export function LivePreview({
             };
 
             var useTaxForensics = function(options) {
-                return { result: null, loading: false, error: null, refetch: function() { return Promise.resolve(); } };
+                var _s = useState(null), result = _s[0], setResult = _s[1];
+                var _l = useState(true), loading = _l[0], setLoading = _l[1];
+                var _e = useState(null), error = _e[0], setError = _e[1];
+                var fetchResult = useCallback(function() {
+                    setLoading(true); setError(null);
+                    return keystoneBridge.call('tax.forensics', { since: options && options.since ? options.since.toISOString() : undefined })
+                        .then(function(data) { setResult(data); })
+                        .catch(function(err) { setError(err.message); })
+                        .finally(function() { setLoading(false); });
+                }, []);
+                useEffect(function() { fetchResult(); }, [fetchResult]);
+                return { result: result, loading: loading, error: error, refetch: fetchResult };
             };
 
             var useYieldOptimizer = function(asset) {
-                return { paths: [], loading: false, error: null, refetch: function() { return Promise.resolve(); } };
+                var _s = useState([]), paths = _s[0], setPaths = _s[1];
+                var _l = useState(true), loading = _l[0], setLoading = _l[1];
+                var _e = useState(null), error = _e[0], setError = _e[1];
+                var fetchPaths = useCallback(function() {
+                    setLoading(true); setError(null);
+                    return keystoneBridge.call('yield.optimize', { asset: asset })
+                        .then(function(data) { setPaths(data || []); })
+                        .catch(function(err) { setError(err.message); setPaths([]); })
+                        .finally(function() { setLoading(false); });
+                }, [asset]);
+                useEffect(function() { fetchPaths(); }, [fetchPaths]);
+                return { paths: paths, loading: loading, error: error, refetch: fetchPaths };
             };
 
             var useGaslessTx = function() {
@@ -451,7 +487,7 @@ export function LivePreview({
             const result = await proxyRes.json();
 
             setLogs(prev => [...prev.slice(-500),
-                `[info] [Proxy] ${method || "GET"} ${url} → ${proxyRes.status}`
+            `[info] [Proxy] ${method || "GET"} ${url} → ${proxyRes.status}`
             ]);
 
             if (!proxyRes.ok) {
@@ -467,58 +503,77 @@ export function LivePreview({
             return null;
         });
 
-        // ─── Sovereign OS 2026 (stub handlers — implement per roadmap) ──
-        const notImpl = (method: string) => () => {
-            setLogs(prev => [...prev.slice(-500), `[warn] ${method} not yet implemented`]);
-            throw new Error(`${method} not yet implemented. See SOVEREIGN_OS_2026_ROADMAP.md`);
-        };
-        bridge.on(BridgeMethods.LIT_ENCRYPT, notImpl("lit.encryptSecret"));
-        bridge.on(BridgeMethods.LIT_DECRYPT, notImpl("lit.decryptSecret"));
-        bridge.on(BridgeMethods.ACE_REPORT, async () => []);
+        // ─── Sovereign OS 2026 — Full mock handlers (Phase 2) ──
+        bridge.on(BridgeMethods.LIT_ENCRYPT, async (p) => {
+            const params = p as { plaintext: string; keyId?: string };
+            setLogs(prev => [...prev.slice(-500), `[lit] encrypt (keyId: ${params.keyId || 'default'})`]);
+            return stubLitEncrypt(params);
+        });
+        bridge.on(BridgeMethods.LIT_DECRYPT, async (p) => {
+            const params = p as { ciphertext: string; keyId?: string };
+            setLogs(prev => [...prev.slice(-500), `[lit] decrypt (keyId: ${params.keyId || 'default'})`]);
+            return stubLitDecrypt(params);
+        });
+        bridge.on(BridgeMethods.ACE_REPORT, async (p) => {
+            const params = p as { since?: string };
+            setLogs(prev => [...prev.slice(-500), `[ace] report requested`]);
+            return stubACEReport(params);
+        });
         bridge.on(BridgeMethods.ZKSP_VERIFY, async () => ({ verified: false }));
         bridge.on(BridgeMethods.AGENT_HANDOFF, async (p) => {
-            setLogs(prev => [...prev.slice(-500), `[agent] handoff ${(p as { fromAgent?: string }).fromAgent} → ${(p as { toAgent?: string }).toAgent}`]);
+            const params = p as { fromAgent?: string; toAgent?: string };
+            setLogs(prev => [...prev.slice(-500), `[agent] handoff ${params.fromAgent} → ${params.toAgent}`]);
             return { status: "handoff_received" };
         });
-        bridge.on(BridgeMethods.MCP_CALL, notImpl("mcp.call"));
+        bridge.on(BridgeMethods.MCP_CALL, async (p) => {
+            const params = p as { serverUrl: string; tool: string; params?: Record<string, unknown> };
+            setLogs(prev => [...prev.slice(-500), `[mcp] call ${params.tool} via ${params.serverUrl}`]);
+            return stubMCPCall(params);
+        });
         bridge.on(BridgeMethods.MCP_SERVE, async (p) => {
             setLogs(prev => [...prev.slice(-500), `[mcp] serve tools: ${((p as { tools?: unknown[] }).tools ?? []).length}`]);
             return null;
         });
         bridge.on(BridgeMethods.IMPACT_REPORT, async (p) => {
-            const tx = (p as { transaction?: unknown }).transaction;
+            const params = p as { transaction?: unknown };
             setLogs(prev => [...prev.slice(-500), `[simulation] impact report for tx`]);
-            return {
-                before: { activeVault: "Main", balances: {}, tokens: [] },
-                after: { activeVault: "Main", balances: {}, tokens: [] },
-                diff: [],
-                simulationHash: tx ? "0x" + Math.random().toString(16).slice(2) : undefined,
-            };
+            return stubImpactReport(params);
         });
-        bridge.on(BridgeMethods.SIWS_SIGN, async () => ({
-            message: "Sign in with Solana",
-            signature: "mock_sig",
-            address: walletAddress || "mock",
-            chainId: 101,
-        }));
+        bridge.on(BridgeMethods.SIWS_SIGN, async () => {
+            setLogs(prev => [...prev.slice(-500), `[siws] sign-in requested`]);
+            return stubSIWSSign(walletAddress ?? null);
+        });
         bridge.on(BridgeMethods.SIWS_VERIFY, async () => true);
-        bridge.on(BridgeMethods.JUPITER_SWAP, notImpl("jupiter.swap"));
-        bridge.on(BridgeMethods.JUPITER_QUOTE, notImpl("jupiter.quote"));
-        bridge.on(BridgeMethods.YIELD_OPTIMIZE, async () => []);
-        bridge.on(BridgeMethods.GASLESS_SUBMIT, async (p) => {
-            setLogs(prev => [...prev.slice(-500), `[gasless] submit (stub — implement fee payer)`]);
-            return { signature: "gasless_mock_" + crypto.randomUUID().slice(0, 8) };
+        bridge.on(BridgeMethods.JUPITER_SWAP, async (p) => {
+            const params = p as { inputMint: string; outputMint: string; amount: string; slippageBps?: number };
+            setLogs(prev => [...prev.slice(-500), `[jupiter] swap ${params.amount} ${params.inputMint} → ${params.outputMint}`]);
+            return stubJupiterSwap(params);
         });
-        bridge.on(BridgeMethods.BLINK_EXPORT, async (p) => ({
-            url: `https://blink.solana.com/action?label=${encodeURIComponent((p as { label?: string }).label ?? "action")}`,
-            actionId: crypto.randomUUID(),
-        }));
-        bridge.on(BridgeMethods.TAX_FORENSICS, async () => ({
-            lots: [],
-            totalCostBasis: 0,
-            unrealizedGainLoss: 0,
-            realizedGainLoss: 0,
-        }));
+        bridge.on(BridgeMethods.JUPITER_QUOTE, async (p) => {
+            const params = p as { inputMint: string; outputMint: string; amount: string; slippageBps?: number };
+            setLogs(prev => [...prev.slice(-500), `[jupiter] quote ${params.amount} ${params.inputMint} → ${params.outputMint}`]);
+            return stubJupiterQuote(params);
+        });
+        bridge.on(BridgeMethods.YIELD_OPTIMIZE, async (p) => {
+            const params = p as { asset: string };
+            setLogs(prev => [...prev.slice(-500), `[yield] optimize for ${params.asset}`]);
+            return stubYieldOptimize(params);
+        });
+        bridge.on(BridgeMethods.GASLESS_SUBMIT, async (p) => {
+            const params = p as { transaction: unknown; description?: string };
+            setLogs(prev => [...prev.slice(-500), `[gasless] submit: ${params.description || 'gasless tx'}`]);
+            return stubGaslessSubmit(params);
+        });
+        bridge.on(BridgeMethods.BLINK_EXPORT, async (p) => {
+            const params = p as { label?: string };
+            setLogs(prev => [...prev.slice(-500), `[blink] export action: ${params.label}`]);
+            return stubBlinkExport(params);
+        });
+        bridge.on(BridgeMethods.TAX_FORENSICS, async (p) => {
+            const params = p as { since?: string };
+            setLogs(prev => [...prev.slice(-500), `[tax] forensics requested`]);
+            return stubTaxForensics(params);
+        });
 
         bridge.start();
         bridgeRef.current = bridge;
@@ -549,15 +604,14 @@ export function LivePreview({
                     logs.map((log, i) => (
                         <div
                             key={i}
-                            className={`py-1 border-b border-zinc-900/50 ${
-                                log.startsWith("[error]")
+                            className={`py-1 border-b border-zinc-900/50 ${log.startsWith("[error]")
                                     ? "text-red-400"
                                     : log.startsWith("[warn]")
-                                    ? "text-yellow-400"
-                                    : log.startsWith("[event]")
-                                    ? "text-cyan-400"
-                                    : "text-zinc-300"
-                            }`}
+                                        ? "text-yellow-400"
+                                        : log.startsWith("[event]")
+                                            ? "text-cyan-400"
+                                            : "text-zinc-300"
+                                }`}
                         >
                             {log}
                         </div>
