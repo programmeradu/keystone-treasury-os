@@ -327,8 +327,7 @@ export function APIKeySettings({
                             </label>
                             <a
                                 href={currentProvider.docsUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                                target="_blank" rel="noopener noreferrer"
                                 className="flex items-center gap-1 text-[10px] text-purple-400 hover:text-purple-300 transition-colors"
                             >
                                 Get a key <ExternalLink className="w-3 h-3" />

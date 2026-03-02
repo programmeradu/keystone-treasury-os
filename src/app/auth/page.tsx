@@ -607,7 +607,7 @@ function AuthPageContent() {
                     <div className="mt-8 flex items-center justify-center gap-6 text-[11px] uppercase tracking-widest font-bold text-white/10">
                         <a href="/docs" className="hover:text-white/30 transition-colors">Documentation</a>
                         <span className="w-1 h-1 rounded-full bg-white/10"></span>
-                        <a href="https://solana.com" target="_blank" rel="noopener" className="hover:text-white/30 transition-colors">Built on Solana</a>
+                        <a href="https://solana.com" target="_blank" rel="noopener noreferrer" className="hover:text-white/30 transition-colors">Built on Solana</a>
                     </div>
                 </div>
             </div>

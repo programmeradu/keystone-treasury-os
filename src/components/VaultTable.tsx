@@ -51,8 +51,7 @@ export function VaultTable({ tokens }: { tokens: TokenAccount[] }) {
                                     </button>
                                     <a
                                         href={`https://solscan.io/token/${token.mint}?cluster=devnet`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                        target="_blank" rel="noopener noreferrer"
                                         className="opacity-0 group-hover:opacity-100 transition-opacity hover:text-primary"
                                     >
                                         <ExternalLink size={10} />
