@@ -358,7 +358,6 @@ export default function WorkingSwap() {
                   <a
                     href={`https://solscan.io/tx/${successHash}?cluster=devnet`}
                     target="_blank" rel="noopener noreferrer"
-                    rel="noopener noreferrer"
                     className="text-xs text-green-400 hover:text-green-300 break-all font-mono underline"
                   >
                     {successHash}

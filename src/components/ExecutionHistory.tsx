@@ -274,7 +274,6 @@ function ExecutionDetails({ execution }: { execution: Execution }) {
             <a
               href={`https://solscan.io/tx/${execution.transactionSignature}`}
               target="_blank" rel="noopener noreferrer"
-              rel="noopener noreferrer"
               className="text-blue-400 hover:text-blue-300 font-mono text-xs break-all"
             >
               View on Solscan
