@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { generateFullSystemPromptAddendum } from "@/lib/studio/framework-spec";
+import { checkRouteLimit } from "@/lib/rate-limit-middleware";
 
 // ─── Provider Helpers ───────────────────────────────────────────────
 
@@ -91,6 +92,18 @@ If user provides [RUNTIME LOGS] or [TYPESCRIPT ERRORS]:
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit: AI Architect runs
+    const rateLimit = await checkRouteLimit(req, 'ai_architect_runs');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({
+        error: 'Rate limit exceeded',
+        tier: rateLimit.tier,
+        remaining: 0,
+        resetAt: rateLimit.resetAt.toISOString(),
+        message: `You've reached your ${rateLimit.tier} tier limit for AI Architect. Upgrade for more.`,
+      }, { status: 429 });
+    }
+
     const body = await req.json();
     const { prompt, contextFiles, aiConfig } = body;
 

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ATLAS_TOOL_MANIFEST } from "@/lib/atlas-tool-manifest";
+import { checkRouteLimit } from "@/lib/rate-limit-middleware";
+import { saveConversation, type AtlasMessage } from "@/lib/atlas-session";
 
 // Helper function to call the underlying AI provider and handle responses
 async function callLLM(origin: string, prompt: string, provider: "groq" | "github") {
@@ -12,7 +14,7 @@ async function callLLM(origin: string, prompt: string, provider: "groq" | "githu
       json: true,
     };
     console.log(`[callLLM] Request body:`, JSON.stringify(requestBody, null, 2));
-    
+
     const response = await fetch(`${origin}/api/ai/text`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -20,7 +22,7 @@ async function callLLM(origin: string, prompt: string, provider: "groq" | "githu
     });
 
     console.log(`[callLLM] Response status: ${response.status}`);
-    
+
     if (!response.ok) {
       const errorBody = await response.text();
       console.error(`[callLLM] ${provider} API failed with status ${response.status}`);
@@ -54,11 +56,24 @@ async function callLLM(origin: string, prompt: string, provider: "groq" | "githu
 
 export async function POST(req: NextRequest) {
   try {
-    const { text } = await req.json();
+    const { text, walletAddress } = await req.json();
     const origin = new URL(req.url).origin;
 
     if (!text) {
       return NextResponse.json({ error: "Input text is required" }, { status: 400 });
+    }
+
+    // Rate limit: Atlas AI queries (uses wallet from body since Atlas is anonymous)
+    if (walletAddress) {
+      const rateLimit = await checkRouteLimit(req, 'atlas_ai_queries', true);
+      if (!rateLimit.allowed) {
+        return NextResponse.json({
+          error: 'Rate limit exceeded',
+          tier: rateLimit.tier,
+          resetAt: rateLimit.resetAt.toISOString(),
+          message: 'Daily Atlas AI query limit reached. Connect a Keystone account for higher limits.',
+        }, { status: 429 });
+      }
     }
 
     const prompt = `
@@ -89,7 +104,7 @@ Analyze the user's command and determine the most appropriate tool.
 
     // If the fallback also fails or returns 'unknown', then we respond with the final result.
     if (!parsedCommand) {
-        return NextResponse.json({ tool_id: "unknown", reason: "All AI providers failed." });
+      return NextResponse.json({ tool_id: "unknown", reason: "All AI providers failed." });
     }
 
     return NextResponse.json(parsedCommand);

@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { dcaBots, dcaExecutions } from "@/db/schema";
 import { eq, and, lte, desc } from "drizzle-orm";
 import { getTokenPrice, calculateNextExecution } from "@/lib/jupiter-executor";
+import { checkRouteLimit } from "@/lib/rate-limit-middleware";
 
 export const dynamic = "force-dynamic";
 
@@ -110,7 +111,7 @@ export async function GET(req: Request) {
 }
 
 // Create or manage DCA bots
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     // Check database connection
     if (!db) {
@@ -118,6 +119,16 @@ export async function POST(req: Request) {
         { error: "Database not available" },
         { status: 503 }
       );
+    }
+
+    // Rate limit: DCA bots
+    const rateLimit = await checkRouteLimit(req, 'dca_bots');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({
+        error: 'Rate limit exceeded',
+        tier: rateLimit.tier,
+        resetAt: rateLimit.resetAt.toISOString(),
+      }, { status: 429 });
     }
 
     const body = await req.json();

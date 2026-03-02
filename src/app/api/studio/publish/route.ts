@@ -8,9 +8,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { miniApps } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { checkRouteLimit } from "@/lib/rate-limit-middleware";
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit: marketplace listings
+    const rateLimit = await checkRouteLimit(request, 'marketplace_listings');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({
+        error: 'Rate limit exceeded',
+        tier: rateLimit.tier,
+        resetAt: rateLimit.resetAt.toISOString(),
+      }, { status: 429 });
+    }
+
     const body = (await request.json()) as {
       name?: string;
       description?: string;

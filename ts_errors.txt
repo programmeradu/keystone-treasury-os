@@ -1,0 +1,6 @@
+src/__tests__/studio.test.ts(15,38): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+src/app/api/auth/callback/neon/route.ts(22,32): error TS18047: 'db' is possibly 'null'.
+src/app/api/auth/callback/neon/route.ts(29,19): error TS18047: 'db' is possibly 'null'.
+src/app/api/auth/callback/neon/route.ts(36,19): error TS18047: 'db' is possibly 'null'.
+src/lib/auth/client.ts(3,34): error TS2307: Cannot find module '@neondatabase/auth/next' or its corresponding type declarations.
+src/lib/auth/server.ts(1,32): error TS2307: Cannot find module '@neondatabase/auth/next/server' or its corresponding type declarations.

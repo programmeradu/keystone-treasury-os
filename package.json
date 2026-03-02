@@ -34,6 +34,7 @@
     "@liveblocks/react": "^3.12.1",
     "@marinade.finance/marinade-ts-sdk": "^5.0.16",
     "@monaco-editor/react": "^4.7.0",
+    "@neondatabase/auth": "^0.2.0-beta.1",
     "@neondatabase/serverless": "^1.0.2",
     "@netlify/functions": "^4.2.6",
     "@netlify/plugin-nextjs": "^5.13.3",

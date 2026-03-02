@@ -4,6 +4,7 @@ import { alerts } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { Resend } from 'resend';
 import { checkDatabaseAvailability } from '@/lib/db-utils';
+import { checkRouteLimit } from '@/lib/rate-limit-middleware';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,6 +12,16 @@ export async function POST(request: NextRequest) {
     const dbCheckResponse = checkDatabaseAvailability();
     if (dbCheckResponse) {
       return dbCheckResponse;
+    }
+
+    // Rate limit: alerts
+    const rateLimit = await checkRouteLimit(request, 'alerts');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({
+        error: 'Rate limit exceeded',
+        tier: rateLimit.tier,
+        resetAt: rateLimit.resetAt.toISOString(),
+      }, { status: 429 });
     }
 
     const { email, thresholdUsd, minGasUnits } = await request.json();

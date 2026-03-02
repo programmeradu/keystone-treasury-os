@@ -20,7 +20,7 @@ export async function middleware(request: NextRequest) {
         '/fonts',
     ];
 
-    const publicPages = ['/', '/marketplace', '/pricing', '/docs', '/about'];
+    const publicPages = ['/', '/marketplace', '/pricing', '/docs', '/about', '/auth'];
 
     if (
         publicPaths.some((p) => pathname.startsWith(p)) ||
@@ -73,10 +73,9 @@ export async function middleware(request: NextRequest) {
             );
         }
 
-        // For pages: redirect to home
+        // For pages: redirect to auth
         const url = request.nextUrl.clone();
-        url.pathname = '/';
-        url.searchParams.set('auth', 'required');
+        url.pathname = '/auth';
         return NextResponse.redirect(url);
     }
 

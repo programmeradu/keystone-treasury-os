@@ -18,12 +18,15 @@ export const users = pgTable('users', {
   displayName: text('display_name'),
   avatarUrl: text('avatar_url'),
   role: text('role').notNull().default('user'), // user | creator | admin
+  tier: text('tier').notNull().default('free'), // free | mini | max
+  tierExpiresAt: timestamp('tier_expires_at'), // null = never expires (free tier or lifetime)
   supabaseUserId: text('supabase_user_id').unique(), // Supabase Auth uid
   createdAt: timestamp('created_at').defaultNow().notNull(),
   lastLoginAt: timestamp('last_login_at').defaultNow().notNull(),
 }, (table) => ({
   walletIdx: index('users_wallet_idx').on(table.walletAddress),
   supabaseIdx: index('users_supabase_idx').on(table.supabaseUserId),
+  tierIdx: index('users_tier_idx').on(table.tier),
 }));
 
 // ─── AI Runs ──────────────────────────────────────────────────────────
@@ -285,4 +288,210 @@ export const purchases = pgTable('purchases', {
 }, (table) => ({
   appIdx: index('purchases_app_idx').on(table.appId),
   buyerIdx: index('purchases_buyer_idx').on(table.buyerWallet),
+}));
+
+// ─── User Settings ────────────────────────────────────────────────────
+export const userSettings = pgTable('user_settings', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
+  theme: text('theme').notNull().default('dark'), // dark | light | system
+  network: text('network').notNull().default('mainnet-beta'), // mainnet-beta | devnet | testnet
+  rpcEndpoint: text('rpc_endpoint'), // custom RPC URL
+  currency: text('currency').notNull().default('USD'),
+  language: text('language').notNull().default('en'),
+  notificationsEnabled: boolean('notifications_enabled').notNull().default(true),
+  emailAlerts: boolean('email_alerts').notNull().default(false),
+  pushAlerts: boolean('push_alerts').notNull().default(false),
+  slippageTolerance: numeric('slippage_tolerance', { precision: 6, scale: 4 }).notNull().default('0.5'),
+  autoApproveBelow: numeric('auto_approve_below', { precision: 18, scale: 6 }), // auto-approve txns below this SOL amount
+  defaultVaultAddress: text('default_vault_address'),
+  preferences: jsonb('preferences'), // catch-all for future prefs
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('user_settings_user_idx').on(table.userId),
+}));
+
+// ─── Analytics Snapshots ──────────────────────────────────────────────
+export const analyticsSnapshots = pgTable('analytics_snapshots', {
+  id: serial('id').primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  walletAddress: text('wallet_address').notNull(),
+  totalValueUsd: numeric('total_value_usd', { precision: 18, scale: 6 }).notNull(),
+  solBalance: numeric('sol_balance', { precision: 18, scale: 9 }).notNull(),
+  tokenBalances: jsonb('token_balances').notNull(), // { mint, symbol, amount, valueUsd }[]
+  defiPositions: jsonb('defi_positions'), // { protocol, type, valueUsd, apy }[]
+  yieldEarned: numeric('yield_earned', { precision: 18, scale: 6 }),
+  pnl24h: numeric('pnl_24h', { precision: 18, scale: 6 }),
+  pnl7d: numeric('pnl_7d', { precision: 18, scale: 6 }),
+  pnl30d: numeric('pnl_30d', { precision: 18, scale: 6 }),
+  snapshotAt: timestamp('snapshot_at').defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('analytics_snapshots_user_idx').on(table.userId),
+  walletIdx: index('analytics_snapshots_wallet_idx').on(table.walletAddress),
+  snapshotAtIdx: index('analytics_snapshots_at_idx').on(table.snapshotAt),
+}));
+
+// ─── Airdrop Claims ──────────────────────────────────────────────────
+export const airdropClaims = pgTable('airdrop_claims', {
+  id: serial('id').primaryKey(),
+  userId: uuid('user_id').references(() => users.id),
+  walletAddress: text('wallet_address').notNull(),
+  protocolName: text('protocol_name').notNull(),
+  protocolSlug: text('protocol_slug').notNull(),
+  tokenSymbol: text('token_symbol'),
+  tokenMint: text('token_mint'),
+  estimatedValue: numeric('estimated_value', { precision: 18, scale: 6 }),
+  status: text('status').notNull().default('eligible'), // eligible | claimed | expired | ineligible
+  eligibilityChecked: boolean('eligibility_checked').notNull().default(false),
+  claimedAt: timestamp('claimed_at'),
+  claimTxSignature: text('claim_tx_signature'),
+  deadline: timestamp('deadline'),
+  source: text('source').notNull(), // airdrops.io | manual | defi-scan
+  sourceUrl: text('source_url'),
+  metadata: jsonb('metadata'), // extra data from source
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  walletIdx: index('airdrop_claims_wallet_idx').on(table.walletAddress),
+  statusIdx: index('airdrop_claims_status_idx').on(table.status),
+  protocolIdx: index('airdrop_claims_protocol_idx').on(table.protocolSlug),
+  deadlineIdx: index('airdrop_claims_deadline_idx').on(table.deadline),
+}));
+
+// ─── Foresight Predictions ───────────────────────────────────────────
+export const foresightPredictions = pgTable('foresight_predictions', {
+  id: serial('id').primaryKey(),
+  userId: uuid('user_id').references(() => users.id),
+  walletAddress: text('wallet_address'),
+  predictionType: text('prediction_type').notNull(), // price | yield | risk | market_trend
+  targetAsset: text('target_asset'), // SOL, ETH, or protocol slug
+  targetMint: text('target_mint'),
+  timeframeHours: integer('timeframe_hours').notNull(), // 1, 4, 24, 168 (1w)
+  predictedValue: numeric('predicted_value', { precision: 18, scale: 6 }),
+  actualValue: numeric('actual_value', { precision: 18, scale: 6 }),
+  confidence: numeric('confidence', { precision: 5, scale: 4 }).notNull(), // 0.0000–1.0000
+  direction: text('direction'), // up | down | neutral
+  modelVersion: text('model_version').notNull().default('v1'),
+  reasoning: text('reasoning'), // AI explanation
+  resolved: boolean('resolved').notNull().default(false),
+  correct: boolean('correct'), // null = unresolved
+  resolvedAt: timestamp('resolved_at'),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('foresight_predictions_user_idx').on(table.userId),
+  typeIdx: index('foresight_predictions_type_idx').on(table.predictionType),
+  assetIdx: index('foresight_predictions_asset_idx').on(table.targetAsset),
+  resolvedIdx: index('foresight_predictions_resolved_idx').on(table.resolved),
+  createdAtIdx: index('foresight_predictions_created_at_idx').on(table.createdAt),
+}));
+
+// ─── Transaction Cache ───────────────────────────────────────────────
+export const transactionCache = pgTable('transaction_cache', {
+  id: serial('id').primaryKey(),
+  userId: uuid('user_id').references(() => users.id),
+  walletAddress: text('wallet_address').notNull(),
+  signature: text('signature').notNull().unique(),
+  blockTime: timestamp('block_time'),
+  slot: integer('slot'),
+  success: boolean('success').notNull(),
+  type: text('type'), // transfer | swap | stake | unstake | nft | program | unknown
+  direction: text('direction'), // in | out | self
+  fromAddress: text('from_address'),
+  toAddress: text('to_address'),
+  amount: numeric('amount', { precision: 18, scale: 9 }),
+  tokenMint: text('token_mint'),
+  tokenSymbol: text('token_symbol'),
+  valueUsd: numeric('value_usd', { precision: 18, scale: 6 }),
+  fee: numeric('fee', { precision: 18, scale: 9 }),
+  programId: text('program_id'),
+  memo: text('memo'),
+  rawData: jsonb('raw_data'), // full parsed Helius data
+  taxCategory: text('tax_category'), // income | capital_gain | transfer | fee
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  walletIdx: index('tx_cache_wallet_idx').on(table.walletAddress),
+  signatureIdx: index('tx_cache_signature_idx').on(table.signature),
+  blockTimeIdx: index('tx_cache_block_time_idx').on(table.blockTime),
+  typeIdx: index('tx_cache_type_idx').on(table.type),
+  taxCategoryIdx: index('tx_cache_tax_category_idx').on(table.taxCategory),
+}));
+
+// ─── Notifications ───────────────────────────────────────────────────
+export const notifications = pgTable('notifications', {
+  id: serial('id').primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: text('type').notNull(), // alert | dca | agent | marketplace | system | team
+  title: text('title').notNull(),
+  message: text('message').notNull(),
+  severity: text('severity').notNull().default('info'), // info | success | warning | error
+  read: boolean('read').notNull().default(false),
+  readAt: timestamp('read_at'),
+  actionUrl: text('action_url'), // deep link into the app
+  actionLabel: text('action_label'),
+  relatedEntityType: text('related_entity_type'), // dca_bot | agent_execution | mini_app | alert
+  relatedEntityId: text('related_entity_id'),
+  metadata: jsonb('metadata'),
+  expiresAt: timestamp('expires_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('notifications_user_idx').on(table.userId),
+  readIdx: index('notifications_read_idx').on(table.read),
+  typeIdx: index('notifications_type_idx').on(table.type),
+  createdAtIdx: index('notifications_created_at_idx').on(table.createdAt),
+}));
+
+// ─── Team Activity Log ───────────────────────────────────────────────
+export const teamActivityLog = pgTable('team_activity_log', {
+  id: serial('id').primaryKey(),
+  userId: uuid('user_id').references(() => users.id),
+  walletAddress: text('wallet_address').notNull(),
+  vaultAddress: text('vault_address').notNull(),
+  action: text('action').notNull(), // proposal_created | proposal_voted | proposal_executed | member_added | member_removed | settings_changed | funds_transferred
+  targetType: text('target_type'), // proposal | member | vault | transaction
+  targetId: text('target_id'),
+  description: text('description').notNull(),
+  details: jsonb('details'), // { proposalIndex, vote, amount, txSignature, ... }
+  txSignature: text('tx_signature'),
+  ipAddress: text('ip_address'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  vaultIdx: index('team_activity_vault_idx').on(table.vaultAddress),
+  userIdx: index('team_activity_user_idx').on(table.userId),
+  actionIdx: index('team_activity_action_idx').on(table.action),
+  createdAtIdx: index('team_activity_created_at_idx').on(table.createdAt),
+}));
+
+// ─── Rate Limits ─────────────────────────────────────────────────────
+export const rateLimits = pgTable('rate_limits', {
+  id: serial('id').primaryKey(),
+  identifier: text('identifier').notNull(), // walletAddress or userId
+  identifierType: text('identifier_type').notNull(), // wallet | user
+  resource: text('resource').notNull(), // ai_architect_runs | atlas_ai_queries | dca_bots | studio_apps | marketplace_listings | alerts | atlas_tx_lookups
+  windowStart: timestamp('window_start').notNull(),
+  windowSize: text('window_size').notNull().default('day'), // hour | day | month
+  count: integer('count').notNull().default(0),
+  lastRequestAt: timestamp('last_request_at').defaultNow().notNull(),
+}, (table) => ({
+  identifierResourceIdx: index('rate_limits_id_resource_idx').on(table.identifier, table.resource, table.windowStart),
+  resourceIdx: index('rate_limits_resource_idx').on(table.resource),
+  windowIdx: index('rate_limits_window_idx').on(table.windowStart),
+}));
+
+// ─── Atlas Sessions (wallet-based, no account required) ──────────────
+export const atlasSessions = pgTable('atlas_sessions', {
+  id: serial('id').primaryKey(),
+  walletAddress: text('wallet_address').notNull(),
+  userId: uuid('user_id').references(() => users.id), // null for anonymous, backfilled on SIWS login
+  conversationHistory: jsonb('conversation_history').notNull().default('[]'), // { role, content, timestamp }[]
+  lastQuery: text('last_query'),
+  context: jsonb('context'), // cached portfolio data, token balances, etc.
+  expiresAt: timestamp('expires_at').notNull(), // 24h for anonymous, 30d for Keystone subscribers
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  walletIdx: index('atlas_sessions_wallet_idx').on(table.walletAddress),
+  userIdx: index('atlas_sessions_user_idx').on(table.userId),
+  expiresIdx: index('atlas_sessions_expires_idx').on(table.expiresAt),
 }));

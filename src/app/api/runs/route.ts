@@ -4,6 +4,7 @@ import { runs } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { randomBytes } from 'crypto';
 import { checkDatabaseAvailability } from '@/lib/db-utils';
+import { checkRouteLimit } from '@/lib/rate-limit-middleware';
 
 function generateShortId(): string {
   const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
@@ -63,6 +64,17 @@ export async function POST(request: NextRequest) {
     // Check if database is available
     const dbError = checkDatabaseAvailability();
     if (dbError) return dbError;
+
+    // Rate limit: AI Architect runs
+    const rateLimit = await checkRouteLimit(request, 'ai_architect_runs');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({
+        ok: false,
+        error: 'Rate limit exceeded',
+        tier: rateLimit.tier,
+        resetAt: rateLimit.resetAt.toISOString(),
+      }, { status: 429 });
+    }
 
     const body = await request.json();
     const { prompt, planResult, toolResult, runLabel } = body;
