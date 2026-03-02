@@ -42,7 +42,7 @@ export function OpportunitiesCard({ specLoading, specError, specItems }: Opportu
               <a
                 key={`${it.url || it.title}-${i}`}
                 href={it.url}
-                target="_blank"
+                target="_blank" rel="noopener noreferrer"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 rounded-md px-2.5 py-2 text-xs bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 transition-colors hover:bg-accent/10 group"
                 title={it.title || it.project || "Untitled"}

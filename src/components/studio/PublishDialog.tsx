@@ -276,7 +276,7 @@ export function PublishDialog({
                             {state.result.marketplaceUrl && (
                                 <a
                                     href={state.result.marketplaceUrl}
-                                    target="_blank"
+                                    target="_blank" rel="noopener noreferrer"
                                     rel="noopener noreferrer"
                                     className="flex items-center justify-center gap-2 w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-sm font-bold transition-colors mt-2"
                                 >

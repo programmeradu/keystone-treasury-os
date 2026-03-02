@@ -108,7 +108,7 @@ export function SiteFooter() {
           <div className="flex items-center gap-4">
             <a
               href="https://twitter.com/Keystone_OS"
-              target="_blank"
+              target="_blank" rel="noopener noreferrer"
               rel="noopener noreferrer"
               className="text-white/30 hover:text-keystone-green transition-colors"
             >
@@ -116,7 +116,7 @@ export function SiteFooter() {
             </a>
             <a
               href="https://discord.gg/keystone"
-              target="_blank"
+              target="_blank" rel="noopener noreferrer"
               rel="noopener noreferrer"
               className="text-white/30 hover:text-keystone-green transition-colors"
             >
@@ -124,7 +124,7 @@ export function SiteFooter() {
             </a>
             <a
               href="https://github.com/keystone-org"
-              target="_blank"
+              target="_blank" rel="noopener noreferrer"
               rel="noopener noreferrer"
               className="text-white/30 hover:text-keystone-green transition-colors"
             >

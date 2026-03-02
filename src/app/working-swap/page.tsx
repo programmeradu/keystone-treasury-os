@@ -357,7 +357,7 @@ export default function WorkingSwap() {
                   <div className="text-green-300 text-sm font-semibold"> Swap Successful!</div>
                   <a
                     href={`https://solscan.io/tx/${successHash}?cluster=devnet`}
-                    target="_blank"
+                    target="_blank" rel="noopener noreferrer"
                     rel="noopener noreferrer"
                     className="text-xs text-green-400 hover:text-green-300 break-all font-mono underline"
                   >

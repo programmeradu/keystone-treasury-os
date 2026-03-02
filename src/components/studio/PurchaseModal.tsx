@@ -279,7 +279,7 @@ export function PurchaseModal({ open, onOpenChange, app, onSuccess }: PurchaseMo
                         {txSignature && (
                             <a
                                 href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`}
-                                target="_blank"
+                                target="_blank" rel="noopener noreferrer"
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-1.5 text-xs text-primary hover:underline"
                             >
