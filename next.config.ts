@@ -13,6 +13,12 @@ const nextConfig: NextConfig = {
       //   use: [{ loader: "./component-tagger-loader.js" }],
       // });
     }
+
+    // Workaround for @neondatabase/auth exports map which maps default to .mjs but Webpack complains
+    if (!config.resolve) config.resolve = {};
+    if (!config.resolve.extensionAlias) config.resolve.extensionAlias = {};
+    config.resolve.extensionAlias['.js'] = ['.js', '.ts', '.tsx', '.mjs'];
+
     return config;
   },
 };

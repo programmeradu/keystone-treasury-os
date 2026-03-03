@@ -105,30 +105,32 @@ export async function getProject(appId: string) {
 
 export async function getInstalledApps(userId: string) {
     if (!db) return [];
+    const database = db;
 
     try {
-        // 1. Get apps created by user
-        const createdApps = await db
-            .select()
-            .from(miniApps)
-            .where(eq(miniApps.creatorWallet, userId));
-
-        // 2. Get apps purchased by user
-        const userPurchases = await db
-            .select({ appId: purchases.appId })
-            .from(purchases)
-            .where(eq(purchases.buyerWallet, userId));
-
-        // 3. Get apps installed via userInstalledApps (dock order, pinning)
-        const installed = await db
-            .select()
-            .from(userInstalledApps)
-            .where(
-                and(
-                    eq(userInstalledApps.userId, userId),
-                    isNull(userInstalledApps.uninstalledAt)
+        // ⚡ Bolt Optimization: Execute independent DB queries concurrently
+        const [createdApps, userPurchases, installed] = await Promise.all([
+            // 1. Get apps created by user
+            database
+                .select()
+                .from(miniApps)
+                .where(eq(miniApps.creatorWallet, userId)),
+            // 2. Get apps purchased by user
+            database
+                .select({ appId: purchases.appId })
+                .from(purchases)
+                .where(eq(purchases.buyerWallet, userId)),
+            // 3. Get apps installed via userInstalledApps (dock order, pinning)
+            database
+                .select()
+                .from(userInstalledApps)
+                .where(
+                    and(
+                        eq(userInstalledApps.userId, userId),
+                        isNull(userInstalledApps.uninstalledAt)
+                    )
                 )
-            );
+        ]);
 
         const purchasedAppIds = userPurchases.map(p => p.appId);
         const installedAppIds = installed.map(i => i.appId);
@@ -242,20 +244,24 @@ export async function uninstallApp(userId: string, appId: string) {
 
 export async function reorderDock(userId: string, appIds: string[]) {
     if (!db) throw new Error("Database not available");
+    const database = db;
 
     try {
-        for (let i = 0; i < appIds.length; i++) {
-            await db
-                .update(userInstalledApps)
-                .set({ dockOrder: i })
-                .where(
-                    and(
-                        eq(userInstalledApps.userId, userId),
-                        eq(userInstalledApps.appId, appIds[i]),
-                        isNull(userInstalledApps.uninstalledAt)
+        // ⚡ Bolt Optimization: Execute sequential DB updates concurrently
+        await Promise.all(
+            appIds.map((appId, i) =>
+                database
+                    .update(userInstalledApps)
+                    .set({ dockOrder: i })
+                    .where(
+                        and(
+                            eq(userInstalledApps.userId, userId),
+                            eq(userInstalledApps.appId, appId),
+                            isNull(userInstalledApps.uninstalledAt)
+                        )
                     )
-                );
-        }
+            )
+        );
 
         return { success: true };
     } catch (error) {
