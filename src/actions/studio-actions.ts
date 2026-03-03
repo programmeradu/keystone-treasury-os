@@ -105,22 +105,23 @@ export async function getProject(appId: string) {
 
 export async function getInstalledApps(userId: string) {
     if (!db) return [];
+    const database = db;
 
     try {
         // ⚡ Bolt Optimization: Execute independent DB queries concurrently
         const [createdApps, userPurchases, installed] = await Promise.all([
             // 1. Get apps created by user
-            db
+            database
                 .select()
                 .from(miniApps)
                 .where(eq(miniApps.creatorWallet, userId)),
             // 2. Get apps purchased by user
-            db
+            database
                 .select({ appId: purchases.appId })
                 .from(purchases)
                 .where(eq(purchases.buyerWallet, userId)),
             // 3. Get apps installed via userInstalledApps (dock order, pinning)
-            db
+            database
                 .select()
                 .from(userInstalledApps)
                 .where(
@@ -243,12 +244,13 @@ export async function uninstallApp(userId: string, appId: string) {
 
 export async function reorderDock(userId: string, appIds: string[]) {
     if (!db) throw new Error("Database not available");
+    const database = db;
 
     try {
         // ⚡ Bolt Optimization: Execute sequential DB updates concurrently
         await Promise.all(
             appIds.map((appId, i) =>
-                db
+                database
                     .update(userInstalledApps)
                     .set({ dockOrder: i })
                     .where(
