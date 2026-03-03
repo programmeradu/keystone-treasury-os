@@ -46,7 +46,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Database not available" }, { status: 503 });
     }
 
-    const id = `app_${Math.random().toString(36).substring(2, 10)}`;
+    // Securely generate app ID
+    const id = `app_${crypto.randomUUID().replace(/-/g, "").substring(0, 8)}`;
 
     await db.insert(miniApps).values({
       id,
