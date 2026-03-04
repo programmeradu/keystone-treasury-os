@@ -1,0 +1,230 @@
+{
+    "name": "keystone-treasury",
+    "version": "1.0.0",
+    "description": "Build and publish Web3 treasury mini-apps to the Keystone Marketplace. Earn 80% revenue.",
+    "author": "keystone-os",
+    "homepage": "https://keystone.stauniverse.tech",
+    "repository": "https://github.com/keystone-os/openclaw-skill",
+    "license": "MIT",
+    "skills": [
+        "./"
+    ],
+    "agentTools": [
+        {
+            "name": "keystone_list_templates",
+            "description": "List all available Keystone mini-app templates with descriptions and categories.",
+            "required": false,
+            "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+            }
+        },
+        {
+            "name": "keystone_scaffold",
+            "description": "Create a new mini-app project from a Keystone template. Returns the path to the scaffolded project.",
+            "required": false,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "template": {
+                        "type": "string",
+                        "enum": [
+                            "dashboard",
+                            "analytics-widget",
+                            "defi-tool",
+                            "portfolio-tracker"
+                        ],
+                        "description": "The template to scaffold from."
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "Project name in kebab-case (e.g., 'whale-tracker')."
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Short description of what the app does."
+                    }
+                },
+                "required": [
+                    "template",
+                    "name"
+                ],
+                "additionalProperties": false
+            }
+        },
+        {
+            "name": "keystone_add_datasource",
+            "description": "Add a data source integration to a scaffolded mini-app project.",
+            "required": false,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "project": {
+                        "type": "string",
+                        "description": "The mini-app project name."
+                    },
+                    "source": {
+                        "type": "string",
+                        "enum": [
+                            "helius",
+                            "bitquery",
+                            "jupiter",
+                            "marinade",
+                            "custom-rpc"
+                        ],
+                        "description": "The data source to add."
+                    },
+                    "config": {
+                        "type": "object",
+                        "description": "Optional configuration for the data source.",
+                        "additionalProperties": true
+                    }
+                },
+                "required": [
+                    "project",
+                    "source"
+                ],
+                "additionalProperties": false
+            }
+        },
+        {
+            "name": "keystone_preview",
+            "description": "Start a local preview dev server for a mini-app project. Returns the preview URL.",
+            "required": false,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "project": {
+                        "type": "string",
+                        "description": "The mini-app project name to preview."
+                    }
+                },
+                "required": [
+                    "project"
+                ],
+                "additionalProperties": false
+            }
+        },
+        {
+            "name": "keystone_publish",
+            "description": "Publish a mini-app to the Keystone Marketplace. Creator earns 80% revenue. Requires a wallet address for payouts.",
+            "required": false,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "project": {
+                        "type": "string",
+                        "description": "The mini-app project name to publish."
+                    },
+                    "pricing": {
+                        "type": "object",
+                        "properties": {
+                            "model": {
+                                "type": "string",
+                                "enum": [
+                                    "one-time",
+                                    "monthly"
+                                ],
+                                "description": "Pricing model for the app."
+                            },
+                            "amount": {
+                                "type": "number",
+                                "description": "Price in USD equivalent."
+                            },
+                            "currency": {
+                                "type": "string",
+                                "enum": [
+                                    "USDC",
+                                    "SOL"
+                                ],
+                                "description": "Payment currency."
+                            }
+                        },
+                        "required": [
+                            "model",
+                            "amount",
+                            "currency"
+                        ]
+                    },
+                    "creatorWallet": {
+                        "type": "string",
+                        "description": "Solana wallet address to receive 80% revenue."
+                    },
+                    "category": {
+                        "type": "string",
+                        "enum": [
+                            "dashboard",
+                            "analytics",
+                            "defi-tool",
+                            "portfolio",
+                            "treasury",
+                            "scanner"
+                        ],
+                        "description": "Marketplace category."
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Search tags for marketplace discoverability."
+                    }
+                },
+                "required": [
+                    "project",
+                    "pricing",
+                    "creatorWallet",
+                    "category"
+                ],
+                "additionalProperties": false
+            }
+        },
+        {
+            "name": "keystone_check_revenue",
+            "description": "Check earnings and revenue stats for a creator wallet on the Keystone Marketplace.",
+            "required": false,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "creatorWallet": {
+                        "type": "string",
+                        "description": "Solana wallet address of the creator."
+                    }
+                },
+                "required": [
+                    "creatorWallet"
+                ],
+                "additionalProperties": false
+            }
+        },
+        {
+            "name": "keystone_update_app",
+            "description": "Push an update to a published mini-app. Preserves listing, pricing, and subscribers.",
+            "required": false,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "appId": {
+                        "type": "string",
+                        "description": "The Keystone Marketplace app ID (e.g., 'kt-00042')."
+                    },
+                    "project": {
+                        "type": "string",
+                        "description": "The local project directory with the updated code."
+                    },
+                    "changes": {
+                        "type": "string",
+                        "description": "Summary of changes in this update (shown in app changelog)."
+                    }
+                },
+                "required": [
+                    "appId",
+                    "project",
+                    "changes"
+                ],
+                "additionalProperties": false
+            }
+        }
+    ]
+}
