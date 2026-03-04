@@ -27,6 +27,7 @@
     "@babel/standalone": "^7.28.5",
     "@coinbase/onchainkit": "^1.0.3",
     "@hookform/resolvers": "^3.10.0",
+    "@irys/sdk": "^0.2.11",
     "@keystone-os/cli": "^0.1.0",
     "@libsql/client": "^0.15.15",
     "@liveblocks/client": "^3.12.1",
@@ -121,6 +122,7 @@
     "tweetnacl": "^1.0.3",
     "vaul": "^1.1.2",
     "viem": "^2.37.8",
+    "vitest": "^4.0.18",
     "wagmi": "2",
     "ws": "^8.18.3",
     "zod": "^3.23.8"
