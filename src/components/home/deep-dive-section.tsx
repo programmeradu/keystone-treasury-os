@@ -114,7 +114,7 @@ function StudioMockUI() {
               ].map((item) => (
                 <div key={item.token} className="flex items-center justify-between rounded-md bg-white/[0.02] px-3 py-2">
                   <div className="flex items-center gap-2">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {/* @eslint-disable-next-line @next/next/no-img-element */}
                     <img src={item.logo} alt="" className="h-3.5 w-3.5 rounded-full" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                     <span className="text-[11px] text-white/40 font-mono">{item.token}</span>
                   </div>
