@@ -12,12 +12,13 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { headers } from 'next/headers';
+import { NextRequest } from 'next/server';
 
-export async function POST() {
+export async function POST(req: NextRequest) {
     try {
         // Get the current Neon Auth session
-        const session = await auth.api.getSession({
-            headers: await headers(),
+        const { data: session } = await auth.getSession({
+            fetchOptions: { headers: req.headers }
         });
 
         if (!session?.user) {

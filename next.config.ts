@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
       //   use: [{ loader: "./component-tagger-loader.js" }],
       // });
     }
+    config.resolve.extensionAlias = {
+      ...config.resolve.extensionAlias,
+      '.js': ['.js', '.ts', '.tsx', '.mjs']
+    };
     return config;
   },
 };
