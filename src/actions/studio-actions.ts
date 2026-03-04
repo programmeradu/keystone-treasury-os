@@ -105,30 +105,35 @@ export async function getProject(appId: string) {
 
 export async function getInstalledApps(userId: string) {
     if (!db) return [];
+    // TypeScript loses narrowing of `db` inside the Promise.all array
+    const database = db;
 
     try {
-        // 1. Get apps created by user
-        const createdApps = await db
-            .select()
-            .from(miniApps)
-            .where(eq(miniApps.creatorWallet, userId));
+        // Fetch created apps, purchases, and installs concurrently to reduce latency
+        const [createdApps, userPurchases, installed] = await Promise.all([
+            // 1. Get apps created by user
+            database
+                .select()
+                .from(miniApps)
+                .where(eq(miniApps.creatorWallet, userId)),
 
-        // 2. Get apps purchased by user
-        const userPurchases = await db
-            .select({ appId: purchases.appId })
-            .from(purchases)
-            .where(eq(purchases.buyerWallet, userId));
+            // 2. Get apps purchased by user
+            database
+                .select({ appId: purchases.appId })
+                .from(purchases)
+                .where(eq(purchases.buyerWallet, userId)),
 
-        // 3. Get apps installed via userInstalledApps (dock order, pinning)
-        const installed = await db
-            .select()
-            .from(userInstalledApps)
-            .where(
-                and(
-                    eq(userInstalledApps.userId, userId),
-                    isNull(userInstalledApps.uninstalledAt)
+            // 3. Get apps installed via userInstalledApps (dock order, pinning)
+            database
+                .select()
+                .from(userInstalledApps)
+                .where(
+                    and(
+                        eq(userInstalledApps.userId, userId),
+                        isNull(userInstalledApps.uninstalledAt)
+                    )
                 )
-            );
+        ]);
 
         const purchasedAppIds = userPurchases.map(p => p.appId);
         const installedAppIds = installed.map(i => i.appId);

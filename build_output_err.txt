@@ -1,0 +1,188 @@
+   ▲ Next.js 15.5.12
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 56s
+   Linting and checking validity of types ...
+
+./src/components/home/ecosystem-section.tsx
+58:18  Warning: Unused eslint-disable directive (no problems were reported from '@next/next/no-img-element').
+
+./src/components/home/pillars-section.tsx
+104:22  Warning: Unused eslint-disable directive (no problems were reported from '@next/next/no-img-element').
+
+./src/components/home/problem-section.tsx
+100:26  Warning: Unused eslint-disable directive (no problems were reported from '@next/next/no-img-element').
+
+./src/components/home/trust-section.tsx
+94:181  Warning: Unused eslint-disable directive (no problems were reported from '@next/next/no-img-element').
+95:180  Warning: Unused eslint-disable directive (no problems were reported from '@next/next/no-img-element').
+
+./src/components/home/war-room-section.tsx
+127:24  Warning: Unused eslint-disable directive (no problems were reported from '@next/next/no-img-element').
+352:34  Warning: Unused eslint-disable directive (no problems were reported from '@next/next/no-img-element').
+451:32  Warning: Unused eslint-disable directive (no problems were reported from '@next/next/no-img-element').
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+   Collecting page data ...
+KnowledgeBase: Missing TAVILY_API_KEY
+KnowledgeBase: Missing JINA_API_KEY
+KnowledgeBase: Missing FIRECRAWL_API_KEY
+KnowledgeBase: Missing TAVILY_API_KEY
+KnowledgeBase: Missing JINA_API_KEY
+KnowledgeBase: Missing FIRECRAWL_API_KEY
+ ⚠ Using edge runtime on a page currently disables static generation for that page
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+   Generating static pages (0/77) ...
+   Generating static pages (19/77)
+KnowledgeBase: Missing TAVILY_API_KEY
+KnowledgeBase: Missing JINA_API_KEY
+KnowledgeBase: Missing FIRECRAWL_API_KEY
+   Generating static pages (38/77)
+KnowledgeBase: Missing TAVILY_API_KEY
+KnowledgeBase: Missing JINA_API_KEY
+KnowledgeBase: Missing FIRECRAWL_API_KEY
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+   Generating static pages (57/77)
+KnowledgeBase: Missing TAVILY_API_KEY
+KnowledgeBase: Missing JINA_API_KEY
+KnowledgeBase: Missing FIRECRAWL_API_KEY
+ ✓ Generating static pages (77/77)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                              Size  First Load JS
+┌ ○ /                                                 34.5 kB         415 kB
+├ ○ /_not-found                                          1 kB         106 kB
+├ ƒ /api/agent                                          378 B         105 kB
+├ ƒ /api/agent/knowledge                                378 B         105 kB
+├ ƒ /api/agentic                                        378 B         105 kB
+├ ƒ /api/agentic/approve                                378 B         105 kB
+├ ƒ /api/agentic/execute-with-wallet                    378 B         105 kB
+├ ƒ /api/agentic/history                                378 B         105 kB
+├ ƒ /api/ai/parse                                       378 B         105 kB
+├ ƒ /api/ai/parse-atlas-command                         378 B         105 kB
+├ ƒ /api/ai/text                                        378 B         105 kB
+├ ƒ /api/airdrops/scan                                  378 B         105 kB
+├ ƒ /api/airdrops/sources/airdropsio/solana             378 B         105 kB
+├ ƒ /api/airdrops/speculative/solana                    378 B         105 kB
+├ ƒ /api/alerts/cron                                    378 B         105 kB
+├ ƒ /api/alerts/subscribe                               378 B         105 kB
+├ ƒ /api/alerts/verify                                  378 B         105 kB
+├ ƒ /api/analytics/benchmarks                           378 B         105 kB
+├ ƒ /api/analytics/fees                                 378 B         105 kB
+├ ƒ /api/analytics/flows                                378 B         105 kB
+├ ƒ /api/analytics/history                              378 B         105 kB
+├ ƒ /api/analytics/trades                               378 B         105 kB
+├ ƒ /api/atlas/session                                  378 B         105 kB
+├ ƒ /api/auth/[...path]                                 378 B         105 kB
+├ ƒ /api/auth/callback                                  378 B         105 kB
+├ ƒ /api/auth/callback/neon                             378 B         105 kB
+├ ƒ /api/auth/link-wallet                               378 B         105 kB
+├ ƒ /api/auth/nonce                                     378 B         105 kB
+├ ƒ /api/auth/siws                                      378 B         105 kB
+├ ƒ /api/auth/sync-user                                 378 B         105 kB
+├ ƒ /api/bitquery/ohlcv/stream                          378 B         105 kB
+├ ƒ /api/bitquery/price/index                           378 B         105 kB
+├ ƒ /api/bitquery/pumpfun/curve-95                      378 B         105 kB
+├ ƒ /api/bitquery/pumpfun/marketcap-jumps               378 B         105 kB
+├ ƒ /api/bridge/quote                                   378 B         105 kB
+├ ƒ /api/chain/eth/block-number                         378 B         105 kB
+├ ƒ /api/command                                        378 B         105 kB
+├ ƒ /api/cron/dca-execute                               378 B         105 kB
+├ ƒ /api/defillama/tvl                                  378 B         105 kB
+├ ƒ /api/delegation/request                             378 B         105 kB
+├ ƒ /api/delegation/status                              378 B         105 kB
+├ ƒ /api/download-project                               378 B         105 kB
+├ ƒ /api/ens/resolve                                    378 B         105 kB
+├ ƒ /api/execute                                        378 B         105 kB
+├ ƒ /api/foresight/parse                                378 B         105 kB
+├ ƒ /api/gas/estimate                                   378 B         105 kB
+├ ƒ /api/github/delete                                  378 B         105 kB
+├ ƒ /api/github/me                                      378 B         105 kB
+├ ƒ /api/github/repos                                   378 B         105 kB
+├ ƒ /api/helius/addresses/[address]/transactions        378 B         105 kB
+├ ƒ /api/helius/das/token-accounts                      378 B         105 kB
+├ ƒ /api/helius/das/wallet-holdings                     378 B         105 kB
+├ ƒ /api/jupiter/historical-price                       378 B         105 kB
+├ ƒ /api/jupiter/price                                  378 B         105 kB
+├ ƒ /api/jupiter/quote                                  378 B         105 kB
+├ ƒ /api/jupiter/swap                                   378 B         105 kB
+├ ƒ /api/jupiter/trending                               378 B         105 kB
+├ ƒ /api/learn/click                                    378 B         105 kB
+├ ƒ /api/learn/log-input                                378 B         105 kB
+├ ƒ /api/learn/retrain                                  378 B         105 kB
+├ ƒ /api/learn/suggestions                              378 B         105 kB
+├ ƒ /api/lp/apy                                         378 B         105 kB
+├ ƒ /api/marinade/stake                                 378 B         105 kB
+├ ƒ /api/moralis/solana/holders/[address]               378 B         105 kB
+├ ƒ /api/moralis/solana/holders/[address]/historical    378 B         105 kB
+├ ƒ /api/moralis/solana/holders/[address]/stats         378 B         105 kB
+├ ƒ /api/moralis/trending                               378 B         105 kB
+├ ƒ /api/og                                             378 B         105 kB
+├ ƒ /api/planner                                        378 B         105 kB
+├ ƒ /api/price                                          378 B         105 kB
+├ ƒ /api/proxy                                          378 B         105 kB
+├ ƒ /api/quotes                                         378 B         105 kB
+├ ƒ /api/rpc                                            378 B         105 kB
+├ ƒ /api/runs                                           378 B         105 kB
+├ ƒ /api/runs/[short_id]                                378 B         105 kB
+├ ƒ /api/simulate                                       378 B         105 kB
+├ ƒ /api/simulation                                     378 B         105 kB
+├ ƒ /api/solana/dca-bot                                 378 B         105 kB
+├ ƒ /api/solana/dca-execute                             378 B         105 kB
+├ ƒ /api/solana/execute-rebalance                       378 B         105 kB
+├ ƒ /api/solana/jito-bundle                             378 B         105 kB
+├ ƒ /api/solana/mev-scan                                378 B         105 kB
+├ ƒ /api/solana/rebalance-calculator                    378 B         105 kB
+├ ƒ /api/solana/rpc                                     378 B         105 kB
+├ ƒ /api/solana/rug-check                               378 B         105 kB
+├ ƒ /api/solana/tax-analysis                            378 B         105 kB
+├ ƒ /api/solana/transaction-bundle                      378 B         105 kB
+├ ƒ /api/studio/compile-contract                        378 B         105 kB
+├ ƒ /api/studio/export-pdf                              378 B         105 kB
+├ ƒ /api/studio/extract-data                            378 B         105 kB
+├ ƒ /api/studio/generate                                378 B         105 kB
+├ ƒ /api/studio/generate-image                          378 B         105 kB
+├ ƒ /api/studio/marketplace/register                    378 B         105 kB
+├ ƒ /api/studio/publish                                 378 B         105 kB
+├ ƒ /api/studio/render-markdown                         378 B         105 kB
+├ ƒ /api/studio/screenshot                              378 B         105 kB
+├ ƒ /api/studio/test-app                                378 B         105 kB
+├ ƒ /api/studio/test-key                                378 B         105 kB
+├ ƒ /api/swap/permit2/price                             378 B         105 kB
+├ ƒ /api/swap/quote                                     378 B         105 kB
+├ ƒ /api/tier                                           378 B         105 kB
+├ ƒ /api/tools/yield-scanner                            378 B         105 kB
+├ ƒ /api/turnkey/register                               378 B         105 kB
+├ ƒ /api/yield/rates                                    378 B         105 kB
+├ ƒ /api/yields                                         378 B         105 kB
+├ ○ /app                                              20.8 kB         518 kB
+├ ○ /app/analytics                                    47.8 kB         492 kB
+├ ○ /app/library                                       5.6 kB         332 kB
+├ ○ /app/marketplace                                  7.04 kB         338 kB
+├ ƒ /app/marketplace/[appId]                          11.9 kB         258 kB
+├ ƒ /app/run/[appId]                                  2.69 kB         128 kB
+├ ○ /app/settings                                     14.8 kB         299 kB
+├ ○ /app/studio                                       45.5 kB         331 kB
+├ ○ /app/team                                         8.29 kB         390 kB
+├ ○ /app/treasury                                     20.4 kB         406 kB
+├ ƒ /atlas                                            42.1 kB         318 kB
+├ ○ /auth                                             61.9 kB         216 kB
+├ ƒ /github-cleanup                                   6.78 kB         152 kB
+├ ○ /hello                                              937 B         106 kB
+├ ○ /icon.svg                                             0 B            0 B
+├ ○ /manifest.webmanifest                               378 B         105 kB
+├ ○ /mobile/signer                                    2.83 kB         108 kB
+└ ○ /working-swap                                     4.96 kB         194 kB
++ First Load JS shared by all                          105 kB
+  ├ chunks/1255-31341e05e682b6b5.js                   45.5 kB
+  ├ chunks/4bd1b696-182b6b13bdad92e3.js               54.2 kB
+  └ other shared chunks (total)                          5 kB
+
+
+ƒ Middleware                                          81.6 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand

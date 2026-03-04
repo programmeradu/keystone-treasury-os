@@ -149,13 +149,13 @@ export function AtlasSection() {
           >
             <div className="flex items-center gap-4 text-xs font-mono text-white/25">
               <span className="inline-flex items-center gap-1.5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {/* @eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/logos/token-sol.png" alt="" className="h-3.5 w-3.5 rounded-full" />
                 SOL <span className="text-white/60">{solPrice ? `$${solPrice.toFixed(2)}` : "..."}</span>
               </span>
               <span className="h-3 w-px bg-white/[0.06]" />
               <span className="inline-flex items-center gap-1.5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {/* @eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/logos/token-msol.png" alt="" className="h-3.5 w-3.5 rounded-full" />
                 mSOL <span className="text-white/60">{msolPrice ? `$${msolPrice.toFixed(2)}` : "..."}</span>
               </span>

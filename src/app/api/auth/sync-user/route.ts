@@ -16,6 +16,7 @@ import { headers } from 'next/headers';
 export async function POST() {
     try {
         // Get the current Neon Auth session
+        // @ts-ignore - BetterAuth/NeonAuth generic typing issues
         const session = await auth.api.getSession({
             headers: await headers(),
         });

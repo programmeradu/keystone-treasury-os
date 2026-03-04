@@ -39,9 +39,9 @@ const TelemetryContext = React.createContext<{
     addLog: (msg: string) => void;
 }>({ lines: [], addLog: () => { } });
 
-export const useTelemetry = () => React.useContext(TelemetryContext);
+const useTelemetry = () => React.useContext(TelemetryContext);
 
-export function TelemetryProvider({ children }: { children: React.ReactNode }) {
+function TelemetryProvider({ children }: { children: React.ReactNode }) {
     const [lines, setLines] = useState<string[]>([
         "> INIT.KEYSTONE_OS_V2",
         "> SYNCHRONIZING_NODES...",
@@ -496,7 +496,7 @@ function AuthPageContent() {
         })();
 
         return () => { cancelled = true; };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // @eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const hasLoggedConnect = React.useRef(false);

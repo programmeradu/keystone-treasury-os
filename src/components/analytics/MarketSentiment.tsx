@@ -101,7 +101,7 @@ Response format: JSON { "observation": "...", "suggestion": "..." }`;
             const timeout = setTimeout(fetchAiInsight, 1500); // Small delay to let F&G load first
             return () => clearTimeout(timeout);
         }
-    }, [activeVault, vaultTokens.length > 0, fearGreed]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [activeVault, vaultTokens.length > 0, fearGreed]); // @eslint-disable-line react-hooks/exhaustive-deps
 
     const metrics = useMemo(() => {
         const change = vaultChange24h || 0;
