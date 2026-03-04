@@ -1,7 +1,7 @@
    ▲ Next.js 15.5.12
 
    Creating an optimized production build ...
- ✓ Compiled successfully in 53s
+ ✓ Compiled successfully in 56s
    Linting and checking validity of types ...
 
 ./src/components/home/ecosystem-section.tsx
@@ -31,19 +31,16 @@ KnowledgeBase: Missing TAVILY_API_KEY
 KnowledgeBase: Missing JINA_API_KEY
 KnowledgeBase: Missing FIRECRAWL_API_KEY
  ⚠ Using edge runtime on a page currently disables static generation for that page
-KnowledgeBase: Missing TAVILY_API_KEY
-KnowledgeBase: Missing JINA_API_KEY
-KnowledgeBase: Missing FIRECRAWL_API_KEY
 bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
    Generating static pages (0/77) ...
    Generating static pages (19/77)
 KnowledgeBase: Missing TAVILY_API_KEY
 KnowledgeBase: Missing JINA_API_KEY
 KnowledgeBase: Missing FIRECRAWL_API_KEY
+   Generating static pages (38/77)
 KnowledgeBase: Missing TAVILY_API_KEY
 KnowledgeBase: Missing JINA_API_KEY
 KnowledgeBase: Missing FIRECRAWL_API_KEY
-   Generating static pages (38/77)
 bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
 bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
 bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
