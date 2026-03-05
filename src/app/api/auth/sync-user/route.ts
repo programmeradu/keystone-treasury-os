@@ -16,7 +16,7 @@ import { headers } from 'next/headers';
 export async function POST() {
     try {
         // Get the current Neon Auth session
-        const session = await auth.api.getSession({
+        const session = await (auth as any).api?.getSession({
             headers: await headers(),
         });
 

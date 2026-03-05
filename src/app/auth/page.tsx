@@ -39,9 +39,9 @@ const TelemetryContext = React.createContext<{
     addLog: (msg: string) => void;
 }>({ lines: [], addLog: () => { } });
 
-export const useTelemetry = () => React.useContext(TelemetryContext);
+const useTelemetry = () => React.useContext(TelemetryContext);
 
-export function TelemetryProvider({ children }: { children: React.ReactNode }) {
+function TelemetryProvider({ children }: { children: React.ReactNode }) {
     const [lines, setLines] = useState<string[]>([
         "> INIT.KEYSTONE_OS_V2",
         "> SYNCHRONIZING_NODES...",
