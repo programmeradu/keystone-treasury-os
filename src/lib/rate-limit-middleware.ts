@@ -40,7 +40,7 @@ async function extractWalletAddress(req: NextRequest): Promise<string | null> {
         const cookieStore = await cookies();
         const supabase = createServerClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xyzcompany.supabase.co',
-            process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY || 'public-anon-key',
+            process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5emNvbXBhbnkiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTYxNjQ4MzAwMCwiZXhwIjoxOTMyMDgzMDAwfQ.XYZ',
             {
                 cookies: {
                     getAll() {
