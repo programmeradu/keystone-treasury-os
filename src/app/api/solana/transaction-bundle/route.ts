@@ -228,7 +228,7 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         bundleId: `bundle_${Date.now()}`,
-        signature: "mock_signature_" + Math.random().toString(36).slice(2),
+        signature: "mock_signature_" + globalThis.crypto.randomUUID().replace(/-/g, ''),
         message: "MOCK: Bundle submitted successfully",
       }, { status: 200 });
     }
