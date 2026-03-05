@@ -67,6 +67,44 @@ export async function getJupiterQuote(
 }
 
 /**
+ * Batch fetch token prices from Jupiter v3 price API
+ * This is significantly faster than getTokenPrice which simulates quotes
+ */
+export async function getBatchTokenPrices(
+  mints: string[]
+): Promise<Record<string, number>> {
+  if (!mints.length) return {};
+
+  try {
+    const mintsParam = mints.join(',');
+    const url = `https://lite-api.jup.ag/price/v3?ids=${mintsParam}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      console.error('Jupiter batch price error:', await response.text());
+      return {};
+    }
+
+    const data = await response.json();
+    const prices: Record<string, number> = {};
+
+    // v3 response format: { data: { "mint": { id, mintSymbol, vsToken, vsTokenSymbol, price } } }
+    const priceData = data.data || data; // Fallback just in case
+
+    for (const mint of mints) {
+      if (priceData[mint]?.price) {
+        prices[mint] = parseFloat(priceData[mint].price);
+      }
+    }
+
+    return prices;
+  } catch (error) {
+    console.error('Failed to get batch token prices:', error);
+    return {};
+  }
+}
+
+/**
  * Get current price for a token pair from Jupiter
  */
 export async function getTokenPrice(
