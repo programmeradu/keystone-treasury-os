@@ -198,7 +198,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Create bot ID
-      const botId = `dca_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const botId = `dca_${Date.now()}_${globalThis.crypto.randomUUID().replace(/-/g, '').substring(0, 16)}`;
       const now = new Date();
       const startDate = now;
       const nextExecution = new Date(calculateNextExecution(Date.now(), frequency as any));
