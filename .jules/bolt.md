@@ -1,0 +1,3 @@
+## 2026-03-05 - [Batch Jupiter Pricing]
+**Learning:** Calling `getTokenPrice` loops over Jupiter's `v1/quote` endpoint for each token separately by simulating a 1-token swap. This adds significant network overhead and quickly runs into rate limits when managing multiple tokens. Jupiter has a dedicated `v3/price` endpoint that returns prices for a comma-separated list of mints instantly.
+**Action:** When fetching prices for multiple tokens, always use the `getBatchTokenPrices` helper via `https://lite-api.jup.ag/price/v3?ids=...` instead of mapping over individual `getTokenPrice` quote simulations.

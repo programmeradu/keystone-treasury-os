@@ -1,0 +1,55 @@
+$ next dev --turbopack
+   ▲ Next.js 15.5.12 (Turbopack)
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.0.2:3000
+
+ ✓ Starting...
+ ○ Compiling middleware ...
+ ✓ Compiled middleware in 1137ms
+ ✓ Ready in 6.1s
+ ⚠ Webpack is configured while Turbopack is not, which may cause problems.
+ ⚠ See instructions if you need to configure Turbopack:
+  https://nextjs.org/docs/app/api-reference/next-config-js/turbopack
+
+ ○ Compiling / ...
+ ✓ Compiled / in 36.6s
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+ GET / 200 in 38614ms
+ ⨯ Error: Your project's URL and Key are required to create a Supabase client!
+
+Check your Supabase project's API settings to find these values
+
+https://supabase.com/dashboard/project/_/settings/api
+    at <unknown> (https://supabase.com/dashboard/project/_/settings/api)
+    at <unknown> (https://supabase.com/dashboard/project/_/settings/api)
+    at createServerClient (../src/createServerClient.ts:140:11)
+    at middleware (src/middleware.ts:38:40)
+  36 |     });
+  37 |
+> 38 |     const supabase = createServerClient(
+     |                                        ^
+  39 |         process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  40 |         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  41 |         {
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 2.9s
+ GET /atlas 404 in 15ms
+ ⨯ Error: Your project's URL and Key are required to create a Supabase client!
+
+Check your Supabase project's API settings to find these values
+
+https://supabase.com/dashboard/project/_/settings/api
+    at <unknown> (https://supabase.com/dashboard/project/_/settings/api)
+    at <unknown> (https://supabase.com/dashboard/project/_/settings/api)
+    at createServerClient (../src/createServerClient.ts:140:11)
+    at middleware (src/middleware.ts:38:40)
+  36 |     });
+  37 |
+> 38 |     const supabase = createServerClient(
+     |                                        ^
+  39 |         process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  40 |         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  41 |         {
+ GET /api/airdrops/speculative/solana 404 in 2ms
+ ○ Compiling /_not-found/page ...
+ ✓ Compiled /_not-found/page in 6.6s
