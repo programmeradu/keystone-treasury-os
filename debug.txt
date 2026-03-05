@@ -1,0 +1,17 @@
+C:\Users\USER\Documents\GitHub\keystone-treasury-os\node_modules\@neondatabase\serverless\index.js:1273
+ provided to `neon()`. Perhaps an environment variable has not been set?");let l;try{l=Zt(r)}catch{throw new Error(
+                                                                                                         ^
+
+Error: Database connection string provided to `neon()` is not a valid URL. Connection string: 'postgresql://neondb_owner:npg_YcpsaAIT20SN@ep-plain-hill-alckyy0h-pooler.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
+    at neon (C:\Users\USER\Documents\GitHub\keystone-treasury-os\node_modules\@neondatabase\serverless\index.js:1273:106)
+    at createDbClient (C:\Users\USER\Documents\GitHub\keystone-treasury-os\src\db\index.ts:14:15)
+    at <anonymous> (C:\Users\USER\Documents\GitHub\keystone-treasury-os\src\db\index.ts:18:19)
+    at Object.<anonymous> (C:\Users\USER\Documents\GitHub\keystone-treasury-os\src\db\index.ts:25:17)
+    at Module._compile (node:internal/modules/cjs/loader:1761:14)
+    at Object.transformer (C:\Users\USER\AppData\Local\npm-cache\_npx\fd45a72a545557e9\node_modules\tsx\dist\register-D46fvsV_.cjs:3:1104)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+
+Node.js v24.11.1

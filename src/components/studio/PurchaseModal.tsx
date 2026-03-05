@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { PremiumModal, PremiumModalHeader, PremiumModalTitle, PremiumModalDescription, PremiumModalFooter } from "@/components/ui/PremiumModal";
 import { Button } from "@/components/ui/button";
 import { Loader2, ShieldCheck, CheckCircle2, Wallet, ExternalLink, AlertTriangle } from "lucide-react";
 import { toast } from "@/lib/toast-notifications";
@@ -94,7 +94,7 @@ export function PurchaseModal({ open, onOpenChange, app, onSuccess }: PurchaseMo
                 listings[idx].installs = (listings[idx].installs || 0) + 1;
                 localStorage.setItem("keystone_marketplace_listings", JSON.stringify(listings));
             }
-        } catch {}
+        } catch { }
     }
 
     const handlePurchase = async () => {
@@ -194,110 +194,108 @@ export function PurchaseModal({ open, onOpenChange, app, onSuccess }: PurchaseMo
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle>Confirm Purchase</DialogTitle>
-                    <DialogDescription>
-                        You are purchasing <strong>{app.name}</strong>.
-                    </DialogDescription>
-                </DialogHeader>
+        <PremiumModal isOpen={open} onClose={() => onOpenChange(false)} className="sm:max-w-[425px]">
+            <PremiumModalHeader>
+                <PremiumModalTitle>Confirm Purchase</PremiumModalTitle>
+                <PremiumModalDescription>
+                    You are purchasing <strong>{app.name}</strong>.
+                </PremiumModalDescription>
+            </PremiumModalHeader>
 
-                {step === "confirm" && (
-                    <div className="py-4 space-y-4">
-                        <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">Price</span>
-                            <span className="font-bold text-lg">{isPaidApp ? `${app.priceUsdc} SOL` : "FREE"}</span>
-                        </div>
-                        {isPaidApp && (
-                            <>
-                                <div className="flex justify-between items-center text-xs text-muted-foreground pt-2 border-t border-border">
-                                    <span>Creator receives (80%)</span>
-                                    <span>{(app.priceUsdc * 0.8).toFixed(4)} SOL</span>
-                                </div>
-                                <div className="flex justify-between items-center text-xs text-muted-foreground">
-                                    <span>Platform fee (20%)</span>
-                                    <span>{(app.priceUsdc * 0.2).toFixed(4)} SOL</span>
-                                </div>
-                            </>
-                        )}
-
-                        {/* Wallet status indicator */}
-                        {isPaidApp && (
-                            <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg border ${connected ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-400" : "border-amber-500/20 bg-amber-500/5 text-amber-400"}`}>
-                                {connected ? (
-                                    <>
-                                        <Wallet size={12} />
-                                        <span className="font-mono">{publicKey?.toBase58().slice(0, 4)}..{publicKey?.toBase58().slice(-4)}</span>
-                                        <span className="text-muted-foreground ml-1">• On-chain payment</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <AlertTriangle size={12} />
-                                        <span>No wallet connected — will use demo mode</span>
-                                    </>
-                                )}
+            {step === "confirm" && (
+                <div className="py-4 space-y-4">
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Price</span>
+                        <span className="font-bold text-lg">{isPaidApp ? `${app.priceUsdc} SOL` : "FREE"}</span>
+                    </div>
+                    {isPaidApp && (
+                        <>
+                            <div className="flex justify-between items-center text-xs text-muted-foreground pt-2 border-t border-border">
+                                <span>Creator receives (80%)</span>
+                                <span>{(app.priceUsdc * 0.8).toFixed(4)} SOL</span>
                             </div>
-                        )}
-                    </div>
-                )}
-
-                {step === "signing" && (
-                    <div className="py-8 flex flex-col items-center justify-center text-center space-y-4">
-                        <div className="relative">
-                            <div className="w-12 h-12 rounded-full border-2 border-primary/30 animate-ping absolute" />
-                            <ShieldCheck className="w-12 h-12 text-primary relative z-10" />
-                        </div>
-                        <div>
-                            <h3 className="font-bold">{canDoRealTx ? "Approve in your wallet..." : "Processing..."}</h3>
-                            <p className="text-xs text-muted-foreground">
-                                {canDoRealTx ? "Check your wallet for the signature request" : "Signing transaction..."}
-                            </p>
-                        </div>
-                    </div>
-                )}
-
-                {step === "confirming" && (
-                    <div className="py-8 flex flex-col items-center justify-center text-center space-y-4">
-                        <Loader2 className="w-12 h-12 text-primary animate-spin" />
-                        <div>
-                            <h3 className="font-bold">Confirming on Solana...</h3>
-                            <p className="text-xs text-muted-foreground font-mono">
-                                {txSignature ? `${txSignature.slice(0, 8)}...${txSignature.slice(-8)}` : "Waiting for network..."}
-                            </p>
-                        </div>
-                    </div>
-                )}
-
-                {step === "success" && (
-                    <div className="py-8 flex flex-col items-center justify-center text-center space-y-4">
-                        <CheckCircle2 className="w-16 h-16 text-emerald-400" />
-                        <div>
-                            <h3 className="font-bold text-xl">Payment Complete!</h3>
-                            <p className="text-sm text-muted-foreground">App installed to your Library.</p>
-                        </div>
-                        {txSignature && (
-                            <a
-                                href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 text-xs text-primary hover:underline"
-                            >
-                                <ExternalLink size={12} /> View on Solana Explorer
-                            </a>
-                        )}
-                    </div>
-                )}
-
-                <DialogFooter>
-                    {step === "confirm" && (
-                        <Button onClick={handlePurchase} disabled={isProcessing} className="w-full font-bold tracking-wider">
-                            {isProcessing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                            {isPaidApp ? `PAY ${app.priceUsdc} SOL` : "INSTALL FREE"}
-                        </Button>
+                            <div className="flex justify-between items-center text-xs text-muted-foreground">
+                                <span>Platform fee (20%)</span>
+                                <span>{(app.priceUsdc * 0.2).toFixed(4)} SOL</span>
+                            </div>
+                        </>
                     )}
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+
+                    {/* Wallet status indicator */}
+                    {isPaidApp && (
+                        <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg border ${connected ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-400" : "border-amber-500/20 bg-amber-500/5 text-amber-400"}`}>
+                            {connected ? (
+                                <>
+                                    <Wallet size={12} />
+                                    <span className="font-mono">{publicKey?.toBase58().slice(0, 4)}..{publicKey?.toBase58().slice(-4)}</span>
+                                    <span className="text-muted-foreground ml-1">• On-chain payment</span>
+                                </>
+                            ) : (
+                                <>
+                                    <AlertTriangle size={12} />
+                                    <span>No wallet connected — will use demo mode</span>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {step === "signing" && (
+                <div className="py-8 flex flex-col items-center justify-center text-center space-y-4">
+                    <div className="relative">
+                        <div className="w-12 h-12 rounded-full border-2 border-primary/30 animate-ping absolute" />
+                        <ShieldCheck className="w-12 h-12 text-primary relative z-10" />
+                    </div>
+                    <div>
+                        <h3 className="font-bold">{canDoRealTx ? "Approve in your wallet..." : "Processing..."}</h3>
+                        <p className="text-xs text-muted-foreground">
+                            {canDoRealTx ? "Check your wallet for the signature request" : "Signing transaction..."}
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {step === "confirming" && (
+                <div className="py-8 flex flex-col items-center justify-center text-center space-y-4">
+                    <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                    <div>
+                        <h3 className="font-bold">Confirming on Solana...</h3>
+                        <p className="text-xs text-muted-foreground font-mono">
+                            {txSignature ? `${txSignature.slice(0, 8)}...${txSignature.slice(-8)}` : "Waiting for network..."}
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {step === "success" && (
+                <div className="py-8 flex flex-col items-center justify-center text-center space-y-4">
+                    <CheckCircle2 className="w-16 h-16 text-emerald-400" />
+                    <div>
+                        <h3 className="font-bold text-xl">Payment Complete!</h3>
+                        <p className="text-sm text-muted-foreground">App installed to your Library.</p>
+                    </div>
+                    {txSignature && (
+                        <a
+                            href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 text-xs text-primary hover:underline"
+                        >
+                            <ExternalLink size={12} /> View on Solana Explorer
+                        </a>
+                    )}
+                </div>
+            )}
+
+            <PremiumModalFooter>
+                {step === "confirm" && (
+                    <Button onClick={handlePurchase} disabled={isProcessing} className="w-full font-bold tracking-wider bg-primary hover:bg-primary/90 text-black">
+                        {isProcessing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        {isPaidApp ? `PAY ${app.priceUsdc} SOL` : "INSTALL FREE"}
+                    </Button>
+                )}
+            </PremiumModalFooter>
+        </PremiumModal>
     );
 }

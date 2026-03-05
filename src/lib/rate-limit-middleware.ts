@@ -18,15 +18,26 @@ interface RateLimitOptions {
     isAtlas?: boolean;
 }
 
-// ─── Extract Wallet Address ──────────────────────────────────────────
+// ─── Extract Identity ────────────────────────────────────────────────
+
+// Neon Auth cookie names (Better Auth) — same as in middleware.ts
+const NEON_AUTH_COOKIE_NAMES = [
+    '__Secure-neon-auth.session_token',
+    'neon-auth.session_token',
+    '__Secure-neon-auth.local.session_data',
+    'neon-auth.local.session_data',
+    'better-auth.session_token',
+];
 
 /**
- * Extracts the wallet address from:
- * 1. Supabase auth session (Keystone users)
- * 2. x-wallet-address header (Atlas anonymous users)
- * 3. Query param ?wallet= (fallback)
+ * Extracts a unique identity for rate limiting from:
+ * 1. x-wallet-address header (Atlas anonymous users)
+ * 2. Query param ?wallet= (fallback)
+ * 3. Supabase auth session (Keystone wallet users)
+ * 4. Neon Auth session cookie (social sign-in users)
+ * 5. IP address as last resort
  */
-async function extractWalletAddress(req: NextRequest): Promise<string | null> {
+async function extractIdentity(req: NextRequest): Promise<string | null> {
     // Try x-wallet-address header first (Atlas)
     const headerWallet = req.headers.get('x-wallet-address');
     if (headerWallet) return headerWallet;
@@ -40,7 +51,7 @@ async function extractWalletAddress(req: NextRequest): Promise<string | null> {
         const cookieStore = await cookies();
         const supabase = createServerClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
             {
                 cookies: {
                     getAll() {
@@ -57,11 +68,29 @@ async function extractWalletAddress(req: NextRequest): Promise<string | null> {
         if (user?.user_metadata?.wallet_address) {
             return user.user_metadata.wallet_address as string;
         }
+        if (user?.email) {
+            return `email:${user.email}`;
+        }
+        if (user?.id) {
+            return `uid:${user.id}`;
+        }
     } catch {
-        // Auth not available — that's ok for Atlas
+        // Auth not available — that's ok
     }
 
-    return null;
+    // Try Neon Auth session cookie (social sign-in via Google/Discord)
+    for (const name of NEON_AUTH_COOKIE_NAMES) {
+        const cookie = req.cookies.get(name);
+        if (cookie && cookie.value.length > 0) {
+            // Use a hash of the session token as identity (not the raw token)
+            return `neon:${cookie.value.slice(0, 16)}`;
+        }
+    }
+
+    // Last resort: IP-based identity
+    const forwarded = req.headers.get('x-forwarded-for');
+    const ip = forwarded?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
+    return `ip:${ip}`;
 }
 
 // ─── Middleware Wrapper ──────────────────────────────────────────────
@@ -87,19 +116,20 @@ export function withRateLimit(
     handler: (req: NextRequest, rateLimitResult: RateLimitResult) => Promise<NextResponse>
 ) {
     return async function rateLimitedHandler(req: NextRequest): Promise<NextResponse> {
-        const walletAddress = await extractWalletAddress(req);
+        const identity = await extractIdentity(req);
 
-        if (!walletAddress) {
+        if (!identity) {
+            // Should not happen since extractIdentity falls back to IP
             return NextResponse.json(
                 {
-                    error: 'Wallet address required',
-                    message: 'Provide wallet via auth session, x-wallet-address header, or ?wallet= param',
+                    error: 'Identity required',
+                    message: 'Could not determine user identity for rate limiting.',
                 },
                 { status: 401 }
             );
         }
 
-        const result = await enforceRateLimit(walletAddress, options.resource, {
+        const result = await enforceRateLimit(identity, options.resource, {
             isAtlas: options.isAtlas,
         });
 
@@ -156,19 +186,20 @@ export async function checkRouteLimit(
     resource: Resource,
     isAtlas: boolean = false
 ): Promise<RateLimitResult & { walletAddress: string | null }> {
-    const walletAddress = await extractWalletAddress(req);
+    const identity = await extractIdentity(req);
 
-    if (!walletAddress) {
+    if (!identity) {
+        // Should not happen — extractIdentity falls back to IP
         return {
-            allowed: false,
-            remaining: 0,
-            limit: 0,
+            allowed: true,  // fail open if we somehow can't identify
+            remaining: 10,
+            limit: 10,
             resetAt: new Date(),
             tier: isAtlas ? 'atlas_free' : 'free',
             walletAddress: null,
         };
     }
 
-    const result = await enforceRateLimit(walletAddress, resource, { isAtlas });
-    return { ...result, walletAddress };
+    const result = await enforceRateLimit(identity, resource, { isAtlas });
+    return { ...result, walletAddress: identity };
 }

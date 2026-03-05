@@ -28,7 +28,6 @@ class UniversalPluginRegistry {
             registeredAt: Date.now()
         };
         this.plugins.push(newPlugin);
-        console.log(`[PluginRegistry] Registered: ${newPlugin.name} (${newPlugin.programId})`);
         return newPlugin;
     }
 

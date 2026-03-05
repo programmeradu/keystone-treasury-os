@@ -34,7 +34,6 @@ export async function executeAction(plan: any, context: ActionContext): Promise<
 
         // Simulation Firewall: log pre-execution check for transaction-producing ops
         if (txOps.has(op)) {
-            console.log(`[ActionRegistry] Simulation Firewall active for ${op}`);
             // Full transaction simulation happens after the tx is built — see SimulationFirewall.simulate()
             // Pre-check: ensure the operation has required parameters
             if (op === "swap" && (!action.parameters?.inputToken || !action.parameters?.outputToken)) {
@@ -133,8 +132,6 @@ async function executeSingleAction(operation: string, parameters: any, context: 
             // Infinite Discovery Stack (Phase 10.3)
             let learnedIntelligence = "";
             if (parameters.discoveryUrl || parameters.searchQuery || parameters.name) {
-                console.log(`[ActionRegistry] Initiating Multi-Tier Discovery...`);
-
                 try {
                     const knowledgeBase = new KnowledgeBase();
                     const query = parameters.searchQuery || `${parameters.name} Solana protocol SDK documentation`;
@@ -142,7 +139,6 @@ async function executeSingleAction(operation: string, parameters: any, context: 
 
                     if (research.rawContent) {
                         learnedIntelligence = research.rawContent;
-                        console.log(`[ActionRegistry] Knowledge acquired: ${research.sources.length} sources, ${research.rawContent.length} chars`);
 
                         // Auto-enrich operations from learned intelligence if not provided
                         if (!parameters.operations || parameters.operations.length === 0) {
@@ -157,7 +153,7 @@ async function executeSingleAction(operation: string, parameters: any, context: 
                         }
                     }
                 } catch (err) {
-                    console.warn(`[ActionRegistry] Discovery Stack failed, registering with provided data:`, err);
+                    // Discovery Stack failed, register with provided data
                 }
             }
 
@@ -176,7 +172,6 @@ async function executeSingleAction(operation: string, parameters: any, context: 
             // Dynamic Plugin Resolution Fallback
             const dynamicOp = PluginRegistry.findOperation(operation);
             if (dynamicOp) {
-                console.log(`[ActionRegistry] Executing Dynamic Plugin Operation: ${dynamicOp.name} on ${dynamicOp.programId}`);
                 // In a real execution, we would build a dynamic transaction using the programId and ABI
                 // Here we simulate via Squads proposal
                 return await context.squadsClient.createVaultTransaction(
@@ -193,8 +188,6 @@ async function executeSingleAction(operation: string, parameters: any, context: 
 async function executeSwap(params: any, context: ActionContext): Promise<string> {
     const { inputToken, outputToken, amount } = params;
     const { connection, wallet, squadsClient, vaultAddress } = context;
-
-    console.log(`[ActionRegistry] Preparing SWAP: ${amount} ${inputToken} -> ${outputToken}`);
 
     // 1. Get Token Mints (Mocking for common tokens if not provided)
     // In production, we'd look up the mint address from a token list
@@ -232,7 +225,6 @@ async function executeSwap(params: any, context: ActionContext): Promise<string>
         instructionsData = await instructionsRes.json();
         if (instructionsData.error) throw new Error("Failed to fetch swap instructions");
     } catch (error) {
-        console.warn("Jupiter API unreachable, failing over to MOCK data for demo.");
         // Mock Instructions fallback
         instructionsData = {
             setupInstructions: [],
@@ -267,8 +259,6 @@ async function executeSwap(params: any, context: ActionContext): Promise<string>
 async function executeTransfer(params: any, context: ActionContext): Promise<string> {
     const { recipient, token, amount } = params;
     const { squadsClient, vaultAddress } = context;
-
-    console.log(`[ActionRegistry] Preparing TRANSFER: ${amount} ${token} to ${recipient}`);
 
     // Mock Instructions for Transfer
     const mockInstructions = [new TransactionInstruction({

@@ -1,7 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { dcaBots, dcaExecutions } from "@/db/schema";
+import { dcaBots, dcaExecutions, users } from "@/db/schema";
 import { eq, and, lte, desc } from "drizzle-orm";
+
+async function getOrCreateUserId(walletAddress: string) {
+  if (!walletAddress || walletAddress.length < 32 || walletAddress.length > 44) {
+    throw new Error("Valid wallet address is required to access DCABots");
+  }
+  if (!db) throw new Error("Database not available");
+
+  const userResult = await db.select().from(users).where(eq(users.walletAddress, walletAddress)).limit(1);
+  if (userResult.length === 0) {
+    const newUser = await db.insert(users).values({
+      walletAddress,
+      displayName: "Anonymous User",
+      role: "user",
+      tier: "free",
+    }).returning({ id: users.id });
+    return newUser[0].id;
+  }
+  return userResult[0].id;
+}
 import { getTokenPrice, calculateNextExecution } from "@/lib/jupiter-executor";
 import { checkRouteLimit } from "@/lib/rate-limit-middleware";
 
@@ -20,7 +39,13 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action") || "list";
-    const userId = searchParams.get("userId") || "demo_user"; // TODO: Get from auth
+    const wallet = searchParams.get("wallet");
+
+    if (!wallet) {
+      return NextResponse.json({ error: "Wallet not connected" }, { status: 401 });
+    }
+
+    const userId = await getOrCreateUserId(wallet);
 
     if (action === "list") {
       // Fetch all bots for user
@@ -133,7 +158,15 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const action = body.action;
-    const userId = body.userId || "demo_user"; // TODO: Get from auth
+
+    // For actions that manage an existing bot (pause, resume, execute), we expect botId and wallet.
+    // For create, we expect walletAddress inside the body.
+    const wallet = body.walletAddress || body.wallet;
+    if (!wallet) {
+      return NextResponse.json({ error: "Wallet not connected" }, { status: 401 });
+    }
+
+    const userId = await getOrCreateUserId(wallet);
 
     // CREATE BOT
     if (action === "create") {

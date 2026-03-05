@@ -39,9 +39,9 @@ const TelemetryContext = React.createContext<{
     addLog: (msg: string) => void;
 }>({ lines: [], addLog: () => { } });
 
-export const useTelemetry = () => React.useContext(TelemetryContext);
+const useTelemetry = () => React.useContext(TelemetryContext);
 
-export function TelemetryProvider({ children }: { children: React.ReactNode }) {
+function TelemetryProvider({ children }: { children: React.ReactNode }) {
     const [lines, setLines] = useState<string[]>([
         "> INIT.KEYSTONE_OS_V2",
         "> SYNCHRONIZING_NODES...",
@@ -399,105 +399,7 @@ function AuthPageContent() {
         }
     }, [searchParams, addLog]);
 
-    // Detect Neon Auth session after Google OAuth redirect
-    // Uses window.location.search instead of useSearchParams to avoid
-    // Suspense/hydration timing issues where params can be null.
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
 
-        const params = new URLSearchParams(window.location.search);
-        const verifier = params.get('neon_auth_session_verifier');
-        if (!verifier) return;
-
-        console.log('[Neon Auth] Session verifier detected:', verifier);
-        addLog('NEON_AUTH_SESSION_DETECTED...');
-        addLog('EXCHANGING_SESSION_VERIFIER...');
-
-        let cancelled = false;
-
-        (async () => {
-            try {
-                // Step 1: Exchange the verifier for session cookies by calling
-                // the Better Auth session endpoint with the verifier token
-                console.log('[Neon Auth] Exchanging verifier via /api/auth/session...');
-                const exchangeRes = await fetch(
-                    `/api/auth/session?neon_auth_session_verifier=${encodeURIComponent(verifier)}`,
-                    { credentials: 'include' }
-                );
-                const exchangeData = await exchangeRes.json().catch(() => null);
-                console.log('[Neon Auth] Exchange response:', exchangeRes.status, exchangeData);
-
-                if (cancelled) return;
-
-                // Step 2: Verify we now have a valid session
-                const sessionRes = await fetch('/api/auth/get-session', {
-                    credentials: 'include',
-                });
-                const sessionData = await sessionRes.json().catch(() => null);
-                console.log('[Neon Auth] Session check:', sessionData);
-
-                if (cancelled) return;
-
-                const hasSession =
-                    sessionData?.session?.userId ||
-                    sessionData?.user?.id ||
-                    exchangeData?.session?.userId ||
-                    exchangeData?.user?.id;
-
-                if (hasSession) {
-                    addLog('AUTHENTICATION_SUCCESSFUL');
-                    addLog('SYNCING_USER_PROFILE...');
-
-                    // Sync to public.users
-                    try {
-                        await fetch('/api/auth/sync-user', {
-                            method: 'POST',
-                            credentials: 'include',
-                        });
-                    } catch { /* non-critical */ }
-
-                    addLog('REDIRECTING_TO_APP...');
-                    window.location.href = '/app';
-                    return;
-                }
-
-                // Step 3: Fallback — try the client SDK
-                console.log('[Neon Auth] Direct exchange failed, trying client SDK...');
-                const { authClient } = await import('@/lib/auth/client');
-                const clientSession = await authClient.getSession();
-                console.log('[Neon Auth] Client SDK session:', clientSession);
-
-                if (cancelled) return;
-
-                if (clientSession?.data?.session || clientSession?.data?.user) {
-                    addLog('AUTHENTICATION_SUCCESSFUL');
-                    addLog('SYNCING_USER_PROFILE...');
-                    try {
-                        await fetch('/api/auth/sync-user', {
-                            method: 'POST',
-                            credentials: 'include',
-                        });
-                    } catch { /* non-critical */ }
-                    addLog('REDIRECTING_TO_APP...');
-                    window.location.href = '/app';
-                } else {
-                    console.error('[Neon Auth] All session exchange methods failed');
-                    addLog('ERROR: SESSION_EXCHANGE_FAILED');
-                    setOauthError('Google sign-in completed but session could not be established. Please try again.');
-                    setSocialLoading(null);
-                }
-            } catch (err: any) {
-                if (cancelled) return;
-                console.error('[Neon Auth] Session exchange error:', err);
-                addLog('ERROR: NEON_AUTH_EXCHANGE_FAILED');
-                setOauthError('Failed to establish authentication session.');
-                setSocialLoading(null);
-            }
-        })();
-
-        return () => { cancelled = true; };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
 
     const hasLoggedConnect = React.useRef(false);
     const hasLoggedAuth = React.useRef(false);
@@ -564,15 +466,6 @@ function AuthPageContent() {
             setSocialLoading(provider);
             setOauthError(null);
             addLog(`INITIATING_OAUTH_FLOW: ${provider.toUpperCase()}`);
-
-            if (provider === 'google') {
-                const { authClient } = await import('@/lib/auth/client');
-                await authClient.signIn.social({
-                    provider: 'google',
-                    callbackURL: '/app',
-                });
-                return;
-            }
 
             const supabase = getSupabaseBrowserClient();
             const { error: oauthErr } = await supabase.auth.signInWithOAuth({

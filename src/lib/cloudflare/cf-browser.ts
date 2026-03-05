@@ -224,7 +224,20 @@ export async function jsonExtract(opts: JsonExtractOptions): Promise<{ success: 
 
     if (opts.url) body.url = opts.url;
     if (opts.html) body.html = opts.html;
-    if (opts.response_format) body.response_format = opts.response_format;
+
+    // CF /json requires a response_format — provide a sensible default
+    body.response_format = opts.response_format || {
+        type: "json_schema",
+        schema: {
+            type: "object",
+            properties: {
+                title: { type: "string", description: "Title or name of the page/entity" },
+                description: { type: "string", description: "Brief description or summary" },
+                data: { type: "object", description: "Extracted structured data", additionalProperties: true },
+            },
+        },
+    };
+
     if (opts.waitForSelector) body.waitForSelector = opts.waitForSelector;
     if (opts.waitForTimeout) body.waitForTimeout = opts.waitForTimeout;
 

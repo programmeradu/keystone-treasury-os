@@ -19,7 +19,6 @@ export class TavilyClient {
      * Performs a semantic search specialized for developers and LLMs.
      */
     async search(query: string, searchDepth: "basic" | "advanced" = "basic"): Promise<TavilySearchResult[]> {
-        console.log(`[TavilyClient] Searching: ${query}`);
         try {
             const response = await fetch(`${this.baseUrl}/search`, {
                 method: "POST",
@@ -38,7 +37,6 @@ export class TavilyClient {
             if (data.error) throw new Error(`Tavily Error: ${JSON.stringify(data.error)}`);
             return data.results || [];
         } catch (err) {
-            console.error(`[TavilyClient] Failed to search:`, err);
             return [];
         }
     }

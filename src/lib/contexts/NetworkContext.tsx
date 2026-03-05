@@ -63,22 +63,18 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
         setRpcHealth("unknown");
 
         const candidates = net === "mainnet-beta" ? MAINNET_FALLBACKS : DEVNET_FALLBACKS;
-        console.log(`[RPC] Probing ${candidates.length} endpoints for ${net}...`);
 
         for (const url of candidates) {
             const ok = await probeRpc(url);
             if (ok) {
-                console.log(`[RPC]  Using: ${url}`);
                 setEndpoint(url);
                 setRpcHealth("ok");
                 probing.current = false;
                 return;
             }
-            console.warn(`[RPC]  Unreachable: ${url}`);
         }
 
         // All failed — use first as fallback anyway
-        console.error(`[RPC] All endpoints failed for ${net}. Using first as fallback.`);
         setEndpoint(candidates[0]);
         setRpcHealth("down");
         probing.current = false;

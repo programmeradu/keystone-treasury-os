@@ -260,7 +260,8 @@ export function APIKeySettings({
         clearAIConfig();
         setApiKey("");
         setTestResult(null);
-        onSave({ provider: "openai", apiKey: "", model: "gpt-4o" });
+        // Pass empty apiKey so server uses its own env-var fallback chain
+        onSave({ provider: "groq", apiKey: "", model: "" });
     }, [onSave]);
 
     if (!isOpen) return null;

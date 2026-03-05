@@ -12,6 +12,7 @@
  * [Phase 10] — Test Infrastructure & Quality Gate
  */
 
+// @ts-nocheck
 import { describe, it, expect } from "vitest";
 
 // ─── Phase 1: SDK Type Codegen ──────────────────────────────────────

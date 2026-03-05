@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowUp, Activity, Loader2, Cpu, Zap, Shield, AlertTriangle } from "lucide-react";
+import { ArrowUp, Activity, Loader2, Cpu, Zap, Shield, AlertTriangle, ChevronDown } from "lucide-react";
 import { ArchitectIcon } from "@/components/icons";
 import { getAvatarUrl } from "@/lib/avatars";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -43,6 +43,17 @@ const STATE_LABELS: Record<ArchitectState, { label: string; color: string; icon:
     FAILED: { label: "ERRORS REMAIN", color: "text-red-400", icon: "" },
 };
 
+// ─── Available Models ───────────────────────────────────────────────
+
+const AVAILABLE_MODELS = [
+    { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B", provider: "groq" },
+    { id: "llama-3.1-8b-instant", label: "Llama 3.1 8B Fast", provider: "groq" },
+    { id: "mixtral-8x7b-32768", label: "Mixtral 8x7B", provider: "groq" },
+    { id: "@cf/meta/llama-3.3-70b-instruct-fp8-fast", label: "CF Llama 3.3 70B", provider: "cloudflare" },
+    { id: "@cf/qwen/qwen2.5-coder-32b-instruct", label: "Qwen 2.5 Coder 32B", provider: "cloudflare" },
+    { id: "@cf/qwen/qwen3-30b-a3b-fp8", label: "Qwen 3 30B", provider: "cloudflare" },
+];
+
 // ─── Component ──────────────────────────────────────────────────────
 
 export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFiles, runtimeLogs }: PromptChatProps) {
@@ -61,6 +72,8 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
     const [useDeepResearch, setUseDeepResearch] = useState(false);
     const [architectStatus, setArchitectStatus] = useState<ArchitectStatus | null>(null);
     const engineRef = useRef<ArchitectEngine | null>(null);
+    const [selectedModel, setSelectedModel] = useState("llama-3.3-70b-versatile");
+    const [showModelDropdown, setShowModelDropdown] = useState(false);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -146,9 +159,9 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
                             prev.map((m) =>
                                 m.id === thinkingId
                                     ? {
-                                          ...m,
-                                          content: `Research complete. Synthesizing implementation...`,
-                                      }
+                                        ...m,
+                                        content: `Research complete. Synthesizing implementation...`,
+                                    }
                                     : m
                             )
                         );
@@ -182,11 +195,11 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
                     prev.map((m) =>
                         m.id === thinkingId
                             ? {
-                                  ...m,
-                                  content: `Generation complete.\n\n${explanation}`,
-                                  codeGenerated: true,
-                                  state: "CLEAN",
-                              }
+                                ...m,
+                                content: `Generation complete.\n\n${explanation}`,
+                                codeGenerated: true,
+                                state: "CLEAN",
+                            }
                             : m
                     )
                 );
@@ -201,13 +214,13 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
                     prev.map((m) =>
                         m.id === thinkingId
                             ? {
-                                  ...m,
-                                  content: wasClean
-                                      ? `${fileCount} module(s) synthesized. Clean build.${status.attempt > 0 ? ` (${status.attempt} correction(s) applied)` : ""}`
-                                      : `${fileCount} module(s) generated with ${status.errors.length} remaining issue(s) after ${status.attempt} correction attempt(s).`,
-                                  codeGenerated: true,
-                                  state: status.state,
-                              }
+                                ...m,
+                                content: wasClean
+                                    ? `${fileCount} module(s) synthesized. Clean build.${status.attempt > 0 ? ` (${status.attempt} correction(s) applied)` : ""}`
+                                    : `${fileCount} module(s) generated with ${status.errors.length} remaining issue(s) after ${status.attempt} correction attempt(s).`,
+                                codeGenerated: true,
+                                state: status.state,
+                            }
                             : m
                     )
                 );
@@ -220,10 +233,10 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
                     prev.map((m) =>
                         m.id === thinkingId
                             ? {
-                                  ...m,
-                                  content: `Generation issue:\n${error}`,
-                                  state: "FAILED",
-                              }
+                                ...m,
+                                content: `Generation issue:\n${error}`,
+                                state: "FAILED",
+                            }
                             : m
                     )
                 );
@@ -233,7 +246,12 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
                 userMessage.content,
                 userFiles,
                 runtimeLogs,
-                researchContext || undefined
+                researchContext || undefined,
+                {
+                    provider: AVAILABLE_MODELS.find(m => m.id === selectedModel)?.provider || "groq",
+                    apiKey: "",
+                    model: selectedModel,
+                }
             );
         } catch (error) {
             console.error("PromptChat Error:", error);
@@ -241,10 +259,10 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
                 prev.map((m) =>
                     m.id === thinkingId
                         ? {
-                              ...m,
-                              content: `Generation failed.\n\n${error instanceof Error ? error.message : "Unknown error"}`,
-                              state: "FAILED",
-                          }
+                            ...m,
+                            content: `Generation failed.\n\n${error instanceof Error ? error.message : "Unknown error"}`,
+                            state: "FAILED",
+                        }
                         : m
                 )
             );
@@ -322,7 +340,7 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
                         onKeyDown={handleKeyDown}
                         placeholder="Describe what you want to build..."
                         disabled={isGenerating}
-                        className="resize-none pr-12 min-h-[80px] bg-background/50 pl-12"
+                        className="resize-none pr-12 min-h-[80px] bg-background/50 pl-12 pb-10"
                         rows={3}
                     />
 
@@ -350,8 +368,44 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
                             <ArrowUp size={14} />
                         )}
                     </Button>
+
+                    {/* Model selector — inside textbox, bottom-left */}
+                    <div className="absolute bottom-2 left-2 z-10">
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowModelDropdown(!showModelDropdown)}
+                                className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono text-muted-foreground hover:text-foreground transition-colors bg-muted/40 hover:bg-muted/70 border border-border/30"
+                            >
+                                {AVAILABLE_MODELS.find(m => m.id === selectedModel)?.label || selectedModel}
+                                <ChevronDown size={8} className={cn("transition-transform", showModelDropdown && "rotate-180")} />
+                            </button>
+
+                            {showModelDropdown && (
+                                <div className="absolute bottom-full left-0 mb-1 w-52 rounded-md border border-border bg-popover shadow-lg z-50 py-1">
+                                    {AVAILABLE_MODELS.map((model) => (
+                                        <button
+                                            key={model.id}
+                                            onClick={() => {
+                                                setSelectedModel(model.id);
+                                                setShowModelDropdown(false);
+                                            }}
+                                            className={cn(
+                                                "w-full text-left px-3 py-1.5 text-[11px] font-mono transition-colors",
+                                                selectedModel === model.id
+                                                    ? "bg-primary/10 text-primary"
+                                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                            )}
+                                        >
+                                            {model.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
-                <p className="text-[9px] text-muted-foreground mt-4 text-center font-bold tracking-[0.1em] uppercase opacity-40">
+
+                <p className="text-[9px] text-muted-foreground mt-2 text-center font-bold tracking-[0.1em] uppercase opacity-40">
                     <Activity size={10} className="inline mr-2 text-primary" />
                     Architect Engine v2.0 — Self-Correction Active
                 </p>

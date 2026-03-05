@@ -57,7 +57,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
         try {
             const stored = localStorage.getItem(VAULT_STORAGE_KEY);
             if (stored) setActiveVaultRaw(stored);
-        } catch {}
+        } catch { }
         setHydrated(true);
     }, []);
 
@@ -67,7 +67,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
         try {
             if (address) localStorage.setItem(VAULT_STORAGE_KEY, address);
             else localStorage.removeItem(VAULT_STORAGE_KEY);
-        } catch {}
+        } catch { }
     };
 
     // Full disconnect — clears address + all cached data
@@ -83,7 +83,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
         setStakeAccounts([]);
         setTotalStakedSol(0);
         setIsMultisig(false);
-        try { localStorage.removeItem(VAULT_STORAGE_KEY); } catch {}
+        try { localStorage.removeItem(VAULT_STORAGE_KEY); } catch { }
     };
     const [vaultBalance, setVaultBalance] = useState<number | null>(null);
     const [vaultValue, setVaultValue] = useState<number | null>(null);
@@ -111,8 +111,6 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
         setLoading(true);
 
         const rpcEndpoint = (connection as any)?._rpcEndpoint || "unknown";
-        console.log(`[VaultSync] Starting sync v${version} for ${activeVault}`);
-        console.log(`[VaultSync] RPC endpoint: ${rpcEndpoint}`);
 
         const errors: string[] = [];
 
@@ -177,8 +175,6 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
                 const msg = `Balance fetch failed: ${balanceResult.reason?.message || balanceResult.reason}`;
                 console.warn(`[VaultSync] ${msg}`);
                 errors.push(msg);
-            } else {
-                console.log(`[VaultSync] SOL balance: ${balance}`);
             }
 
             // Handle Tokens
@@ -187,8 +183,6 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
                 const msg = `Token fetch failed: ${tokensResult.reason?.message || tokensResult.reason}`;
                 console.warn(`[VaultSync] ${msg}`);
                 errors.push(msg);
-            } else {
-                console.log(`[VaultSync] SPL tokens found: ${rawTokens.length}`, rawTokens.map(t => t.mint));
             }
 
             // Handle Proposals
@@ -201,8 +195,6 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
             const txs = txResult.status === "fulfilled" ? txResult.value : [];
             if (txResult.status === "rejected") {
                 console.warn(`[VaultSync] Transactions fetch failed (non-critical):`, txResult.reason);
-            } else {
-                console.log(`[VaultSync] Recent transactions: ${txs.length}`);
             }
             setRecentTransactions(txs);
 
@@ -213,7 +205,6 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
             } else {
                 const stakedSolTotal = stakeAccts.reduce((acc, s) => acc + s.activeLamports, 0) / 1e9;
                 const rewardSolTotal = stakeAccts.reduce((acc, s) => acc + s.rewardLamports, 0) / 1e9;
-                console.log(`[VaultSync] Stake accounts: ${stakeAccts.length}, staked: ${stakedSolTotal.toLocaleString()} SOL, rewards: ${rewardSolTotal.toLocaleString()} SOL`);
             }
             setStakeAccounts(stakeAccts);
 
@@ -234,14 +225,9 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
             const solMint = "So11111111111111111111111111111111111111112";
             if (!mints.includes(solMint)) mints.push(solMint);
 
-            console.log(`[VaultSync] Fetching metadata for ${mints.length} mints (DexScreener → Jupiter → well-known fallback)...`);
             let metadata: Record<string, { price: number; symbol?: string; name?: string; logo?: string; change24h?: number }> = {};
             try {
                 metadata = await sqClient.getTokenMetadata(mints);
-                console.log(`[VaultSync] Metadata received for:`, Object.keys(metadata));
-                for (const [mint, meta] of Object.entries(metadata)) {
-                    console.log(`[VaultSync]   ${meta.symbol || mint}: $${meta.price}`);
-                }
             } catch (pricingError) {
                 console.warn("[VaultSync] Pricing/Metadata API failed:", pricingError);
                 toast.warning("Price data unavailable", { id: "vault-price-warn", description: "DexScreener API failed. Token values may show as $0." });
@@ -281,12 +267,10 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
                     members: memberCount
                 });
                 setIsMultisig(true);
-                console.log(`[VaultSync] Squads multisig detected — ${memberCount} members, threshold ${multisig.threshold}`);
             } else {
                 // Regular wallet — no multisig config
                 setVaultConfig(null);
                 setIsMultisig(false);
-                console.log(`[VaultSync] Standard wallet detected (not a Squads multisig)`);
             }
 
             const solMeta = metadata[solMint] || { symbol: "SOL", name: "Solana", price: 0, change24h: 0, logo: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" };
@@ -333,7 +317,6 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
                     change24h: solMeta.change24h || 0,
                     value: stakedSolValue,
                 });
-                console.log(`[VaultSync] Added Staked SOL entry: ${stakedSolAmount.toLocaleString()} SOL ($${stakedSolValue.toLocaleString()})`);
             }
 
             const totalValue = allTokens.reduce((acc, t) => acc + t.value, 0);
@@ -349,7 +332,6 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
 
             // Guard: if a newer refresh started while we were awaiting, discard this result
             if (version !== refreshVersionRef.current) {
-                console.log(`[VaultSync] v${version} discarded — superseded by v${refreshVersionRef.current}`);
                 return;
             }
 
@@ -358,8 +340,6 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
             setVaultChange24h(weightedChange);
             setVaultTokens(allTokens);
             setProposals(props);
-            // Log final state
-            console.log(`[VaultSync] Final v${version}: ${allTokens.length} tokens, total value: $${totalValue.toFixed(2)}`);
             if (totalValue === 0 && balance === 0 && rawTokens.length === 0 && errors.length === 0) {
                 toast.info("Vault appears empty", {
                     id: "vault-empty",

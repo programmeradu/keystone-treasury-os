@@ -52,6 +52,8 @@ export class ArchitectEngine {
   private errors: string[] = [];
   private callbacks: ArchitectCallbacks;
   private abortController: AbortController | null = null;
+  private activeModel: string = "auto";
+  private activeProvider: string = "auto";
 
   constructor(callbacks: ArchitectCallbacks) {
     this.callbacks = callbacks;
@@ -69,7 +71,7 @@ export class ArchitectEngine {
       startedAt: this.startedAt,
       elapsedMs: this.startedAt ? Date.now() - this.startedAt : 0,
       errors: [...this.errors],
-      model: this.attempt === 0 ? "gpt-4o" : "gpt-4o-mini",
+      model: this.activeModel,
     };
   }
 
@@ -186,6 +188,8 @@ export class ArchitectEngine {
     this.tokensGenerated = 0;
     this.startedAt = null;
     this.errors = [];
+    this.activeModel = "auto";
+    this.activeProvider = "auto";
     this.abortController?.abort();
     this.abortController = new AbortController();
   }
@@ -238,6 +242,10 @@ export class ArchitectEngine {
       throw new Error("NO_API_KEY: " + (data.details || "No AI API key configured. Open Settings to add your own key."));
     }
 
+    // Update active provider/model from API response
+    if (data.provider) this.activeProvider = data.provider;
+    if (data.model) this.activeModel = data.model;
+
     if (data.explanation) {
       this.callbacks.onExplanation(data.explanation);
     }
@@ -246,12 +254,15 @@ export class ArchitectEngine {
     const responseText = JSON.stringify(data.files || {});
     this.tokensGenerated += Math.ceil(responseText.length / 4);
 
+    // Emit status so UI reflects the real model
+    this.callbacks.onStateChange(this.getStatus());
+
     return data.files || null;
   }
 
   /**
    * Call the generate API with correction context.
-   * Uses a lighter model (gpt-4o-mini) at lower temperature for focused fixes.
+   * Uses the server-selected model to generate focused fixes.
    */
   private async callCorrectionAPI(
     currentFiles: Record<string, string>,

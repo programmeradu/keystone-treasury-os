@@ -30,7 +30,7 @@ import { ContractEditor } from "@/components/studio/ContractEditor";
 import { WalletManager } from "@/components/studio/WalletManager";
 import { compileProgram } from "@/lib/studio/solana-playground";
 import { saveProject } from "@/actions/studio-actions";
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { PremiumModal, PremiumModalTitle, PremiumModalDescription } from "@/components/ui/PremiumModal";
 import { toast } from "@/lib/toast-notifications";
 import { ProjectBrowser } from "@/components/studio/ProjectBrowser";
 import { StudioToolbar } from "@/components/studio/StudioToolbar";
@@ -650,15 +650,13 @@ export default function StudioPage() {
                 </ResizablePanel>
             </ResizablePanelGroup>
 
-            <Dialog open={showWalletModal} onOpenChange={setShowWalletModal}>
-                <DialogContent className="bg-transparent border-none p-0 max-w-sm [&>button]:text-zinc-400 [&>button]:hover:text-white [&>button]:top-4 [&>button]:right-4">
-                    <div className="sr-only">
-                        <DialogTitle>Secure Enclave Wallet</DialogTitle>
-                        <DialogDescription>Initialize and establish your non-custodial Studio signer.</DialogDescription>
-                    </div>
-                    <WalletManager />
-                </DialogContent>
-            </Dialog>
+            <PremiumModal isOpen={showWalletModal} onClose={() => setShowWalletModal(false)} className="max-w-sm !bg-transparent !border-none !shadow-none !backdrop-blur-none p-0">
+                <div className="sr-only">
+                    <PremiumModalTitle>Secure Enclave Wallet</PremiumModalTitle>
+                    <PremiumModalDescription>Initialize and establish your non-custodial Studio signer.</PremiumModalDescription>
+                </div>
+                <WalletManager />
+            </PremiumModal>
 
 
             <ProjectBrowser

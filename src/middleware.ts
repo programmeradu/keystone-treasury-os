@@ -2,11 +2,37 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 /**
- * Middleware: Supabase session refresh + route protection.
+ * Middleware: Dual auth session refresh + route protection.
+ *
+ * Supports TWO authentication systems:
+ *   1. Supabase Auth  – wallet-based sign-in (SIWS)
+ *   2. Neon Auth (Better Auth) – social sign-in (Google, etc.)
  *
  * - Public: /api/auth/*, /, /marketplace, /pricing, static assets
  * - Protected: /app/*, /api/studio/*, /api/agent/*
  */
+
+// Neon Auth cookie names (Better Auth)
+// In production (HTTPS): "__Secure-neon-auth.session_token"
+// In development (HTTP):  "neon-auth.session_token"
+const NEON_AUTH_COOKIE_NAMES = [
+    '__Secure-neon-auth.session_token',
+    'neon-auth.session_token',
+    '__Secure-neon-auth.local.session_data',
+    'neon-auth.local.session_data',
+    'better-auth.session_token',  // fallback Better Auth default
+];
+
+/**
+ * Check if a Neon Auth (Better Auth) session cookie exists on the request.
+ */
+function hasNeonAuthSession(request: NextRequest): boolean {
+    return NEON_AUTH_COOKIE_NAMES.some((name) => {
+        const cookie = request.cookies.get(name);
+        return cookie && cookie.value.length > 0;
+    });
+}
+
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
@@ -58,17 +84,23 @@ export async function middleware(request: NextRequest) {
         }
     );
 
-    // Refresh the session (this also updates cookies)
-    const { data: { user } } = await supabase.auth.getUser();
+    // Refresh the Supabase session (this also updates cookies)
+    const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+
+    // Check for Neon Auth (Better Auth / social sign-in) session cookie
+    const hasNeonSession = hasNeonAuthSession(request);
+
+    // User is authenticated if EITHER auth system has a valid session
+    const isAuthenticated = !!supabaseUser || hasNeonSession;
 
     // ─── Protect /app/* and /api/* routes ───────────────────────────
     const protectedPaths = ['/app', '/api/studio', '/api/agent', '/api/dca'];
 
-    if (protectedPaths.some((p) => pathname.startsWith(p)) && !user) {
+    if (protectedPaths.some((p) => pathname.startsWith(p)) && !isAuthenticated) {
         // For API routes: return 401
         if (pathname.startsWith('/api/')) {
             return NextResponse.json(
-                { error: 'Unauthorized. Please sign in with your wallet.' },
+                { error: 'Unauthorized. Please sign in.' },
                 { status: 401 }
             );
         }

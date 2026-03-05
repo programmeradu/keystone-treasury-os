@@ -1,6 +1,7 @@
 import { TavilyClient } from "@/lib/tavily";
 import { JinaClient } from "@/lib/jina";
 import { FirecrawlClient } from "@/lib/firecrawl";
+import { knowledgeMemory } from "@/lib/knowledge-memory";
 
 export interface KnowledgeResult {
     query: string;
@@ -36,8 +37,6 @@ export class KnowledgeBase {
      * 4. Returns consolidated intelligence
      */
     async study(topic: string): Promise<KnowledgeResult> {
-        console.log(`[KnowledgeBase] Initiating Multi-Vector Research: ${topic}`);
-
         // 1. Search for deep documentation
         const searchResults = await this.tavily.search(`${topic} technical documentation SDK code examples`, "advanced");
 
@@ -46,7 +45,6 @@ export class KnowledgeBase {
         }
 
         const topSources = searchResults.slice(0, 3);
-        console.log(`[KnowledgeBase] Targeting Sources: ${topSources.map(s => s.url).join(", ")}`);
 
         // 2. Multi-Vector Scraping
         // We use Jina for the primary and Firecrawl for the secondary to cross-reference
@@ -67,12 +65,29 @@ ${secondaryContent}
 ` : ""}
         `.trim();
 
-        return {
+        const result: KnowledgeResult = {
             query: topic,
             summary: searchResults[0].content, // Executive summary from Tavily
             sources: topSources.map(s => ({ title: s.title, url: s.url })),
             rawContent: consolidatedIntelligence.slice(0, 15000) // Support larger context for multi-source
         };
+
+        // Persist to Knowledge Memory for future recall
+        try {
+            await knowledgeMemory.store({
+                source: "kb_study",
+                sourceUrl: topSources[0].url,
+                title: `Research: ${topic}`,
+                summary: result.summary?.slice(0, 500),
+                content: result.rawContent,
+                contentType: "markdown",
+                tags: ["kb_study", topic.split(" ")[0]?.toLowerCase()].filter(Boolean),
+            });
+        } catch (memErr) {
+            console.warn("[KnowledgeBase] Failed to persist study to memory:", memErr);
+        }
+
+        return result;
     }
 }
 

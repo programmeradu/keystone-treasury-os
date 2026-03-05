@@ -506,6 +506,30 @@
     display: none;
   }
 
+  /* Transparent scrollbar variant */
+  .scrollbar-transparent {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  .scrollbar-transparent::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-transparent::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-transparent::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 999px;
+  }
+
+  .scrollbar-transparent:hover::-webkit-scrollbar-thumb,
+  .scrollbar-transparent:focus-within::-webkit-scrollbar-thumb {
+    background: oklch(1 0 0 / 0.15);
+  }
+
   /* Very thin scrollbar for compact areas */
   .scrollbar-thin {
     scrollbar-width: thin;

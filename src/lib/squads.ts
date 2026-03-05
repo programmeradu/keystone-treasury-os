@@ -134,19 +134,19 @@ export class SquadsClient {
     // Logos here are fallbacks; DexScreener CDN logos take priority when available.
     // Stablecoins include a default price so they always show correct value.
     private static WELL_KNOWN: Record<string, { symbol: string; name: string; logo: string; price?: number }> = {
-        "So11111111111111111111111111111111111111112":  { symbol: "SOL",   name: "Solana",           logo: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" },
-        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": { symbol: "USDC",  name: "USD Coin",        logo: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png", price: 1.0 },
-        "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB":  { symbol: "USDT",  name: "Tether USD",      logo: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB/logo.svg", price: 1.0 },
-        "27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4": { symbol: "JLP",   name: "Jupiter Perps LP", logo: "https://static.jup.ag/jlp/icon.png" },
-        "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN":  { symbol: "JUP",   name: "Jupiter",         logo: "https://static.jup.ag/jup/icon.png" },
-        "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263": { symbol: "BONK",  name: "Bonk",            logo: "https://arweave.net/hQiPZOsRZXGXBJd_82PhVdlM_hACsT_q6wqwf5cSY7I" },
-        "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm": { symbol: "WIF",   name: "dogwifhat",       logo: "https://bafkreibk3covs5ltyqxa272uodhber43tp53hbyagsc2oliaijottcm2q.ipfs.nftstorage.link" },
-        "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3": { symbol: "PYTH",  name: "Pyth Network",    logo: "https://pyth.network/token.svg" },
-        "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL":  { symbol: "JTO",   name: "Jito",            logo: "https://metadata.jito.network/token/jto/icon.png" },
-        "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So":  { symbol: "MSOL",  name: "Marinade SOL",    logo: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So/logo.png" },
+        "So11111111111111111111111111111111111111112": { symbol: "SOL", name: "Solana", logo: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" },
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": { symbol: "USDC", name: "USD Coin", logo: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png", price: 1.0 },
+        "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB": { symbol: "USDT", name: "Tether USD", logo: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB/logo.svg", price: 1.0 },
+        "27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4": { symbol: "JLP", name: "Jupiter Perps LP", logo: "https://static.jup.ag/jlp/icon.png" },
+        "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN": { symbol: "JUP", name: "Jupiter", logo: "https://static.jup.ag/jup/icon.png" },
+        "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263": { symbol: "BONK", name: "Bonk", logo: "https://arweave.net/hQiPZOsRZXGXBJd_82PhVdlM_hACsT_q6wqwf5cSY7I" },
+        "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm": { symbol: "WIF", name: "dogwifhat", logo: "https://bafkreibk3covs5ltyqxa272uodhber43tp53hbyagsc2oliaijottcm2q.ipfs.nftstorage.link" },
+        "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3": { symbol: "PYTH", name: "Pyth Network", logo: "https://pyth.network/token.svg" },
+        "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL": { symbol: "JTO", name: "Jito", logo: "https://metadata.jito.network/token/jto/icon.png" },
+        "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So": { symbol: "MSOL", name: "Marinade SOL", logo: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So/logo.png" },
         "7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj": { symbol: "stSOL", name: "Lido Staked SOL", logo: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj/logo.png" },
-        "USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA":  { symbol: "USDS",  name: "USDS",            logo: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA/logo.png", price: 1.0 },
-        "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN": { symbol: "TRUMP", name: "OFFICIAL TRUMP",  logo: "https://dd.dexscreener.com/ds-data/tokens/solana/6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN.png" },
+        "USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA": { symbol: "USDS", name: "USDS", logo: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA/logo.png", price: 1.0 },
+        "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN": { symbol: "TRUMP", name: "OFFICIAL TRUMP", logo: "https://dd.dexscreener.com/ds-data/tokens/solana/6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN.png" },
     };
 
     async getTokenMetadata(mints: string[]): Promise<Record<string, { price: number; symbol?: string; name?: string; logo?: string; change24h?: number }>> {
@@ -225,7 +225,6 @@ export class SquadsClient {
             !metadata[m]?.logo || !metadata[m]?.symbol || metadata[m]?.symbol === "SPL"
         );
         if (missingMints.length > 0) {
-            console.log(`[TokenMeta] Fetching ${missingMints.length} missing tokens from Jupiter...`);
             await Promise.allSettled(missingMints.map(async (mint) => {
                 try {
                     const res = await fetch(`https://tokens.jup.ag/token/${mint}`, { signal: AbortSignal.timeout(5000) });
@@ -250,7 +249,6 @@ export class SquadsClient {
         // ── Source 3: Jupiter Price API (fills ALL missing prices) ──────
         const noPriceMints = mints.filter(m => !metadata[m]?.price || metadata[m].price === 0);
         if (noPriceMints.length > 0) {
-            console.log(`[TokenMeta] Fetching prices for ${noPriceMints.length} tokens from Jupiter Price API...`);
             try {
                 const ids = noPriceMints.join(",");
                 const res = await fetch(`https://lite-api.jup.ag/price/v2?ids=${ids}`, { signal: AbortSignal.timeout(5000) });
@@ -315,8 +313,6 @@ export class SquadsClient {
                 index: BigInt(transactionIndex)
             });
 
-            console.log(`[Squads] Creating proposal #${transactionIndex} for vault index ${vaultIndex} in multisig ${vaultAddress}`);
-
             // Note: In real app, we would use squads.instructions.vaultTransactionCreate
             // which takes { multisigPda, vaultIndex, transactionIndex, creator, ... }
             return vaultTransactionKey.toBase58();
@@ -331,14 +327,12 @@ export class SquadsClient {
      * Lists active proposals for the vault.
      */
     async getProposals(vaultAddress: string): Promise<any[]> {
-        console.log(`[Squads] Fetching proposals for ${vaultAddress}`);
         try {
             const multisigKey = new PublicKey(vaultAddress);
             const info = await this.connection.getAccountInfo(multisigKey);
             const SQUADS_V4_PROGRAM_ID = "SQDS4169MvYvC6v3HnQjHeYd3sU0n3MUPfw79vjrE8G";
 
             if (!info || info.owner.toBase58() !== SQUADS_V4_PROGRAM_ID) {
-                console.log("[Squads] Address is not a multisig, skipping proposals.");
                 return [];
             }
 
@@ -589,7 +583,6 @@ export class SquadsClient {
      * @param action Approve | Reject | Cancel
      */
     async voteOnProposal(vaultAddress: string, transactionIndex: number, action: "Approve" | "Reject" | "Cancel"): Promise<string> {
-        console.log(`[Squads] Voting ${action} on proposal #${transactionIndex} for ${vaultAddress}`);
         // In real app: squads.instructions.proposalApprove / proposalReject / proposalCancel
         return `vote_${action.toLowerCase()}_sig_pda_index_${transactionIndex}`;
     }
@@ -598,7 +591,6 @@ export class SquadsClient {
      * Executes a proposal that has reached the signature threshold.
      */
     async executeProposal(vaultAddress: string, transactionIndex: number): Promise<string> {
-        console.log(`[Squads] Executing proposal #${transactionIndex} for ${vaultAddress}`);
         // In real app: squads.instructions.vaultTransactionExecute or configTransactionExecute
         return `execution_sig_pda_index_${transactionIndex}`;
     }

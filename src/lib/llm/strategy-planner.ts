@@ -10,6 +10,7 @@
 import Groq from "groq-sdk";
 import OpenAI from "openai";
 import { PluginRegistry } from "@/lib/plugins/registry";
+import { knowledgeMemory } from "@/lib/knowledge-memory";
 
 export interface ActionItem {
   operation: string;
@@ -299,6 +300,57 @@ function localParsePlan(prompt: string): StrategyPlan | null {
     };
   }
 
+  // ─── Browser Tool: research/read a URL ─────────────────────────
+  const researchMatch = lower.match(
+    /(?:research|read|fetch|browse|analyze)\s+(?:(?:page|site|url|docs?)\s+)?(?:at\s+|from\s+)?(https?:\/\/[^\s]+)/i
+  );
+  if (researchMatch) {
+    const url = researchMatch[1];
+    return {
+      actions: [{ operation: "browser_research", parameters: { url, action: "markdown" } }],
+      reasoning: `Local parser: research URL ${url}`,
+      logs: [`Browser: converting ${url} to markdown`],
+      warnings: [],
+      estimatedOutcome: `Read and analyze content from ${url}`,
+      confidence: "high",
+      isChain: false,
+    };
+  }
+
+  // ─── Browser Tool: screenshot a URL ───────────────────────────
+  const screenshotMatch = lower.match(
+    /(?:screenshot|capture|snap)\s+(?:(?:page|site|url)\s+)?(?:at\s+|from\s+|of\s+)?(https?:\/\/[^\s]+)/i
+  );
+  if (screenshotMatch) {
+    const url = screenshotMatch[1];
+    return {
+      actions: [{ operation: "browser_screenshot", parameters: { url, action: "screenshot" } }],
+      reasoning: `Local parser: screenshot ${url}`,
+      logs: [`Browser: capturing screenshot of ${url}`],
+      warnings: [],
+      estimatedOutcome: `Screenshot of ${url}`,
+      confidence: "high",
+      isChain: false,
+    };
+  }
+
+  // ─── Browser Tool: scrape a URL ───────────────────────────────
+  const scrapeMatch = lower.match(
+    /(?:scrape|extract|pull\s+data\s+from)\s+(?:(?:page|site|url)\s+)?(?:at\s+|from\s+)?(https?:\/\/[^\s]+)/i
+  );
+  if (scrapeMatch) {
+    const url = scrapeMatch[1];
+    return {
+      actions: [{ operation: "browser_scrape", parameters: { url, action: "links" } }],
+      reasoning: `Local parser: scrape links from ${url}`,
+      logs: [`Browser: extracting links from ${url}`],
+      warnings: [],
+      estimatedOutcome: `Extract all links and data from ${url}`,
+      confidence: "high",
+      isChain: false,
+    };
+  }
+
   return null; // Not parseable locally
 }
 
@@ -332,9 +384,9 @@ export async function planStrategy(
   const learnedPlugins = PluginRegistry.getPlugins();
   const pluginContext = learnedPlugins.length > 0
     ? `\n\nLearned Protocols (available for execution):\n` +
-      learnedPlugins.map(p =>
-        `- "${p.name}": ${p.description} [programId: ${p.programId}] ops: ${p.operations.map(o => o.name).join(", ")}`
-      ).join("\n")
+    learnedPlugins.map(p =>
+      `- "${p.name}": ${p.description} [programId: ${p.programId}] ops: ${p.operations.map(o => o.name).join(", ")}`
+    ).join("\n")
     : "";
 
   const systemPrompt = `You are a professional crypto portfolio advisor. Your job is to understand user requests
@@ -376,6 +428,10 @@ Operations:
 - "governance_execute": Execute/Finalize a fully signed proposal (parameters: proposalIndex).
 - "external_balance": Check the SOL balance of any external wallet address (parameters: address).
 - "rebalance": Rebalance portfolio to target allocations (parameters: targetAllocations {})
+- "browser_research": Read a URL and convert to clean markdown (parameters: url). Use for protocol research, reading docs, analyzing web pages.
+- "browser_screenshot": Capture a screenshot of a URL (parameters: url). Use for visual proof, contract verification, monitoring.
+- "browser_scrape": Extract links and elements from a URL (parameters: url, elements [CSS selectors]). Use for data extraction, competitive intel.
+- "browser_read": AI-powered structured extraction from a URL (parameters: url, prompt). Use for extracting specific data points like prices, TVL, APYs.
 
 God-Mode Ability:
 You can learn ANY new protocol seamlessly using the "Infinite Discovery Stack":
@@ -385,12 +441,28 @@ You can learn ANY new protocol seamlessly using the "Infinite Discovery Stack":
 Action: First "plugin_register" the learned capabilities, then execute.
 For rebalance, always include a targetAllocations object like: { "SOL": 50, "USDC": 30, "JUP": 20 }${pluginContext}`;
 
+  // ─── Recall prior knowledge for context ──────────────────────────
+  let knowledgeContext = "";
+  try {
+    // Extract key terms from the request to search
+    const searchTerms = userRequest.replace(/[^a-zA-Z0-9\s.:/]/g, "").trim();
+    const recalled = await knowledgeMemory.recall(searchTerms, 3);
+    if (recalled.length > 0) {
+      knowledgeContext = `\n\nPrior Intelligence (from Keystone's memory):\n` +
+        recalled.map(k =>
+          `- [${k.source}] ${k.title || k.sourceUrl}: ${k.summary?.slice(0, 300) || "(no summary)"}`
+        ).join("\n");
+    }
+  } catch (recallErr) {
+    console.warn("[StrategyPlanner] Knowledge recall failed:", recallErr);
+  }
+
   const userPrompt = `User request: "${userRequest}"
 
 Current wallet state:
 Balances: ${JSON.stringify(walletState.balances)}
 Portfolio allocation: ${JSON.stringify(walletState.portfolio)}
-${walletState.totalValue ? `Total portfolio value: $${walletState.totalValue.toLocaleString()}` : ""}
+${walletState.totalValue ? `Total portfolio value: $${walletState.totalValue.toLocaleString()}` : ""}${knowledgeContext}
 
 Create an execution plan. Return ONLY JSON, no markdown.`;
 

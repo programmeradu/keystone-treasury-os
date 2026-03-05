@@ -24,6 +24,8 @@
     "hooks:install": "node -e \"const fs=require('node:fs');fs.mkdirSync('.git/hooks',{recursive:true});fs.writeFileSync('.git/hooks/pre-push','#!/bin/sh\\nnode scripts/pre-push-scan.mjs\\n');fs.chmodSync('.git/hooks/pre-push',0o755);console.log('pre-push hook installed');\""
   },
   "dependencies": {
+    "@ai-sdk/groq": "^3.0.27",
+    "@ai-sdk/react": "^3.0.114",
     "@babel/standalone": "^7.28.5",
     "@coinbase/onchainkit": "^1.0.3",
     "@hookform/resolvers": "^3.10.0",
@@ -85,6 +87,7 @@
     "@turnkey/sdk-browser": "^5.14.0",
     "@turnkey/sdk-server": "^5.0.0",
     "@turnkey/solana": "^1.1.20",
+    "ai": "^6.0.112",
     "archiver": "^7.0.1",
     "cheerio": "^1.1.2",
     "class-variance-authority": "^0.7.0",
@@ -112,6 +115,7 @@
     "react-hook-form": "^7.53.0",
     "react-icons": "^5.3.0",
     "react-is": "^19.1.1",
+    "react-markdown": "^10.1.0",
     "react-resizable-panels": "^3.0.6",
     "recharts": "^3.2.1",
     "resend": "^6.1.0",
@@ -123,7 +127,7 @@
     "viem": "^2.37.8",
     "wagmi": "2",
     "ws": "^8.18.3",
-    "zod": "^3.23.8"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",

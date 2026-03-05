@@ -125,40 +125,57 @@ export async function POST(req: NextRequest) {
     }
 
     // ─── Provider Resolution ────────────────────────────────────────
-    // Priority: BYOK (user's key) → env OpenAI → env/fallback Groq
-    // Groq serves as the always-on free tier so the Architect always works.
+    // Priority: BYOK (user's key) → Cloudflare → Groq → Ollama
+    // If non-BYOK provider fails, cascade to the next fallback.
 
     const byokProvider = aiConfig?.provider;
     const byokKey = aiConfig?.apiKey;
     const byokModel = aiConfig?.model;
 
-    // Determine which provider + key + model to use
-    let provider: "openai" | "groq" | "google" | "anthropic" | "cloudflare" | "ollama";
-    let activeKey: string;
-    let activeModel: string;
+    type ProviderType = "openai" | "groq" | "google" | "anthropic" | "cloudflare" | "ollama";
+
+    interface ProviderEntry {
+      provider: ProviderType;
+      key: string;
+      model: string;
+    }
+
+    // Build ordered fallback chain
+    const providerChain: ProviderEntry[] = [];
 
     if (byokKey && byokProvider) {
-      // 1. User's BYOK key takes top priority (any provider incl. OpenAI)
-      provider = byokProvider as typeof provider;
-      activeKey = byokKey;
-      activeModel = byokModel || getDefaultModel(byokProvider);
-    } else if (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_AI_TOKEN) {
-      // 2. Cloudflare Workers AI — primary free tier (10K neurons/day, your own account)
-      provider = "cloudflare";
-      activeKey = process.env.CLOUDFLARE_AI_TOKEN;
-      activeModel = process.env.CLOUDFLARE_AI_MODEL || "@cf/qwen/qwen3-30b-a3b-fp8";
-    } else if (process.env.GROQ_API_KEY) {
-      // 3. Groq — secondary free fallback (1,000 req/day, fastest inference)
-      provider = "groq";
-      activeKey = process.env.GROQ_API_KEY;
-      activeModel = "llama-3.3-70b-versatile";
-    } else if (process.env.OLLAMA_HOST || process.env.OLLAMA_ENABLED === "true") {
-      // 4. Ollama — local self-hosted (no API key needed, unlimited)
-      provider = "ollama";
-      activeKey = "ollama";
-      activeModel = process.env.OLLAMA_MODEL || "qwen2.5-coder:7b";
-    } else {
-      // No keys at all
+      // 1. User's BYOK key takes top priority
+      providerChain.push({
+        provider: byokProvider as ProviderType,
+        key: byokKey,
+        model: byokModel || getDefaultModel(byokProvider),
+      });
+    }
+
+    // Server-side fallbacks (always available regardless of BYOK)
+    if (process.env.GROQ_API_KEY) {
+      providerChain.push({
+        provider: "groq",
+        key: process.env.GROQ_API_KEY,
+        model: "llama-3.3-70b-versatile",
+      });
+    }
+    if (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_AI_TOKEN) {
+      providerChain.push({
+        provider: "cloudflare",
+        key: process.env.CLOUDFLARE_AI_TOKEN,
+        model: process.env.CLOUDFLARE_AI_MODEL || "@cf/qwen/qwen3-30b-a3b-fp8",
+      });
+    }
+    if (process.env.OLLAMA_HOST || process.env.OLLAMA_ENABLED === "true") {
+      providerChain.push({
+        provider: "ollama",
+        key: "ollama",
+        model: process.env.OLLAMA_MODEL || "qwen2.5-coder:7b",
+      });
+    }
+
+    if (providerChain.length === 0) {
       return NextResponse.json(
         {
           error: "no_api_key",
@@ -170,125 +187,150 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ─── LLM Call ───────────────────────────────────────────────────
-    let response: string;
+    // Use the first entry; we'll cascade on failure below
+    let provider: ProviderType = providerChain[0].provider;
+    let activeKey: string = providerChain[0].key;
+    let activeModel: string = providerChain[0].model;
 
-    if (provider === "openai" || provider === "groq") {
-      // Both OpenAI and Groq use the OpenAI-compatible SDK
-      const client = new OpenAI({
-        apiKey: activeKey,
-        ...(provider === "groq" && { baseURL: "https://api.groq.com/openai/v1" }),
-      });
+    // ─── LLM Call with Cascading Fallback ────────────────────────────
 
-      const isOpenAI = provider === "openai";
-      const completion = await client.chat.completions.create({
-        model: activeModel,
-        messages: [
-          {
-            role: "system",
-            content: isOpenAI
-              ? STUDIO_SYSTEM_PROMPT
-              : STUDIO_SYSTEM_PROMPT + "\n\nIMPORTANT: Return ONLY raw JSON. Do not wrap in markdown code blocks.",
-          },
-          { role: "user", content: fullPrompt },
-        ],
-        temperature: 0.7,
-        max_tokens: 4000,
-        ...(isOpenAI && { response_format: { type: "json_object" as const } }),
-      });
-      response = completion.choices[0]?.message?.content || "{}";
-
-    } else if (provider === "google") {
-      // Google Gemini — REST API
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${activeKey}`;
-      const geminiRes = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: STUDIO_SYSTEM_PROMPT }] },
-          contents: [{ parts: [{ text: fullPrompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 4000,
-            responseMimeType: "application/json",
-          },
-        }),
-      });
-      if (!geminiRes.ok) {
-        const err = await geminiRes.json().catch(() => ({}));
-        throw new Error(err.error?.message || `Google API error ${geminiRes.status}`);
-      }
-      const geminiData = await geminiRes.json();
-      response = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-
-    } else if (provider === "anthropic") {
-      // Anthropic Claude — Messages API
-      const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": activeKey,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: activeModel,
+    async function callProvider(
+      p: ProviderType, key: string, model: string
+    ): Promise<string> {
+      if (p === "openai" || p === "groq") {
+        const client = new OpenAI({
+          apiKey: key,
+          ...(p === "groq" && { baseURL: "https://api.groq.com/openai/v1" }),
+        });
+        const isOpenAI = p === "openai";
+        const completion = await client.chat.completions.create({
+          model,
+          messages: [
+            {
+              role: "system",
+              content: isOpenAI
+                ? STUDIO_SYSTEM_PROMPT
+                : STUDIO_SYSTEM_PROMPT + "\n\nIMPORTANT: Return ONLY raw JSON. Do not wrap in markdown code blocks.",
+            },
+            { role: "user", content: fullPrompt },
+          ],
+          temperature: 0.7,
           max_tokens: 4000,
-          system: STUDIO_SYSTEM_PROMPT + "\n\nIMPORTANT: Return ONLY raw JSON. Do not wrap in markdown code blocks.",
-          messages: [{ role: "user", content: fullPrompt }],
-        }),
-      });
-      if (!claudeRes.ok) {
-        const err = await claudeRes.json().catch(() => ({}));
-        throw new Error(err.error?.message || `Anthropic API error ${claudeRes.status}`);
+          ...(isOpenAI && { response_format: { type: "json_object" as const } }),
+        });
+        return completion.choices[0]?.message?.content || "{}";
+
+      } else if (p === "google") {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+        const geminiRes = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: STUDIO_SYSTEM_PROMPT }] },
+            contents: [{ parts: [{ text: fullPrompt }] }],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 4000,
+              responseMimeType: "application/json",
+            },
+          }),
+        });
+        if (!geminiRes.ok) {
+          const err = await geminiRes.json().catch(() => ({}));
+          throw new Error(err.error?.message || `Google API error ${geminiRes.status}`);
+        }
+        const geminiData = await geminiRes.json();
+        return geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+
+      } else if (p === "anthropic") {
+        const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": key,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: 4000,
+            system: STUDIO_SYSTEM_PROMPT + "\n\nIMPORTANT: Return ONLY raw JSON. Do not wrap in markdown code blocks.",
+            messages: [{ role: "user", content: fullPrompt }],
+          }),
+        });
+        if (!claudeRes.ok) {
+          const err = await claudeRes.json().catch(() => ({}));
+          throw new Error(err.error?.message || `Anthropic API error ${claudeRes.status}`);
+        }
+        const claudeData = await claudeRes.json();
+        return claudeData.content?.[0]?.text || "{}";
+
+      } else if (p === "cloudflare") {
+        const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || key.split(":")[0];
+        const cfToken = key.includes(":") ? key.split(":")[1] : key;
+        const client = new OpenAI({
+          apiKey: cfToken,
+          baseURL: `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1`,
+        });
+        const completion = await client.chat.completions.create({
+          model,
+          messages: [
+            {
+              role: "system",
+              content: STUDIO_SYSTEM_PROMPT + "\n\nIMPORTANT: Return ONLY raw JSON. Do not wrap in markdown code blocks.",
+            },
+            { role: "user", content: fullPrompt },
+          ],
+          temperature: 0.7,
+          max_tokens: 4000,
+        });
+        return completion.choices[0]?.message?.content || "{}";
+
+      } else if (p === "ollama") {
+        const ollamaHost = process.env.OLLAMA_HOST || "http://localhost:11434";
+        const client = new OpenAI({
+          apiKey: "ollama",
+          baseURL: `${ollamaHost}/v1`,
+        });
+        const completion = await client.chat.completions.create({
+          model,
+          messages: [
+            {
+              role: "system",
+              content: STUDIO_SYSTEM_PROMPT + "\n\nIMPORTANT: Return ONLY raw JSON. Do not wrap in markdown code blocks.",
+            },
+            { role: "user", content: fullPrompt },
+          ],
+          temperature: 0.7,
+        });
+        return completion.choices[0]?.message?.content || "{}";
+
+      } else {
+        throw new Error(`Unsupported provider: ${p}`);
       }
-      const claudeData = await claudeRes.json();
-      response = claudeData.content?.[0]?.text || "{}";
+    }
 
-    } else if (provider === "cloudflare") {
-      // Cloudflare Workers AI — OpenAI-compatible endpoint
-      const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || byokKey?.split(":")[0];
-      const cfToken = activeKey.includes(":") ? activeKey.split(":")[1] : activeKey;
+    // Try each provider in the chain; cascade on failure
+    let response: string = "{}";
+    let lastError: Error | null = null;
 
-      const client = new OpenAI({
-        apiKey: cfToken,
-        baseURL: `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1`,
-      });
-      const completion = await client.chat.completions.create({
-        model: activeModel,
-        messages: [
-          {
-            role: "system",
-            content: STUDIO_SYSTEM_PROMPT + "\n\nIMPORTANT: Return ONLY raw JSON. Do not wrap in markdown code blocks.",
-          },
-          { role: "user", content: fullPrompt },
-        ],
-        temperature: 0.7,
-        max_tokens: 4000,
-      });
-      response = completion.choices[0]?.message?.content || "{}";
+    for (const entry of providerChain) {
+      try {
+        console.log(`[Architect] Trying provider: ${entry.provider} / ${entry.model}`);
+        response = await callProvider(entry.provider, entry.key, entry.model);
+        provider = entry.provider;
+        activeKey = entry.key;
+        activeModel = entry.model;
+        lastError = null;
+        break; // success — stop cascading
+      } catch (err: any) {
+        console.warn(`[Architect] ${entry.provider} failed: ${err.message}. Trying next...`);
+        lastError = err;
+      }
+    }
 
-    } else if (provider === "ollama") {
-      // Ollama — local self-hosted, OpenAI-compatible API
-      const ollamaHost = process.env.OLLAMA_HOST || "http://localhost:11434";
-      const client = new OpenAI({
-        apiKey: "ollama", // Ollama ignores the key
-        baseURL: `${ollamaHost}/v1`,
-      });
-      const completion = await client.chat.completions.create({
-        model: activeModel,
-        messages: [
-          {
-            role: "system",
-            content: STUDIO_SYSTEM_PROMPT + "\n\nIMPORTANT: Return ONLY raw JSON. Do not wrap in markdown code blocks.",
-          },
-          { role: "user", content: fullPrompt },
-        ],
-        temperature: 0.7,
-      });
-      response = completion.choices[0]?.message?.content || "{}";
-
-    } else {
-      throw new Error(`Unsupported provider: ${provider}`);
+    if (lastError) {
+      // All providers in the chain failed
+      throw lastError;
     }
 
     // Parse JSON from response
@@ -331,6 +373,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       files: parsed.files || {},
       explanation: parsed.explanation || "Code generated successfully.",
+      provider,
+      model: activeModel,
     });
   } catch (error) {
     console.error("Studio Generate Error:", error);

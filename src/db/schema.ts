@@ -72,6 +72,26 @@ export const learnSuggestions = pgTable('learn_suggestions', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// ─── Knowledge Memory ─────────────────────────────────────────────────
+export const knowledgeEntries = pgTable('knowledge_entries', {
+  id: serial('id').primaryKey(),
+  source: text('source').notNull(), // browser_research | browser_scrape | browser_screenshot | kb_study | architect | manual
+  sourceUrl: text('source_url'),
+  title: text('title'),
+  summary: text('summary'),
+  content: text('content'), // full raw content (capped at 50KB by service)
+  contentType: text('content_type').notNull().default('markdown'), // markdown | json | html | screenshot_meta
+  tags: jsonb('tags'), // string[]
+  userId: uuid('user_id').references(() => users.id),
+  expiresAt: timestamp('expires_at'), // optional TTL
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  sourceIdx: index('knowledge_entries_source_idx').on(table.source),
+  sourceUrlIdx: index('knowledge_entries_source_url_idx').on(table.sourceUrl),
+  userIdx: index('knowledge_entries_user_idx').on(table.userId),
+  createdAtIdx: index('knowledge_entries_created_at_idx').on(table.createdAt),
+}));
+
 // ─── Alerts ───────────────────────────────────────────────────────────
 export const alerts = pgTable('alerts', {
   id: serial('id').primaryKey(),

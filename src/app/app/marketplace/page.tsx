@@ -10,7 +10,7 @@ import { Suspense } from "react";
 import { MiniAppCard } from "@/components/studio/MiniAppCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { PremiumModal, PremiumModalHeader, PremiumModalTitle, PremiumModalDescription } from "@/components/ui/PremiumModal";
 import { ListingModal } from "@/components/studio/ListingModal";
 import { NotificationBell } from "@/components/NotificationBell";
 import Link from "next/link";
@@ -221,11 +221,10 @@ export default function MarketplacePage() {
                                 <button
                                     key={cat}
                                     onClick={() => setCategoryFilter(cat)}
-                                    className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider border transition-all ${
-                                        categoryFilter === cat
+                                    className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider border transition-all ${categoryFilter === cat
                                             ? 'bg-primary/15 border-primary/40 text-primary shadow-[0_0_12px_rgba(54,226,123,0.15)]'
                                             : 'bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10 hover:border-white/20'
-                                    }`}
+                                        }`}
                                 >
                                     {cat}
                                 </button>
@@ -253,67 +252,65 @@ export default function MarketplacePage() {
             </div>
 
             {/* Publish Picker Dialog */}
-            <Dialog open={showPublishPicker} onOpenChange={setShowPublishPicker}>
-                <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <Rocket size={18} className="text-primary" />
-                            Publish to Marketplace
-                        </DialogTitle>
-                        <DialogDescription>
-                            Select an app from your Library to list on the Marketplace.
-                        </DialogDescription>
-                    </DialogHeader>
+            <PremiumModal isOpen={showPublishPicker} onClose={() => setShowPublishPicker(false)} className="sm:max-w-[500px]">
+                <PremiumModalHeader>
+                    <PremiumModalTitle className="flex items-center gap-2">
+                        <Rocket size={18} className="text-primary" />
+                        Publish to Marketplace
+                    </PremiumModalTitle>
+                    <PremiumModalDescription>
+                        Select an app from your Library to list on the Marketplace.
+                    </PremiumModalDescription>
+                </PremiumModalHeader>
 
-                    {libraryApps.length === 0 ? (
-                        <div className="py-8 flex flex-col items-center gap-4 text-center">
-                            <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground">
-                                <Box size={28} />
-                            </div>
-                            <div>
-                                <p className="font-bold mb-1">No apps in your Library</p>
-                                <p className="text-sm text-muted-foreground">Build an app in the Studio and SHIP it first.</p>
-                            </div>
-                            <Link href="/app/studio">
-                                <Button className="gap-2">
-                                    Open Studio <ArrowRight size={14} />
-                                </Button>
-                            </Link>
+                {libraryApps.length === 0 ? (
+                    <div className="py-8 flex flex-col items-center gap-4 text-center">
+                        <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground">
+                            <Box size={28} />
                         </div>
-                    ) : (
-                        <div className="space-y-2 max-h-[400px] overflow-y-auto py-2">
-                            {libraryApps.map((app: any) => {
-                                const alreadyListed = app.isPublished;
-                                return (
-                                    <button
-                                        key={app.id}
-                                        onClick={() => {
-                                            setShowPublishPicker(false);
-                                            setListingApp(app);
-                                        }}
-                                        className="w-full flex items-center gap-4 p-4 rounded-xl border border-border/40 hover:border-primary/40 hover:bg-primary/5 transition-all text-left group"
-                                    >
-                                        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-muted-foreground group-hover:text-primary shrink-0">
-                                            <Box size={20} />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-bold text-sm truncate group-hover:text-primary transition-colors">{app.name}</p>
-                                            <p className="text-xs text-muted-foreground truncate">{app.description || "No description"}</p>
-                                        </div>
-                                        <div className="shrink-0">
-                                            {alreadyListed ? (
-                                                <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-1 rounded-md">Update</span>
-                                            ) : (
-                                                <ArrowRight size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
-                                            )}
-                                        </div>
-                                    </button>
-                                );
-                            })}
+                        <div>
+                            <p className="font-bold mb-1">No apps in your Library</p>
+                            <p className="text-sm text-muted-foreground">Build an app in the Studio and SHIP it first.</p>
                         </div>
-                    )}
-                </DialogContent>
-            </Dialog>
+                        <Link href="/app/studio">
+                            <Button className="gap-2">
+                                Open Studio <ArrowRight size={14} />
+                            </Button>
+                        </Link>
+                    </div>
+                ) : (
+                    <div className="space-y-2 max-h-[400px] overflow-y-auto py-2">
+                        {libraryApps.map((app: any) => {
+                            const alreadyListed = app.isPublished;
+                            return (
+                                <button
+                                    key={app.id}
+                                    onClick={() => {
+                                        setShowPublishPicker(false);
+                                        setListingApp(app);
+                                    }}
+                                    className="w-full flex items-center gap-4 p-4 rounded-xl border border-border/40 hover:border-primary/40 hover:bg-primary/5 transition-all text-left group"
+                                >
+                                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-muted-foreground group-hover:text-primary shrink-0">
+                                        <Box size={20} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-bold text-sm truncate group-hover:text-primary transition-colors">{app.name}</p>
+                                        <p className="text-xs text-muted-foreground truncate">{app.description || "No description"}</p>
+                                    </div>
+                                    <div className="shrink-0">
+                                        {alreadyListed ? (
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-1 rounded-md">Update</span>
+                                        ) : (
+                                            <ArrowRight size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
+                                        )}
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+            </PremiumModal>
 
             {/* Listing Modal */}
             {listingApp && (

@@ -1,0 +1,20 @@
+No config path provided, using default 'drizzle.config.ts'
+Reading config file 'C:\Users\USER\Documents\GitHub\keystone-treasury-os\drizzle.config.ts'
+[dotenv@17.2.3] injecting env (23) from .env.local -- tip: ⚙️  override existing env vars with { override: true }
+Using '@neondatabase/serverless' driver for database querying
+ Warning  '@neondatabase/serverless' can only connect to remote Neon/Vercel Postgres/Supabase instances through a websocket
+[⣷] Pulling schema from database...
+TypeError: Invalid URL
+    at new URL (node:internal/url:828:25)
+    at Object.parse (file:///C:/Users/USER/Documents/GitHub/keystone-treasury-os/node_modules/@neondatabase/serverless/index.mjs:431:121)
+    at parse (file:///C:/Users/USER/Documents/GitHub/keystone-treasury-os/node_modules/@neondatabase/serverless/index.mjs:752:66)
+    at new ConnectionParameters (file:///C:/Users/USER/Documents/GitHub/keystone-treasury-os/node_modules/@neondatabase/serverless/index.mjs:769:49)
+    at new Client (file:///C:/Users/USER/Documents/GitHub/keystone-treasury-os/node_modules/@neondatabase/serverless/index.mjs:991:1)
+    at new NeonClient (file:///C:/Users/USER/Documents/GitHub/keystone-treasury-os/node_modules/@neondatabase/serverless/index.mjs:1308:193)
+    at Un.newClient (file:///C:/Users/USER/Documents/GitHub/keystone-treasury-os/node_modules/@neondatabase/serverless/index.mjs:1115:52)
+    at Un.connect (file:///C:/Users/USER/Documents/GitHub/keystone-treasury-os/node_modules/@neondatabase/serverless/index.mjs:1115:1)
+    at Un.query (file:///C:/Users/USER/Documents/GitHub/keystone-treasury-os/node_modules/@neondatabase/serverless/index.mjs:1139:1)
+    at Un.query (file:///C:/Users/USER/Documents/GitHub/keystone-treasury-os/node_modules/@neondatabase/serverless/index.mjs:1352:96) {
+  code: 'ERR_INVALID_URL',
+  input: "'postgresql://neondb_owner:npg_YcpsaAIT20SN@ep-plain-hill-alckyy0h-pooler.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'"
+}

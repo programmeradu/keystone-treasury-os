@@ -14,11 +14,10 @@ import {
 } from "lucide-react";
 import { toast } from "@/lib/toast-notifications";
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
+    PremiumModal,
+    PremiumModalHeader,
+    PremiumModalTitle,
+} from "@/components/ui/PremiumModal";
 
 interface StudioToolbarProps {
     files: Record<string, { content: string; language: string }>;
@@ -229,61 +228,57 @@ export function StudioToolbar({
             </div>
 
             {/* Preview Dialog */}
-            <Dialog open={showPreview} onOpenChange={setShowPreview}>
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
-                            <Eye size={14} />
-                            Marketplace Preview — {appName}
-                        </DialogTitle>
-                    </DialogHeader>
-                    {previewImage && (
-                        <div className="rounded-lg overflow-hidden border border-border">
-                            <img
-                                src={previewImage}
-                                alt="Mini-app preview"
-                                className="w-full h-auto"
-                            />
-                        </div>
-                    )}
-                    <p className="text-xs text-muted-foreground text-center">
-                        This is how your app will appear in the Keystone Marketplace.
-                    </p>
-                </DialogContent>
-            </Dialog>
+            <PremiumModal isOpen={showPreview} onClose={() => setShowPreview(false)} className="max-w-2xl">
+                <PremiumModalHeader>
+                    <PremiumModalTitle className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+                        <Eye size={14} className="text-primary" />
+                        Marketplace Preview — {appName}
+                    </PremiumModalTitle>
+                </PremiumModalHeader>
+                {previewImage && (
+                    <div className="rounded-lg overflow-hidden border border-border">
+                        <img
+                            src={previewImage}
+                            alt="Mini-app preview"
+                            className="w-full h-auto"
+                        />
+                    </div>
+                )}
+                <p className="text-xs text-muted-foreground text-center">
+                    This is how your app will appear in the Keystone Marketplace.
+                </p>
+            </PremiumModal>
 
             {/* Test Results Dialog */}
-            <Dialog open={showTestResult} onOpenChange={setShowTestResult}>
-                <DialogContent className="max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
-                            <TestTube2 size={14} />
-                            Test Results — {testResult?.score ?? 0}/100
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-2">
-                        {testResult?.checks.map((check, i) => (
-                            <div
-                                key={i}
-                                className="flex items-center gap-3 p-2 rounded-lg bg-muted/20"
-                            >
-                                {check.passed ? (
-                                    <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
-                                ) : (
-                                    <XCircle size={16} className="text-red-400 shrink-0" />
-                                )}
-                                <span className="text-sm">{check.name}</span>
-                            </div>
-                        ))}
-                    </div>
-                    <div
-                        className={`text-center text-sm font-bold mt-2 ${testResult?.pass ? "text-emerald-400" : "text-red-400"
-                            }`}
-                    >
-                        {testResult?.pass ? "All checks passed — ready to ship!" : "Some checks failed — review before shipping."}
-                    </div>
-                </DialogContent>
-            </Dialog>
+            <PremiumModal isOpen={showTestResult} onClose={() => setShowTestResult(false)} className="max-w-md">
+                <PremiumModalHeader>
+                    <PremiumModalTitle className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+                        <TestTube2 size={14} className="text-primary" />
+                        Test Results — {testResult?.score ?? 0}/100
+                    </PremiumModalTitle>
+                </PremiumModalHeader>
+                <div className="space-y-2">
+                    {testResult?.checks.map((check, i) => (
+                        <div
+                            key={i}
+                            className="flex items-center gap-3 p-2 rounded-lg bg-muted/20"
+                        >
+                            {check.passed ? (
+                                <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                            ) : (
+                                <XCircle size={16} className="text-red-400 shrink-0" />
+                            )}
+                            <span className="text-sm">{check.name}</span>
+                        </div>
+                    ))}
+                </div>
+                <div
+                    className={`text-center text-sm font-bold mt-2 ${testResult?.pass ? "text-emerald-400" : "text-red-400"
+                        }`}
+                >
+                    {testResult?.pass ? "All checks passed — ready to ship!" : "Some checks failed — review before shipping."}
+                </div>
+            </PremiumModal>
         </>
     );
 }

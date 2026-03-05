@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { PremiumModal, PremiumModalHeader, PremiumModalTitle, PremiumModalDescription } from "@/components/ui/PremiumModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,7 +41,7 @@ export function CreateDCABotModal({ isOpen, onClose, onBotCreated }: CreateDCABo
   const openState = isControlled ? isOpen : open;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  
+
   // Form state
   const [botName, setBotName] = useState("");
   const [buyToken, setBuyToken] = useState("So11111111111111111111111111111111111111112"); // Default: SOL
@@ -48,7 +49,8 @@ export function CreateDCABotModal({ isOpen, onClose, onBotCreated }: CreateDCABo
   const [amountUsd, setAmountUsd] = useState("100");
   const [frequency, setFrequency] = useState("weekly");
   const [maxSlippage, setMaxSlippage] = useState("0.5");
-  const [walletAddress, setWalletAddress] = useState("");
+
+  const { connected, publicKey } = useWallet();
 
   const handleCreate = async () => {
     setError("");
@@ -60,8 +62,8 @@ export function CreateDCABotModal({ isOpen, onClose, onBotCreated }: CreateDCABo
         throw new Error("Please enter a bot name");
       }
 
-      if (!walletAddress.trim()) {
-        throw new Error("Please enter your wallet address");
+      if (!connected || !publicKey) {
+        throw new Error("Please connect your wallet");
       }
 
       const amount = parseFloat(amountUsd);
@@ -100,7 +102,7 @@ export function CreateDCABotModal({ isOpen, onClose, onBotCreated }: CreateDCABo
           amountUsd: amount,
           frequency,
           maxSlippage: slippage,
-          walletAddress: walletAddress.trim(),
+          walletAddress: publicKey.toString(),
         }),
       });
 
@@ -111,13 +113,12 @@ export function CreateDCABotModal({ isOpen, onClose, onBotCreated }: CreateDCABo
       }
 
       toast.success("DCA Bot created successfully!");
-      
+
       // Reset form
       setBotName("");
       setAmountUsd("100");
       setMaxSlippage("0.5");
-      setWalletAddress("");
-      
+
       // Close modal and refresh parent
       setOpen(false);
       if (onBotCreated) {
@@ -136,51 +137,51 @@ export function CreateDCABotModal({ isOpen, onClose, onBotCreated }: CreateDCABo
   const frequencyInfo = FREQUENCIES.find(f => f.value === frequency);
 
   return (
-      <Dialog open={openState} onOpenChange={(val) => {
-        // If uncontrolled, update local state
-        if (!isControlled) setOpen(val);
-        // If dialog is being closed, notify parent
-        if (!val && onClose) onClose();
-      }}>
-      {/* Only render the trigger when uncontrolled to avoid duplicate open controls
-          Parent components that control the modal via `isOpen` should provide their own trigger. */}
+    <>
       {!isControlled && (
-        <DialogTrigger asChild>
-          <Button size="sm" variant="outline" className="w-full">
-            <Bot className="h-4 w-4 mr-2" />
-            + Create New Bot
-          </Button>
-        </DialogTrigger>
+        <Button size="sm" variant="outline" className="w-full" onClick={() => setOpen(true)}>
+          <Bot className="h-4 w-4 mr-2" />
+          + Create New Bot
+        </Button>
       )}
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Bot className="h-5 w-5" />
+
+      <PremiumModal
+        isOpen={openState}
+        onClose={() => {
+          if (!isControlled) setOpen(false);
+          if (onClose) onClose();
+        }}
+        className="max-w-md"
+      >
+        <PremiumModalHeader>
+          <PremiumModalTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5 text-primary" />
             Create DCA Bot
-          </DialogTitle>
-          <DialogDescription>
+          </PremiumModalTitle>
+          <PremiumModalDescription>
             Set up automatic token purchases with dollar-cost averaging strategy.
-          </DialogDescription>
-        </DialogHeader>
+          </PremiumModalDescription>
+        </PremiumModalHeader>
 
         <div className="space-y-4 py-4">
           {/* Bot Name */}
           <div className="space-y-2">
-            <Label htmlFor="botName">Bot Name</Label>
+            <Label htmlFor="botName" className="text-white/80">Bot Name</Label>
             <Input
               id="botName"
               placeholder="e.g., SOL Weekly Savings"
               value={botName}
               onChange={(e) => setBotName(e.target.value)}
               disabled={loading}
+              className="bg-black/20 border-white/10 text-white placeholder:text-white/30"
             />
           </div>
 
           {/* Buy Token */}
           <div className="space-y-2">
-            <Label htmlFor="buyToken">Token to Buy</Label>
+            <Label htmlFor="buyToken" className="text-white/80">Token to Buy</Label>
             <Select value={buyToken} onValueChange={setBuyToken} disabled={loading}>
-              <SelectTrigger id="buyToken">
+              <SelectTrigger id="buyToken" className="bg-black/20 border-white/10 text-white">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -195,9 +196,9 @@ export function CreateDCABotModal({ isOpen, onClose, onBotCreated }: CreateDCABo
 
           {/* Payment Token */}
           <div className="space-y-2">
-            <Label htmlFor="paymentToken">Pay With</Label>
+            <Label htmlFor="paymentToken" className="text-white/80">Pay With</Label>
             <Select value={paymentToken} onValueChange={setPaymentToken} disabled={loading}>
-              <SelectTrigger id="paymentToken">
+              <SelectTrigger id="paymentToken" className="bg-black/20 border-white/10 text-white">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -212,7 +213,7 @@ export function CreateDCABotModal({ isOpen, onClose, onBotCreated }: CreateDCABo
 
           {/* Amount */}
           <div className="space-y-2">
-            <Label htmlFor="amount">Amount per Purchase (USD)</Label>
+            <Label htmlFor="amount" className="text-white/80">Amount per Purchase (USD)</Label>
             <Input
               id="amount"
               type="number"
@@ -222,24 +223,25 @@ export function CreateDCABotModal({ isOpen, onClose, onBotCreated }: CreateDCABo
               disabled={loading}
               min="1"
               step="1"
+              className="bg-black/20 border-white/10 text-white placeholder:text-white/30"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-white/50">
               Minimum $1, recommended $10-$1000
             </p>
           </div>
 
           {/* Frequency */}
           <div className="space-y-2">
-            <Label htmlFor="frequency">Frequency</Label>
+            <Label htmlFor="frequency" className="text-white/80">Frequency</Label>
             <Select value={frequency} onValueChange={setFrequency} disabled={loading}>
-              <SelectTrigger id="frequency">
+              <SelectTrigger id="frequency" className="bg-black/20 border-white/10 text-white">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {FREQUENCIES.map((freq) => (
                   <SelectItem key={freq.value} value={freq.value}>
                     <div>
-                      <div className="font-medium">{freq.label}</div>
+                      <div className="font-medium text-foreground">{freq.label}</div>
                       <div className="text-xs text-muted-foreground">{freq.description}</div>
                     </div>
                   </SelectItem>
@@ -250,7 +252,7 @@ export function CreateDCABotModal({ isOpen, onClose, onBotCreated }: CreateDCABo
 
           {/* Max Slippage */}
           <div className="space-y-2">
-            <Label htmlFor="slippage">Max Slippage (%)</Label>
+            <Label htmlFor="slippage" className="text-white/80">Max Slippage (%)</Label>
             <Input
               id="slippage"
               type="number"
@@ -261,31 +263,17 @@ export function CreateDCABotModal({ isOpen, onClose, onBotCreated }: CreateDCABo
               min="0.1"
               max="10"
               step="0.1"
+              className="bg-black/20 border-white/10 text-white placeholder:text-white/30"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-white/50">
               Recommended: 0.5% - 1% for liquid tokens
             </p>
           </div>
 
-          {/* Wallet Address */}
-          <div className="space-y-2">
-            <Label htmlFor="wallet">Your Wallet Address</Label>
-            <Input
-              id="wallet"
-              placeholder="Enter your Solana wallet address"
-              value={walletAddress}
-              onChange={(e) => setWalletAddress(e.target.value)}
-              disabled={loading}
-            />
-            <p className="text-xs text-muted-foreground">
-              This wallet will be used for all purchases
-            </p>
-          </div>
-
           {/* Summary */}
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="text-xs">
+          <Alert className="bg-primary/10 border-primary/20 text-primary">
+            <AlertCircle className="h-4 w-4 text-primary" />
+            <AlertDescription className="text-xs text-primary/80">
               <strong>Summary:</strong> Buy ${amountUsd} of {buyTokenInfo?.symbol} with{" "}
               {paymentTokenInfo?.symbol} {frequencyInfo?.label.toLowerCase()}.
               <br />
@@ -295,26 +283,29 @@ export function CreateDCABotModal({ isOpen, onClose, onBotCreated }: CreateDCABo
 
           {/* Error */}
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="bg-red-500/10 border-red-500/20 text-red-400">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2">
+        <div className="flex gap-3 mt-6 pt-4 border-t border-white/10">
           <Button
             variant="outline"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              if (!isControlled) setOpen(false);
+              if (onClose) onClose();
+            }}
             disabled={loading}
-            className="flex-1"
+            className="flex-1 bg-transparent border-white/10 text-white hover:bg-white/5"
           >
             Cancel
           </Button>
           <Button
             onClick={handleCreate}
             disabled={loading}
-            className="flex-1"
+            className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {loading ? (
               <>
@@ -326,7 +317,7 @@ export function CreateDCABotModal({ isOpen, onClose, onBotCreated }: CreateDCABo
             )}
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </PremiumModal>
+    </>
   );
 }

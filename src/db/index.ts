@@ -7,7 +7,7 @@ import * as schema from '@/db/schema';
  * Falls back to null for build-time compatibility.
  */
 const createDbClient = () => {
-  const url = process.env.DATABASE_URL;
+  const url = process.env.DATABASE_URL?.replace(/['"\r\n]/g, '').trim();
   if (!url) {
     return null;
   }
