@@ -91,8 +91,8 @@ function TelemetryProvider({ children }: { children: React.ReactNode }) {
 // ─── Supabase client for OAuth ───────────────────────────────────────
 function getSupabaseBrowserClient() {
     return createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xyzcompany.supabase.co',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'public-anon-key'
     );
 }
 
