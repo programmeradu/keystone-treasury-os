@@ -95,6 +95,50 @@ export async function getTokenPrice(
 /**
  * Convert USD amount to token amount based on current price
  */
+
+/**
+ * Get current prices for multiple tokens from Jupiter in a single batch request
+ * Uses the Price API V2 which is more efficient than quoting each token
+ */
+export async function getBatchTokenPrices(
+  mints: string[]
+): Promise<Record<string, number>> {
+  if (!mints || mints.length === 0) return {};
+
+  try {
+    // Jupiter Price API v2 endpoint
+    const url = new URL('https://api.jup.ag/price/v2');
+    url.searchParams.append('ids', mints.join(','));
+
+    const response = await fetch(url.toString(), {
+      headers: { 'Accept': 'application/json' },
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('Jupiter batch price error:', error);
+      return {};
+    }
+
+    const json = await response.json();
+    const result: Record<string, number> = {};
+
+    // Parse the response which is keyed by mint address inside the 'data' object
+    if (json && json.data) {
+      for (const [mint, info] of Object.entries(json.data)) {
+        if (info && (info as any).price) {
+          result[mint] = parseFloat((info as any).price);
+        }
+      }
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Failed to get batch token prices:', error);
+    return {};
+  }
+}
+
 export async function usdToTokenAmount(
   usdAmount: number,
   tokenMint: string,
