@@ -16,6 +16,7 @@ import { headers } from 'next/headers';
 export async function POST() {
     try {
         // Get the current Neon Auth session
+        // @ts-expect-error - The underlying Better Auth API has .api at runtime, but types may mismatch
         const session = await auth.api.getSession({
             headers: await headers(),
         });
