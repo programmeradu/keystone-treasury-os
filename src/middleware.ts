@@ -25,7 +25,11 @@ export async function middleware(request: NextRequest) {
     if (
         publicPaths.some((p) => pathname.startsWith(p)) ||
         publicPages.includes(pathname) ||
-        pathname.includes('.')
+        pathname.includes('.') ||
+        !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+        !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+        process.env.NEXT_PUBLIC_SUPABASE_URL === 'http://localhost:54321' ||
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY === 'eyJhYmNkIjoiMTIzNCJ9'
     ) {
         return NextResponse.next();
     }
