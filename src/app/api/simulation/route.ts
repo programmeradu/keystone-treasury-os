@@ -81,7 +81,7 @@ function isStablecoin(token: PortfolioToken): boolean {
 /**
  * Calculates runway data based on formula: Monthly Burn Rate + (New Hires * $8k) - Revenue Impact
  */
-export function generateRunwayData(
+function generateRunwayData(
   treasuryBalance: number,
   monthlyBurnRate: number,
   newHires: number = 0,
