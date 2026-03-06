@@ -7,7 +7,7 @@ import type {
   RebalancePortfolioInput
 } from "./types";
 import { BaseAgent } from "./base-agent";
-import { KnowledgeBase } from "@/lib/knowledge";
+import { KnowledgeBase } from "@/lib/knowledge-engine";
 
 /**
  * Builder Agent - Assembles complex operations from building blocks

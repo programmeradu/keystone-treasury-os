@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { planStrategy } from "@/lib/llm/strategy-planner";
 import { ExecutionCoordinator } from "@/lib/agents/coordinator";
-import { KnowledgeBase } from "@/lib/knowledge";
+import { KnowledgeBase } from "@/lib/knowledge-engine";
 
 // ─── Well-Known Solana Token Mints ──────────────────────────────────
 const TOKEN_MINTS: Record<string, string> = {
