@@ -12,7 +12,7 @@
  * [Phase 10] — Test Infrastructure & Quality Gate
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 
 // ─── Phase 1: SDK Type Codegen ──────────────────────────────────────
 
