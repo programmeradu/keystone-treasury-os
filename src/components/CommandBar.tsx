@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Search, Sparkles } from "@/components/icons";
 import { ArrowDown, Check, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,6 +14,8 @@ import { useSimulationStore } from "@/lib/stores/simulation-store";
 import { isForesightPrompt, parseForesightPrompt } from "@/lib/foresight/foresight-agent";
 import { useVault } from "@/lib/contexts/VaultContext";
 import { useTransactionExecutor, type StepStatus } from "@/lib/hooks/useTransactionExecutor";
+import { useChat } from "@ai-sdk/react";
+import ReactMarkdown from "react-markdown";
 
 export function CommandBar() {
     const [open, setOpen] = useState(false);
@@ -26,6 +28,29 @@ export function CommandBar() {
     const simStore = useSimulationStore();
     const { vaultTokens } = useVault();
     const txExecutor = useTransactionExecutor();
+    const chatContainerRef = useRef<HTMLDivElement>(null);
+
+    const chat = useChat({
+        // @ts-expect-error - AI SDK v5 type mismatch in this environment
+        api: "/api/research",
+        body: {
+            walletAddress: txExecutor.isWalletConnected ? "11111111111111111111111111111111" : "",
+            walletState: { balances: vaultTokens || {} }
+        },
+        onError: (e: Error) => {
+            console.error("[useChat] Error:", e);
+            toast.error("Research Error", { description: e.message });
+        }
+    });
+
+    const { messages, setMessages, sendMessage, status } = chat as any;
+    const isChatLoading = status === "loading" || status === "streaming";
+
+    useEffect(() => {
+        if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+    }, [messages]);
 
     // ─── Token Info for Rich UI ────────────────────────────────────
     const TOKEN_INFO: Record<string, { symbol: string; name: string; decimals: number; logo: string; color: string }> = {
@@ -65,6 +90,7 @@ export function CommandBar() {
                 e.preventDefault();
                 setOpen(false);
                 setPlan(null);
+                setMessages([]);
             }
         };
         window.addEventListener("keydown", handleKeyDown);
@@ -79,7 +105,7 @@ export function CommandBar() {
         router.push("/app/analytics");
 
         // ─── Build portfolio from real vault data + live prices ────
-        const STABLECOINS = new Set(["USDC","USDT","BUSD","DAI","TUSD","USDP","FRAX","LUSD","PYUSD","GUSD"]);
+        const STABLECOINS = new Set(["USDC", "USDT", "BUSD", "DAI", "TUSD", "USDP", "FRAX", "LUSD", "PYUSD", "GUSD"]);
         const hasVault = vaultTokens && vaultTokens.length > 0;
         let priceSource: "live" | "vault" | "fallback" = hasVault ? "vault" : "fallback";
 
@@ -277,6 +303,26 @@ export function CommandBar() {
             // ─── Client Mode: Safe operations handled locally ───────────
             if (data.mode === "client" && data.plan?.actions) {
                 const actions = data.plan.actions;
+
+                // Intercept Deep Research
+                const researchAction = actions.find((a: any) => a.operation === "browser_research");
+                if (researchAction) {
+                    const sendFunc = (chat as any).sendMessage || (chat as any).append;
+                    if (typeof sendFunc === "function") {
+                        if ((chat as any).sendMessage) {
+                            (chat as any).sendMessage({ text: researchAction.parameters.query || input });
+                        } else {
+                            (chat as any).append({ role: "user", content: researchAction.parameters.query || input });
+                        }
+                    } else {
+                        console.error("[CommandBar] No send function found in useChat:", Object.keys(chat));
+                        toast.error("UI Error", { description: "Streaming research failed to initialize." });
+                    }
+                    setInput("");
+                    setLoading(false);
+                    return;
+                }
+
                 const safeOperations = ["navigate", "refresh", "ui_query", "governance_list", "external_balance", "monitor"];
                 const allSafe = actions.every((a: any) => safeOperations.includes(a.operation.toLowerCase()));
 
@@ -457,7 +503,69 @@ export function CommandBar() {
                         <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-[#25a85c] rounded-2xl blur opacity-20" />
 
                         <div className="relative z-10 flex flex-col">
-                            {!plan ? (
+                            {messages.length > 0 || isChatLoading ? (
+                                /* ─── Chat Thread UI (Deep Research) ─── */
+                                <>
+                                    <div
+                                        ref={chatContainerRef}
+                                        className="relative z-10 flex flex-col gap-4 p-5 overflow-y-auto min-h-[300px] max-h-[60vh] flex-1"
+                                    >
+                                        {messages.map((m: any) => (
+                                            <div key={m.id} className={`flex flex-col gap-2 ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
+                                                {m.content && (
+                                                    <div className={`px-4 py-2.5 rounded-2xl max-w-[85%] text-sm leading-relaxed ${m.role === 'user'
+                                                        ? 'bg-primary text-primary-foreground rounded-tr-sm'
+                                                        : 'bg-muted/50 border border-white/5 text-foreground rounded-tl-sm'
+                                                        }`}>
+                                                        <div className="prose prose-sm dark:prose-invert prose-p:leading-snug prose-p:mb-0 space-y-2">
+                                                            <ReactMarkdown>
+                                                                {m.content}
+                                                            </ReactMarkdown>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {m.toolInvocations?.map((tool: any) => {
+                                                    const isComplete = tool.state === 'result';
+                                                    return (
+                                                        <div key={tool.toolCallId} className="w-full max-w-sm mt-2 p-4 bg-muted/30 border border-white/10 rounded-2xl">
+                                                            <div className="flex items-center justify-between mb-2">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Search size={14} className="text-purple-400" />
+                                                                    <span className="text-xs font-bold uppercase text-purple-400">Deep Research</span>
+                                                                </div>
+                                                                {isComplete && <Check size={14} className="text-emerald-400" />}
+                                                            </div>
+                                                            <p className="text-xs text-foreground/80 mb-2">Query: "{tool.args.query}"</p>
+                                                            {!isComplete ? (
+                                                                <div className="text-[10px] text-muted-foreground flex items-center gap-2">
+                                                                    <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-ping" />
+                                                                    Agent is searching networks...
+                                                                </div>
+                                                            ) : (
+                                                                <div className="text-[10px] text-emerald-400 flex items-center gap-2">
+                                                                    Research parsed securely.
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        ))}
+                                        <div className="h-4" />
+                                    </div>
+                                    <div className="px-6 py-3 bg-muted/20 border-t border-border flex items-center justify-between text-[10px] text-muted-foreground">
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-1.5 h-1.5 rounded-full ${isChatLoading ? 'bg-primary animate-ping' : 'bg-muted-foreground/50'}`} />
+                                            <span className="font-mono">{isChatLoading ? "RESEARCHING..." : "RESEARCH COMPLETE"}</span>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <button onClick={() => { setMessages([]); setInput(""); }} className="hover:text-foreground">Clear Context</button>
+                                            <span><strong className="text-foreground">Esc</strong> to close</span>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : !plan ? (
                                 /* INPUT STATE */
                                 <>
                                     <div className="flex items-center px-6 py-5 border-b border-border">
@@ -500,344 +608,339 @@ export function CommandBar() {
                                 const routePool = swapResult?.instructions?.[0]?.pool || "Jupiter";
 
                                 return isCoordinatorSwap ? (
-                                /* ═══ RICH COORDINATOR SWAP UI ═══ */
-                                <div className="p-5">
-                                    {/* Header: Simulation Status */}
-                                    <div className="flex items-center justify-between mb-5">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`p-2.5 rounded-xl ${swapResult.simulationPassed ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-red-500/10 border border-red-500/20'} flex items-center justify-center`}>
-                                                <div className={`w-3 h-3 rounded-full ${swapResult.simulationPassed ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.5)]'}`} />
+                                    /* ═══ RICH COORDINATOR SWAP UI ═══ */
+                                    <div className="p-5">
+                                        {/* Header: Simulation Status */}
+                                        <div className="flex items-center justify-between mb-5">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`p-2.5 rounded-xl ${swapResult.simulationPassed ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-red-500/10 border border-red-500/20'} flex items-center justify-center`}>
+                                                    <div className={`w-3 h-3 rounded-full ${swapResult.simulationPassed ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.5)]'}`} />
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-sm font-bold text-foreground">
+                                                        {swapResult.simulationPassed ? "Simulation Passed" : "Simulation Failed"}
+                                                    </h3>
+                                                    <p className="text-[11px] text-muted-foreground">Pre-flight verified by Simulation Firewall</p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <h3 className="text-sm font-bold text-foreground">
-                                                    {swapResult.simulationPassed ? "Simulation Passed" : "Simulation Failed"}
-                                                </h3>
-                                                <p className="text-[11px] text-muted-foreground">Pre-flight verified by Simulation Firewall</p>
-                                            </div>
-                                        </div>
-                                        <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                                            riskLevel === "low" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
-                                            riskLevel === "medium" ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20" :
-                                            "bg-red-500/10 text-red-400 border border-red-500/20"
-                                        }`}>
-                                            {riskLevel} risk
-                                        </div>
-                                    </div>
-
-                                    {/* ── Swap Visualization ── */}
-                                    <div className="bg-muted/50 rounded-2xl border border-border overflow-hidden mb-4">
-                                        {/* Input Token */}
-                                        <div className="p-4 flex items-center gap-4">
-                                            <div className="relative">
-                                                {inToken?.logo ? (
-                                                    <img src={inToken.logo} alt={inToken.symbol} className="w-10 h-10 rounded-full" />
-                                                ) : (
-                                                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-bold text-foreground">{inToken?.symbol?.[0]}</div>
-                                                )}
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">You Send</div>
-                                                <div className="text-xl font-bold text-foreground">{inAmountFormatted} <span className="text-muted-foreground">{inToken?.symbol}</span></div>
-                                            </div>
-                                            <div className="text-[10px] text-muted-foreground font-mono">{inToken?.name}</div>
-                                        </div>
-
-                                        {/* Arrow Divider */}
-                                        <div className="relative h-0 flex items-center justify-center">
-                                            <div className="absolute inset-x-4 border-t border-border" />
-                                            <div className="relative z-10 w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
-                                                <ArrowDown size={14} className="text-primary" />
+                                            <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${riskLevel === "low" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
+                                                riskLevel === "medium" ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20" :
+                                                    "bg-red-500/10 text-red-400 border border-red-500/20"
+                                                }`}>
+                                                {riskLevel} risk
                                             </div>
                                         </div>
 
-                                        {/* Output Token */}
-                                        <div className="p-4 flex items-center gap-4">
-                                            <div className="relative">
-                                                {outToken?.logo ? (
-                                                    <img src={outToken.logo} alt={outToken.symbol} className="w-10 h-10 rounded-full" />
-                                                ) : (
-                                                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-bold text-foreground">{outToken?.symbol?.[0]}</div>
-                                                )}
+                                        {/* ── Swap Visualization ── */}
+                                        <div className="bg-muted/50 rounded-2xl border border-border overflow-hidden mb-4">
+                                            {/* Input Token */}
+                                            <div className="p-4 flex items-center gap-4">
+                                                <div className="relative">
+                                                    {inToken?.logo ? (
+                                                        <img src={inToken.logo} alt={inToken.symbol} className="w-10 h-10 rounded-full" />
+                                                    ) : (
+                                                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-bold text-foreground">{inToken?.symbol?.[0]}</div>
+                                                    )}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">You Send</div>
+                                                    <div className="text-xl font-bold text-foreground">{inAmountFormatted} <span className="text-muted-foreground">{inToken?.symbol}</span></div>
+                                                </div>
+                                                <div className="text-[10px] text-muted-foreground font-mono">{inToken?.name}</div>
                                             </div>
-                                            <div className="flex-1">
-                                                <div className="text-[10px] text-emerald-400 uppercase tracking-wider">You Receive</div>
-                                                <div className="text-xl font-bold text-emerald-400">~{outAmountFormatted} <span className="text-emerald-400/60">{outToken?.symbol}</span></div>
-                                            </div>
-                                            <div className="text-[10px] text-muted-foreground font-mono">{outToken?.name}</div>
-                                        </div>
-                                    </div>
 
-                                    {/* ── Route & Details ── */}
-                                    <div className="grid grid-cols-3 gap-2 mb-4">
-                                        <div className="bg-muted/50 rounded-xl p-3 border border-border">
-                                            <div className="text-[9px] text-muted-foreground uppercase tracking-wider mb-1">Price Impact</div>
-                                            <div className={`text-sm font-bold ${priceImpact < 0.5 ? 'text-emerald-400' : priceImpact < 2 ? 'text-yellow-400' : 'text-red-400'}`}>
-                                                {priceImpact < 0.01 ? "<0.01" : priceImpact.toFixed(2)}%
+                                            {/* Arrow Divider */}
+                                            <div className="relative h-0 flex items-center justify-center">
+                                                <div className="absolute inset-x-4 border-t border-border" />
+                                                <div className="relative z-10 w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
+                                                    <ArrowDown size={14} className="text-primary" />
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="bg-muted/50 rounded-xl p-3 border border-border">
-                                            <div className="text-[9px] text-muted-foreground uppercase tracking-wider mb-1">Route</div>
-                                            <div className="text-sm font-bold text-foreground flex items-center gap-1.5">
-                                                <img src="https://static.jup.ag/jup/icon.png" alt="Jupiter" className="w-3.5 h-3.5 rounded-full" />
-                                                {routePool}
-                                            </div>
-                                        </div>
-                                        <div className="bg-muted/50 rounded-xl p-3 border border-border">
-                                            <div className="text-[9px] text-muted-foreground uppercase tracking-wider mb-1">Duration</div>
-                                            <div className="text-sm font-bold text-foreground">
-                                                {plan._execution?.duration ? `${(plan._execution.duration / 1000).toFixed(1)}s` : "< 1s"}
-                                            </div>
-                                        </div>
-                                    </div>
 
-                                    {/* ── Simulation Firewall Checks ── */}
-                                    {Object.keys(firewallChecks).length > 0 && (
-                                        <div className="bg-muted/30 rounded-xl border border-border p-3 mb-4">
-                                            <div className="flex items-center gap-2 mb-2.5">
-                                                <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Simulation Firewall</span>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                                                {Object.entries(firewallChecks).map(([key, status]) => (
-                                                    <div key={key} className="flex items-center gap-2">
-                                                        {status === "pass" ? (
-                                                            <Check size={12} className="text-emerald-400 shrink-0" />
-                                                        ) : status === "warn" ? (
-                                                            <AlertTriangle size={12} className="text-yellow-400 shrink-0" />
-                                                        ) : (
-                                                            <AlertTriangle size={12} className="text-red-400 shrink-0" />
-                                                        )}
-                                                        <span className="text-[11px] text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                                                    </div>
-                                                ))}
+                                            {/* Output Token */}
+                                            <div className="p-4 flex items-center gap-4">
+                                                <div className="relative">
+                                                    {outToken?.logo ? (
+                                                        <img src={outToken.logo} alt={outToken.symbol} className="w-10 h-10 rounded-full" />
+                                                    ) : (
+                                                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-bold text-foreground">{outToken?.symbol?.[0]}</div>
+                                                    )}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="text-[10px] text-emerald-400 uppercase tracking-wider">You Receive</div>
+                                                    <div className="text-xl font-bold text-emerald-400">~{outAmountFormatted} <span className="text-emerald-400/60">{outToken?.symbol}</span></div>
+                                                </div>
+                                                <div className="text-[10px] text-muted-foreground font-mono">{outToken?.name}</div>
                                             </div>
                                         </div>
-                                    )}
 
-                                    {/* Warnings */}
-                                    {plan.warnings && plan.warnings.length > 0 && (
-                                        <div className="mb-4 bg-orange-500/5 border border-orange-500/15 rounded-xl p-3">
-                                            <div className="flex items-center gap-2 mb-1.5">
-                                                <AlertTriangle size={12} className="text-orange-400" />
-                                                <span className="text-[10px] font-bold text-orange-400 uppercase">Warnings</span>
+                                        {/* ── Route & Details ── */}
+                                        <div className="grid grid-cols-3 gap-2 mb-4">
+                                            <div className="bg-muted/50 rounded-xl p-3 border border-border">
+                                                <div className="text-[9px] text-muted-foreground uppercase tracking-wider mb-1">Price Impact</div>
+                                                <div className={`text-sm font-bold ${priceImpact < 0.5 ? 'text-emerald-400' : priceImpact < 2 ? 'text-yellow-400' : 'text-red-400'}`}>
+                                                    {priceImpact < 0.01 ? "<0.01" : priceImpact.toFixed(2)}%
+                                                </div>
                                             </div>
-                                            <ul className="space-y-1">
-                                                {plan.warnings.map((w: string, i: number) => (
-                                                    <li key={i} className="text-[11px] text-orange-400/80 leading-relaxed">{w}</li>
-                                                ))}
-                                            </ul>
+                                            <div className="bg-muted/50 rounded-xl p-3 border border-border">
+                                                <div className="text-[9px] text-muted-foreground uppercase tracking-wider mb-1">Route</div>
+                                                <div className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                                                    <img src="https://static.jup.ag/jup/icon.png" alt="Jupiter" className="w-3.5 h-3.5 rounded-full" />
+                                                    {routePool}
+                                                </div>
+                                            </div>
+                                            <div className="bg-muted/50 rounded-xl p-3 border border-border">
+                                                <div className="text-[9px] text-muted-foreground uppercase tracking-wider mb-1">Duration</div>
+                                                <div className="text-sm font-bold text-foreground">
+                                                    {plan._execution?.duration ? `${(plan._execution.duration / 1000).toFixed(1)}s` : "< 1s"}
+                                                </div>
+                                            </div>
                                         </div>
-                                    )}
 
-                                    {/* Buttons */}
-                                    <div className="flex items-center gap-3">
-                                        <button
-                                            onClick={handleConfirm}
-                                            disabled={executing}
-                                            className={`flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-xl text-sm hover:scale-[1.01] active:scale-[0.99] transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 ${executing ? 'opacity-50 cursor-wait' : ''}`}
-                                        >
-                                            {executing ? (
-                                                <>Signing...</>
-                                            ) : (
-                                                <>Confirm & Sign</>
-                                            )}
-                                        </button>
-                                        <button
-                                            onClick={() => setPlan(null)}
-                                            disabled={executing}
-                                            className="px-5 py-3 bg-muted text-foreground font-medium rounded-xl text-sm hover:bg-muted/80 transition-all border border-border"
-                                        >
-                                            Cancel
-                                        </button>
-                                    </div>
-
-                                    {/* Infrastructure Footer */}
-                                    <div className="flex items-center justify-center gap-4 mt-4 pt-3 border-t border-border">
-                                        <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground/50">
-                                            <img src="https://static.jup.ag/jup/icon.png" alt="Jupiter" className="w-3 h-3 rounded-full opacity-50" />
-                                            Jupiter
-                                        </div>
-                                        <div className="w-0.5 h-0.5 rounded-full bg-muted-foreground/20" />
-                                        <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground/50">
-                                            <img src="https://avatars.githubusercontent.com/u/116006435?s=20" alt="Helius" className="w-3 h-3 rounded-full opacity-50" />
-                                            Helius RPC
-                                        </div>
-                                        <div className="w-0.5 h-0.5 rounded-full bg-muted-foreground/20" />
-                                        <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground/50">
-                                            <img src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" alt="Solana" className="w-3 h-3 rounded-full opacity-50" />
-                                            Solana
-                                        </div>
-                                    </div>
-                                </div>
-                                ) : (
-                                /* ═══ MULTI-STEP TIMELINE UI ═══ */
-                                <div className="p-5">
-                                    {/* Header */}
-                                    <div className="flex items-center justify-between mb-5">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`p-2.5 rounded-xl ${executing ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-primary/10 border border-primary/20'} flex items-center justify-center`}>
-                                                <Sparkles size={16} className={executing ? "text-blue-400 animate-spin" : "text-primary"} />
-                                            </div>
-                                            <div>
-                                                <h3 className="text-sm font-bold text-foreground">
-                                                    {executing ? "Executing..." : plan.isChain ? "Multi-Step Workflow" : "Proposed Action"}
-                                                </h3>
-                                                <p className="text-[11px] text-muted-foreground">
-                                                    {plan.actions?.length || 1} step{(plan.actions?.length || 1) > 1 ? 's' : ''} — {txExecutor.isMultisig ? "Squads Proposal" : "Wallet Signing"}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        {plan.confidence && (
-                                            <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                                                plan.confidence === "high" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
-                                                plan.confidence === "medium" ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20" :
-                                                "bg-red-500/10 text-red-400 border border-red-500/20"
-                                            }`}>
-                                                {plan.confidence}
+                                        {/* ── Simulation Firewall Checks ── */}
+                                        {Object.keys(firewallChecks).length > 0 && (
+                                            <div className="bg-muted/30 rounded-xl border border-border p-3 mb-4">
+                                                <div className="flex items-center gap-2 mb-2.5">
+                                                    <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Simulation Firewall</span>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                                                    {Object.entries(firewallChecks).map(([key, status]) => (
+                                                        <div key={key} className="flex items-center gap-2">
+                                                            {status === "pass" ? (
+                                                                <Check size={12} className="text-emerald-400 shrink-0" />
+                                                            ) : status === "warn" ? (
+                                                                <AlertTriangle size={12} className="text-yellow-400 shrink-0" />
+                                                            ) : (
+                                                                <AlertTriangle size={12} className="text-red-400 shrink-0" />
+                                                            )}
+                                                            <span className="text-[11px] text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
                                         )}
-                                    </div>
 
-                                    {/* ── Step Timeline ── */}
-                                    <div className="relative max-h-[320px] overflow-y-auto pr-1 mb-4 scrollbar-hide">
-                                        {plan.actions?.map((action: any, idx: number) => {
-                                            const status = stepStatuses[idx] || "pending";
-                                            const op = action.operation?.toLowerCase() || "";
-                                            const isLast = idx === (plan.actions?.length || 1) - 1;
-
-                                            // Operation label & color
-                                            const OP_META: Record<string, { label: string; color: string }> = {
-                                                swap: { label: "Swap", color: "text-blue-400" },
-                                                transfer: { label: "Transfer", color: "text-purple-400" },
-                                                stake: { label: "Stake", color: "text-emerald-400" },
-                                                bridge: { label: "Bridge", color: "text-cyan-400" },
-                                                yield_deposit: { label: "Deposit", color: "text-green-400" },
-                                                yield_withdraw: { label: "Withdraw", color: "text-orange-400" },
-                                                rebalance: { label: "Rebalance", color: "text-indigo-400" },
-                                                navigate: { label: "Navigate", color: "text-muted-foreground" },
-                                                refresh: { label: "Refresh", color: "text-muted-foreground" },
-                                            };
-                                            const meta = OP_META[op] || { label: op, color: "text-muted-foreground" };
-
-                                            // Status indicator
-                                            const statusDot = status === "done"
-                                                ? <div className="w-7 h-7 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center"><Check size={12} className="text-emerald-400" /></div>
-                                                : status === "executing"
-                                                ? <div className="w-7 h-7 rounded-full bg-blue-500/20 border-2 border-blue-400 flex items-center justify-center"><div className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-ping" /></div>
-                                                : status === "error"
-                                                ? <div className="w-7 h-7 rounded-full bg-red-500/20 border-2 border-red-400 flex items-center justify-center"><AlertTriangle size={12} className="text-red-400" /></div>
-                                                : status === "skipped"
-                                                ? <div className="w-7 h-7 rounded-full bg-muted border-2 border-muted-foreground/20 flex items-center justify-center"><span className="text-[10px] text-muted-foreground">—</span></div>
-                                                : <div className="w-7 h-7 rounded-full bg-muted border-2 border-border flex items-center justify-center"><span className="text-[10px] font-bold text-muted-foreground">{idx + 1}</span></div>;
-
-                                            // Render parameter summary
-                                            const paramSummary = (() => {
-                                                if (op === "swap") return `${action.parameters?.amount || "?"} ${action.parameters?.inputToken || "?"} → ${action.parameters?.outputToken || "?"}`;
-                                                if (op === "transfer") return `${action.parameters?.amount || "?"} ${action.parameters?.token || "SOL"} → ${(action.parameters?.recipient || "?").slice(0, 8)}...`;
-                                                if (op === "stake") return `${action.parameters?.amount || "?"} ${action.parameters?.token || "SOL"} via ${action.parameters?.provider || "?"}`;
-                                                if (op === "yield_deposit") return `${action.parameters?.amount || "?"} ${action.parameters?.token || "?"} into ${action.parameters?.protocol || "?"}`;
-                                                if (op === "navigate") return action.parameters?.path || "";
-                                                return Object.entries(action.parameters || {}).map(([k, v]) => `${k}: ${v}`).join(", ");
-                                            })();
-
-                                            return (
-                                                <div key={idx} className="flex gap-3 relative">
-                                                    {/* Timeline line */}
-                                                    <div className="flex flex-col items-center">
-                                                        {statusDot}
-                                                        {!isLast && (
-                                                            <div className={`w-0.5 flex-1 min-h-[16px] my-1 rounded-full ${
-                                                                status === "done" ? "bg-emerald-400/40" :
-                                                                status === "executing" ? "bg-blue-400/40 animate-pulse" :
-                                                                "bg-border"
-                                                            }`} />
-                                                        )}
-                                                    </div>
-
-                                                    {/* Step card */}
-                                                    <div className={`flex-1 mb-2 rounded-xl border transition-all ${
-                                                        status === "executing" ? "bg-blue-500/5 border-blue-500/20 shadow-sm shadow-blue-500/5" :
-                                                        status === "done" ? "bg-emerald-500/5 border-emerald-500/15" :
-                                                        status === "error" ? "bg-red-500/5 border-red-500/20" :
-                                                        status === "skipped" ? "bg-muted/30 border-border opacity-50" :
-                                                        "bg-muted/50 border-border"
-                                                    } p-3`}>
-                                                        <div className="flex items-center justify-between mb-1">
-                                                            <span className={`text-xs font-bold ${meta.color}`}>{meta.label}</span>
-                                                            <span className={`text-[9px] font-mono uppercase ${
-                                                                status === "done" ? "text-emerald-400" :
-                                                                status === "executing" ? "text-blue-400" :
-                                                                status === "error" ? "text-red-400" :
-                                                                "text-muted-foreground"
-                                                            }`}>
-                                                                {status === "executing" ? "signing..." : status}
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-[12px] text-foreground/80 font-mono">{paramSummary}</p>
-                                                    </div>
+                                        {/* Warnings */}
+                                        {plan.warnings && plan.warnings.length > 0 && (
+                                            <div className="mb-4 bg-orange-500/5 border border-orange-500/15 rounded-xl p-3">
+                                                <div className="flex items-center gap-2 mb-1.5">
+                                                    <AlertTriangle size={12} className="text-orange-400" />
+                                                    <span className="text-[10px] font-bold text-orange-400 uppercase">Warnings</span>
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
-
-                                    {/* Reasoning / Outcome */}
-                                    {plan.estimatedOutcome && !executing && (
-                                        <div className="bg-muted/30 rounded-xl border border-border p-3 mb-4">
-                                            <span className="text-[9px] text-primary uppercase font-bold block mb-1">Strategy</span>
-                                            <p className="text-[12px] text-foreground/70 leading-relaxed">{plan.estimatedOutcome}</p>
-                                        </div>
-                                    )}
-
-                                    {/* Warnings */}
-                                    {plan.warnings && plan.warnings.length > 0 && !executing && (
-                                        <div className="mb-4 bg-orange-500/5 border border-orange-500/15 rounded-xl p-3">
-                                            <div className="flex items-center gap-2 mb-1.5">
-                                                <AlertTriangle size={12} className="text-orange-400" />
-                                                <span className="text-[10px] font-bold text-orange-400 uppercase">Warnings</span>
+                                                <ul className="space-y-1">
+                                                    {plan.warnings.map((w: string, i: number) => (
+                                                        <li key={i} className="text-[11px] text-orange-400/80 leading-relaxed">{w}</li>
+                                                    ))}
+                                                </ul>
                                             </div>
-                                            <ul className="space-y-1">
-                                                {plan.warnings.map((w: string, i: number) => (
-                                                    <li key={i} className="text-[11px] text-orange-400/80 leading-relaxed">{w}</li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    )}
+                                        )}
 
-                                    {/* Buttons */}
-                                    <div className="flex items-center gap-3">
-                                        <button
-                                            onClick={handleConfirm}
-                                            disabled={executing}
-                                            className={`flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-xl text-sm hover:scale-[1.01] active:scale-[0.99] transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 ${executing ? 'opacity-50 cursor-wait' : ''}`}
-                                        >
-                                            {executing ? (
-                                                <>Executing {stepStatuses.filter(s => s === "done").length}/{plan.actions?.length || 0}...</>
-                                            ) : (
-                                                <>{plan.actions?.length > 1 ? `Confirm ${plan.actions.length} Steps` : "Confirm & Sign"}</>
+                                        {/* Buttons */}
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={handleConfirm}
+                                                disabled={executing}
+                                                className={`flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-xl text-sm hover:scale-[1.01] active:scale-[0.99] transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 ${executing ? 'opacity-50 cursor-wait' : ''}`}
+                                            >
+                                                {executing ? (
+                                                    <>Signing...</>
+                                                ) : (
+                                                    <>Confirm & Sign</>
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={() => setPlan(null)}
+                                                disabled={executing}
+                                                className="px-5 py-3 bg-muted text-foreground font-medium rounded-xl text-sm hover:bg-muted/80 transition-all border border-border"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+
+                                        {/* Infrastructure Footer */}
+                                        <div className="flex items-center justify-center gap-4 mt-4 pt-3 border-t border-border">
+                                            <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground/50">
+                                                <img src="https://static.jup.ag/jup/icon.png" alt="Jupiter" className="w-3 h-3 rounded-full opacity-50" />
+                                                Jupiter
+                                            </div>
+                                            <div className="w-0.5 h-0.5 rounded-full bg-muted-foreground/20" />
+                                            <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground/50">
+                                                <img src="https://avatars.githubusercontent.com/u/116006435?s=20" alt="Helius" className="w-3 h-3 rounded-full opacity-50" />
+                                                Helius RPC
+                                            </div>
+                                            <div className="w-0.5 h-0.5 rounded-full bg-muted-foreground/20" />
+                                            <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground/50">
+                                                <img src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" alt="Solana" className="w-3 h-3 rounded-full opacity-50" />
+                                                Solana
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    /* ═══ MULTI-STEP TIMELINE UI ═══ */
+                                    <div className="p-5">
+                                        {/* Header */}
+                                        <div className="flex items-center justify-between mb-5">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`p-2.5 rounded-xl ${executing ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-primary/10 border border-primary/20'} flex items-center justify-center`}>
+                                                    <Sparkles size={16} className={executing ? "text-blue-400 animate-spin" : "text-primary"} />
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-sm font-bold text-foreground">
+                                                        {executing ? "Executing..." : plan.isChain ? "Multi-Step Workflow" : "Proposed Action"}
+                                                    </h3>
+                                                    <p className="text-[11px] text-muted-foreground">
+                                                        {plan.actions?.length || 1} step{(plan.actions?.length || 1) > 1 ? 's' : ''} — {txExecutor.isMultisig ? "Squads Proposal" : "Wallet Signing"}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            {plan.confidence && (
+                                                <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${plan.confidence === "high" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
+                                                    plan.confidence === "medium" ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20" :
+                                                        "bg-red-500/10 text-red-400 border border-red-500/20"
+                                                    }`}>
+                                                    {plan.confidence}
+                                                </div>
                                             )}
-                                        </button>
-                                        <button
-                                            onClick={() => { setPlan(null); setStepStatuses([]); }}
-                                            disabled={executing}
-                                            className="px-5 py-3 bg-muted text-foreground font-medium rounded-xl text-sm hover:bg-muted/80 transition-all border border-border"
-                                        >
-                                            Cancel
-                                        </button>
-                                    </div>
+                                        </div>
 
-                                    {/* Infrastructure Footer */}
-                                    <div className="flex items-center justify-center gap-4 mt-4 pt-3 border-t border-border">
-                                        <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground/50">
-                                            <img src="https://static.jup.ag/jup/icon.png" alt="Jupiter" className="w-3 h-3 rounded-full opacity-50" />
-                                            Jupiter
+                                        {/* ── Step Timeline ── */}
+                                        <div className="relative max-h-[320px] overflow-y-auto pr-1 mb-4 scrollbar-hide">
+                                            {plan.actions?.map((action: any, idx: number) => {
+                                                const status = stepStatuses[idx] || "pending";
+                                                const op = action.operation?.toLowerCase() || "";
+                                                const isLast = idx === (plan.actions?.length || 1) - 1;
+
+                                                // Operation label & color
+                                                const OP_META: Record<string, { label: string; color: string }> = {
+                                                    swap: { label: "Swap", color: "text-blue-400" },
+                                                    transfer: { label: "Transfer", color: "text-purple-400" },
+                                                    stake: { label: "Stake", color: "text-emerald-400" },
+                                                    bridge: { label: "Bridge", color: "text-cyan-400" },
+                                                    yield_deposit: { label: "Deposit", color: "text-green-400" },
+                                                    yield_withdraw: { label: "Withdraw", color: "text-orange-400" },
+                                                    rebalance: { label: "Rebalance", color: "text-indigo-400" },
+                                                    navigate: { label: "Navigate", color: "text-muted-foreground" },
+                                                    refresh: { label: "Refresh", color: "text-muted-foreground" },
+                                                };
+                                                const meta = OP_META[op] || { label: op, color: "text-muted-foreground" };
+
+                                                // Status indicator
+                                                const statusDot = status === "done"
+                                                    ? <div className="w-7 h-7 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center"><Check size={12} className="text-emerald-400" /></div>
+                                                    : status === "executing"
+                                                        ? <div className="w-7 h-7 rounded-full bg-blue-500/20 border-2 border-blue-400 flex items-center justify-center"><div className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-ping" /></div>
+                                                        : status === "error"
+                                                            ? <div className="w-7 h-7 rounded-full bg-red-500/20 border-2 border-red-400 flex items-center justify-center"><AlertTriangle size={12} className="text-red-400" /></div>
+                                                            : status === "skipped"
+                                                                ? <div className="w-7 h-7 rounded-full bg-muted border-2 border-muted-foreground/20 flex items-center justify-center"><span className="text-[10px] text-muted-foreground">—</span></div>
+                                                                : <div className="w-7 h-7 rounded-full bg-muted border-2 border-border flex items-center justify-center"><span className="text-[10px] font-bold text-muted-foreground">{idx + 1}</span></div>;
+
+                                                // Render parameter summary
+                                                const paramSummary = (() => {
+                                                    if (op === "swap") return `${action.parameters?.amount || "?"} ${action.parameters?.inputToken || "?"} → ${action.parameters?.outputToken || "?"}`;
+                                                    if (op === "transfer") return `${action.parameters?.amount || "?"} ${action.parameters?.token || "SOL"} → ${(action.parameters?.recipient || "?").slice(0, 8)}...`;
+                                                    if (op === "stake") return `${action.parameters?.amount || "?"} ${action.parameters?.token || "SOL"} via ${action.parameters?.provider || "?"}`;
+                                                    if (op === "yield_deposit") return `${action.parameters?.amount || "?"} ${action.parameters?.token || "?"} into ${action.parameters?.protocol || "?"}`;
+                                                    if (op === "navigate") return action.parameters?.path || "";
+                                                    return Object.entries(action.parameters || {}).map(([k, v]) => `${k}: ${v}`).join(", ");
+                                                })();
+
+                                                return (
+                                                    <div key={idx} className="flex gap-3 relative">
+                                                        {/* Timeline line */}
+                                                        <div className="flex flex-col items-center">
+                                                            {statusDot}
+                                                            {!isLast && (
+                                                                <div className={`w-0.5 flex-1 min-h-[16px] my-1 rounded-full ${status === "done" ? "bg-emerald-400/40" :
+                                                                    status === "executing" ? "bg-blue-400/40 animate-pulse" :
+                                                                        "bg-border"
+                                                                    }`} />
+                                                            )}
+                                                        </div>
+
+                                                        {/* Step card */}
+                                                        <div className={`flex-1 mb-2 rounded-xl border transition-all ${status === "executing" ? "bg-blue-500/5 border-blue-500/20 shadow-sm shadow-blue-500/5" :
+                                                            status === "done" ? "bg-emerald-500/5 border-emerald-500/15" :
+                                                                status === "error" ? "bg-red-500/5 border-red-500/20" :
+                                                                    status === "skipped" ? "bg-muted/30 border-border opacity-50" :
+                                                                        "bg-muted/50 border-border"
+                                                            } p-3`}>
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className={`text-xs font-bold ${meta.color}`}>{meta.label}</span>
+                                                                <span className={`text-[9px] font-mono uppercase ${status === "done" ? "text-emerald-400" :
+                                                                    status === "executing" ? "text-blue-400" :
+                                                                        status === "error" ? "text-red-400" :
+                                                                            "text-muted-foreground"
+                                                                    }`}>
+                                                                    {status === "executing" ? "signing..." : status}
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-[12px] text-foreground/80 font-mono">{paramSummary}</p>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
-                                        <div className="w-0.5 h-0.5 rounded-full bg-muted-foreground/20" />
-                                        <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground/50">
-                                            <img src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" alt="Solana" className="w-3 h-3 rounded-full opacity-50" />
-                                            Solana
+
+                                        {/* Reasoning / Outcome */}
+                                        {plan.estimatedOutcome && !executing && (
+                                            <div className="bg-muted/30 rounded-xl border border-border p-3 mb-4">
+                                                <span className="text-[9px] text-primary uppercase font-bold block mb-1">Strategy</span>
+                                                <p className="text-[12px] text-foreground/70 leading-relaxed">{plan.estimatedOutcome}</p>
+                                            </div>
+                                        )}
+
+                                        {/* Warnings */}
+                                        {plan.warnings && plan.warnings.length > 0 && !executing && (
+                                            <div className="mb-4 bg-orange-500/5 border border-orange-500/15 rounded-xl p-3">
+                                                <div className="flex items-center gap-2 mb-1.5">
+                                                    <AlertTriangle size={12} className="text-orange-400" />
+                                                    <span className="text-[10px] font-bold text-orange-400 uppercase">Warnings</span>
+                                                </div>
+                                                <ul className="space-y-1">
+                                                    {plan.warnings.map((w: string, i: number) => (
+                                                        <li key={i} className="text-[11px] text-orange-400/80 leading-relaxed">{w}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+
+                                        {/* Buttons */}
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={handleConfirm}
+                                                disabled={executing}
+                                                className={`flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-xl text-sm hover:scale-[1.01] active:scale-[0.99] transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 ${executing ? 'opacity-50 cursor-wait' : ''}`}
+                                            >
+                                                {executing ? (
+                                                    <>Executing {stepStatuses.filter(s => s === "done").length}/{plan.actions?.length || 0}...</>
+                                                ) : (
+                                                    <>{plan.actions?.length > 1 ? `Confirm ${plan.actions.length} Steps` : "Confirm & Sign"}</>
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={() => { setPlan(null); setStepStatuses([]); }}
+                                                disabled={executing}
+                                                className="px-5 py-3 bg-muted text-foreground font-medium rounded-xl text-sm hover:bg-muted/80 transition-all border border-border"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+
+                                        {/* Infrastructure Footer */}
+                                        <div className="flex items-center justify-center gap-4 mt-4 pt-3 border-t border-border">
+                                            <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground/50">
+                                                <img src="https://static.jup.ag/jup/icon.png" alt="Jupiter" className="w-3 h-3 rounded-full opacity-50" />
+                                                Jupiter
+                                            </div>
+                                            <div className="w-0.5 h-0.5 rounded-full bg-muted-foreground/20" />
+                                            <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground/50">
+                                                <img src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" alt="Solana" className="w-3 h-3 rounded-full opacity-50" />
+                                                Solana
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
                                 );
                             })()}
                         </div>

@@ -49,7 +49,7 @@ const CLIENT_OPS = new Set([
   "navigate", "refresh", "ui_query", "governance_list",
   "governance_approve", "governance_execute", "external_balance",
   "monitor", "plugin_register", "transfer", "bridge",
-  "yield_deposit", "yield_withdraw",
+  "yield_deposit", "yield_withdraw", "browser_research", "browser_scrape", "browser_screenshot"
 ]);
 
 export async function POST(req: NextRequest) {

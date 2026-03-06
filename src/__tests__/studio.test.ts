@@ -13,6 +13,7 @@
  */
 
 // @ts-nocheck
+// eslint-disable-next-line import/no-unresolved
 import { describe, it, expect } from "vitest";
 
 // ─── Phase 1: SDK Type Codegen ──────────────────────────────────────
