@@ -7,7 +7,7 @@ import { JinaClient } from "./jina";
 import { FirecrawlClient } from "./firecrawl";
 import { TavilyClient } from "./tavily";
 import { HeliusClient } from "./helius";
-import { KnowledgeBase } from "./knowledge";
+import { KnowledgeBase } from "./knowledge-engine";
 import { simulationFirewall } from "./studio/simulation-firewall";
 
 export interface ActionContext {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { knowledgeBase } from "@/lib/knowledge";
+import { knowledgeBase } from "@/lib/knowledge-engine";
 
 export const maxDuration = 60; // Allow 60s for scraping
 

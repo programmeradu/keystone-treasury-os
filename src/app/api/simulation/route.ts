@@ -77,6 +77,25 @@ function isStablecoin(token: PortfolioToken): boolean {
 
 // ─── Projection Engine (v2) ─────────────────────────────────────────
 
+
+/**
+ * Calculates runway data based on formula: Monthly Burn Rate + (New Hires * $8k) - Revenue Impact
+ */
+export function generateRunwayData(
+  treasuryBalance: number,
+  monthlyBurnRate: number,
+  newHires: number = 0,
+  revenueImpact: number = 0
+): number | null {
+  const effectiveBurnRate = monthlyBurnRate + (newHires * 8000) - revenueImpact;
+
+  if (effectiveBurnRate <= 0) {
+    return null; // Infinite runway
+  }
+
+  return treasuryBalance / effectiveBurnRate;
+}
+
 function runProjection(req: SimulationRequest): SimulationResponse {
   const { portfolio, variables, timeframeMonths, granularity = "monthly", priceSource = "vault" } = req;
 
@@ -280,6 +299,21 @@ function runProjection(req: SimulationRequest): SimulationResponse {
       depletionDate = pointDate.toISOString().split("T")[0];
     }
 
+    // Recalculate runway based on the exact required formula
+    if (runwayMonths === null && i === 0) {
+      // For initial calculation, use the custom function for baseline
+      const exactRunway = generateRunwayData(
+        currentValue,
+        monthlyBurnRate,
+        variables.find(v => v.id === "hires")?.value || 0,
+        (variables.find(v => v.id === "revenue")?.value || 0) / 100 * monthlyInflow
+      );
+      if (exactRunway !== null && exactRunway < totalPoints / pointsPerMonth) {
+        // If the exact formula predicts depletion sooner than timeframe
+        // we could set it, but let the step-by-step projection find the exact date
+      }
+    }
+
     const events: string[] = [];
     if (i === 0) events.push("Current state");
     if (pointTotal <= currentValue * 0.1 && runwayMonths === null && prevPointTotal > currentValue * 0.1) {
@@ -345,7 +379,12 @@ function runProjection(req: SimulationRequest): SimulationResponse {
       projectedEndValue: Math.round(endValue * 100) / 100,
       delta: Math.round(delta * 100) / 100,
       deltaPercent: Math.round(deltaPercent * 100) / 100,
-      runwayMonths: runwayMonths !== null ? Math.round(runwayMonths * 10) / 10 : null,
+      runwayMonths: (() => {
+        const hires = variables.find(v => v.id === "hires")?.value || 0;
+        const revImpact = variables.find(v => v.id === "revenue")?.value || 0;
+        const exactRunway = generateRunwayData(currentValue, monthlyBurnRate, hires, revImpact);
+        return exactRunway !== null ? Math.round(exactRunway * 10) / 10 : (runwayMonths !== null ? Math.round(runwayMonths * 10) / 10 : null);
+      })(),
       depletionDate,
       riskFlags,
     },
