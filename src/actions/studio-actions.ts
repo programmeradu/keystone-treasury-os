@@ -16,7 +16,7 @@ export interface ProjectCode {
 }
 
 function generateId(prefix: string = "app"): string {
-    return `${prefix}_${Math.random().toString(36).substring(2, 15)}`;
+    return `${prefix}_${globalThis.crypto.randomUUID().replace(/-/g, '').substring(0, 16)}`;
 }
 
 export async function saveProject(
