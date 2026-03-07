@@ -1,18 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient, createSupabaseServerClient } from '@/lib/supabase';
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
+import { SignJWT, jwtVerify } from 'jose';
+
+const COOKIE_NAME = 'keystone-siws-session';
+const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+
+function getJwtSecret() {
+    const secret = process.env.JWT_SECRET || 'keystone_sovereign_os_2026';
+    return new TextEncoder().encode(secret);
+}
 
 /**
  * POST /api/auth/siws
- * Sign In With Solana — Optimized (parallel Neon + Supabase):
+ * Sign In With Solana — self-contained JWT session:
  *   1. Verify ed25519 signature (CPU-only, ~5ms)
  *   2. Verify nonce freshness
- *   3. [PARALLEL] Neon upsert + Supabase auth create/sign-in
- *   4. Set session cookie
+ *   3. Upsert user in Neon DB
+ *   4. Issue signed JWT session cookie
  */
 export async function POST(request: NextRequest) {
     try {
@@ -57,97 +65,66 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // ─── Step 3: PARALLEL — Neon upsert + Supabase auth ───────────
-        const admin = createAdminClient();
-        const email = `${walletAddress}@keystone.wallet`;
-        const password = `siws_${walletAddress}_${process.env.JWT_SECRET || 'keystone'}`;
+        // ─── Step 3: Upsert user in Neon DB ────────────────────────────
+        let userId: string | undefined;
 
-        // Run Neon upsert and Supabase sign-in simultaneously
-        const [, authResult] = await Promise.all([
-            // Neon upsert (fire-and-forget style — don't block auth)
-            db ? (async () => {
-                const existing = await db
-                    .select()
-                    .from(users)
-                    .where(eq(users.walletAddress, walletAddress))
-                    .limit(1);
+        if (db) {
+            const existing = await db
+                .select()
+                .from(users)
+                .where(eq(users.walletAddress, walletAddress))
+                .limit(1);
 
-                if (existing.length === 0) {
-                    await db.insert(users).values({
-                        walletAddress,
-                        role: 'user',
-                        displayName: `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}`,
-                    });
-                } else {
-                    await db
-                        .update(users)
-                        .set({ lastLoginAt: new Date() })
-                        .where(eq(users.walletAddress, walletAddress));
-                }
-            })() : Promise.resolve(),
-
-            // Supabase auth — try sign in, create if needed
-            (async () => {
-                let result = await admin.auth.signInWithPassword({ email, password });
-
-                if (result.error) {
-                    // User doesn't exist — create + sign in
-                    const signUp = await admin.auth.admin.createUser({
-                        email,
-                        password,
-                        email_confirm: true,
-                        user_metadata: {
-                            wallet_address: walletAddress,
-                            auth_method: 'siws',
-                        },
-                    });
-
-                    if (signUp.error) {
-                        throw new Error(`Auth creation failed: ${signUp.error.message}`);
-                    }
-
-                    result = await admin.auth.signInWithPassword({ email, password });
-                    if (result.error) {
-                        throw new Error(`Auth sign-in failed: ${result.error.message}`);
-                    }
-
-                    // Link Supabase UID to Neon (non-blocking)
-                    if (db && signUp.data.user) {
-                        db.update(users)
-                            .set({ supabaseUserId: signUp.data.user.id })
-                            .where(eq(users.walletAddress, walletAddress))
-                            .catch(err => console.error('[SIWS] UID link error:', err));
-                    }
-                }
-
-                return result;
-            })(),
-        ]);
-
-        const session = authResult.data.session;
-        if (!session) {
-            return NextResponse.json({ error: 'Failed to create session' }, { status: 500 });
+            if (existing.length === 0) {
+                const [inserted] = await db.insert(users).values({
+                    walletAddress,
+                    role: 'user',
+                    displayName: `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}`,
+                }).returning({ id: users.id });
+                userId = inserted?.id;
+            } else {
+                userId = existing[0].id;
+                await db
+                    .update(users)
+                    .set({ lastLoginAt: new Date() })
+                    .where(eq(users.walletAddress, walletAddress));
+            }
         }
 
-        // ─── Step 4: Set cookies via Supabase SSR ──────────────────────
-        const supabase = await createSupabaseServerClient();
-        await supabase.auth.setSession({
-            access_token: session.access_token,
-            refresh_token: session.refresh_token,
+        // ─── Step 4: Issue signed JWT session cookie ────────────────────
+        const token = await new SignJWT({
+            sub: userId || walletAddress,
+            wallet: walletAddress,
+            method: 'siws',
+        })
+            .setProtectedHeader({ alg: 'HS256' })
+            .setIssuedAt()
+            .setExpirationTime(`${SESSION_MAX_AGE}s`)
+            .setIssuer('keystone-treasury-os')
+            .sign(getJwtSecret());
+
+        const response = NextResponse.json({
+            user: {
+                id: userId || walletAddress,
+                walletAddress,
+                email: `${walletAddress}@keystone.wallet`,
+            },
         });
 
-        return NextResponse.json({
-            user: {
-                id: session.user.id,
-                walletAddress,
-                email: session.user.email,
-            },
-            accessToken: session.access_token,
+        response.cookies.set(COOKIE_NAME, token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            maxAge: SESSION_MAX_AGE,
         });
-    } catch (err: any) {
-        console.error('[SIWS] Auth error:', err);
+
+        return response;
+    } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[SIWS] Auth error:', msg);
         return NextResponse.json(
-            { error: err.message || 'Internal server error' },
+            { error: msg || 'Internal server error' },
             { status: 500 }
         );
     }
@@ -155,22 +132,24 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/auth/siws
- * Get current session from Supabase cookies.
+ * Get current session from JWT cookie.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
-        const supabase = await createSupabaseServerClient();
-        const { data: { session }, error } = await supabase.auth.getSession();
-
-        if (error || !session) {
+        const token = request.cookies.get(COOKIE_NAME)?.value;
+        if (!token) {
             return NextResponse.json({ user: null });
         }
 
+        const { payload } = await jwtVerify(token, getJwtSecret(), {
+            issuer: 'keystone-treasury-os',
+        });
+
         return NextResponse.json({
             user: {
-                id: session.user.id,
-                walletAddress: session.user.user_metadata?.wallet_address,
-                email: session.user.email,
+                id: payload.sub,
+                walletAddress: payload.wallet as string,
+                email: `${payload.wallet}@keystone.wallet`,
             },
         });
     } catch {
@@ -180,14 +159,16 @@ export async function GET() {
 
 /**
  * DELETE /api/auth/siws
- * Sign out — clear Supabase session + cookies.
+ * Sign out — clear session cookie.
  */
 export async function DELETE() {
-    try {
-        const supabase = await createSupabaseServerClient();
-        await supabase.auth.signOut();
-        return NextResponse.json({ ok: true });
-    } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
-    }
+    const response = NextResponse.json({ ok: true });
+    response.cookies.set(COOKIE_NAME, '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 0,
+    });
+    return response;
 }

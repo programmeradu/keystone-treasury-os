@@ -162,6 +162,8 @@ export class BuilderAgent extends BaseAgent {
       setTimeout(() => this.routeQuoteCache.delete(cacheKey), this.routeCacheTTL);
 
       this.setContextData(context, "route_quote", quote);
+      // Store raw Jupiter quote so coordinator can call swap API to build serialized tx
+      this.setContextData(context, "jupiter_quote_raw", data);
       return quote;
     } catch (error: any) {
       throw new Error(

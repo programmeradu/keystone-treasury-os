@@ -56,15 +56,19 @@ export async function GET(req: NextRequest) {
     process.env.BITQUERY_API_KEY ||
     "";
   if (!token) {
-    return new Response(
-      JSON.stringify({
-        error: "Missing Bitquery token. Provide ?token=... or set BITQUERY_BEARER / BITQUERY_API_KEY in env.",
-      }),
-      {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      }
+    const enc = new TextEncoder();
+    const body = enc.encode(
+      `data: ${JSON.stringify({ type: "error", error: "Missing Bitquery token. Set BITQUERY_BEARER or BITQUERY_API_KEY in env." })}\n\n` +
+      `data: ${JSON.stringify({ type: "close", reason: "no_token" })}\n\n`
     );
+    return new Response(body, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+      },
+    });
   }
 
   // Allow custom GraphQL subscription via ?q= (base64) or ?query=

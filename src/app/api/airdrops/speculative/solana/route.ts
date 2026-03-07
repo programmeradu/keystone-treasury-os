@@ -154,7 +154,7 @@ export async function GET() {
 
       console.log(`Airdrops API: Attempt ${attempt} received ${html.length} chars of HTML content`);
       const $ = cheerio.load(html);
-      const items = await parseAirdropsContent($);
+      const items = parseAirdropsContent($);
 
       if (items.length > 0) {
         console.log(`Airdrops API: Successfully scraped ${items.length} items on attempt ${attempt}`);
@@ -206,8 +206,7 @@ export async function GET() {
   return getFallbackData();
 }
 
-// Enhanced content parsing with multiple strategies
-async function parseAirdropsContent($: cheerio.CheerioAPI): Promise<Array<{
+interface AirdropItem {
   title: string;
   url?: string;
   project?: string;
@@ -215,165 +214,111 @@ async function parseAirdropsContent($: cheerio.CheerioAPI): Promise<Array<{
   tags?: string[];
   image?: string;
   source: string;
-}>> {
-  const items: Array<{
-    title: string;
-    url?: string;
-    project?: string;
-    summary?: string;
-    tags?: string[];
-    image?: string;
-    source: string;
-  }> = [];
+}
 
-  // Strategy 1: Look for main content area
-  const $scope = $("main, #primary, .site-main, .content-area, #content").first().length
-    ? $("main, #primary, .site-main, .content-area, #content").first()
-    : $("body");
+function parseAirdropsContent($: cheerio.CheerioAPI): AirdropItem[] {
+  const items: AirdropItem[] = [];
 
-  console.log("Airdrops API: Parsing strategy 1 - Main content extraction");
+  // Strategy 1: Card-based extraction via "CLAIM AIRDROP" links (current site layout)
+  // Each card has: h3 project name, li with "Actions:", and a visit link
+  const claimLinks = $('a[href*="airdrops.io/visit/"]');
+  console.log(`Airdrops API: Strategy 1 - Found ${claimLinks.length} claim links`);
 
-  // Strategy 1a: Look for structured article lists
-  $scope.find("article").each((_, el) => {
-    const node = $(el);
-    const a = node.find(".entry-title a, header h2 a, h2.entry-title a, h3.entry-title a, .post-title a").first();
-    const titleText = (a.text() || node.find(".entry-title, header h2, h2, h3, .post-title").first().text() || "").trim();
-    const href = a.attr("href");
-    
-    if (!titleText || !href) return;
+  claimLinks.each((_, el) => {
+    const link = $(el);
+    const card = link.closest("div, article, section, li");
+    if (!card.length) return;
 
-    // Filter out generic/category pages
-    if (/airdrops\.io\/?$/i.test(href)) return;
-    if (href === SOURCE_URL) return;
-    if (/category|tag|speculative\/solana\/?$/i.test(href)) return;
-    if (/Potential Solana Ecosystem Airdrops/i.test(titleText)) return;
-    if (/Airdrops\.io/i.test(titleText)) return;
+    const heading = card.find("h3, h2, h4").first();
+    const title = (heading.text() || "").trim();
+    if (!title) return;
 
-    const img = node.find("img").first().attr("src") || node.find("img").first().attr("data-src");
-    const summaryText = (node.find(".entry-summary, .card-text, .excerpt, .entry-content p, .post-excerpt").first().text() || "")
-      .replace(/\s+/g, " ")
-      .trim();
+    const detailHref = heading.find("a").attr("href") || link.attr("href") || "";
+    const img = card.find("img").first().attr("src") || card.find("img").first().attr("data-src");
 
-    const tags: string[] = [];
-    node.find(".tags a, .tag-list a, .post-tags a, .badge, .chip, .category a").each((__, t) => {
-      const text = $(t).text().trim();
-      if (text) tags.push(text);
+    let summary = "";
+    card.find("li, p, .description, .excerpt, .actions, span").each((__, descEl) => {
+      const text = $(descEl).text().trim();
+      if (text.startsWith("Actions:") || text.startsWith("Value:")) {
+        summary = text;
+        return false;
+      }
     });
-
-    let project = node.find("strong, b").first().text().trim();
-    if (!project && titleText) {
-      project = titleText.split(" – ")[0].split(":")[0].split("|")[0].trim();
+    if (!summary) {
+      const cardText = card.text().replace(/\s+/g, " ").trim();
+      const actionsMatch = cardText.match(/Actions?:\s*(.+?)(?:CLAIM|$)/i);
+      const valueMatch = cardText.match(/Value:\s*(.+?)(?:CLAIM|$)/i);
+      summary = actionsMatch?.[0]?.trim() || valueMatch?.[0]?.trim() || "";
     }
 
+    const tags: string[] = [];
+    card.find(".badge, .tag, .chip, .label, [class*='tag'], [class*='badge']").each((__, t) => {
+      const text = $(t).text().trim();
+      if (text && text.length < 30) tags.push(text);
+    });
+
     items.push({
-      title: titleText,
-      url: absUrl(href),
-      project,
-      summary: summaryText || undefined,
+      title,
+      url: absUrl(detailHref),
+      project: title.split(" – ")[0].split(":")[0].split("|")[0].trim(),
+      summary: summary || undefined,
       tags: tags.length ? Array.from(new Set(tags)) : undefined,
       image: absUrl(img),
       source: SOURCE_URL,
     });
   });
 
-  console.log(`Airdrops API: Strategy 1a found ${items.length} articles`);
+  console.log(`Airdrops API: Strategy 1 extracted ${items.length} items`);
 
-  // Strategy 1b: Look for list-based content if articles didn't yield enough
+  // Strategy 2: Heading + sibling link extraction (alternative layouts)
   if (items.length < 3) {
-    console.log("Airdrops API: Strategy 1b - List-based extraction");
-    
-    // Find headings that mention airdrops
-    const heading = $scope
-      .find("h1, h2, h3, h4")
-      .filter((_, el) => {
-        const text = $(el).text().toLowerCase();
-        return text.includes("potential") || text.includes("airdrop") || text.includes("solana");
-      })
-      .first();
+    console.log("Airdrops API: Strategy 2 - Heading-based extraction");
+    const beforeCount = items.length;
+    const existingTitles = new Set(items.map(i => i.title.toLowerCase()));
 
-    const $article = heading.length ? heading.closest("article") : $("");
-    const base = $article.length ? $article : $scope;
-    const content = base.find(".entry-content, .post-content, .entry, .content, .post-inner, .post").first().length
-      ? base.find(".entry-content, .post-content, .entry, .content, .post-inner, .post").first()
-      : base;
+    $("h3, h2").each((_, el) => {
+      const heading = $(el);
+      const title = heading.text().trim();
+      if (!title || title.length < 2 || title.length > 100) return;
+      if (existingTitles.has(title.toLowerCase())) return;
+      if (/filter|follow|newsletter|airdrops\.io/i.test(title)) return;
 
-    // Collect list-style anchors
-    content.find("ul li a[href], ol li a[href], p a[href]").each((_, el) => {
-      const a = $(el);
-      const href = a.attr("href") || "";
-      const text = (a.text() || "").trim();
-      if (!text || text.length < 2) return;
-      
-      // Skip site/nav and meta links
-      if (/^\/?(privacy|terms|about|contact)/i.test(href)) return;
-      if (/^https?:\/\/airdrops\.io\/?$/i.test(href)) return;
-      if (href === SOURCE_URL) return;
-      if (/category|tag|speculative\/solana\/?$/i.test(href)) return;
-      if (/Airdrops\.io/i.test(text)) return;
+      const href = heading.find("a").attr("href")
+        || heading.next("a").attr("href")
+        || heading.parent().find('a[href*="airdrops.io/visit/"], a[href*="/airdrop/"]').first().attr("href")
+        || "";
+      if (!href) return;
+      if (/airdrops\.io\/?$/i.test(href) || href === SOURCE_URL) return;
 
-      // Keep external project links or airdrop/detail pages
-      const keep = /^(https?:)?\/\//.test(href) || /\/airdrop\//i.test(href) || /\/(post|guide|news)\//i.test(href);
-      if (!keep) return;
-
-      // Optional summary from nearby text
-      const p = $(el).closest("li, p");
-      const summary = (p.clone().children("a, img, strong, b").remove().end().text() || "").replace(/\s+/g, " ").trim();
+      let summary = "";
+      const nextEl = heading.nextAll("ul, ol, p").first();
+      if (nextEl.length) {
+        summary = nextEl.text().replace(/\s+/g, " ").trim().slice(0, 200);
+      }
 
       items.push({
-        title: text,
+        title,
         url: absUrl(href),
-        project: text.split(" – ")[0].split(":")[0].split("|")[0].trim(),
+        project: title.split(" – ")[0].split(":")[0].split("|")[0].trim(),
         summary: summary || undefined,
         source: SOURCE_URL,
       });
+      existingTitles.add(title.toLowerCase());
     });
 
-    console.log(`Airdrops API: Strategy 1b added ${items.length - (items.length - content.find("ul li a[href], ol li a[href], p a[href]").length)} more items`);
+    console.log(`Airdrops API: Strategy 2 added ${items.length - beforeCount} items`);
   }
 
-  // Strategy 2: Generic link extraction as final fallback
-  if (items.length < 2) {
-    console.log("Airdrops API: Strategy 2 - Generic link extraction");
-    
-    $scope.find("a[href]").each((_, el) => {
-      const a = $(el);
-      const href = a.attr("href") || "";
-      const text = (a.text() || "").trim();
-      if (!text || text.length < 2) return;
-      
-      // More lenient filtering for this strategy
-      if (/^\/?(privacy|terms|about|contact)/i.test(href)) return;
-      if (/^https?:\/\/airdrops\.io\/?$/i.test(href)) return;
-      if (href === SOURCE_URL) return;
-      if (/Airdrops\.io/i.test(text)) return;
-      
-      // Look for promising external links
-      if (/^https?:\/\//.test(href) && !href.includes('airdrops.io')) {
-        // Check if the link text suggests it's a crypto project
-        if (/\b(defi|dex|swap|stake|farm|pool|protocol|finance|dao|token)\b/i.test(text)) {
-          items.push({
-            title: text,
-            url: absUrl(href),
-            project: text.split(" – ")[0].split(":")[0].split("|")[0].trim(),
-            source: SOURCE_URL,
-          });
-        }
-      }
-    });
-
-    console.log(`Airdrops API: Strategy 2 added ${items.length - (items.length - $scope.find("a[href]").length)} more items`);
-  }
-
-  // Deduplicate by title/url and keep top N
+  // Deduplicate by normalized title+url
   const seen = new Set<string>();
   const unique = items
     .filter((it) => {
-      const key = `${(it.title || "").toLowerCase()}|${it.url || ""}`;
+      const key = `${it.title.toLowerCase()}|${it.url || ""}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     })
-    .slice(0, 24);
+    .slice(0, 30);
 
   console.log(`Airdrops API: Final result: ${unique.length} unique items after deduplication`);
   return unique;

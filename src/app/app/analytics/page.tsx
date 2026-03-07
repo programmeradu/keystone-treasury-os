@@ -143,8 +143,8 @@ export default function AnalyticsPage() {
     }, [vaultTokens, stakeAccounts, vaultChange24h]);
 
     const simRiskScore = useMemo(() => {
-        if (!simActive || !simResult) return null;
-        const flags = simResult.summary.riskFlags;
+        if (!simActive || !simResult?.summary) return null;
+        const flags = simResult.summary.riskFlags ?? [];
         let score = realRisk.overallScore;
         if (flags.includes("DEPLETION_RISK")) score += 4;
         if (flags.includes("MAJOR_DRAWDOWN")) score += 2;
@@ -161,8 +161,8 @@ export default function AnalyticsPage() {
     const realYield = useMemo(() => computeYield(vaultTokens, vaultValue, yieldRates), [vaultTokens, vaultValue, yieldRates]);
 
     const simYield = useMemo(() => {
-        if (!simActive || !simResult) return null;
-        const deltaP = simResult.summary.deltaPercent;
+        if (!simActive || !simResult?.summary) return null;
+        const deltaP = simResult.summary.deltaPercent ?? 0;
         const months = simResult.metadata?.timeframeMonths || 12;
         return { apy: (deltaP / months) * 12, monthly: deltaP / months, projected: simResult.summary.delta };
     }, [simActive, simResult]);
@@ -226,11 +226,11 @@ export default function AnalyticsPage() {
                         <span className="text-[10px] font-mono text-orange-300/80 truncate">
                             &quot;{sim.prompt}&quot;
                         </span>
-                        {simResult && (
+                        {simResult?.summary && (
                             <div className="flex items-center gap-3 shrink-0">
                                 <span className="text-[10px] font-mono text-muted-foreground">|</span>
-                                <span className={`text-[10px] font-black font-mono ${simResult.summary.delta >= 0 ? "text-primary" : "text-destructive"}`}>
-                                    {simResult.summary.deltaPercent >= 0 ? "+" : ""}{simResult.summary.deltaPercent.toFixed(1)}%
+                                <span className={`text-[10px] font-black font-mono ${(simResult.summary.delta ?? 0) >= 0 ? "text-primary" : "text-destructive"}`}>
+                                    {(simResult.summary.deltaPercent ?? 0) >= 0 ? "+" : ""}{(simResult.summary.deltaPercent ?? 0).toFixed(1)}%
                                 </span>
                                 {simResult.summary.runwayMonths != null && (
                                     <span className="text-[10px] font-black text-destructive flex items-center gap-1">
@@ -238,7 +238,7 @@ export default function AnalyticsPage() {
                                         Depletes in {simResult.summary.runwayMonths.toFixed(1)}mo
                                     </span>
                                 )}
-                                {simResult.summary.riskFlags.map((flag: string, i: number) => (
+                                {(simResult.summary.riskFlags ?? []).map((flag: string, i: number) => (
                                     <span key={i} className="px-1.5 py-0.5 rounded bg-destructive/10 text-[8px] font-black uppercase text-destructive">
                                         {flag.replace(/_/g, " ")}
                                     </span>
@@ -421,7 +421,7 @@ export default function AnalyticsPage() {
                                             <span className="text-[8px] text-muted-foreground font-bold">Just now</span>
                                         </div>
                                     </div>
-                                    {simResult.summary.riskFlags.map((flag: string, i: number) => (
+                                    {(simResult?.summary?.riskFlags ?? []).map((flag: string, i: number) => (
                                         <div key={i} className="flex gap-3 items-start">
                                             <div className="w-6 h-6 rounded bg-destructive/10 border border-destructive/20 flex items-center justify-center text-[10px]"><AlertTriangle size={10} className="text-destructive" /></div>
                                             <div>
@@ -430,17 +430,19 @@ export default function AnalyticsPage() {
                                             </div>
                                         </div>
                                     ))}
+                                    {simResult?.summary && (
                                     <div className="flex gap-3 items-start opacity-70">
                                         <div className="w-6 h-6 rounded bg-muted border border-border flex items-center justify-center text-[10px] font-mono text-foreground">→</div>
                                         <div>
                                             <p className="text-[10px] leading-tight text-foreground font-medium">
-                                                End value: ${simResult.summary.projectedEndValue.toLocaleString()}
+                                                End value: ${(simResult.summary.projectedEndValue ?? 0).toLocaleString()}
                                             </p>
                                             <span className="text-[8px] text-muted-foreground font-bold">
-                                                {simResult.summary.deltaPercent >= 0 ? "+" : ""}{simResult.summary.deltaPercent.toFixed(1)}% from current
+                                                {(simResult.summary.deltaPercent ?? 0) >= 0 ? "+" : ""}{(simResult.summary.deltaPercent ?? 0).toFixed(1)}% from current
                                             </span>
                                         </div>
                                     </div>
+                                    )}
                                 </>
                             ) : activityLog.length > 0 ? (
                                 activityLog.slice(0, 5).map(entry => (

@@ -261,6 +261,65 @@ export class ArchitectEngine {
   }
 
   /**
+   * Call the generate API for correction, handling both patch arrays and full-file responses.
+   * Separate from callGenerateAPI so it can parse the isPatches/patches fields.
+   */
+  private async callCorrectionGenerateAPI(
+    prompt: string,
+    contextFiles: Record<string, { content: string }>,
+  ): Promise<{ files?: Record<string, string> | null; patches?: any[] | null }> {
+    const response = await fetch("/api/studio/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, contextFiles }),
+      signal: this.abortController?.signal,
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.details || errData.error || "Correction generation failed");
+    }
+
+    const data = await response.json();
+
+    if (data.error === "no_api_key") {
+      throw new Error("NO_API_KEY: " + (data.details || "No AI API key configured."));
+    }
+
+    if (data.provider) this.activeProvider = data.provider;
+    if (data.model) this.activeModel = data.model;
+    if (data.explanation) this.callbacks.onExplanation(data.explanation);
+
+    this.tokensGenerated += Math.ceil(JSON.stringify(data).length / 4);
+    this.callbacks.onStateChange(this.getStatus());
+
+    // Route 1: Server detected a patch array from the LLM
+    if (data.isPatches && Array.isArray(data.patches)) {
+      return { patches: data.patches };
+    }
+
+    // Route 2: Model may have embedded patches as a JSON-array string inside a file value
+    if (data.files) {
+      for (const value of Object.values(data.files)) {
+        if (typeof value === "string") {
+          const trimmed = (value as string).trim();
+          if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+            try {
+              const parsed = JSON.parse(trimmed);
+              if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].file && parsed[0].startLine != null) {
+                return { patches: parsed };
+              }
+            } catch { /* not a valid patch array, fall through */ }
+          }
+        }
+      }
+    }
+
+    // Route 3: Standard full-file response
+    return { files: data.files || null };
+  }
+
+  /**
    * Call the generate API with correction context.
    * Uses the server-selected model to generate focused fixes.
    */
@@ -301,48 +360,43 @@ Do NOT return the standard JSON file format. Do not return markdown code blocks.
       mergedContext[name] = { content };
     }
 
-    // Call API and handle patch application
-    const rawResult = await this.callGenerateAPI(correctionPrompt, mergedContext);
+    const result = await this.callCorrectionGenerateAPI(correctionPrompt, mergedContext);
 
-    if (!rawResult) {
-       return null;
+    if (!result) {
+      return null;
     }
 
-    // Check if the model ignored the prompt and returned standard full files
-    if (Object.keys(rawResult).length > 0 && !Array.isArray(rawResult)) {
-        // Standard JSON object of file string contents
-        return rawResult;
+    // Standard full-file response — use directly
+    if (result.files && Object.keys(result.files).length > 0) {
+      return result.files;
     }
 
-    // In actual implementation we need to process the patches which were parsed out of the raw generate API
-    // The current callGenerateAPI parses data.files. If the model returned an array, it might be in data.files
-    const patches = Array.isArray(rawResult) ? rawResult : [];
-
-    if (patches.length === 0) {
+    // Patch array — apply replace_range patches
+    const patches = result.patches;
+    if (!patches || patches.length === 0) {
       return null;
     }
 
     const updatedFiles = { ...currentFiles };
 
-    for (const patch of patches as any[]) {
-      if (!patch.file || !patch.replacement || typeof patch.startLine !== 'number' || typeof patch.endLine !== 'number') {
+    for (const patch of patches) {
+      if (!patch.file || !patch.replacement || typeof patch.startLine !== "number" || typeof patch.endLine !== "number") {
         continue;
       }
 
       const fileContent = updatedFiles[patch.file];
       if (!fileContent) continue;
 
-      const lines = fileContent.split('\n');
+      const lines = fileContent.split("\n");
 
-      // Convert 1-based startLine and endLine to 0-based index
       const startIndex = Math.max(0, patch.startLine - 1);
       const endIndex = Math.max(0, patch.endLine - 1);
       const deleteCount = endIndex - startIndex + 1;
 
-      // Ensure we don't try to splice beyond the array length bounds incorrectly
       if (startIndex < lines.length) {
-          lines.splice(startIndex, deleteCount, patch.replacement);
-          updatedFiles[patch.file] = lines.join('\n');
+        const replacementLines = patch.replacement.split("\n");
+        lines.splice(startIndex, deleteCount, ...replacementLines);
+        updatedFiles[patch.file] = lines.join("\n");
       }
     }
 

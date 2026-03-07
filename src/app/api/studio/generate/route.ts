@@ -370,11 +370,25 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Detect if LLM returned a patch array instead of standard file objects.
+    // This happens when the correction prompt asks for replace_range patches.
+    let isPatches = false;
+    let patches: any[] | null = null;
+
+    if (Array.isArray(parsed)) {
+      isPatches = true;
+      patches = parsed;
+    } else if (Array.isArray(parsed.patches)) {
+      isPatches = true;
+      patches = parsed.patches;
+    }
+
     return NextResponse.json({
-      files: parsed.files || {},
+      files: isPatches ? {} : (parsed.files || {}),
       explanation: parsed.explanation || "Code generated successfully.",
       provider,
       model: activeModel,
+      ...(isPatches && { isPatches: true, patches }),
     });
   } catch (error) {
     console.error("Studio Generate Error:", error);

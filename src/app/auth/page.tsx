@@ -5,18 +5,16 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useKeystoneAuth } from "@/hooks/useKeystoneAuth";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createBrowserClient } from "@supabase/ssr";
+import { authClient } from "@/lib/auth/client";
 import {
     Shield,
     Wallet,
     PenLine,
-    CheckCircle2,
     Loader2,
     AlertCircle,
     ArrowRight,
     RefreshCw,
     Lock,
-    Terminal
 } from "lucide-react";
 
 import { Logo, LogoFilled, Sparkles } from "@/components/icons";
@@ -88,13 +86,7 @@ function TelemetryProvider({ children }: { children: React.ReactNode }) {
     );
 }
 
-// ─── Supabase client for OAuth ───────────────────────────────────────
-function getSupabaseBrowserClient() {
-    return createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xyzcompany.supabase.co',
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5emNvbXBhbnkiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTYxNjQ4MzAwMCwiZXhwIjoxOTMyMDgzMDAwfQ.XYZ'
-    );
-}
+// Neon Auth client is imported from @/lib/auth/client
 
 // ─── Logo Image Loaders ─────────────────────────────────────────────
 function WalletLogo({ domain, name }: { domain: string; name: string }) {
@@ -187,29 +179,162 @@ function ProgressIndicator({ step }: { step: number }) {
     );
 }
 
-function TerminalFeed() {
+function LinuxTerminal() {
     const { lines } = useTelemetry();
+    const scrollRef = React.useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+    }, [lines]);
 
     return (
-        <div className="absolute bottom-12 left-12 z-20 hidden lg:flex flex-col w-[450px] rounded-[24px] bg-[#030305]/40 backdrop-blur-xl border border-white/5 shadow-[0_10px_40px_rgba(0,0,0,0.3)] overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none z-0"></div>
+        <div className="absolute bottom-12 left-12 z-20 hidden lg:flex flex-col w-[480px] rounded-lg overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/[0.08]">
+            {/* Title Bar */}
+            <div className="flex items-center h-9 px-3.5 bg-[#1e1e24] border-b border-white/[0.06] shrink-0 select-none">
+                <div className="flex items-center gap-[7px]">
+                    <div className="w-[11px] h-[11px] rounded-full bg-[#ff5f57] border border-[#e0443e]/60" />
+                    <div className="w-[11px] h-[11px] rounded-full bg-[#febc2e] border border-[#d4a123]/60" />
+                    <div className="w-[11px] h-[11px] rounded-full bg-[#28c840] border border-[#1aab29]/60" />
+                </div>
+                <div className="flex-1 text-center">
+                    <span className="text-[11px] font-mono text-white/30 tracking-wide">keystone@mainnet ~ telemetry</span>
+                </div>
+                <div className="w-[60px]" />
+            </div>
 
-            {/* Content Segment */}
-            <div className="p-6 font-mono text-[11px] text-[#36e27b] tracking-widest relative z-10 h-[220px] flex flex-col justify-end">
-                <div className="overflow-hidden flex flex-col justify-end gap-2.5 text-[#36e27b] drop-shadow-[0_0_2px_rgba(54,226,123,0.2)]">
-                    {lines.map((line, idx) => (
-                        <div key={idx} className={`animate-in fade-in slide-in-from-bottom-2 duration-300 font-bold ${idx === lines.length - 1 ? 'opacity-100' : 'opacity-[0.65]'}`}>
-                            {line}
-                        </div>
-                    ))}
+            {/* Terminal Body */}
+            <div className="bg-[#0c0c10] relative">
+                <div className="absolute inset-0 opacity-[0.015] pointer-events-none" style={{
+                    backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)`,
+                }} />
+
+                <div ref={scrollRef} className="p-4 pb-2 font-mono text-[11.5px] leading-[1.7] h-[200px] overflow-y-auto scrollbar-none relative z-10">
+                    <div className="text-white/20 mb-3 text-[10px]">Last login: {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} on ttys001</div>
+                    <AnimatePresence initial={false}>
+                        {lines.map((line, idx) => (
+                            <motion.div
+                                key={`${idx}-${line}`}
+                                initial={{ opacity: 0, y: 6 }}
+                                animate={{ opacity: idx === lines.length - 1 ? 1 : 0.55, y: 0 }}
+                                transition={{ duration: 0.25, ease: "easeOut" }}
+                                className="text-[#36e27b] font-medium"
+                            >
+                                {line}
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
+
+                    {/* Blinking cursor */}
+                    <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-[#36e27b]/40 text-[10px]">$</span>
+                        <motion.span
+                            animate={{ opacity: [1, 1, 0, 0] }}
+                            transition={{ duration: 1, repeat: Infinity, times: [0, 0.49, 0.5, 1] }}
+                            className="inline-block w-[7px] h-[14px] bg-[#36e27b]/70"
+                        />
+                    </div>
+                </div>
+
+                {/* Status Bar */}
+                <div className="px-4 py-2 bg-[#36e27b]/[0.06] border-t border-[#36e27b]/10 flex items-center justify-between relative z-10">
+                    <div className="flex items-center gap-2">
+                        <motion.div
+                            animate={{ opacity: [0.4, 1, 0.4] }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                            className="w-1.5 h-1.5 rounded-full bg-[#36e27b]"
+                        />
+                        <span className="text-[10px] font-mono font-bold text-[#36e27b]/50 tracking-widest uppercase">telemetry</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-[10px] font-mono text-white/20">
+                        <span>solana-mainnet</span>
+                        <span>{lines.length} events</span>
+                    </div>
                 </div>
             </div>
+        </div>
+    );
+}
 
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-white/5 relative z-10 bg-[#0a0a0f]/20 flex items-center gap-2">
-                <span className="text-[#36e27b]/50 font-bold text-[10px] tracking-widest uppercase">System Telemetry Live</span>
-                <span className="w-2.5 h-3.5 bg-[#36e27b]/80 animate-pulse"></span>
-            </div>
+function DynamicIsland() {
+    const { lines } = useTelemetry();
+    const [expanded, setExpanded] = useState(false);
+    const latestLine = lines[lines.length - 1] || "";
+    const prevLineCount = React.useRef(lines.length);
+
+    const modernize = (raw: string) =>
+        raw.replace(/^>\s*/, "").replace(/_/g, " ").replace(/\.\.\.$/, "…").replace(/\.\.\./g, "…");
+
+    useEffect(() => {
+        if (lines.length > prevLineCount.current) {
+            setExpanded(true);
+            const timer = setTimeout(() => setExpanded(false), 3000);
+            prevLineCount.current = lines.length;
+            return () => clearTimeout(timer);
+        }
+    }, [lines.length]);
+
+    return (
+        <div className="fixed top-2 left-1/2 -translate-x-1/2 z-50 lg:hidden">
+            <motion.div
+                layout
+                onClick={() => setExpanded(prev => !prev)}
+                className="cursor-pointer overflow-hidden bg-[#0a0a0f] border border-white/[0.08] shadow-[0_8px_30px_rgba(0,0,0,0.5)]"
+                style={{ borderRadius: 24 }}
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+            >
+                <motion.div layout className="flex flex-col">
+                    {/* Compact row — always visible */}
+                    <motion.div layout="position" className="flex items-center gap-2.5 px-4 py-2 min-w-0">
+                        <motion.div
+                            animate={{ opacity: [0.4, 1, 0.4] }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                            className="w-2 h-2 rounded-full bg-[#36e27b] shrink-0 shadow-[0_0_6px_rgba(54,226,123,0.5)]"
+                        />
+                        <AnimatePresence mode="wait">
+                            <motion.span
+                                key={latestLine}
+                                initial={{ opacity: 0, y: 4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -4 }}
+                                transition={{ duration: 0.2 }}
+                                className="text-[11px] font-sans font-semibold text-[#36e27b]/80 truncate max-w-[260px] tracking-wide"
+                            >
+                                {expanded ? "Keystone OS · Telemetry" : modernize(latestLine)}
+                            </motion.span>
+                        </AnimatePresence>
+                    </motion.div>
+
+                    {/* Expanded telemetry feed */}
+                    <AnimatePresence>
+                        {expanded && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                className="overflow-hidden"
+                            >
+                                <div className="border-t border-white/[0.06] px-4 py-2.5 space-y-1.5">
+                                    {lines.slice(-5).map((line, idx, arr) => (
+                                        <div
+                                            key={idx}
+                                            className={`text-[10.5px] font-sans leading-relaxed tracking-wide ${idx === arr.length - 1 ? "text-[#36e27b] font-semibold" : "text-white/25 font-medium"}`}
+                                        >
+                                            {modernize(line)}
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="px-4 py-1.5 border-t border-white/[0.04] flex items-center justify-between">
+                                    <span className="text-[9px] font-sans text-white/20 tracking-widest uppercase font-semibold">Mainnet Beta</span>
+                                    <span className="text-[9px] font-sans text-white/20 font-medium">{lines.length} events</span>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </motion.div>
+            </motion.div>
         </div>
     );
 }
@@ -354,8 +479,8 @@ function KeystoneBackground() {
                     </div>
                 </div>
 
-                {/* Automated Data Feed (Bottom Left) */}
-                <TerminalFeed />
+                {/* Linux Terminal — desktop only */}
+                <LinuxTerminal />
             </div>
 
             {/* Mobile / Right Panel Background Effects */}
@@ -460,25 +585,21 @@ function AuthPageContent() {
         }
     }, [connected, signIn, openWalletModal]);
 
-    // Social OAuth
+    // Social OAuth via Neon Auth
     const handleSocialLogin = useCallback(async (provider: 'google' | 'discord') => {
         try {
             setSocialLoading(provider);
             setOauthError(null);
             addLog(`INITIATING_OAUTH_FLOW: ${provider.toUpperCase()}`);
 
-            const supabase = getSupabaseBrowserClient();
-            const { error: oauthErr } = await supabase.auth.signInWithOAuth({
+            await authClient.signIn.social({
                 provider,
-                options: {
-                    redirectTo: `${window.location.origin}/api/auth/callback?next=/app`,
-                },
+                callbackURL: `${window.location.origin}/api/auth/callback/neon`,
             });
-
-            if (oauthErr) throw oauthErr;
-        } catch (err: any) {
-            console.error(`[Social Auth] ${provider} error:`, err);
-            setOauthError(err.message || `Failed to sign in with ${provider}`);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error(`[Social Auth] ${provider} error:`, msg);
+            setOauthError(msg || `Failed to sign in with ${provider}`);
             addLog(`ERROR: OAUTH_FAILED [${provider.toUpperCase()}]`);
             setSocialLoading(null);
         }
@@ -506,6 +627,9 @@ function AuthPageContent() {
         <div className="min-h-screen flex relative overflow-hidden font-sans bg-zinc-100">
             <KeystoneBackground />
 
+            {/* Dynamic Island — mobile only */}
+            <DynamicIsland />
+
             {/* Content Wrapper */}
             <div className="relative w-full h-full min-h-screen flex flex-col lg:flex-row z-10">
 
@@ -518,18 +642,18 @@ function AuthPageContent() {
                     {/* Auth Modal Card - Super Premium & Compact */}
                     <div className="relative w-full max-w-[400px]">
 
-                        {/* Logo Header - Only visible on Mobile since Desktop has it in the Left Panel */}
-                        <div className="flex flex-col items-center mb-5 relative z-20 lg:hidden">
-                            <div className="w-16 h-16 rounded-[20px] bg-[#0a0a0f] border border-white/10 flex items-center justify-center shadow-2xl mb-5 relative overflow-hidden">
-                                <div className="absolute inset-0 bg-gradient-to-b from-[#36e27b]/20 to-transparent opacity-50"></div>
-                                <LogoFilled size={32} className="text-white relative z-10 drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]" />
-                                <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#36e27b]/50 to-transparent"></div>
-                            </div>
+                        {/* Mobile Branding — text only, no logo icon (Dynamic Island replaces it) */}
+                        <div className="flex flex-col items-center mb-5 pt-14 relative z-20 lg:hidden">
                             <h1 className="text-[28px] font-bold text-white tracking-tight drop-shadow-lg leading-none">Keystone</h1>
                             <p className="text-[11px] text-[#36e27b] mt-2.5 uppercase tracking-[0.3em] font-bold drop-shadow-[0_0_10px_rgba(54,226,123,0.5)]">TreasuryOS</p>
                         </div>
 
                         <div className="relative rounded-[32px] border border-white/[0.08] bg-[#050508]/80 backdrop-blur-[40px] shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset,0_40px_80px_-20px_rgba(0,0,0,1)] p-6 overflow-hidden w-full">
+                            {/* Logo Watermark */}
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
+                                <Logo size={300} fillColor="#ffffff" className="opacity-[0.045] rotate-[-12deg]" />
+                            </div>
+
                             {/* Noise Texture Overlay */}
                             <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay pointer-events-none" style={{ backgroundImage: `url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E')` }}></div>
 
@@ -700,8 +824,8 @@ function AuthPageContent() {
                                         <div className="flex justify-center">
                                             <div className="relative">
                                                 <div className="absolute inset-0 bg-[#36e27b]/20 rounded-full blur-[30px] animate-pulse"></div>
-                                                <div className="relative w-24 h-24 rounded-[24px] bg-[#0a0a0f] border border-[#36e27b]/40 flex items-center justify-center backdrop-blur-xl shadow-[0_0_40px_rgba(54,226,123,0.2)]">
-                                                    <CheckCircle2 className="w-12 h-12 text-[#36e27b]" />
+                                                <div className="relative w-24 h-24 rounded-[24px] bg-[#14141a] border border-[#36e27b]/40 flex items-center justify-center backdrop-blur-xl shadow-[0_0_40px_rgba(54,226,123,0.2)]">
+                                                    <LogoFilled size={48} fillColor="#36e27b" className="drop-shadow-[0_0_12px_rgba(54,226,123,0.6)]" />
                                                 </div>
                                                 <div className="absolute -top-3 -right-3">
                                                     <Sparkles className="w-6 h-6 text-white animate-pulse" style={{ animationDuration: '2s' }} />

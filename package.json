@@ -25,6 +25,8 @@
   },
   "dependencies": {
     "@ai-sdk/groq": "^3.0.27",
+    "@ai-sdk/openai": "^3.0.37",
+    "@ai-sdk/openai-compatible": "^2.0.35",
     "@ai-sdk/react": "^3.0.114",
     "@babel/standalone": "^7.28.5",
     "@coinbase/onchainkit": "^1.0.3",

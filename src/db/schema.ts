@@ -174,7 +174,7 @@ export const agentExecutions = pgTable('agent_executions', {
   userId: uuid('user_id').notNull().references(() => users.id),
   walletAddress: text('wallet_address').notNull(),
   strategy: text('strategy').notNull(),
-  status: text('status').notNull(), // PENDING, RUNNING, SUCCESS, FAILED, CANCELLED
+  status: text('status').notNull(), // PENDING, PLANNING, SIMULATING, SUCCESS, FAILED, CANCELLED
   progress: integer('progress').notNull().default(0),
   input: jsonb('input').notNull(),
   result: jsonb('result'),
@@ -497,6 +497,27 @@ export const rateLimits = pgTable('rate_limits', {
   identifierResourceIdx: index('rate_limits_id_resource_idx').on(table.identifier, table.resource, table.windowStart),
   resourceIdx: index('rate_limits_resource_idx').on(table.resource),
   windowIdx: index('rate_limits_window_idx').on(table.windowStart),
+}));
+
+// ─── Monitors (price/balance/APY alerts) ─────────────────────────────
+export const monitors = pgTable('monitors', {
+  id: serial('id').primaryKey(),
+  walletAddress: text('wallet_address').notNull(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  type: text('type').notNull(), // price | balance | apy | risk
+  target: text('target').notNull(), // token symbol or metric name
+  operator: text('operator').notNull(), // above | below | equals | changes
+  conditionValue: numeric('condition_value', { precision: 18, scale: 6 }).notNull(),
+  active: boolean('active').notNull().default(true),
+  lastTriggeredAt: timestamp('last_triggered_at'),
+  lastCheckedValue: numeric('last_checked_value', { precision: 18, scale: 6 }),
+  triggerCount: integer('trigger_count').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  walletIdx: index('monitors_wallet_idx').on(table.walletAddress),
+  activeIdx: index('monitors_active_idx').on(table.active),
+  typeIdx: index('monitors_type_idx').on(table.type),
 }));
 
 // ─── Atlas Sessions (wallet-based, no account required) ──────────────

@@ -1651,10 +1651,14 @@ export function AtlasClient() {
         const es1 = new EventSource(`/api/bitquery/pumpfun/marketcap-jumps`);
         const es2 = new EventSource(`/api/bitquery/pumpfun/curve-95`);
 
-        const processSseMsg = (ev: MessageEvent, buf: "jumps" | "curve") => {
+        const processSseMsg = (ev: MessageEvent, buf: "jumps" | "curve", source: EventSource) => {
           if (closed) return;
           try {
             const msg = JSON.parse(ev.data);
+            if (msg?.type === "close" || msg?.type === "error") {
+              source.close();
+              return;
+            }
             let payload: any = null;
             if (msg?.type === "data" && msg?.data) {
               payload = { data: msg.data };
@@ -1671,21 +1675,23 @@ export function AtlasClient() {
             }
           } catch {}
         };
-        const onMsg1 = (ev: MessageEvent) => processSseMsg(ev, "jumps");
-        const onMsg2 = (ev: MessageEvent) => processSseMsg(ev, "curve");
-        const onErr = () => {};
+        const onMsg1 = (ev: MessageEvent) => processSseMsg(ev, "jumps", es1);
+        const onMsg2 = (ev: MessageEvent) => processSseMsg(ev, "curve", es2);
+        let errCount1 = 0, errCount2 = 0;
+        const onErr1 = () => { if (++errCount1 >= 3) es1.close(); };
+        const onErr2 = () => { if (++errCount2 >= 3) es2.close(); };
 
         es1.addEventListener("message", onMsg1 as any);
         es2.addEventListener("message", onMsg2 as any);
-        es1.addEventListener("error", onErr as any);
-        es2.addEventListener("error", onErr as any);
+        es1.addEventListener("error", onErr1 as any);
+        es2.addEventListener("error", onErr2 as any);
 
         return () => {
           closed = true;
           es1.removeEventListener("message", onMsg1 as any);
           es2.removeEventListener("message", onMsg2 as any);
-          es1.removeEventListener("error", onErr as any);
-          es2.removeEventListener("error", onErr as any);
+          es1.removeEventListener("error", onErr1 as any);
+          es2.removeEventListener("error", onErr2 as any);
           es1.close();
           es2.close();
         };

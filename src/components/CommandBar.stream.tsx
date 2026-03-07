@@ -1,17 +1,36 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Search, Sparkles } from "@/components/icons";
 import { ArrowDown, Check, AlertTriangle, Send } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast-notifications";
 import { useVault } from "@/lib/contexts/VaultContext";
+import { useWallet } from "@solana/wallet-adapter-react";
 import { useTransactionExecutor } from "@/lib/hooks/useTransactionExecutor";
 import { useSimulationStore } from "@/lib/stores/simulation-store";
 import { isForesightPrompt, parseForesightPrompt } from "@/lib/foresight/foresight-agent";
 import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport, type UIMessage } from "ai";
 import ReactMarkdown from "react-markdown";
+
+function getTextContent(m: UIMessage): string {
+  return m.parts
+    ?.filter((p): p is Extract<typeof p, { type: "text" }> => p.type === "text")
+    .map((p) => p.text)
+    .join("") || "";
+}
+
+function getToolParts(m: UIMessage) {
+  return m.parts?.flatMap((p) => {
+    if (p.type === "dynamic-tool") return [p];
+    if (typeof p.type === "string" && p.type.startsWith("tool-") && "toolCallId" in p) {
+      return [{ ...p, type: "dynamic-tool" as const, toolName: p.type.slice(5) }];
+    }
+    return [];
+  }) || [];
+}
 
 // ΓöÇΓöÇΓöÇ Token Info for Rich UI ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 const TOKEN_INFO: Record<string, { symbol: string; name: string; decimals: number; logo: string; color: string }> = {
@@ -46,22 +65,25 @@ export function CommandBar() {
     const router = useRouter();
     const simStore = useSimulationStore();
     const { vaultTokens } = useVault();
+    const { publicKey } = useWallet();
     const txExecutor = useTransactionExecutor();
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
     const [input, setInput] = useState("");
-    // @ts-expect-error
-    const { messages, isLoading, setMessages, sendMessage, addToolOutput } = useChat({
-        // @ts-expect-error
-        api: "/api/command",
-        body: {
-            walletAddress: txExecutor.isWalletConnected ? "11111111111111111111111111111111" : "",
-            walletState: { balances: vaultTokens || {} }
-        },
+
+    const transport = useMemo(
+        () => new DefaultChatTransport({ api: "/api/command" }),
+        [],
+    );
+
+    const { messages, status, setMessages, sendMessage, addToolOutput } = useChat({
+        transport,
         onError: (e: Error) => {
             toast.error("Agent Error", { description: e.message });
-        }
+        },
     });
+
+    const isLoading = status === "streaming" || status === "submitted";
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value);
 
@@ -142,7 +164,7 @@ export function CommandBar() {
     };
 
     // Intercept form submission
-    const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!input.trim() || isLoading) return;
 
@@ -151,26 +173,40 @@ export function CommandBar() {
             return;
         }
 
-        sendMessage({ text: input });
+        const text = input.trim();
         setInput("");
+        await sendMessage({ text }, {
+            body: {
+                walletAddress: publicKey?.toBase58() || "",
+                walletState: { balances: vaultTokens || {} },
+            },
+        });
     };
 
-    // Confirm Tool Execution
-    const handleConfirmTool = async (toolCallId: string, operation: string, args: any) => {
+    const handleConfirmTool = async (toolCallId: string, operation: string, _args: unknown, serializedTxs?: string[]) => {
         setExecutingToolId(toolCallId);
         try {
-            // Mock transaction execution for the client
-            await new Promise(r => setTimeout(r, 1200));
-
-            toast.success(`${operation} successful!`, {
-                description: `Executed firmly via client-side transaction executor.`
-            });
-
-            // Let AI know it's done so it can say "I have successfully swapped X for Y"
-            addToolOutput({ toolCallId, result: { success: true, status: "Transaction Confirmed" } } as any);
-        } catch (error: any) {
-            toast.error("Execution Failed", { description: error.message });
-            addToolOutput({ toolCallId, result: { success: false, error: error.message } } as any);
+            if (serializedTxs && serializedTxs.length > 0 && txExecutor.isWalletConnected) {
+                const { VersionedTransaction, Transaction } = await import("@solana/web3.js");
+                const deserialized = serializedTxs.map((b64: string) => {
+                    const buf = Buffer.from(b64, "base64");
+                    try { return VersionedTransaction.deserialize(buf); } catch { return Transaction.from(buf); }
+                });
+                const result = await txExecutor.executePlan(deserialized);
+                if (result.success) {
+                    toast.success(`${operation} signed & sent`, { description: `${result.signatures?.length || 1} transaction(s) confirmed.` });
+                    addToolOutput({ tool: operation, toolCallId, output: { success: true, status: "Transaction Confirmed", signatures: result.signatures } });
+                } else {
+                    throw new Error(result.error || "Transaction execution failed");
+                }
+            } else {
+                toast.success(`${operation} confirmed`, { description: "Operation queued for execution." });
+                addToolOutput({ tool: operation, toolCallId, output: { success: true, status: "Confirmed" } });
+            }
+        } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : String(error);
+            toast.error("Execution Failed", { description: msg });
+            addToolOutput({ tool: operation, toolCallId, output: { success: false, error: msg } });
         } finally {
             setExecutingToolId(null);
         }
@@ -242,31 +278,32 @@ export function CommandBar() {
                                     </div>
                                 </div>
                             ) : (
-                                messages.map((m: any) => (
+                                messages.map((m) => (
                                     <div key={m.id} className={`flex flex-col gap-2 ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
 
                                         {/* Standard Text Message */}
-                                        {m.content && (
+                                        {getTextContent(m) && (
                                             <div className={`px-4 py-2.5 rounded-2xl max-w-[85%] text-sm leading-relaxed ${m.role === 'user'
                                                 ? 'bg-primary text-primary-foreground rounded-tr-sm'
                                                 : 'bg-muted/50 border border-white/5 text-foreground rounded-tl-sm'
                                                 }`}>
                                                 <div className="prose prose-sm dark:prose-invert prose-p:leading-snug prose-p:mb-0">
                                                     <ReactMarkdown>
-                                                        {m.content}
+                                                        {getTextContent(m)}
                                                     </ReactMarkdown>
                                                 </div>
                                             </div>
                                         )}
 
                                         {/* Tool Invocations (Generative UI) */}
-                                        {m.toolInvocations?.map((tool: any) => {
-                                            const isComplete = tool.state === 'result';
+                                        {getToolParts(m).map((tool) => {
+                                            const isComplete = tool.state === 'output-available';
                                             const isExecuting = executingToolId === tool.toolCallId;
+                                            const toolInput = tool.input as Record<string, any> | undefined;
 
                                             if (tool.toolName === 'swap') {
-                                                const inToken = getTokenInfo("SOL", tool.args.inputToken);
-                                                const outToken = getTokenInfo("USDC", tool.args.outputToken);
+                                                const inToken = getTokenInfo("SOL", toolInput?.inputToken);
+                                                const outToken = getTokenInfo("USDC", toolInput?.outputToken);
 
                                                 return (
                                                     <div key={tool.toolCallId} className="w-full max-w-sm mt-2 p-4 bg-muted/30 border border-white/10 rounded-2xl shadow-sm">
@@ -275,15 +312,14 @@ export function CommandBar() {
                                                             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Proposed Token Swap</span>
                                                         </div>
 
-                                                        {/* Swap Widget Representation */}
                                                         <div className="bg-background rounded-xl p-3 border border-border mb-3 relative">
                                                             <div className="flex justify-between items-center text-sm font-semibold mb-2">
-                                                                <span>{tool.args.amount} {tool.args.inputToken}</span>
+                                                                <span>{toolInput?.amount} {toolInput?.inputToken}</span>
                                                                 <ArrowDown size={14} className="text-muted-foreground rotate-[-90deg]" />
-                                                                <span className="text-emerald-400 animate-pulse">Est. {tool.args.outputToken}</span>
+                                                                <span className="text-emerald-400 animate-pulse">Est. {toolInput?.outputToken}</span>
                                                             </div>
                                                             <div className="text-[10px] text-muted-foreground mt-2 border-t border-border pt-2 flex justify-between">
-                                                                <span>Slippage: {tool.args.slippage || "0.5"}%</span>
+                                                                <span>Slippage: {toolInput?.slippage || "0.5"}%</span>
                                                                 <span>Jupiter Route</span>
                                                             </div>
                                                         </div>
@@ -294,7 +330,7 @@ export function CommandBar() {
                                                             </div>
                                                         ) : (
                                                             <button
-                                                                onClick={() => handleConfirmTool(tool.toolCallId, "Swap", tool.args)}
+                                                                onClick={() => handleConfirmTool(tool.toolCallId, "swap", toolInput)}
                                                                 disabled={isExecuting}
                                                                 className={`w-full py-2.5 rounded-lg text-sm font-bold bg-primary text-primary-foreground hover:scale-[1.02] transition-transform ${isExecuting ? 'opacity-50' : ''}`}
                                                             >
@@ -315,7 +351,7 @@ export function CommandBar() {
                                                             </div>
                                                             {isComplete && <Check size={14} className="text-emerald-400" />}
                                                         </div>
-                                                        <p className="text-xs text-foreground/80 mb-2">Query: "{tool.args.query}"</p>
+                                                        <p className="text-xs text-foreground/80 mb-2">Query: &quot;{toolInput?.query}&quot;</p>
                                                         {!isComplete ? (
                                                             <div className="text-[10px] text-muted-foreground flex items-center gap-2">
                                                                 <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-ping" />
@@ -330,12 +366,11 @@ export function CommandBar() {
                                                 );
                                             }
 
-                                            // Fallback for generic actions
                                             return (
                                                 <div key={tool.toolCallId} className="w-full max-w-sm mt-2 p-3 bg-muted/30 border border-white/10 rounded-xl">
                                                     <span className="text-xs font-bold uppercase">{tool.toolName.replace('_', ' ')}</span>
                                                     <pre className="text-[10px] mt-2 font-mono text-muted-foreground bg-background p-2 rounded-lg break-words whitespace-pre-wrap">
-                                                        {JSON.stringify(tool.args, null, 2)}
+                                                        {JSON.stringify(toolInput, null, 2)}
                                                     </pre>
                                                 </div>
                                             );

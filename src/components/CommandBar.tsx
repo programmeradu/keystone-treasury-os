@@ -1,16 +1,42 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
-import { Search, Sparkles } from "@/components/icons";
-import { ArrowDown, Check, AlertTriangle, X, ExternalLink, Loader2, Zap, Shield, Send, Bot, User, Wrench } from "lucide-react";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { Sparkles } from "@/components/icons";
+import { Check, AlertTriangle, Loader2, Shield, Send, Bot, User, Pen, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { IntentRegistry } from "@/lib/agents/registry";
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast-notifications";
-import { useSimulationStore } from "@/lib/stores/simulation-store";
+import { useSimulationStore, type SimulationResult } from "@/lib/stores/simulation-store";
 import { useVault } from "@/lib/contexts/VaultContext";
 import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport, type UIMessage } from "ai";
 import ReactMarkdown from "react-markdown";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { VersionedTransaction, Transaction } from "@solana/web3.js";
+
+// Token symbols for logo injection (longest first for regex)
+const TOKEN_SYMBOLS_FOR_LOGOS = [
+  "JITOSOL", "MSOL", "BSOL", "USDC", "USDT", "BONK", "PYTH", "TRUMP",
+  "JUP", "RAY", "WIF", "JTO", "SOL",
+];
+
+function getTextContent(m: UIMessage): string {
+  return m.parts
+    ?.filter((p): p is Extract<typeof p, { type: "text" }> => p.type === "text")
+    .map((p) => p.text)
+    .join("") || "";
+}
+
+function getToolParts(m: UIMessage) {
+  return m.parts?.flatMap((p) => {
+    if (p.type === "dynamic-tool") return [p];
+    if (typeof p.type === "string" && p.type.startsWith("tool-") && "toolCallId" in p) {
+      return [{ ...p, type: "dynamic-tool" as const, toolName: p.type.slice(5) }];
+    }
+    return [];
+  }) || [];
+}
 
 // ─── Operation Metadata for Tool Invocation UI ─────────────────────
 const TOOL_META: Record<string, { label: string; color: string; icon: string }> = {
@@ -36,80 +62,235 @@ const TOOL_META: Record<string, { label: string; color: string; icon: string }> 
   sdk_hooks: { label: "SDK Hooks", color: "text-cyan-400", icon: "🪝" },
   navigate: { label: "Navigate", color: "text-muted-foreground", icon: "🧭" },
   set_monitor: { label: "Monitor", color: "text-amber-400", icon: "👁️" },
+  execute_swap: { label: "Swap", color: "text-blue-400", icon: "⚡" },
 };
+
+/** Convert foresight_simulation tool variables (record) to /api/simulation SimulationVariable[] */
+function foresightVariablesToSimulationVariables(
+  variables: Record<string, unknown>,
+): Array<{ id: string; label: string; type: "price_change" | "burn_rate" | "inflow" | "outflow" | "yield_apy" | "custom"; asset?: string; value: number; unit: "percent" | "usd" | "tokens" }> {
+  const out: Array<{ id: string; label: string; type: "price_change" | "burn_rate" | "inflow" | "outflow" | "yield_apy" | "custom"; asset?: string; value: number; unit: "percent" | "usd" | "tokens" }> = [];
+  if (typeof variables.solDrop === "number") {
+    out.push({ id: "sol-drop", label: "SOL price change", type: "price_change", asset: "SOL", value: -variables.solDrop, unit: "percent" });
+  }
+  if (typeof variables.usdcDepeg === "number") {
+    out.push({ id: "usdc-depeg", label: "USDC depeg", type: "price_change", asset: "USDC", value: -variables.usdcDepeg, unit: "percent" });
+  }
+  if (typeof variables.monthlyBurn === "number") {
+    out.push({ id: "burn", label: "Monthly burn", type: "burn_rate", value: variables.monthlyBurn, unit: "usd" });
+  }
+  if (typeof variables.apy === "number") {
+    out.push({ id: "apy", label: "Yield APY", type: "yield_apy", value: variables.apy, unit: "percent" });
+  }
+  if (typeof variables.principal === "number") {
+    out.push({ id: "principal", label: "Principal", type: "custom", value: variables.principal, unit: "usd" });
+  }
+  if (typeof variables.newHires === "number") {
+    out.push({ id: "new-hires", label: "New hires", type: "outflow", value: (variables.newHires * ((variables.costPerHire as number) || 8000)), unit: "usd" });
+  }
+  if (out.length === 0) {
+    out.push({ id: "default", label: "Scenario", type: "custom", value: 0, unit: "percent" });
+  }
+  return out;
+}
+
+// Token logos for swap UI (symbol → logo URL)
+const TOKEN_LOGOS: Record<string, string> = {
+  SOL: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
+  USDC: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png",
+  USDT: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB/logo.png",
+  JUP: "https://static.jup.ag/jup/icon.png",
+  BONK: "https://arweave.net/hQiPZOsRZXGXBJd_82PhVdlM_hACsT_q6wqwf5cSY7I",
+  RAY: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R/logo.png",
+  MSOL: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So/logo.png",
+  JITOSOL: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn/logo.png",
+  JTO: "https://metadata.jup.ag/token/jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL/logo",
+  BSOL: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1/logo.png",
+  PYTH: "https://pyth.network/token.svg",
+  WIF: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm/logo.png",
+  TRUMP: "https://dd.dexscreener.com/ds-data/tokens/solana/6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN.png",
+};
+
+/** Injects token logo + symbol into a string; returns React nodes for use inside markdown. */
+function injectTokenLogosIntoString(text: string, logos: Record<string, string>): React.ReactNode[] {
+  if (!text || typeof text !== "string") return [text];
+  const re = new RegExp(`\\b(${TOKEN_SYMBOLS_FOR_LOGOS.join("|")})\\b`, "g");
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
+    const symbol = match[1];
+    const url = logos[symbol];
+    parts.push(
+      <span key={`${match.index}-${symbol}`} className="inline-flex items-center gap-1 align-middle">
+        {url ? <img src={url} alt="" className="h-3.5 w-3.5 rounded-full object-cover inline-block" /> : null}
+        <span className="font-mono text-inherit">{symbol}</span>
+      </span>
+    );
+    lastIndex = re.lastIndex;
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  return parts.length > 0 ? parts : [text];
+}
+
+function processChildrenWithTokenLogos(children: React.ReactNode, logos: Record<string, string>): React.ReactNode {
+  if (typeof children === "string") return <>{injectTokenLogosIntoString(children, logos)}</>;
+  if (Array.isArray(children)) return <>{children.map((c, i) => <React.Fragment key={i}>{processChildrenWithTokenLogos(c, logos)}</React.Fragment>)}</>;
+  return children as React.ReactNode;
+}
 
 export function CommandBar() {
   const [open, setOpen] = useState(false);
+  const [input, setInput] = useState("");
+  const [signingToolId, setSigningToolId] = useState<string | null>(null);
+  const [signingStatus, setSigningStatus] = useState<"idle" | "signing" | "sent" | "error">("idle");
+  const [txSignatures, setTxSignatures] = useState<string[]>([]);
   const router = useRouter();
   const simStore = useSimulationStore();
   const { vaultTokens } = useVault();
+  const { connection } = useConnection();
+  const { publicKey, signAllTransactions, signTransaction, connected } = useWallet();
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // ─── AI SDK v6 useChat — points at the streaming /api/command ──
+  const handleSignTransactions = useCallback(async (
+    toolCallId: string,
+    serialized: string[],
+    operation: string,
+  ) => {
+    if (!connected || !publicKey || (!signAllTransactions && !signTransaction)) {
+      toast.error("Wallet not connected", { description: "Please connect your wallet to sign transactions." });
+      return;
+    }
+
+    setSigningToolId(toolCallId);
+    setSigningStatus("signing");
+    setTxSignatures([]);
+
+    try {
+      const deserialized = serialized.map((b64) => {
+        const buf = Buffer.from(b64, "base64");
+        try {
+          return VersionedTransaction.deserialize(buf);
+        } catch {
+          return Transaction.from(buf);
+        }
+      });
+
+      let signed: (VersionedTransaction | Transaction)[];
+      if (signAllTransactions && deserialized.length > 1) {
+        signed = await signAllTransactions(deserialized as VersionedTransaction[]);
+      } else {
+        signed = [];
+        for (const tx of deserialized) {
+          const s = await (signTransaction as (tx: VersionedTransaction | Transaction) => Promise<VersionedTransaction | Transaction>)(tx);
+          signed.push(s);
+        }
+      }
+
+      const sigs: string[] = [];
+      for (const tx of signed) {
+        const raw = tx instanceof VersionedTransaction
+          ? tx.serialize()
+          : tx.serialize();
+        const sig = await connection.sendRawTransaction(raw, { skipPreflight: false, preflightCommitment: "confirmed" });
+        sigs.push(sig);
+      }
+
+      setTxSignatures(sigs);
+      setSigningStatus("sent");
+      toast.success(`${operation} signed & sent`, {
+        description: `${sigs.length} transaction(s) confirmed. Sig: ${sigs[0]?.slice(0, 12)}…`,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[CommandBar] Signing error:", msg);
+      setSigningStatus("error");
+      if (msg.includes("User rejected") || msg.includes("cancelled")) {
+        toast.error("Transaction rejected", { description: "You declined the signing request." });
+      } else {
+        toast.error("Signing failed", { description: msg });
+      }
+    }
+  }, [connected, publicKey, signAllTransactions, signTransaction, connection]);
+
+  const transport = useMemo(
+    () => new DefaultChatTransport({ api: "/api/command" }),
+    [],
+  );
+
   const {
     messages,
-    // @ts-expect-error property does not exist on new typing format
-    input,
-    // @ts-expect-error property does not exist on new typing format
-    handleInputChange,
-    // @ts-expect-error property does not exist on new typing format
-    handleSubmit,
+    sendMessage,
     setMessages,
     status,
     error: chatError,
   } = useChat({
-    // @ts-expect-error property does not exist on new typing format
-    api: "/api/command",
-    body: {
-      walletAddress: typeof window !== "undefined" ? (window as any).__keystoneWallet || "" : "",
-      walletState: { balances: vaultTokens || {} },
-    },
+    transport,
     onError: (e: Error) => {
       console.error("[CommandBar] Stream error:", e);
       toast.error("Agent Error", { description: e.message });
     },
-    onFinish: (message: any) => {
-      // Handle navigation and simulation triggers from tool results
-      if (message.toolInvocations) {
-        for (const inv of message.toolInvocations) {
-          if (inv.state !== "result" || !inv.result) continue;
-          const result = inv.result as any;
+    onFinish: ({ message }) => {
+      for (const part of getToolParts(message)) {
+        if (part.state !== "output-available") continue;
+        const output = part.output as Record<string, unknown> | undefined;
+        if (!output) continue;
 
-          // Auto-navigate
-          if (result.navigateTo) {
-            router.push(result.navigateTo);
-          }
+        if (output.navigateTo) {
+          router.push(output.navigateTo as string);
+        }
 
-          // Trigger foresight simulation
-          if (result.operation === "foresight_simulation" && result.variables) {
-            simStore.startSimulation(result.scenario, result.variables, result.timeframeMonths || 12);
-            router.push("/app/analytics");
-            toast.loading("Running foresight simulation...", { id: "foresight-sim", description: result.scenario });
+        if (output.operation === "navigate" && output.path) {
+          router.push(output.path as string);
+        }
 
-            // Fire simulation API
-            fetch("/api/simulation", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                portfolio: (vaultTokens || []).map((t: any) => ({ symbol: t.symbol || "SPL", amount: t.amount || 0, price: t.price || 0 })),
-                variables: result.variables,
-                timeframeMonths: result.timeframeMonths || 12,
-                granularity: "monthly",
-                priceSource: "vault",
-              }),
-            })
-              .then((r) => r.json())
-              .then((simResult) => {
-                simStore.setResult(simResult);
-                const delta = `${simResult.summary.deltaPercent >= 0 ? "+" : ""}${simResult.summary.deltaPercent.toFixed(1)}%`;
-                toast.success("Foresight simulation ready", { id: "foresight-sim", description: `${result.scenario} • ${delta} projected` });
-              })
-              .catch((err) => {
-                simStore.setError(err.message || "Simulation failed");
-                toast.error("Simulation failed", { id: "foresight-sim", description: err.message });
+        if (output.operation === "foresight_simulation" && output.variables) {
+          const scenario = output.scenario as string;
+          const timeframeMonths = (output.timeframeMonths as number) || 12;
+          const variablesRecord = output.variables as Record<string, unknown>;
+          const simVariables = foresightVariablesToSimulationVariables(variablesRecord);
+
+          simStore.startSimulation(scenario, simVariables, timeframeMonths);
+          router.push("/app/analytics");
+          toast.loading("Running foresight simulation...", {
+            id: "foresight-sim",
+            description: scenario,
+          });
+
+          const portfolio = (vaultTokens || []).map((t: Record<string, unknown>) => ({
+            symbol: (t.symbol as string) || "SPL",
+            amount: Number(t.amount) || 0,
+            price: Number(t.price) || 0,
+          }));
+
+          fetch("/api/simulation", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              portfolio: portfolio.length > 0 ? portfolio : [{ symbol: "SOL", amount: 0, price: 0 }],
+              variables: simVariables,
+              timeframeMonths,
+              granularity: "monthly",
+              priceSource: "vault",
+            }),
+          })
+            .then((r) => (r.ok ? r.json() : r.json().then((err: { error?: string }) => Promise.reject(new Error(err.error || "Simulation failed")))))
+            .then((simResult: SimulationResult) => {
+              simStore.setResult(simResult);
+              const pct = simResult.summary?.deltaPercent ?? 0;
+              const delta = `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
+              toast.success("Foresight simulation ready", {
+                id: "foresight-sim",
+                description: `${scenario} • ${delta} projected`,
               });
-          }
+            })
+            .catch((err) => {
+              const msg = err instanceof Error ? err.message : "Simulation failed";
+              simStore.setError(msg);
+              toast.error("Simulation failed", { id: "foresight-sim", description: msg });
+            });
         }
       }
     },
@@ -152,12 +333,32 @@ export function CommandBar() {
     setMessages([]);
   }, [setMessages]);
 
+  const handleFormSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!input.trim() || isStreaming) return;
+      const text = input.trim();
+      setInput("");
+      try {
+        await sendMessage({ text }, {
+          body: {
+            walletAddress: publicKey?.toBase58() || "",
+            walletState: { balances: vaultTokens || {} },
+          },
+        });
+      } catch (err) {
+        console.error("[CommandBar] Send error:", err);
+      }
+    },
+    [input, isStreaming, sendMessage, vaultTokens, publicKey],
+  );
+
   // ─── Render Tool Invocation Card ─────────────────────────────────
-  const renderToolInvocation = (inv: any) => {
+  const renderToolInvocation = (inv: ReturnType<typeof getToolParts>[number] & Record<string, any>) => {
     const toolName = inv.toolName || "unknown";
     const meta = TOOL_META[toolName] || { label: toolName, color: "text-muted-foreground", icon: "⚙️" };
-    const isComplete = inv.state === "result";
-    const result = isComplete ? (inv.result as any) : null;
+    const isComplete = inv.state === "output-available";
+    const result: Record<string, any> | null = isComplete ? (inv.output as Record<string, any>) : null;
     const success = result?.success !== false;
 
     return (
@@ -190,9 +391,9 @@ export function CommandBar() {
 
         {/* Tool Args */}
         <div className="px-3 py-2">
-          {inv.args && (
+          {Boolean(inv.input && typeof inv.input === "object") && (
             <div className="text-[11px] text-foreground/70 font-mono space-y-0.5">
-              {Object.entries(inv.args).map(([key, value]) => {
+              {Object.entries(inv.input as Record<string, unknown>).map(([key, value]) => {
                 if (typeof value === "object") return null; // skip complex args
                 return (
                   <div key={key} className="flex items-center gap-2">
@@ -214,8 +415,69 @@ export function CommandBar() {
             {result.error && (
               <p className="text-[11px] text-red-400 leading-relaxed">{result.error}</p>
             )}
+            {/* Swap: token logos + route */}
+            {(toolName === "swap" || toolName === "execute_swap") && success && (result.inputToken || result.outputToken) && (
+              <div className="flex items-center gap-2 flex-wrap mb-2">
+                {result.inputToken && (
+                  <span className="inline-flex items-center gap-1.5">
+                    {TOKEN_LOGOS[result.inputToken.toUpperCase()] ? (
+                      <img src={TOKEN_LOGOS[result.inputToken.toUpperCase()]} alt="" className="h-4 w-4 rounded-full object-cover" />
+                    ) : null}
+                    <span className="text-[11px] font-mono text-foreground/90">
+                      {result.inputAmount != null ? Number(result.inputAmount) : "?"} {result.inputToken}
+                    </span>
+                  </span>
+                )}
+                <span className="text-white/40 text-[10px]">→</span>
+                {result.outputToken && (
+                  <span className="inline-flex items-center gap-1.5">
+                    {result.outputAmountFormatted && (
+                      <span className="text-[11px] font-mono text-foreground/90">~{result.outputAmountFormatted}</span>
+                    )}
+                    {TOKEN_LOGOS[result.outputToken.toUpperCase()] ? (
+                      <img src={TOKEN_LOGOS[result.outputToken.toUpperCase()]} alt="" className="h-4 w-4 rounded-full object-cover" />
+                    ) : null}
+                  </span>
+                )}
+                <span className="ml-1 px-1.5 py-0.5 rounded bg-primary/15 text-[9px] font-bold text-primary uppercase">
+                  {(result.route as string) || "Jupiter"}
+                </span>
+              </div>
+            )}
+            {/* Pipeline: Planning → Simulation → Firewall → Approval → Execution (for swap/execute_swap) */}
+            {(toolName === "swap" || toolName === "execute_swap") && success && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[9px] uppercase tracking-wide">
+                <span className="flex items-center gap-1 text-emerald-500/90">
+                  <Check size={10} /> Planning
+                </span>
+                <span className="text-white/30">→</span>
+                <span className="flex items-center gap-1 text-emerald-500/90">
+                  <Check size={10} /> Simulation
+                </span>
+                <span className="text-white/30">→</span>
+                <span className={`flex items-center gap-1 ${result.simulationPassed ? "text-emerald-500/90" : "text-red-400/90"}`}>
+                  {result.simulationPassed ? <Check size={10} /> : <AlertTriangle size={10} />}
+                  Firewall
+                </span>
+                <span className="text-white/30">→</span>
+                <span className={`flex items-center gap-1 ${result.requiresApproval && !(signingToolId === inv.toolCallId && signingStatus === "sent") ? "text-amber-400" : signingToolId === inv.toolCallId && signingStatus === "sent" ? "text-emerald-500/90" : "text-muted-foreground"}`}>
+                  {signingToolId === inv.toolCallId && signingStatus === "sent" ? <Check size={10} /> : result.requiresApproval ? "Approval" : "—"}
+                </span>
+                <span className="text-white/30">→</span>
+                <span className={`flex items-center gap-1 ${signingToolId === inv.toolCallId && signingStatus === "sent" ? "text-emerald-500/90" : "text-muted-foreground"}`}>
+                  {signingToolId === inv.toolCallId && signingStatus === "sent" ? <Check size={10} /> : "—"}
+                  Execution
+                </span>
+              </div>
+            )}
+            {/* Expected output (human-readable) */}
+            {(toolName === "swap" || toolName === "execute_swap") && success && result.outputAmountFormatted && (
+              <p className="mt-1 text-[10px] text-muted-foreground font-mono">
+                Expected output: ~{result.outputAmountFormatted}
+              </p>
+            )}
             {/* Rich Details for Swap */}
-            {toolName === "swap" && success && (
+            {(toolName === "swap" || toolName === "execute_swap") && success && (
               <div className="mt-2 grid grid-cols-3 gap-2">
                 {result.priceImpact && (
                   <div className="text-center">
@@ -243,13 +505,55 @@ export function CommandBar() {
                 )}
               </div>
             )}
-            {/* Approval Required Badge */}
-            {result.requiresApproval && (
-              <div className="mt-2 flex items-center gap-2 py-1.5 px-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                <Shield size={12} className="text-amber-400" />
-                <span className="text-[10px] font-bold text-amber-400 uppercase">Requires Wallet Signature</span>
-              </div>
-            )}
+            {/* Signing Flow */}
+            {result.requiresApproval && (() => {
+              const txs: string[] = result.serializedTransactions || (result.serializedTransaction ? [result.serializedTransaction] : []);
+              const isThisSigning = signingToolId === inv.toolCallId;
+              const hasTxs = txs.length > 0;
+              const alreadySent = isThisSigning && signingStatus === "sent";
+              const isSigning = isThisSigning && signingStatus === "signing";
+
+              if (alreadySent) {
+                return (
+                  <div className="mt-2 space-y-1">
+                    <div className="flex items-center gap-2 py-1.5 px-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                      <Check size={12} className="text-emerald-400" />
+                      <span className="text-[10px] font-bold text-emerald-400 uppercase">Signed & Sent</span>
+                    </div>
+                    {txSignatures.map((sig, i) => (
+                      <a key={i} href={`https://solscan.io/tx/${sig}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[10px] text-primary/80 hover:text-primary font-mono">
+                        <ExternalLink size={10} /> {sig.slice(0, 20)}…
+                      </a>
+                    ))}
+                  </div>
+                );
+              }
+
+              return (
+                <div className="mt-2">
+                  {hasTxs && connected ? (
+                    <button
+                      onClick={() => handleSignTransactions(inv.toolCallId, txs, toolName)}
+                      disabled={isSigning}
+                      className="flex items-center gap-2 py-1.5 px-3 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {isSigning ? (
+                        <><Loader2 size={12} className="animate-spin text-primary" /><span className="text-[10px] font-bold text-primary uppercase">Signing...</span></>
+                      ) : (
+                        <><Pen size={12} className="text-primary" /><span className="text-[10px] font-bold text-primary uppercase">Approve & Sign ({txs.length} tx{txs.length > 1 ? "s" : ""})</span></>
+                      )}
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2 py-1.5 px-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                      <Shield size={12} className="text-amber-400" />
+                      <span className="text-[10px] font-bold text-amber-400 uppercase">
+                        {hasTxs ? "Connect wallet to sign" : "Requires Wallet Signature"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>
@@ -312,7 +616,7 @@ export function CommandBar() {
               {messages.length > 0 && (
                 <div
                   ref={chatContainerRef}
-                  className="flex-1 flex flex-col gap-4 p-5 overflow-y-auto min-h-[200px] max-h-[60vh]"
+                  className="flex-1 flex flex-col gap-4 p-5 min-h-[200px] max-h-[60vh] overflow-y-auto overflow-x-hidden scrollbar-transparent"
                 >
                   {messages.map((m) => (
                     <div
@@ -332,7 +636,7 @@ export function CommandBar() {
                       </div>
 
                       {/* Message Content */}
-                      {(m as any).content && (
+                      {getTextContent(m) && (
                         <div
                           className={`px-4 py-2.5 rounded-2xl max-w-[85%] text-sm leading-relaxed ${
                             m.role === "user"
@@ -341,13 +645,23 @@ export function CommandBar() {
                           }`}
                         >
                           <div className="prose prose-sm dark:prose-invert prose-p:leading-snug prose-p:mb-1 space-y-1.5 max-w-none">
-                            <ReactMarkdown>{(m as any).content}</ReactMarkdown>
+                            <ReactMarkdown
+                              components={{
+                                p: ({ children }) => <p>{processChildrenWithTokenLogos(children, TOKEN_LOGOS)}</p>,
+                                li: ({ children }) => <li>{processChildrenWithTokenLogos(children, TOKEN_LOGOS)}</li>,
+                                strong: ({ children }) => <strong>{processChildrenWithTokenLogos(children, TOKEN_LOGOS)}</strong>,
+                                td: ({ children }) => <td>{processChildrenWithTokenLogos(children, TOKEN_LOGOS)}</td>,
+                                th: ({ children }) => <th>{processChildrenWithTokenLogos(children, TOKEN_LOGOS)}</th>,
+                              }}
+                            >
+                              {getTextContent(m)}
+                            </ReactMarkdown>
                           </div>
                         </div>
                       )}
 
                       {/* Tool Invocations */}
-                      {(m as any).toolInvocations?.map((inv: any) => renderToolInvocation(inv))}
+                      {getToolParts(m).map((inv) => renderToolInvocation(inv))}
                     </div>
                   ))}
 
@@ -368,7 +682,7 @@ export function CommandBar() {
 
               {/* ─── Input Bar ─── */}
               <form
-                onSubmit={handleSubmit}
+                onSubmit={handleFormSubmit}
                 className={`flex items-center px-5 py-4 border-t border-border bg-card ${messages.length === 0 ? "border-t-0" : ""}`}
               >
                 <Sparkles
@@ -379,7 +693,7 @@ export function CommandBar() {
                   ref={inputRef}
                   autoFocus
                   value={input}
-                  onChange={handleInputChange}
+                  onChange={(e) => setInput(e.target.value)}
                   disabled={isStreaming}
                   placeholder={
                     messages.length === 0
