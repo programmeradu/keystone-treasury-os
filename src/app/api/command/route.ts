@@ -1,4 +1,4 @@
-import { streamText } from "ai";
+import { streamText, stepCountIs } from "ai";
 import { createGroq } from "@ai-sdk/groq";
 import { z } from "zod";
 import { markdown as cfMarkdown } from "@/lib/cloudflare/cf-browser";
@@ -434,12 +434,11 @@ Wallet State: ${JSON.stringify(walletState || {})}
       },
     };
 
-    // @ts-ignore - maxSteps supported in AI SDK runtime
     const result = await streamText({
       model: groq("llama-3.3-70b-versatile"),
       system: systemPrompt,
       messages: formattedMessages,
-      maxSteps: 10,
+      stopWhen: stepCountIs(10),
       tools: keystoneTools,
     });
 
