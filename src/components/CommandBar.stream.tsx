@@ -51,7 +51,8 @@ export function CommandBar() {
 
     // ΓöÇΓöÇΓöÇ Vercel AI SDK ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
     const [input, setInput] = useState("");
-    const { messages, isLoading, setMessages, sendMessage, addToolOutput } = useChat({
+    const chat = useChat({
+        // @ts-expect-error - AI SDK v5 type mismatch in this environment
         api: "/api/command",
         body: {
             walletAddress: txExecutor.isWalletConnected ? "11111111111111111111111111111111" : "",
@@ -61,6 +62,7 @@ export function CommandBar() {
             toast.error("Agent Error", { description: e.message });
         }
     });
+    const { messages, setMessages, sendMessage, addToolOutput, status } = chat as any;
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value);
 
@@ -143,7 +145,7 @@ export function CommandBar() {
     // Intercept form submission
     const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        if (!input.trim() || isLoading) return;
+        if (!input.trim() || status === "submitted") return;
 
         if (isForesightPrompt(input)) {
             handleForesight(input);
@@ -250,9 +252,11 @@ export function CommandBar() {
                                                 ? 'bg-primary text-primary-foreground rounded-tr-sm'
                                                 : 'bg-muted/50 border border-white/5 text-foreground rounded-tl-sm'
                                                 }`}>
-                                                <ReactMarkdown className="prose prose-sm dark:prose-invert prose-p:leading-snug prose-p:mb-0">
-                                                    {m.content}
-                                                </ReactMarkdown>
+                                                <div className="prose prose-sm dark:prose-invert prose-p:leading-snug prose-p:mb-0">
+                                                    <ReactMarkdown>
+                                                        {m.content}
+                                                    </ReactMarkdown>
+                                                </div>
                                             </div>
                                         )}
 
@@ -349,18 +353,18 @@ export function CommandBar() {
                         <div className="relative z-10 border-t border-white/5 bg-background/50 backdrop-blur-md">
                             <form onSubmit={onSubmit} className="flex flex-col">
                                 <div className="flex items-center px-6 py-4">
-                                    <Sparkles size={20} className={`text-primary mr-4 ${isLoading ? 'animate-pulse' : ''}`} />
+                                    <Sparkles size={20} className={`text-primary mr-4 ${status === "submitted" ? 'animate-pulse' : ''}`} />
                                     <input
                                         autoFocus
                                         value={input}
                                         onChange={handleInputChange}
-                                        disabled={isLoading}
+                                        disabled={status === "submitted"}
                                         placeholder="Describe your intent (e.g., 'Swap 50k USDC to SOL')..."
                                         className="flex-1 bg-transparent text-lg font-medium text-foreground placeholder:text-muted-foreground/50 outline-none"
                                     />
                                     <button
                                         type="submit"
-                                        disabled={!input.trim() || isLoading}
+                                        disabled={!input.trim() || status === "submitted"}
                                         className="p-2 ml-2 bg-primary/10 text-primary rounded-xl hover:bg-primary hover:text-primary-foreground transition-all disabled:opacity-50 disabled:hover:bg-primary/10 disabled:hover:text-primary"
                                     >
                                         <Send size={18} />
@@ -368,8 +372,8 @@ export function CommandBar() {
                                 </div>
                                 <div className="px-6 py-3 bg-muted/20 flex items-center justify-between text-[10px] text-muted-foreground">
                                     <div className="flex items-center gap-2">
-                                        <div className={`w-1.5 h-1.5 rounded-full ${isLoading ? 'bg-primary animate-ping' : 'bg-muted-foreground/50'}`} />
-                                        <span className="font-mono">{isLoading ? "GENERATING UI..." : "KEYSTONE AI READY"}</span>
+                                        <div className={`w-1.5 h-1.5 rounded-full ${status === "submitted" ? 'bg-primary animate-ping' : 'bg-muted-foreground/50'}`} />
+                                        <span className="font-mono">{status === "submitted" ? "GENERATING UI..." : "KEYSTONE AI READY"}</span>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span>Press <strong className="text-foreground">Enter</strong> to send</span>
