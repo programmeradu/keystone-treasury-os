@@ -19,8 +19,8 @@ interface ExecutionDashboardProps {
 
 const statusColors = {
   [ExecutionStatus.PENDING]: "from-gray-500 to-gray-600",
-  [ExecutionStatus.PLANNING]: "from-blue-500 to-blue-600",
-  [ExecutionStatus.SIMULATING]: "from-purple-500 to-purple-600",
+  [ExecutionStatus.RUNNING]: "from-blue-500 to-blue-600",
+  [ExecutionStatus.SIMULATION]: "from-purple-500 to-purple-600",
   [ExecutionStatus.APPROVAL_REQUIRED]: "from-yellow-500 to-yellow-600",
   [ExecutionStatus.APPROVED]: "from-green-500 to-green-600",
   [ExecutionStatus.EXECUTING]: "from-blue-600 to-blue-700",
@@ -32,8 +32,8 @@ const statusColors = {
 
 const statusIcons = {
   [ExecutionStatus.PENDING]: "⏳",
-  [ExecutionStatus.PLANNING]: "▶",
-  [ExecutionStatus.SIMULATING]: "",
+  [ExecutionStatus.RUNNING]: "▶",
+  [ExecutionStatus.SIMULATION]: "",
   [ExecutionStatus.APPROVAL_REQUIRED]: "",
   [ExecutionStatus.APPROVED]: "",
   [ExecutionStatus.EXECUTING]: "",
@@ -146,7 +146,7 @@ export function ExecutionDashboard({
             />
             <StatCard
               label="Running"
-              value={activeExecutions.filter(e => e.status === ExecutionStatus.PLANNING).length.toString()}
+              value={activeExecutions.filter(e => e.status === ExecutionStatus.RUNNING).length.toString()}
               color="cyan"
             />
             <StatCard
@@ -184,7 +184,7 @@ function ExecutionCard({
   const elapsedSeconds = Math.floor((Date.now() - execution.startTime) / 1000);
 
   const isActive =
-    execution.status === ExecutionStatus.PLANNING ||
+    execution.status === ExecutionStatus.RUNNING ||
     execution.status === ExecutionStatus.EXECUTING ||
     execution.status === ExecutionStatus.CONFIRMING;
 

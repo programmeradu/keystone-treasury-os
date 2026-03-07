@@ -70,7 +70,7 @@ export async function updateExecution(
       completedAt: updates.completedAt,
       duration: updates.duration,
       updatedAt: now,
-      startedAt: updates.status === ExecutionStatus.PLANNING ? now : undefined,
+      startedAt: updates.status === ExecutionStatus.RUNNING ? now : undefined,
     })
     .where(eq(agentExecutions.id, executionId));
 }

@@ -26,8 +26,8 @@ interface ExecutionHistoryProps {
 
 const statusColors = {
   [ExecutionStatus.PENDING]: "bg-gray-500",
-  [ExecutionStatus.PLANNING]: "bg-blue-500",
-  [ExecutionStatus.SIMULATING]: "bg-purple-500",
+  [ExecutionStatus.RUNNING]: "bg-blue-500",
+  [ExecutionStatus.SIMULATION]: "bg-purple-500",
   [ExecutionStatus.APPROVAL_REQUIRED]: "bg-yellow-500",
   [ExecutionStatus.APPROVED]: "bg-green-500",
   [ExecutionStatus.EXECUTING]: "bg-blue-600",
@@ -131,7 +131,7 @@ export function ExecutionHistory({
               <option value="">All Statuses</option>
               <option value={ExecutionStatus.SUCCESS}>Success</option>
               <option value={ExecutionStatus.FAILED}>Failed</option>
-              <option value={ExecutionStatus.PLANNING}>Running</option>
+              <option value={ExecutionStatus.RUNNING}>Running</option>
               <option value={ExecutionStatus.CANCELLED}>Cancelled</option>
             </select>
           </div>

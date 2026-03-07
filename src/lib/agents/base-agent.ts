@@ -22,7 +22,7 @@ export abstract class BaseAgent implements IAgent {
     const step: ExecutionStep = {
       id: stepId,
       name: this.name,
-      status: ExecutionStatus.PLANNING,
+      status: ExecutionStatus.RUNNING,
       timestamp: Date.now()
     };
 

@@ -151,10 +151,9 @@ interface CodeEditorProps {
   onChange: (value: string) => void;
   fileName: string;
   allFiles?: Record<string, { content: string }>;
-  isGenerating?: boolean;
 }
 
-export function CodeEditor({ code, language, onChange, fileName, allFiles = {}, isGenerating = false }: CodeEditorProps) {
+export function CodeEditor({ code, language, onChange, fileName, allFiles = {} }: CodeEditorProps) {
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined) {
       onChange(value);
@@ -162,24 +161,7 @@ export function CodeEditor({ code, language, onChange, fileName, allFiles = {}, 
   };
 
   return (
-    <div className="flex-1 h-full relative">
-      {/* ─── Streaming UI Visualisation: Matrix Rain & Ghost Cursor Overlay ─── */}
-      {isGenerating && (
-        <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden bg-black/10">
-          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "linear-gradient(to bottom, transparent 50%, rgba(54, 226, 123, 0.1) 50%)", backgroundSize: "100% 4px", animation: "matrix-scroll 10s linear infinite" }}></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 px-4 py-2 bg-black/80 border border-[#36e27b]/40 rounded-full text-[#36e27b] text-xs font-mono tracking-widest uppercase shadow-[0_0_15px_rgba(54,226,123,0.2)]">
-            <span className="w-2 h-4 bg-[#36e27b] animate-pulse"></span>
-            Agent Typing...
-          </div>
-          <style dangerouslySetInnerHTML={{ __html: `
-            @keyframes matrix-scroll {
-              0% { background-position: 0 0; }
-              100% { background-position: 0 1000px; }
-            }
-          `}} />
-        </div>
-      )}
-
+    <div className="flex-1 h-full">
       <Editor
         height="100%"
         defaultLanguage="typescript"

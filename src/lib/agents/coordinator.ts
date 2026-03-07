@@ -164,7 +164,7 @@ export class ExecutionCoordinator {
     // ═══════════════════════════════════════════════════════════════════
     // Phase 1: PLANNING — Fetch data and build route
     // ═══════════════════════════════════════════════════════════════════
-    context.state = ExecutionStatus.PLANNING;
+    context.state = ExecutionStatus.RUNNING;
     this.updateProgress(context);
 
     try {
@@ -222,7 +222,7 @@ export class ExecutionCoordinator {
       // Phase 2: SIMULATION — The "Missing Link"
       // SimulationFirewall.protect() for pre-flight + TransactionAgent for tx sim
       // ═══════════════════════════════════════════════════════════════════
-      context.state = ExecutionStatus.SIMULATING;
+      context.state = ExecutionStatus.SIMULATION;
       this.updateProgress(context);
       this.log(context.executionId, "Entering SIMULATION state — running Simulation Firewall...");
 
@@ -349,7 +349,7 @@ export class ExecutionCoordinator {
     context: ExecutionContext,
     input: any
   ): Promise<void> {
-    context.state = ExecutionStatus.PLANNING;
+    context.state = ExecutionStatus.RUNNING;
     this.updateProgress(context);
 
     try {
@@ -397,7 +397,7 @@ export class ExecutionCoordinator {
     context: ExecutionContext,
     input: any
   ): Promise<void> {
-    context.state = ExecutionStatus.PLANNING;
+    context.state = ExecutionStatus.RUNNING;
     this.updateProgress(context);
 
     try {
@@ -421,7 +421,7 @@ export class ExecutionCoordinator {
     context: ExecutionContext,
     input: any
   ): Promise<void> {
-    context.state = ExecutionStatus.PLANNING;
+    context.state = ExecutionStatus.RUNNING;
     this.updateProgress(context);
 
     try {
@@ -469,7 +469,7 @@ export class ExecutionCoordinator {
     context: ExecutionContext,
     input: any
   ): Promise<void> {
-    context.state = ExecutionStatus.PLANNING;
+    context.state = ExecutionStatus.RUNNING;
     this.updateProgress(context);
 
     try {
@@ -493,7 +493,7 @@ export class ExecutionCoordinator {
     context: ExecutionContext,
     input: any
   ): Promise<void> {
-    context.state = ExecutionStatus.PLANNING;
+    context.state = ExecutionStatus.RUNNING;
     this.updateProgress(context);
 
     try {
@@ -519,7 +519,7 @@ export class ExecutionCoordinator {
     context: ExecutionContext,
     input: any
   ): Promise<void> {
-    context.state = ExecutionStatus.PLANNING;
+    context.state = ExecutionStatus.RUNNING;
     this.updateProgress(context);
 
     try {

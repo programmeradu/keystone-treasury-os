@@ -49,10 +49,11 @@ export function CommandBar() {
     const txExecutor = useTransactionExecutor();
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
+    // ΓöÇΓöÇΓöÇ Vercel AI SDK ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
     const [input, setInput] = useState("");
-    // @ts-expect-error
+    // @ts-expect-error property does not exist on new typing format
     const { messages, isLoading, setMessages, sendMessage, addToolOutput } = useChat({
-        // @ts-expect-error
+        // @ts-expect-error property does not exist on new typing format
         api: "/api/command",
         body: {
             walletAddress: txExecutor.isWalletConnected ? "11111111111111111111111111111111" : "",

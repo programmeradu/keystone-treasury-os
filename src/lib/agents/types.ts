@@ -5,8 +5,8 @@ import type { PublicKey, VersionedTransaction, Transaction, SimulatedTransaction
  */
 export enum ExecutionStatus {
   PENDING = "PENDING",
-  PLANNING = "PLANNING",
-  SIMULATING = "SIMULATING",
+  RUNNING = "RUNNING",
+  SIMULATION = "SIMULATION",
   APPROVAL_REQUIRED = "APPROVAL_REQUIRED",
   APPROVED = "APPROVED",
   EXECUTING = "EXECUTING",
