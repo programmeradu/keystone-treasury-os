@@ -15,7 +15,8 @@ export const marketplace = {
     // Create a new Mini-App (Draft)
     createApp: async (data: CreateAppData) => {
         if (!db) throw new Error("Database not initialized");
-        const id = `app_${Math.random().toString(36).substring(2, 10)}`;
+        // Sentinel: Prevent ID collisions by replacing Math.random() with cryptographically secure UUID
+        const id = `app_${globalThis.crypto.randomUUID().replace(/-/g, '').substring(0, 16)}`;
 
         await db.insert(miniApps).values({
             id,
@@ -74,7 +75,8 @@ export const marketplace = {
         keystoneFee: number;
     }) => {
         if (!db) throw new Error("Database not initialized");
-        const id = `purch_${Math.random().toString(36).substring(2, 10)}`;
+        // Sentinel: Prevent ID collisions by replacing Math.random() with cryptographically secure UUID
+        const id = `purch_${globalThis.crypto.randomUUID().replace(/-/g, '').substring(0, 16)}`;
 
         await db.insert(purchases).values({
             id,
