@@ -145,7 +145,7 @@ export function ExecutionDashboard({
               color="blue"
             />
             <StatCard
-              label="Running"
+              label="Planning"
               value={activeExecutions.filter(e => e.status === ExecutionStatus.PLANNING).length.toString()}
               color="cyan"
             />
