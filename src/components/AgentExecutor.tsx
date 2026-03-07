@@ -163,8 +163,8 @@ export function AgentExecutor({
 
   const statusColor = {
     [ExecutionStatus.PENDING]: "bg-gray-500",
-    [ExecutionStatus.RUNNING]: "bg-blue-500",
-    [ExecutionStatus.SIMULATION]: "bg-purple-500",
+    [ExecutionStatus.PLANNING]: "bg-blue-500",
+    [ExecutionStatus.SIMULATING]: "bg-purple-500",
     [ExecutionStatus.APPROVAL_REQUIRED]: "bg-yellow-500",
     [ExecutionStatus.APPROVED]: "bg-green-500",
     [ExecutionStatus.EXECUTING]: "bg-blue-600",
