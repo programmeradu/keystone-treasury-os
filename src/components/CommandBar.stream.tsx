@@ -49,7 +49,6 @@ export function CommandBar() {
     const txExecutor = useTransactionExecutor();
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
-    // ΓöÇΓöÇΓöÇ Vercel AI SDK ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
     const [input, setInput] = useState("");
     // @ts-expect-error
     const { messages, isLoading, setMessages, sendMessage, addToolOutput } = useChat({

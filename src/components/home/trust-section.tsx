@@ -91,8 +91,8 @@ export function TrustSection() {
                 <div className="text-[9px] font-mono uppercase tracking-widest text-white/15 mb-3">Proposed</div>
                 <div className="space-y-2 font-mono text-[11px]">
                   <div className="flex justify-between"><span className="text-white/15">Type</span><span className="text-white/30">Swap</span></div>
-                  <div className="flex justify-between items-center"><span className="text-white/15">Amount</span><span className="inline-flex items-center gap-1.5 text-white/30">{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/logos/token-sol.png" alt="" className="h-3 w-3 rounded-full" />500 SOL</span></div>
-                  <div className="flex justify-between items-center"><span className="text-white/15">Route</span><span className="inline-flex items-center gap-1.5 text-white/30">{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/logos/jup.png" alt="" className="h-3 w-3 rounded-sm" />Jupiter v6</span></div>
+                  <div className="flex justify-between items-center"><span className="text-white/15">Amount</span><span className="inline-flex items-center gap-1.5 text-white/30"><img src="/logos/token-sol.png" alt="" className="h-3 w-3 rounded-full" />500 SOL</span></div>
+                  <div className="flex justify-between items-center"><span className="text-white/15">Route</span><span className="inline-flex items-center gap-1.5 text-white/30"><img src="/logos/jup.png" alt="" className="h-3 w-3 rounded-sm" />Jupiter v6</span></div>
                   <div className="flex justify-between"><span className="text-white/15">Slippage</span><span className="text-white/30">0.5%</span></div>
                 </div>
               </div>
