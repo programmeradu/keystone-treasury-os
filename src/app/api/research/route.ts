@@ -125,7 +125,10 @@ Wallet State: ${JSON.stringify(walletState || {})}
       },
     });
 
-    return (result as any).toDataStreamResponse?.() || (result as any).toTextStreamResponse();
+    if ((result as any).toDataStreamResponse) {
+      return (result as any).toDataStreamResponse();
+    }
+    return (result as any).toTextStreamResponse();
   } catch (error) {
     console.error("[Research API] Error:", error);
     return new Response(JSON.stringify({ error: "Failed to process research request" }), {
