@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { dcaBots, dcaExecutions } from "@/db/schema";
+import { dcaBots, dcaExecutions, users } from "@/db/schema";
 import { eq, and, lte, gte } from "drizzle-orm";
+import { Resend } from "resend";
+import { createAdminClient } from "@/lib/supabase";
 import { executeSwapWithSigning, getJupiterQuote, validateDelegation } from "@/lib/jupiter-executor";
 import bs58 from "bs58";
 import { Keypair } from "@solana/web3.js";
@@ -260,7 +262,43 @@ async function recordFailedExecution(bot: any, errorMessage: string) {
 
     if (shouldPause) {
       console.warn(`[Bot ${bot.id}] Paused after ${newFailedAttempts} failures`);
-      // Phase 2 TODO: Send notification email
+
+      const resendApiKey = process.env.RESEND_API_KEY;
+      const emailFrom = process.env.EMAIL_FROM;
+
+      if (resendApiKey && emailFrom) {
+        try {
+          const userRecords = await db.select().from(users).where(eq(users.id, bot.userId)).limit(1);
+          const user = userRecords[0];
+
+          if (user && user.supabaseUserId) {
+            const admin = createAdminClient();
+            const { data: { user: authUser } } = await admin.auth.admin.getUserById(user.supabaseUserId);
+
+            if (authUser && authUser.email && !authUser.email.endsWith('@keystone.wallet')) {
+              const resend = new Resend(resendApiKey);
+              await resend.emails.send({
+                from: emailFrom,
+                to: authUser.email,
+                subject: `🚨 Keystone DCA Bot Paused: ${bot.name}`,
+                html: `
+                  <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; line-height: 1.5;">
+                    <h2>DCA Bot Paused</h2>
+                    <p>Your DCA bot <strong>${bot.name}</strong> has failed to execute ${newFailedAttempts} times consecutively and has been paused to protect your funds.</p>
+                    <div style="background: #fff3f3; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #d32f2f;">
+                      <p style="margin: 0; color: #d32f2f;"><strong>Reason:</strong> ${errorMessage}</p>
+                    </div>
+                    <p>Please check your wallet balance, delegations, or network conditions. Once resolved, you can resume the bot from your Keystone dashboard.</p>
+                  </div>
+                `,
+              });
+              console.log(`[Bot ${bot.id}] Pause notification sent to ${authUser.email}`);
+            }
+          }
+        } catch (emailError) {
+          console.error(`[Bot ${bot.id}] Failed to send pause notification:`, emailError);
+        }
+      }
     }
   } catch (error) {
     console.error(`[Bot ${bot.id}] Failed to record execution failure:`, error);
