@@ -131,7 +131,7 @@ export function ExecutionHistory({
               <option value="">All Statuses</option>
               <option value={ExecutionStatus.SUCCESS}>Success</option>
               <option value={ExecutionStatus.FAILED}>Failed</option>
-              <option value={ExecutionStatus.PLANNING}>Planning</option>
+              <option value={ExecutionStatus.PLANNING}>Running</option>
               <option value={ExecutionStatus.CANCELLED}>Cancelled</option>
             </select>
           </div>
