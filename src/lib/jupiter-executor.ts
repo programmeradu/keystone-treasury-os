@@ -67,6 +67,40 @@ export async function getJupiterQuote(
 }
 
 /**
+ * Batch fetch token prices from Jupiter Price API V2
+ * Prevents redundant single-token simulation fetches
+ */
+export async function getBatchTokenPrices(mints: string[]): Promise<Record<string, number>> {
+  if (!mints.length) return {};
+
+  try {
+    const ids = mints.join(',');
+    const url = `https://api.jup.ag/price/v2?ids=${ids}`;
+
+    const response = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    if (!response.ok) {
+      console.error(`Failed to fetch batch token prices: ${response.status}`);
+      return {};
+    }
+
+    const json = await response.json();
+    const data = json?.data || {};
+
+    const prices: Record<string, number> = {};
+    for (const mint of mints) {
+      if (data[mint]?.price) {
+        prices[mint] = parseFloat(data[mint].price);
+      }
+    }
+
+    return prices;
+  } catch (error) {
+    console.error('Failed to get batch token prices:', error);
+    return {};
+  }
+}
+
+/**
  * Get current price for a token pair from Jupiter
  */
 export async function getTokenPrice(
