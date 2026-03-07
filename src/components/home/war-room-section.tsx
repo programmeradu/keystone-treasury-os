@@ -124,7 +124,6 @@ export function WarRoomSection() {
                       transition={{ delay: 0.3 + i * 0.3, type: "spring", stiffness: 300 }}
                       className="h-7 w-7 rounded-full border-2 border-[#0a0a0c] overflow-hidden"
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={getAvatarUrl(u.name)} alt={u.name} className="w-full h-full" />
                     </motion.div>
                   ))}
@@ -349,7 +348,6 @@ export function WarRoomSection() {
                               className="flex items-center gap-2.5 rounded-lg bg-white/[0.015] border border-white/[0.04] px-3 py-2"
                             >
                               <div className="h-6 w-6 rounded-full shrink-0 overflow-hidden" style={{ border: hasSigned ? `2px solid ${u.color}` : "2px solid transparent" }}>
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img src={getAvatarUrl(u.name)} alt={u.name} className="w-full h-full" />
                               </div>
                               <div className="flex-1 min-w-0">
@@ -448,7 +446,6 @@ export function WarRoomSection() {
                         {signers.map((u) => (
                           <div key={u.name} className="flex items-center gap-1.5">
                             <div className="h-4 w-4 rounded-full overflow-hidden">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img src={getAvatarUrl(u.name)} alt={u.name} className="w-full h-full" />
                             </div>
                             <span className="text-keystone-green/40"></span>

@@ -97,7 +97,6 @@ export function ProblemSection() {
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-1.5">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={tool.logo}
                           alt=""

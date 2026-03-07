@@ -55,7 +55,6 @@ export function EcosystemSection() {
                 key={item.name}
                 className="flex items-center gap-3 px-5 py-2 text-sm"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={item.logo}
                   alt=""

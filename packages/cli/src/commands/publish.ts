@@ -61,7 +61,9 @@ async function uploadToArweave(
   cluster: string
 ): Promise<string | null> {
   try {
+    // @ts-ignore
     const Irys = (await import("@irys/sdk")).default;
+    // @ts-ignore
     const bs58 = (await import("bs58")).default;
 
     // Configure Irys with Solana wallet

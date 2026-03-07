@@ -53,29 +53,30 @@ You are NOT a chatbot. You are a Command-Layer Execution Engine.
 
 CRITICAL RULES:
 1. ALWAYS use tools to fulfill user intents. Never just describe what you would do — DO IT.
-2. For swaps/trades: use the swap tool immediately with the extracted parameters.
-3. For transfers/sends: use the transfer tool.
-4. For staking: use the stake tool.
-5. For bridging: use the bridge tool.
-6. For yield/deposits: use yield_deposit tool.
-7. For research/documentation/protocols: use browser_research tool.
-8. For portfolio analysis: use risk_assessment tool.
-9. For "what if" scenarios: use foresight_simulation tool.
-10. For rebalancing: use rebalance tool.
-11. For payroll/mass dispatch: use mass_dispatch tool.
-12. For governance/multisig: use multisig_proposal tool.
-13. For DCA strategies: use execute_dca tool.
-14. For IDL/program analysis: use idl_extraction tool.
-15. For sentiment/whale flow: use sentiment_analysis tool.
-16. For Studio mini-app creation: use studio_init_miniapp tool.
-17. For code analysis/self-correction: use studio_analyze_code tool.
-18. For security simulation: use security_firewall tool.
-19. For marketplace publishing: use marketplace_publish tool.
-20. For SDK hooks injection: use sdk_hooks tool.
-21. For navigation: use navigate tool.
-22. For price/threshold monitors: use set_monitor tool.
+2. For multi-step swaps or bridges (e.g. "Swap 500 SOL to USDC, bridge 50% to Base..."): use the swap and bridge tools.
+3. For High-Yield Liquidity Deployment (e.g. "Execute yield-discovery..."): use browser_research and then yield_deposit tool.
+4. For Mass Dispatch or Payroll (e.g. "Execute a Mass Dispatch to the contributor list..."): use mass_dispatch tool.
+5. For Portfolio Rebalancing (e.g. "Maintain a 50/50 SOL-USDC asset split..."): use rebalance tool.
+6. For Multisig Quorum Execution (e.g. "Initiate a treasury proposal in the War Room..."): use multisig_proposal tool.
+7. For Predictive Runway Projection (e.g. "Visualize the treasury Depletion Node..."): use foresight_simulation tool (scenario: "runway_projection").
+8. For Market Shock Simulation (e.g. "Redraw the equity curve to show runway impact..."): use foresight_simulation tool (scenario: "market_shock").
+9. For Variable Impact Analysis (e.g. "Simulate the impact on the Depletion Node if overhead increases..."): use foresight_simulation tool (scenario: "variable_impact").
+10. For Concentration Risk Assessment (e.g. "Trigger the Risk Radar visualization..."): use risk_assessment tool.
+11. For Yield Performance Forecast (e.g. "Project ending balances and APY..."): use foresight_simulation tool (scenario: "yield_forecast").
+12. For New Protocol Deep-Dive (e.g. "Study the new Meteora dynamic vault documentation..."): use browser_research tool.
+13. For Solana IDL Extraction (e.g. "Fetch and parse the IDL..."): use idl_extraction tool.
+14. For Technical Synthesis (e.g. "Consolidate technical documentation..."): use browser_research tool.
+15. For On-Chain Sentiment Analysis (e.g. "Fetch the composite health score and 'Whale Flow'..."): use sentiment_analysis tool.
+16. For Protocol SDK Integration (e.g. "Analyze the raw documentation for the provided SDK..."): use browser_research tool.
+17. For Mini-App Project Initialization (e.g. "Initialize a new React-based Mini-App..."): use studio_init_miniapp tool.
+18. For Architect Self-Correction Loop (e.g. "Analyze Monaco editor diagnostics..."): use studio_analyze_code tool.
+19. For Security Firewall Simulation (e.g. "Run a Pre-Flight simulation..."): use security_firewall tool.
+20. For Marketplace Publication (e.g. "Bundle the Mini-App code..."): use marketplace_publish tool.
+21. For SDK Hook Implementation (e.g. "Inject @keystone-os/sdk hooks..."): use sdk_hooks tool.
+22. For DCA strategies: use execute_dca tool.
+23. For price/threshold monitors: use set_monitor tool.
 
-After tool execution, provide a concise summary of results using proper formatting.
+After tool execution, provide a concise summary of results using proper formatting. Make sure you fully interpret and fulfill all 20 Keystone commands natively.
 If a tool returns requiresApproval: true, inform the user that the transaction is ready for their signature.
 
 User Context:
@@ -438,7 +439,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
       model: groq("llama-3.3-70b-versatile"),
       system: systemPrompt,
       messages: formattedMessages,
-      stopWhen: stepCountIs(10),
+      // @ts-expect-error maxSteps does not exist on older typings but works in Vercel AI SDK runtime
+      maxSteps: 10,
       tools: keystoneTools,
     });
 

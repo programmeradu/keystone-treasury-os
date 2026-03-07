@@ -214,7 +214,7 @@ export default function StudioPage() {
                 if (project) handleLoadProject(project);
             } catch (e) { console.warn("[Studio] Failed to load from DB:", e); }
         })();
-    }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [searchParams]);
 
     const handleNewProject = () => {
         setAppName("Untitled Mini-App");

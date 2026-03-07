@@ -10,41 +10,41 @@ Click-Ops is dead. Manual multi-tab fragmentation is a legacy risk vector that K
 
 These commands utilize the Universal Operator to replace imperative clicking with declarative intent, orchestrated through the Execution Coordinator.
 
-* [ ] Multi-Step Swap & Bridge: "Swap 500 SOL to USDC, bridge 50% to Base, and return the remainder to the main treasury vault."
-* [ ] High-Yield Liquidity Deployment: "Execute yield-discovery via Knowledge Engine for USDC on Kamino or Meteora and deposit 10,000 tokens into the highest-performing vault."
-* [ ] Mass Dispatch (Payroll): "Execute a Mass Dispatch to the contributor list using Fluid Dynamics visualization logic for liquid movement via SVG Bezier curves."
-* [ ] Portfolio Rebalancing: "Maintain a 50/50 SOL-USDC asset split within a 5% tolerance; execute deterministic trades to correct any liquidity drift."
-* [ ] Multisig Quorum Execution: "Initiate a treasury proposal in the War Room for signature and broadcast the Quorum Core reactor state to all active signers."
+* [x] Multi-Step Swap & Bridge: "Swap 500 SOL to USDC, bridge 50% to Base, and return the remainder to the main treasury vault."
+* [x] High-Yield Liquidity Deployment: "Execute yield-discovery via Knowledge Engine for USDC on Kamino or Meteora and deposit 10,000 tokens into the highest-performing vault."
+* [x] Mass Dispatch (Payroll): "Execute a Mass Dispatch to the contributor list using Fluid Dynamics visualization logic for liquid movement via SVG Bezier curves."
+* [x] Portfolio Rebalancing: "Maintain a 50/50 SOL-USDC asset split within a 5% tolerance; execute deterministic trades to correct any liquidity drift."
+* [x] Multisig Quorum Execution: "Initiate a treasury proposal in the War Room for signature and broadcast the Quorum Core reactor state to all active signers."
 
 2. Generative Foresight & Predictive Analytics
 
 Utilize the "What If" Engine to trigger Generative UI responses that render hypothetical financial futures.
 
-* [ ] Predictive Runway Projection: "Visualize the treasury Depletion Node based on current monthly burn and projected protocol revenue."
-* [ ] Market Shock Simulation: "Redraw the equity curve to show runway impact if SOL drops 30% and USDC depegs by 2%."
-* [ ] Variable Impact Analysis: "Simulate the impact on the Depletion Node if overhead increases by hiring 5 new engineers at $8k/month."
-* [ ] Concentration Risk Assessment: "Trigger the Risk Radar visualization to identify if >50% of the treasury is exposed to a single asset failure point."
-* [ ] Yield Performance Forecast: "Project ending balances and APY for a leveraged staking strategy on Marinade before moving to the SIMULATING state."
+* [x] Predictive Runway Projection: "Visualize the treasury Depletion Node based on current monthly burn and projected protocol revenue."
+* [x] Market Shock Simulation: "Redraw the equity curve to show runway impact if SOL drops 30% and USDC depegs by 2%."
+* [x] Variable Impact Analysis: "Simulate the impact on the Depletion Node if overhead increases by hiring 5 new engineers at $8k/month."
+* [x] Concentration Risk Assessment: "Trigger the Risk Radar visualization to identify if >50% of the treasury is exposed to a single asset failure point."
+* [x] Yield Performance Forecast: "Project ending balances and APY for a leveraged staking strategy on Marinade before moving to the SIMULATING state."
 
 3. Zero-Day Protocol Learning & Knowledge Retrieval
 
 Commands for the Universal Operator to autonomously ingest documentation via the Knowledge Engine (Tavily, Jina, and Firecrawl).
 
-* [ ] New Protocol Deep-Dive: "Study the new Meteora dynamic vault documentation; extract technical risks and withdrawal logic into a Knowledge Result."
-* [ ] Solana IDL Extraction: "Fetch and parse the IDL (Interface Definition Language) for the program at [Contract Address] to prepare a transaction construction plan."
-* [ ] Technical Synthesis: "Consolidate technical documentation from the protocol's GitHub and whitepaper into a single, human-readable research brief."
-* [ ] On-Chain Sentiment Analysis: "Fetch the composite health score and 'Whale Flow' metrics for [Token Name] to detect net smart-money accumulation."
-* [ ] Protocol SDK Integration: "Analyze the raw documentation for the provided SDK and prepare a transaction payload for a liquidity deposit."
+* [x] New Protocol Deep-Dive: "Study the new Meteora dynamic vault documentation; extract technical risks and withdrawal logic into a Knowledge Result."
+* [x] Solana IDL Extraction: "Fetch and parse the IDL (Interface Definition Language) for the program at [Contract Address] to prepare a transaction construction plan."
+* [x] Technical Synthesis: "Consolidate technical documentation from the protocol's GitHub and whitepaper into a single, human-readable research brief."
+* [x] On-Chain Sentiment Analysis: "Fetch the composite health score and 'Whale Flow' metrics for [Token Name] to detect net smart-money accumulation."
+* [x] Protocol SDK Integration: "Analyze the raw documentation for the provided SDK and prepare a transaction payload for a liquidity deposit."
 
 4. Keystone Studio & IDE Orchestration
 
 Architect Agent commands for the Zero-Build Runtime, utilizing ESM Modules and the JSON-RPC 2.0 Virtual Bridge.
 
-* [ ] Mini-App Project Initialization: "Initialize a new React-based Mini-App using the Zero-Build Runtime and esm.sh Import Maps; exclude all legacy Sandpack dependencies."
-* [ ] Architect Self-Correction Loop: "Analyze Monaco editor diagnostics for App.tsx and apply patches to resolve TypeScript errors via the Architect Ghost-Cursor."
-* [ ] Security Firewall Simulation: "Run a Pre-Flight simulation on a mainnet fork to detect sandbox escapes, unauthorized bridge calls, or balance discrepancies."
-* [ ] Marketplace Publication: "Bundle the Mini-App code, compute the SHA-256 integrity hash, and submit for listing with the mandatory 80/20 revenue split."
-* [ ] SDK Hook Implementation: "Inject @keystone-os/sdk hooks—specifically useVault, useTurnkey, and the Proxy Gate useFetch—into the active project context."
+* [x] Mini-App Project Initialization: "Initialize a new React-based Mini-App using the Zero-Build Runtime and esm.sh Import Maps; exclude all legacy Sandpack dependencies."
+* [x] Architect Self-Correction Loop: "Analyze Monaco editor diagnostics for App.tsx and apply patches to resolve TypeScript errors via the Architect Ghost-Cursor."
+* [x] Security Firewall Simulation: "Run a Pre-Flight simulation on a mainnet fork to detect sandbox escapes, unauthorized bridge calls, or balance discrepancies."
+* [x] Marketplace Publication: "Bundle the Mini-App code, compute the SHA-256 integrity hash, and submit for listing with the mandatory 80/20 revenue split."
+* [x] SDK Hook Implementation: "Inject @keystone-os/sdk hooks—specifically useVault, useTurnkey, and the Proxy Gate useFetch—into the active project context."
 
 
 --------------------------------------------------------------------------------

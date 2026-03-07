@@ -101,7 +101,6 @@ export function PillarsSection() {
                 <div className="flex justify-between items-center">
                   <span className="text-white/15">Route</span>
                   <span className="inline-flex items-center gap-1 text-keystone-green/60">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src="/logos/jup.png" alt="" className="h-3 w-3 rounded-sm" />
                     Jupiter v6
                   </span>
