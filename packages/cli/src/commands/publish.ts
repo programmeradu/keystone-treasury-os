@@ -61,7 +61,9 @@ async function uploadToArweave(
   cluster: string
 ): Promise<string | null> {
   try {
+    // @ts-ignore - dynamic import used to avoid hard dependency on irys sdk during builds
     const Irys = (await import("@irys/sdk")).default;
+    // @ts-ignore - dynamic import
     const bs58 = (await import("bs58")).default;
 
     // Configure Irys with Solana wallet

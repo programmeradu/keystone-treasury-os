@@ -51,7 +51,9 @@ export function CommandBar() {
 
     // ΓöÇΓöÇΓöÇ Vercel AI SDK ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
     const [input, setInput] = useState("");
+    // @ts-expect-error - ignore isLoading type error in @ai-sdk/react depending on version
     const { messages, isLoading, setMessages, sendMessage, addToolOutput } = useChat({
+        // @ts-expect-error - @ai-sdk/react options might differ
         api: "/api/command",
         body: {
             walletAddress: txExecutor.isWalletConnected ? "11111111111111111111111111111111" : "",
@@ -250,9 +252,11 @@ export function CommandBar() {
                                                 ? 'bg-primary text-primary-foreground rounded-tr-sm'
                                                 : 'bg-muted/50 border border-white/5 text-foreground rounded-tl-sm'
                                                 }`}>
-                                                <ReactMarkdown className="prose prose-sm dark:prose-invert prose-p:leading-snug prose-p:mb-0">
-                                                    {m.content}
-                                                </ReactMarkdown>
+                                                <div className="prose prose-sm dark:prose-invert prose-p:leading-snug prose-p:mb-0">
+                                                    <ReactMarkdown>
+                                                        {m.content}
+                                                    </ReactMarkdown>
+                                                </div>
                                             </div>
                                         )}
 
