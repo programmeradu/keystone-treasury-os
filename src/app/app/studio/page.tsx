@@ -578,6 +578,7 @@ export default function StudioPage() {
                                 onChange={handleCodeChange}
                                 fileName={activeFile}
                                 allFiles={files}
+                                isGenerating={isGenerating}
                             />
                         </div>
                     </div>

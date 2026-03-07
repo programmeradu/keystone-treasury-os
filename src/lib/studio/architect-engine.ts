@@ -278,19 +278,75 @@ ${errors.join("\n")}
 
 [CURRENT CODE]
 ${Object.entries(currentFiles)
-        .map(([name, content]) => `--- ${name} ---\n${content}`)
+        .map(([name, content]) => {
+          const numberedLines = content.split('\n').map((line, idx) => `${idx + 1}: ${line}`).join('\n');
+          return `--- ${name} ---\n${numberedLines}`;
+        })
         .join("\n\n")}
 
-Fix ONLY the errors listed above. Do not rewrite the entire file unless necessary.
-Return the corrected files in the standard JSON format.`;
+Fix ONLY the errors listed above using the replace_range patching format.
+Return ONLY a JSON array of patches with the following structure:
+[
+  {
+    "file": "App.tsx",
+    "startLine": 10,
+    "endLine": 15,
+    "replacement": "  const correctedCode = 'goes here';\\n  return correctedCode;"
+  }
+]
+Do NOT return the standard JSON file format. Do not return markdown code blocks.`;
 
-    // Merge current files into context
     const mergedContext: Record<string, { content: string }> = { ...contextFiles };
     for (const [name, content] of Object.entries(currentFiles)) {
       mergedContext[name] = { content };
     }
 
-    return this.callGenerateAPI(correctionPrompt, mergedContext);
+    // Call API and handle patch application
+    const rawResult = await this.callGenerateAPI(correctionPrompt, mergedContext);
+
+    if (!rawResult) {
+       return null;
+    }
+
+    // Check if the model ignored the prompt and returned standard full files
+    if (Object.keys(rawResult).length > 0 && !Array.isArray(rawResult)) {
+        // Standard JSON object of file string contents
+        return rawResult;
+    }
+
+    // In actual implementation we need to process the patches which were parsed out of the raw generate API
+    // The current callGenerateAPI parses data.files. If the model returned an array, it might be in data.files
+    const patches = Array.isArray(rawResult) ? rawResult : [];
+
+    if (patches.length === 0) {
+      return null;
+    }
+
+    const updatedFiles = { ...currentFiles };
+
+    for (const patch of patches as any[]) {
+      if (!patch.file || !patch.replacement || typeof patch.startLine !== 'number' || typeof patch.endLine !== 'number') {
+        continue;
+      }
+
+      const fileContent = updatedFiles[patch.file];
+      if (!fileContent) continue;
+
+      const lines = fileContent.split('\n');
+
+      // Convert 1-based startLine and endLine to 0-based index
+      const startIndex = Math.max(0, patch.startLine - 1);
+      const endIndex = Math.max(0, patch.endLine - 1);
+      const deleteCount = endIndex - startIndex + 1;
+
+      // Ensure we don't try to splice beyond the array length bounds incorrectly
+      if (startIndex < lines.length) {
+          lines.splice(startIndex, deleteCount, patch.replacement);
+          updatedFiles[patch.file] = lines.join('\n');
+      }
+    }
+
+    return updatedFiles;
   }
 
   /**
