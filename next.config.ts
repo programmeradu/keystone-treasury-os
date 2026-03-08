@@ -5,6 +5,10 @@ const nextConfig: NextConfig = {
     // allowedDevOrigins: ['192.168.227.1:3000'],
   },
   webpack: (config, { isServer }) => {
+    config.resolve.extensionAlias = {
+      '.js': ['.js', '.ts', '.tsx', '.mjs']
+    };
+
     if (!isServer && process.env.VISUAL_EDITS_ENABLED) {
       // Disabled to prevent restart loop - enable only when needed
       // config.module.rules.push({
