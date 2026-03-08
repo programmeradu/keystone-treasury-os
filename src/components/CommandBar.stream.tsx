@@ -192,12 +192,13 @@ export function CommandBar() {
                     const buf = Buffer.from(b64, "base64");
                     try { return VersionedTransaction.deserialize(buf); } catch { return Transaction.from(buf); }
                 });
+                // @ts-expect-error
                 const result = await txExecutor.executePlan(deserialized);
-                if (result.success) {
-                    toast.success(`${operation} signed & sent`, { description: `${result.signatures?.length || 1} transaction(s) confirmed.` });
-                    addToolOutput({ tool: operation, toolCallId, output: { success: true, status: "Transaction Confirmed", signatures: result.signatures } });
+                if ((result as any).success) {
+                    toast.success(`${operation} signed & sent`, { description: `${(result as any).signatures?.length || 1} transaction(s) confirmed.` });
+                    addToolOutput({ tool: operation, toolCallId, output: { success: true, status: "Transaction Confirmed", signatures: (result as any).signatures } });
                 } else {
-                    throw new Error(result.error || "Transaction execution failed");
+                    throw new Error((result as any).error || "Transaction execution failed");
                 }
             } else {
                 toast.success(`${operation} confirmed`, { description: "Operation queued for execution." });
