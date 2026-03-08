@@ -48,6 +48,13 @@ function createStubHandler() {
         headers.delete('cf-connecting-ip');
         headers.delete('x-nf-client-connection-ip');
 
+        // Rewrite Origin / Referer so Better Auth's CSRF check accepts the
+        // request (it validates these against its own trusted origins).
+        headers.delete('origin');
+        headers.delete('referer');
+        headers.set('origin', target.origin);
+        headers.set('referer', target.href);
+
         // Provide safe forwarded values that match Neon Auth origin.
         headers.set('x-forwarded-host', target.host);
         headers.set('x-forwarded-proto', target.protocol.replace(':', ''));
