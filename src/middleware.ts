@@ -34,6 +34,10 @@ async function hasSiwsSession(request: NextRequest): Promise<boolean> {
     if (!token) return false;
 
     if (!process.env.JWT_SECRET) {
+        // Do not crash during Next.js prerendering if middleware is evaluated
+        if (process.env.npm_lifecycle_event === 'build' || process.env.NEXT_PHASE === 'phase-production-build') {
+            return false;
+        }
         throw new Error('JWT_SECRET is not configured.');
     }
 

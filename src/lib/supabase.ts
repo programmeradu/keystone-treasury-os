@@ -2,10 +2,14 @@ import { createClient } from '@supabase/supabase-js';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
+const isBuildPhase =
+    process.env.npm_lifecycle_event === 'build' ||
+    process.env.NEXT_PHASE === 'phase-production-build';
+
 // ─── Browser Client (public, for client components) ──────────────────
 export function createBrowserClient() {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || (isBuildPhase ? "https://build-placeholder.supabase.co" : undefined);
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || (isBuildPhase ? "build_placeholder_key" : undefined);
 
     if (!url || !anonKey) {
         throw new Error('Supabase environment variables (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY) are not configured.');
@@ -17,8 +21,8 @@ export function createBrowserClient() {
 // ─── Server Client (for API routes and server components) ────────────
 export async function createSupabaseServerClient() {
     const cookieStore = await cookies();
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || (isBuildPhase ? "https://build-placeholder.supabase.co" : undefined);
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || (isBuildPhase ? "build_placeholder_key" : undefined);
 
     if (!url || !anonKey) {
         throw new Error('Supabase environment variables (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY) are not configured.');
@@ -44,8 +48,8 @@ export async function createSupabaseServerClient() {
 
 // ─── Admin Client (service role — server-only, bypasses RLS) ─────────
 export function createAdminClient() {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || (isBuildPhase ? "https://build-placeholder.supabase.co" : undefined);
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || (isBuildPhase ? "build_placeholder_key" : undefined);
 
     if (!url || !serviceKey) {
         throw new Error('Supabase environment variables (NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) are not configured.');
