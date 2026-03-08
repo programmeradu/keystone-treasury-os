@@ -76,10 +76,35 @@ function resolveTokenMint(symbol: string): string | null {
   return TOKEN_MINTS[symbol.toUpperCase()] || null;
 }
 
+function tokenDecimals(symbol: string): number {
+  return ["USDC", "USDT"].includes(symbol.toUpperCase()) ? 6 : 9;
+}
+
+function extractLatestUserText(messages: any[] | undefined, prompt?: string): string {
+  if (prompt && typeof prompt === "string" && prompt.trim()) return prompt.trim();
+  if (!Array.isArray(messages) || messages.length === 0) return "";
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg?.role !== "user") continue;
+
+    if (typeof msg?.content === "string") return msg.content;
+
+    if (Array.isArray(msg?.content)) {
+      const textParts = msg.content
+        .map((p: any) => (typeof p === "string" ? p : p?.text || ""))
+        .filter(Boolean);
+      if (textParts.length > 0) return textParts.join(" ");
+    }
+  }
+
+  return "";
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { messages, walletAddress, walletState, vaultState } = body;
+    const { messages, prompt, walletAddress, walletState, vaultState } = body;
 
     const formattedMessages = await convertToModelMessages(messages || []);
 
@@ -110,6 +135,8 @@ CRITICAL RULES:
 21. For SDK Hook Implementation (e.g. "Inject @keystone-os/sdk hooks..."): use sdk_hooks tool.
 22. For DCA strategies: use execute_dca tool.
 23. For price/threshold monitors: use set_monitor tool.
+24. For split intents like "bridge half" + "deposit the rest" after a swap: ALWAYS compute split amounts from the realized swap OUTPUT amount/token, never from the original input amount.
+25. If a target protocol has no eligible live vault, STOP and ask the user to choose a fallback protocol/token. Do not present the deposit as completed.
 
 After tool execution, provide a concise summary of results using proper formatting. Make sure you fully interpret and fulfill all 20 Keystone commands natively.
 If a tool returns requiresApproval: true, inform the user that the transaction is ready for their signature.
@@ -131,6 +158,77 @@ Wallet State: ${JSON.stringify(walletState || {})}
         ? `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`
         : "https://api.mainnet-beta.solana.com";
 
+    const userRequestText = extractLatestUserText(messages, prompt);
+    const lowerUserRequest = userRequestText.toLowerCase();
+    const hasHalfDirective = /\bhalf\b/.test(lowerUserRequest);
+    const hasRestDirective = /\b(rest|remaining|remainder)\b/.test(lowerUserRequest);
+    const hasSplitBridgeDepositFlow =
+      /\bswap\b/.test(lowerUserRequest) &&
+      /\bbridge\b/.test(lowerUserRequest) &&
+      /\bdeposit\b/.test(lowerUserRequest) &&
+      hasHalfDirective &&
+      hasRestDirective;
+
+    const executionState: {
+      lastSwap: null | {
+        inputToken: string;
+        outputToken: string;
+        inputAmount: number;
+        outputAmount: number;
+      };
+      splitFirstLegApplied: boolean;
+      splitRemaining: number | null;
+    } = {
+      lastSwap: null,
+      splitFirstLegApplied: false,
+      splitRemaining: null,
+    };
+
+    const resolveSplitAmount = (token: string, requestedAmount: number) => {
+      if (!hasSplitBridgeDepositFlow || !executionState.lastSwap) {
+        return { amount: requestedAmount, adjusted: false as const, reason: undefined as string | undefined };
+      }
+
+      if (executionState.lastSwap.outputToken.toUpperCase() !== token.toUpperCase()) {
+        return { amount: requestedAmount, adjusted: false as const, reason: undefined as string | undefined };
+      }
+
+      const totalOut = executionState.lastSwap.outputAmount;
+      if (!Number.isFinite(totalOut) || totalOut <= 0) {
+        return { amount: requestedAmount, adjusted: false as const, reason: undefined as string | undefined };
+      }
+
+      if (executionState.splitRemaining === null) {
+        executionState.splitRemaining = totalOut;
+      }
+
+      if (!executionState.splitFirstLegApplied) {
+        const half = totalOut / 2;
+        executionState.splitFirstLegApplied = true;
+        executionState.splitRemaining = Math.max(0, totalOut - half);
+
+        if (Math.abs(requestedAmount - half) > Math.max(0.01, half * 0.005)) {
+          return {
+            amount: half,
+            adjusted: true as const,
+            reason: "Adjusted to 50% of realized swap output for half/rest workflow.",
+          };
+        }
+        return { amount: requestedAmount, adjusted: false as const, reason: undefined as string | undefined };
+      }
+
+      const remaining = Math.max(0, executionState.splitRemaining || 0);
+      executionState.splitRemaining = 0;
+      if (Math.abs(requestedAmount - remaining) > Math.max(0.01, remaining * 0.005)) {
+        return {
+          amount: remaining,
+          adjusted: true as const,
+          reason: "Adjusted to remaining realized swap output for half/rest workflow.",
+        };
+      }
+      return { amount: requestedAmount, adjusted: false as const, reason: undefined as string | undefined };
+    };
+
     // Tools as plain objects (avoids tool() wrapper overload issues with complex return types)
     const keystoneTools: any = {
       // ━━━━ PILLAR 1: Treasury Execution ━━━━
@@ -148,7 +246,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
           const outMint = resolveTokenMint(outputToken);
           if (!inMint) return { success: false, error: `Unknown input token: ${inputToken}. Supported: ${Object.keys(TOKEN_MINTS).join(", ")}` };
           if (!outMint) return { success: false, error: `Unknown output token: ${outputToken}. Supported: ${Object.keys(TOKEN_MINTS).join(", ")}` };
-          const decimals = ["USDC", "USDT"].includes(inputToken.toUpperCase()) ? 6 : 9;
+          const decimals = tokenDecimals(inputToken);
           const coordinator = new ExecutionCoordinator(rpcEndpoint);
           const result = await coordinator.executeStrategy(
             "swap_token" as any,
@@ -157,9 +255,18 @@ Wallet State: ${JSON.stringify(walletState || {})}
           );
           if (result.success && result.result?.swap_result) {
             const sr = result.result.swap_result;
-            const outDecimals = ["USDC", "USDT"].includes(outputToken.toUpperCase()) ? 6 : 9;
+            const outDecimals = tokenDecimals(outputToken);
             const rawOut = typeof sr.outAmount === "string" ? sr.outAmount : String(sr.outAmount ?? "0");
-            const humanOut = (Number(rawOut) / Math.pow(10, outDecimals)).toLocaleString(undefined, { maximumFractionDigits: 6 });
+            const outAmount = Number(rawOut) / Math.pow(10, outDecimals);
+            const humanOut = outAmount.toLocaleString(undefined, { maximumFractionDigits: 6 });
+            executionState.lastSwap = {
+              inputToken,
+              outputToken,
+              inputAmount: amount,
+              outputAmount: outAmount,
+            };
+            executionState.splitFirstLegApplied = false;
+            executionState.splitRemaining = outAmount;
             const serializedTransactions = result.result?.serializedTransactions;
             return {
               success: true, status: result.status, inputToken, outputToken, inputAmount: amount,
@@ -190,7 +297,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
           const outMint = resolveTokenMint(outputToken);
           if (!inMint) return { success: false, error: `Unknown input token: ${inputToken}. Supported: ${Object.keys(TOKEN_MINTS).join(", ")}` };
           if (!outMint) return { success: false, error: `Unknown output token: ${outputToken}. Supported: ${Object.keys(TOKEN_MINTS).join(", ")}` };
-          const decimals = ["USDC", "USDT"].includes(inputToken.toUpperCase()) ? 6 : 9;
+          const decimals = tokenDecimals(inputToken);
           const coordinator = new ExecutionCoordinator(rpcEndpoint);
           const result = await coordinator.executeStrategy(
             "swap_token" as any,
@@ -199,9 +306,18 @@ Wallet State: ${JSON.stringify(walletState || {})}
           );
           if (result.success && result.result?.swap_result) {
             const sr = result.result.swap_result;
-            const outDecimals = ["USDC", "USDT"].includes(outputToken.toUpperCase()) ? 6 : 9;
+            const outDecimals = tokenDecimals(outputToken);
             const rawOut = typeof sr.outAmount === "string" ? sr.outAmount : String(sr.outAmount ?? "0");
-            const humanOut = (Number(rawOut) / Math.pow(10, outDecimals)).toLocaleString(undefined, { maximumFractionDigits: 6 });
+            const outAmount = Number(rawOut) / Math.pow(10, outDecimals);
+            const humanOut = outAmount.toLocaleString(undefined, { maximumFractionDigits: 6 });
+            executionState.lastSwap = {
+              inputToken,
+              outputToken,
+              inputAmount: amount,
+              outputAmount: outAmount,
+            };
+            executionState.splitFirstLegApplied = false;
+            executionState.splitRemaining = outAmount;
             const serializedTransactions = result.result?.serializedTransactions;
             return {
               success: true, status: result.status, inputToken, outputToken, inputAmount: amount,
@@ -311,7 +427,9 @@ Wallet State: ${JSON.stringify(walletState || {})}
           destinationChain: z.string().describe("Destination chain"),
         }),
         execute: async ({ token, amount, sourceChain, destinationChain }: { token: string; amount: number; sourceChain: string; destinationChain: string }) => {
-          console.log(`[Tool: bridge] ${amount} ${token}: ${sourceChain} → ${destinationChain}`);
+          const splitAmount = resolveSplitAmount(token, amount);
+          const finalAmount = splitAmount.amount;
+          console.log(`[Tool: bridge] ${finalAmount} ${token}: ${sourceChain} → ${destinationChain}`);
 
           const RANGO_API_KEY = process.env.RANGO_API_KEY || process.env.NEXT_PUBLIC_RANGO_API_KEY;
           if (!RANGO_API_KEY) {
@@ -347,8 +465,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
           try {
             const fromAsset = buildAsset(src, token);
             const toAsset = buildAsset(dst, token);
-            const decimals = token.toUpperCase() === "USDC" ? 6 : 9;
-            const rawAmount = String(Math.floor(amount * Math.pow(10, decimals)));
+            const decimals = tokenDecimals(token);
+            const rawAmount = String(Math.floor(finalAmount * Math.pow(10, decimals)));
 
             const qs = new URLSearchParams({ apiKey: RANGO_API_KEY, from: fromAsset, to: toAsset, amount: rawAmount, slippage: "1.0" });
             const controller = new AbortController();
@@ -366,18 +484,26 @@ Wallet State: ${JSON.stringify(walletState || {})}
             }
             const data = await res.json();
             const route = data?.route || (Array.isArray(data?.routes) ? data.routes[0] : null) || data?.bestRoute;
+            const outRaw = route?.outputAmount ?? data?.outputAmount ?? null;
+            const outFormatted = outRaw != null
+              ? `${(Number(outRaw) / Math.pow(10, decimals)).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${token}`
+              : null;
 
             return {
-              success: true, operation: "bridge", token, amount, sourceChain: src, destinationChain: dst,
+              success: true, operation: "bridge", token, amount: finalAmount, sourceChain: src, destinationChain: dst,
+              requestedAmount: amount,
+              amountAdjusted: splitAmount.adjusted,
+              amountAdjustmentReason: splitAmount.reason,
               provider: "Rango Exchange",
               bridge: route?.name || data?.path || "Rango",
-              estimatedOutput: route?.outputAmount ?? data?.outputAmount ?? null,
+              estimatedOutput: outRaw,
+              estimatedOutputFormatted: outFormatted,
               estimatedTime: (route?.estimatedTimeInSeconds ?? data?.estimatedTimeInSeconds) ? `${route?.estimatedTimeInSeconds ?? data?.estimatedTimeInSeconds}s` : null,
               fees: route?.fee ?? data?.fee ?? null,
               steps: route?.steps ?? data?.steps ?? [],
               status: "READY_FOR_SIGNATURE",
               requiresApproval: true,
-              message: `Bridge ${amount} ${token} from ${src} → ${dst} via Rango. Est. output: ${route?.outputAmount ?? data?.outputAmount ?? "N/A"}.`,
+              message: `Bridge ${finalAmount} ${token} from ${src} → ${dst} via Rango. Est. output: ${outFormatted || "N/A"}.${splitAmount.adjusted ? ` ${splitAmount.reason}` : ""}`,
             };
           } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
@@ -394,7 +520,9 @@ Wallet State: ${JSON.stringify(walletState || {})}
           protocol: z.string().describe("Protocol (kamino, meteora, marinade, raydium)"),
         }),
         execute: async ({ token, amount, protocol }: { token: string; amount: number; protocol: string }) => {
-          console.log(`[Tool: yield_deposit] ${amount} ${token} → ${protocol}`);
+          const splitAmount = resolveSplitAmount(token, amount);
+          const finalAmount = splitAmount.amount;
+          console.log(`[Tool: yield_deposit] ${finalAmount} ${token} → ${protocol}`);
           const proto = protocol.toLowerCase();
 
           interface VaultInfo { name: string; apy: number; tvl: number; token: string; address?: string }
@@ -405,7 +533,14 @@ Wallet State: ${JSON.stringify(walletState || {})}
               const res = await fetch("https://api.kamino.finance/strategies?status=LIVE", { signal: AbortSignal.timeout(8000) });
               if (res.ok) {
                 const strategies: Array<{ address?: string; tokenASymbol?: string; tokenBSymbol?: string; apy?: number; tvl?: number; shareMintSymbol?: string }> = await res.json();
-                const match = strategies.find(s => (s.tokenASymbol?.toUpperCase() === token.toUpperCase() || s.shareMintSymbol?.toUpperCase() === token.toUpperCase()));
+                const candidates = strategies
+                  .filter((s) => (
+                    s.tokenASymbol?.toUpperCase() === token.toUpperCase() ||
+                    s.tokenBSymbol?.toUpperCase() === token.toUpperCase() ||
+                    s.shareMintSymbol?.toUpperCase() === token.toUpperCase()
+                  ))
+                  .sort((a, b) => (b.apy || 0) - (a.apy || 0));
+                const match = candidates[0];
                 if (match) bestVault = { name: `Kamino ${match.shareMintSymbol || match.tokenASymbol}`, apy: (match.apy || 0) * 100, tvl: match.tvl || 0, token, address: match.address };
               }
             }
@@ -424,17 +559,21 @@ Wallet State: ${JSON.stringify(walletState || {})}
 
           if (bestVault) {
             return {
-              success: true, operation: "yield_deposit", token, amount, protocol: proto,
+              success: true, operation: "yield_deposit", token, amount: finalAmount, protocol: proto,
+              requestedAmount: amount,
+              amountAdjusted: splitAmount.adjusted,
+              amountAdjustmentReason: splitAmount.reason,
               vaultName: bestVault.name, vaultAddress: bestVault.address,
               estimatedAPY: `${bestVault.apy.toFixed(2)}%`, tvl: `$${Math.round(bestVault.tvl).toLocaleString()}`,
               status: "READY_FOR_SIGNATURE", requiresApproval: true,
-              message: `Deposit ${amount} ${token} into ${bestVault.name}. APY: ${bestVault.apy.toFixed(2)}%, TVL: $${Math.round(bestVault.tvl).toLocaleString()}.`,
+              message: `Deposit ${finalAmount} ${token} into ${bestVault.name}. APY: ${bestVault.apy.toFixed(2)}%, TVL: $${Math.round(bestVault.tvl).toLocaleString()}.${splitAmount.adjusted ? ` ${splitAmount.reason}` : ""}`,
             };
           }
           return {
-            success: true, operation: "yield_deposit", token, amount, protocol: proto,
-            estimatedAPY: "N/A", status: "READY_FOR_SIGNATURE", requiresApproval: true,
-            message: `No live ${proto} vault found for ${token}. Try a different protocol or token.`,
+            success: false, operation: "yield_deposit", token, amount: finalAmount, protocol: proto,
+            estimatedAPY: "N/A", status: "DISCOVERY_FAILED", requiresApproval: false,
+            fallbackProtocols: ["meteora", "marginfi", "drift"],
+            message: `No live ${proto} vault found for ${token}. Choose an alternative protocol (meteora, marginfi, drift) or a different token.`,
           };
         },
       },
