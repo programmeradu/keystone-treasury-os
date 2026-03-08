@@ -187,18 +187,18 @@ export function CommandBar() {
         setExecutingToolId(toolCallId);
         try {
             if (serializedTxs && serializedTxs.length > 0 && txExecutor.isWalletConnected) {
-                const { VersionedTransaction, Transaction } = await import("@solana/web3.js");
-                const deserialized = serializedTxs.map((b64: string) => {
-                    const buf = Buffer.from(b64, "base64");
-                    try { return VersionedTransaction.deserialize(buf); } catch { return Transaction.from(buf); }
+                toast.success(`${operation} ready`, {
+                    description: `${serializedTxs.length} unsigned transaction(s) prepared for wallet signing.`,
                 });
-                const result = await txExecutor.executePlan(deserialized);
-                if (result.success) {
-                    toast.success(`${operation} signed & sent`, { description: `${result.signatures?.length || 1} transaction(s) confirmed.` });
-                    addToolOutput({ tool: operation, toolCallId, output: { success: true, status: "Transaction Confirmed", signatures: result.signatures } });
-                } else {
-                    throw new Error(result.error || "Transaction execution failed");
-                }
+                addToolOutput({
+                    tool: operation,
+                    toolCallId,
+                    output: {
+                        success: true,
+                        status: "READY_FOR_SIGNATURE",
+                        serializedTransactions: serializedTxs,
+                    },
+                });
             } else {
                 toast.success(`${operation} confirmed`, { description: "Operation queued for execution." });
                 addToolOutput({ tool: operation, toolCallId, output: { success: true, status: "Confirmed" } });

@@ -1,0 +1,67 @@
+headersOrigin = "config"
+functionsDirectory = "C:\\Users\\sam\\Documents\\GitHub\\keystone-treasury-os\\netlify\\functions"
+functionsDirectoryOrigin = "config"
+redirects = []
+
+[functions]
+
+[functions.dca-execute-scheduled]
+schedule = "*/5 * * * *"
+
+[functions."*"]
+node_bundler = "esbuild"
+
+[[plugins]]
+origin = "config"
+package = "@netlify/plugin-nextjs"
+
+[plugins.inputs]
+
+[build]
+publish = "C:\\Users\\sam\\Documents\\GitHub\\keystone-treasury-os\\packages\\cli\\.next"
+publishOrigin = "ui"
+commandOrigin = "config"
+command = "npm run build"
+functions = "C:\\Users\\sam\\Documents\\GitHub\\keystone-treasury-os\\netlify\\functions"
+
+[build.environment]
+NPM_FLAGS = "--legacy-peer-deps"
+
+[build.processing]
+
+[build.processing.css]
+
+[build.processing.html]
+
+[build.processing.images]
+
+[build.processing.js]
+
+[build.services]
+
+[[headers]]
+for = "/*"
+
+[headers.values]
+X-Frame-Options = "DENY"
+X-XSS-Protection = "1; mode=block"
+X-Content-Type-Options = "nosniff"
+Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+for = "/_next/static/*"
+
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/*.js"
+
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/*.css"
+
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"

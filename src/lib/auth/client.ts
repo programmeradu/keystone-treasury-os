@@ -11,9 +11,14 @@
  * compiles and degrades gracefully until the package is fixed.
  */
 
+interface AuthSessionData {
+    session: unknown;
+    user: { id: string; email?: string; name?: string };
+}
+
 interface AuthSession {
-    data: null;
-    error: { message: string };
+    data: AuthSessionData | null;
+    error: { message: string } | null;
 }
 
 export const authClient = {

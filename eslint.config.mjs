@@ -24,7 +24,8 @@ const eslintConfig = [
       'import/no-absolute-path': 'error',
       'import/no-dynamic-require': 'error',
       'import/no-self-import': 'error',
-      'import/no-cycle': 'error',
+      // npm optional dependency bug can break this rule's native resolver in CI/build environments.
+      'import/no-cycle': 'off',
       'import/no-useless-path-segments': 'error',
     },
   },

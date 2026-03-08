@@ -57,6 +57,10 @@ function evaluate(operator: string, currentValue: number, threshold: number, las
  */
 export async function POST() {
   try {
+    if (!db) {
+      return NextResponse.json({ success: false, error: "Database not initialized" }, { status: 503 });
+    }
+
     const activeMonitors = await db.select().from(monitors).where(eq(monitors.active, true));
 
     let checked = 0;
