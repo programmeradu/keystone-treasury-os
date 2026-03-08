@@ -4,7 +4,7 @@ import { RoomProvider } from "@/liveblocks.config";
 import { LiveCursors } from "@/components/LiveCursors";
 import { CollaborativeHeader } from "@/components/CollaborativeHeader";
 import { WalletButton } from "@/components/WalletButton";
-import { Suspense, useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSelf } from "@/liveblocks.config";
 import { getAvatarUrl } from "@/lib/avatars";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -104,6 +104,29 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
     );
 }
 
+function useRoomId() {
+    const [roomId, setRoomId] = useState<string | null>(null);
+    const { user: siwsUser } = useKeystoneAuth();
+
+    useEffect(() => {
+        // If SIWS user is available, use their ID
+        if (siwsUser?.id) {
+            setRoomId(`user:${siwsUser.id}`);
+            return;
+        }
+
+        // Otherwise try Neon Auth session
+        authClient.getSession().then((session) => {
+            const userId = session.data?.user?.id;
+            if (userId) {
+                setRoomId(`user:${userId}`);
+            }
+        });
+    }, [siwsUser]);
+
+    return roomId;
+}
+
 export default function AppLayout({
     children,
 }: {
@@ -111,17 +134,33 @@ export default function AppLayout({
 }) {
     return (
         <ThemeProvider>
-            <RoomProvider
-                id="keystone-global"
-                initialPresence={{ cursor: null }}
-                initialStorage={{
-                    teamNotes: "",
-                    chatMessages: []
-                }}
-            >
-                <AppLayoutContent>{children}</AppLayoutContent>
-            </RoomProvider>
+            <AppLayoutWithRoom>{children}</AppLayoutWithRoom>
         </ThemeProvider>
+    );
+}
+
+function AppLayoutWithRoom({ children }: { children: React.ReactNode }) {
+    const roomId = useRoomId();
+
+    if (!roomId) {
+        return (
+            <div className="flex items-center justify-center h-screen bg-background">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+        );
+    }
+
+    return (
+        <RoomProvider
+            id={roomId}
+            initialPresence={{ cursor: null }}
+            initialStorage={{
+                teamNotes: "",
+                chatMessages: []
+            }}
+        >
+            <AppLayoutContent>{children}</AppLayoutContent>
+        </RoomProvider>
     );
 }
 

@@ -61,9 +61,50 @@ function createStubHandler() {
             redirect: 'manual',
         });
 
+        // Rewrite Set-Cookie headers so cookies are set on the app's
+        // domain instead of the Neon Auth domain. Without this the
+        // browser silently drops the session cookies because the domain
+        // doesn't match the page origin.
+        const responseHeaders = new Headers(upstream.headers);
+        const setCookies = upstream.headers.getSetCookie?.() ?? [];
+        if (setCookies.length > 0) {
+            responseHeaders.delete('set-cookie');
+            for (const cookie of setCookies) {
+                // Strip Domain so the cookie defaults to the app's host.
+                // Strip Partitioned (only meaningful in third-party contexts).
+                // Change SameSite=None to Lax (first-party cookie).
+                const rewritten = cookie
+                    .replace(/;\s*domain=[^;]*/gi, '')
+                    .replace(/;\s*path=[^;]*/gi, '; Path=/')
+                    .replace(/;\s*partitioned/gi, '')
+                    .replace(/;\s*samesite=none/gi, '; SameSite=Lax');
+                responseHeaders.append('set-cookie', rewritten);
+            }
+        }
+
+        // Rewrite Location header for redirects so the browser stays
+        // on the app domain instead of being sent to the Neon Auth host.
+        const location = responseHeaders.get('location');
+        if (location) {
+            try {
+                const locUrl = new URL(location);
+                if (locUrl.origin === target.origin) {
+                    // Map the Neon Auth path back to /api/auth/...
+                    const basePath = new URL(base).pathname.replace(/\/$/, '');
+                    const suffix = locUrl.pathname.startsWith(basePath)
+                        ? locUrl.pathname.slice(basePath.length)
+                        : locUrl.pathname;
+                    responseHeaders.set(
+                        'location',
+                        `${incoming.origin}/api/auth${suffix}${locUrl.search}`,
+                    );
+                }
+            } catch {}
+        }
+
         return new Response(upstream.body, {
             status: upstream.status,
-            headers: upstream.headers,
+            headers: responseHeaders,
         });
     };
 

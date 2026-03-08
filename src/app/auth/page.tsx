@@ -524,13 +524,69 @@ function AuthPageContent() {
         }
     }, [searchParams, addLog]);
 
-    // Social auth sessions (Neon) are separate from SIWS state.
-    // If a Neon session already exists, leave /auth immediately.
+    // Handle OAuth completion: exchange Neon Auth session for local JWT
+    useEffect(() => {
+        if (searchParams.get('oauth') !== 'complete') return;
+
+        let cancelled = false;
+        const exchangeSession = async () => {
+            try {
+                addLog('EXCHANGING_OAUTH_SESSION...');
+
+                // The exchange-session endpoint finds the user via
+                // multiple strategies (proxy, direct DB query, body).
+                // No user info needed from the client.
+                const res = await fetch('/api/auth/exchange-session', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({}),
+                });
+
+                if (res.ok && !cancelled) {
+                    addLog('SESSION_ESTABLISHED');
+                    sessionStorage.removeItem('keystone_oauth_pending');
+                    router.push('/app');
+                    return;
+                }
+
+                // Fallback: if exchange failed, show error
+                if (!cancelled) {
+                    const data = await res.json().catch(() => ({}));
+                    setOauthError(data.error || 'Session exchange failed. Please try signing in again.');
+                    addLog('ERROR: SESSION_EXCHANGE_FAILED');
+                }
+            } catch {
+                if (!cancelled) {
+                    setOauthError('Session exchange failed. Please try signing in again.');
+                    addLog('ERROR: SESSION_EXCHANGE_FAILED');
+                }
+            } finally {
+                setSocialLoading(null);
+                sessionStorage.removeItem('keystone_oauth_pending');
+            }
+        };
+
+        exchangeSession();
+        return () => { cancelled = true; };
+    }, [searchParams, router, addLog]);
+
+    // Check if user already has a local JWT session (SIWS or exchanged)
+    // and redirect to /app immediately.
     useEffect(() => {
         let cancelled = false;
 
-        const redirectIfNeonSession = async () => {
+        const checkExistingSession = async () => {
             try {
+                // Check SIWS session first (local JWT)
+                const siwsRes = await fetch('/api/auth/siws');
+                const siwsData = await siwsRes.json().catch(() => null);
+                if (!cancelled && siwsData?.user) {
+                    router.push('/app');
+                    return;
+                }
+
+                // Also try Neon Auth session via proxy
                 const { data, error } = await authClient.getSession();
                 if (!cancelled && !error && data?.session) {
                     router.push('/app');
@@ -540,12 +596,13 @@ function AuthPageContent() {
             }
         };
 
-        redirectIfNeonSession();
+        // Don't redirect if we're in the middle of exchanging
+        if (searchParams.get('oauth') !== 'complete') {
+            checkExistingSession();
+        }
 
-        return () => {
-            cancelled = true;
-        };
-    }, [router]);
+        return () => { cancelled = true; };
+    }, [router, searchParams]);
 
 
 
@@ -615,9 +672,15 @@ function AuthPageContent() {
             setOauthError(null);
             addLog(`INITIATING_OAUTH_FLOW: ${provider.toUpperCase()}`);
 
+            // Set state cookie before OAuth (proves the flow started here)
+            await fetch('/api/auth/exchange-session', { credentials: 'include' });
+
+            // Store the provider so we know this is a pending OAuth on return
+            sessionStorage.setItem('keystone_oauth_pending', provider);
+
             await authClient.signIn.social({
                 provider,
-                callbackURL: `${window.location.origin}/app`,
+                callbackURL: `${window.location.origin}/auth?oauth=complete`,
             });
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);

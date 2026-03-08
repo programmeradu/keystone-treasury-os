@@ -85,7 +85,7 @@ function Web3ProvidersContent({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <LiveblocksProvider publicApiKey={process.env.NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY || "pk_dev_placeholder"}>
+    <LiveblocksProvider authEndpoint="/api/liveblocks-auth">
       <ConnectionProvider endpoint={endpoint}>
         <WalletProvider wallets={solanaWallets} autoConnect onError={onWalletError}>
           <WalletModalProvider>
