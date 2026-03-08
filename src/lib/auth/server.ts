@@ -48,10 +48,11 @@ function createStubHandler() {
         headers.delete('cf-connecting-ip');
         headers.delete('x-nf-client-connection-ip');
 
-        // Provide safe forwarded values that match Neon Auth origin.
-        headers.set('x-forwarded-host', target.host);
-        headers.set('x-forwarded-proto', target.protocol.replace(':', ''));
-        headers.set('x-forwarded-port', target.port || (target.protocol === 'https:' ? '443' : '80'));
+        // Set forwarded values to the CLIENT origin so Better Auth's CSRF
+        // check sees x-forwarded-host matching the browser Origin header.
+        headers.set('x-forwarded-host', incoming.host);
+        headers.set('x-forwarded-proto', incoming.protocol.replace(':', ''));
+        headers.set('x-forwarded-port', incoming.port || (incoming.protocol === 'https:' ? '443' : '80'));
 
         const upstream = await fetch(target, {
             method,
