@@ -48,6 +48,11 @@ function createStubHandler() {
         headers.delete('cf-connecting-ip');
         headers.delete('x-nf-client-connection-ip');
 
+        // Provide safe forwarded values that match Neon Auth origin.
+        headers.set('x-forwarded-host', target.host);
+        headers.set('x-forwarded-proto', target.protocol.replace(':', ''));
+        headers.set('x-forwarded-port', target.port || (target.protocol === 'https:' ? '443' : '80'));
+
         const upstream = await fetch(target, {
             method,
             headers,
