@@ -254,6 +254,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
             if (isSol) {
               tx.add(SystemProgram.transfer({ fromPubkey: payer, toPubkey: recipientPubkey, lamports: Math.floor(amount * LAMPORTS_PER_SOL) }));
             } else {
+              // @ts-expect-error Bypass spl-token dynamic import typing mismatch
               const { createTransferInstruction, createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddress, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } = await import("@solana/spl-token");
               const mintPubkey = new PublicKey(mint!);
               const decimals = ["USDC", "USDT"].includes(token.toUpperCase()) ? 6 : 9;
@@ -553,6 +554,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
                 transactions.push(Buffer.from(tx.serialize({ verifySignatures: false })).toString("base64"));
               }
             } else {
+              // @ts-expect-error Bypass spl-token dynamic import typing mismatch
               const { createTransferInstruction, createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddress, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } = await import("@solana/spl-token");
               const mintPubkey = new PublicKey(mint!);
               const decimals = ["USDC", "USDT"].includes(token.toUpperCase()) ? 6 : 9;
@@ -1336,7 +1338,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
                   const { inflateSync } = await import("zlib");
                   const decompressed = inflateSync(accountData.slice(44, 44 + dataLen));
                   idlData = JSON.parse(decompressed.toString("utf-8"));
-                  research.idl = idlData;
+                  research.idl = idlData || undefined;
                 }
               }
             }
@@ -1434,6 +1436,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
             try {
               const { db } = await import("@/db");
               const { monitors } = await import("@/db/schema");
+              if (!db) throw new Error("Database not connected");
               const result = await db.insert(monitors).values({
                 walletAddress,
                 type,
