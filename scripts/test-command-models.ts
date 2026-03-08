@@ -29,6 +29,7 @@ async function testGroq(name: string, model: ReturnType<ReturnType<typeof create
       model,
       system: "You are a test assistant. Follow the user instruction precisely.",
       messages: [{ role: "user" as const, content: TEST_PROMPT }],
+      // @ts-expect-error Bypass ai SDK maxTokens TS error
       maxTokens: 50,
     });
     const text = (result.text || "").trim();

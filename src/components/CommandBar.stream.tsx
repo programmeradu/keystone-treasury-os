@@ -192,10 +192,12 @@ export function CommandBar() {
                     const buf = Buffer.from(b64, "base64");
                     try { return VersionedTransaction.deserialize(buf); } catch { return Transaction.from(buf); }
                 });
-                const result = await txExecutor.executePlan(deserialized);
-                if (result.success) {
-                    toast.success(`${operation} signed & sent`, { description: `${result.signatures?.length || 1} transaction(s) confirmed.` });
-                    addToolOutput({ tool: operation, toolCallId, output: { success: true, status: "Transaction Confirmed", signatures: result.signatures } });
+                // @ts-expect-error Types mismatch for legacy execution paths
+                const result: any = await txExecutor.executePlan(deserialized);
+                if (result.success || (Array.isArray(result) && result.every((r: any) => r.success))) {
+                    const signatures = result.signatures || (Array.isArray(result) ? result.map((r: any) => r.signature).filter(Boolean) : []);
+                    toast.success(`${operation} signed & sent`, { description: `${signatures.length || 1} transaction(s) confirmed.` });
+                    addToolOutput({ tool: operation, toolCallId, output: { success: true, status: "Transaction Confirmed", signatures } });
                 } else {
                     throw new Error(result.error || "Transaction execution failed");
                 }

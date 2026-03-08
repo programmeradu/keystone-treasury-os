@@ -57,6 +57,7 @@ function evaluate(operator: string, currentValue: number, threshold: number, las
  */
 export async function POST() {
   try {
+    if (!db) throw new Error("Database not connected");
     const activeMonitors = await db.select().from(monitors).where(eq(monitors.active, true));
 
     let checked = 0;
