@@ -1,4 +1,4 @@
-# 🏛️ Keystone: The Sovereign Operating System for Web3 Treasuries
+# Keystone: The Sovereign Operating System for Web3 Treasuries
 
 [![soonami Venturethon](https://img.shields.io/badge/soonami-Venturethon_Submission-36e27b?style=for-the-badge)](https://soonami.io/venturethon)
 [![Framework](https://img.shields.io/badge/Next.js-15.0-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
@@ -10,17 +10,48 @@ Managing a modern Web3 treasury is currently a high-risk nightmare trapped in "C
 
 ---
 
-## 🚀 Live Deployments (Recommended for Judging)
+## Venturethon 9: The 10-Day Before and After
+
+During the 10 days of the Venturethon, we transformed Keystone into what it is supposed to be: not a simple dashboard, not a wrapper, but the literal Command Layer for Web3 treasuries. Here is a summary of the Before and After.
+
+**Before the Venturethon:**
+* The Studio was disjointed and its iframe used a permissive tag.
+* The Keystone Agent and sub-agents were mocked to produce test data only.
+* The "Simulation Firewall" was not fully built; it only checked basic risk scores and gave transactions the green light.
+* The marketplace 80/20 revenue split was not implemented. There were no smart contracts deployed, no security scans for mini-apps, and no code storage.
+* The platform lacked persistent memory.
+* The landing page was vague and didn't explain the vision well.
+* Solana Atlas tools (like the DCA bots) used hardcoded user IDs.
+* There was no Auth system in place and the database used local storage.
+
+**After the 10-Day Sprint:**
+* We added the Execution Coordinator to bring together all sub-agents and tools. Real transactions are now being executed!
+* We built the Persistent Knowledge Memory and Zero-day Protocol learning, meaning the Keystone agent can now dynamically scrape, read, and permanently remember protocol documentation.
+* The command bar now streams diagrams, charts, and visuals instantly after a command is entered to give users a quick visual overview before the action happens.
+* We activated the true Simulation Firewall. Every AI-generated payload is now routed through a mainnet fork simulation first.
+* Users now see a human-readable impact report before they are asked to sign anything with their wallet.
+* In the Keystone Studio, the "Architect" now reads real-time diagnostics from the code editor and automatically patches its own errors up to 3 times before the user even sees them.
+* We upgraded and published the Keystone SDK and CLI so developers can build mini-apps from anywhere using simple commands and AI (right in their terminal or IDE), monetize them, and publish directly to the Marketplace.
+* We started building the OpenClaw Skill for Keystone to make shipping mini-apps even easier.
+* We deployed the Keystone Marketplace anchor smart contract to the Solana devnet.
+* We locked down the business model by building rate limits for our Free, Mini, and Max tiers.
+* The Auth system and Postgres database are now fully implemented.
+* The landing page content was updated to be much clearer.
+* The "What if Engine" (Foresight Simulation) still exists. For example: "Show me what happens to the runway if SOL drops by 30%" or "What if I deposit 100 SOL and hire a developer to be paid 10 SOL per month for 6 months". The analytics dashboard will redraw and regenerate its charts to reflect your specific questions.
+
+---
+
+## Live Deployments (Recommended for Judging)
 
 To experience the full power of the AI Architect, Generative Foresight, and the Simulation Firewall, please use our live production environments. 
 
 *   **Keystone OS (Enterprise Command Center):** [keystone.stauniverse.tech](https://keystone.stauniverse.tech)
 *   **Solana Atlas (Public Intelligence Desktop):** [keystone.stauniverse.tech/atlas](https://keystone.stauniverse.tech/atlas)
-*   **ChainFlow Oracle (Simulation Engine):** [keystone.stauniverse.tech/oracle](https://keystone.stauniverse.tech/oracle)
+
 
 ---
 
-## 💬 The "Golden Path": Commands to Try
+## Commands to Try
 
 Keystone replaces UI clicks with a **Linguistic Command Layer**. Copy and paste these exact commands into the Keystone CommandBar to test the system's end-to-end capabilities:
 
@@ -42,18 +73,7 @@ Keystone replaces UI clicks with a **Linguistic Command Layer**. Copy and paste 
 
 ---
 
-## 🏗️ Core Architecture (The "Diamond Merge")
-
-Built during the 10-day soonami Venturethon sprint, Keystone is a production-ready ecosystem:
-
-*   **Native Federated Agent System:** Orchestrated by a central State Machine, our 5 specialized agents (Lookup, Builder, Analysis, Transaction, Coordinator) handle logic natively within Next.js, backed by Neon Postgres persistent memory.
-*   **The Simulation Firewall:** Eradicates "blind signing". Every AI-generated payload is simulated on a mainnet fork via `connection.simulateTransaction`, outputting a human-readable visual diff.
-*   **Zero-Build Custom Runtime:** A highly secure `iframe` + Monaco + `esm.sh` sandbox that compiles TSX in the browser without local build steps.
-*   **Decentralized Marketplace:** Our `KeystoneMarket` Anchor smart contract (live on Solana devnet) mints License NFTs and trustlessly routes an 80/20 revenue split to mini-app developers. Code bundles are anchored immutably to Arweave via Irys.
-
----
-
-## 🛠️ Local Installation & Development
+## Local Installation & Development
 
 *Note: Because Keystone relies on a complex web of specific AI inference engines (Groq), database branching (Neon Postgres), and headless browser endpoints (Cloudflare), we highly recommend using the Live Deployments above for evaluation. If you wish to run it locally, follow these steps:*
 
@@ -80,7 +100,6 @@ Built during the 10-day soonami Venturethon sprint, Keystone is a production-rea
    ```bash
    cp .env.example .env.local
    ```
-   *Required keys include: `NEXT_PUBLIC_RPC_URL` (Helius/Solana), `GROQ_API_KEY` (AI Inference), `DATABASE_URL` (Neon Postgres).*
 
 4. **Run the development server:**
    ```bash
