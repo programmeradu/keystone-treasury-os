@@ -2,6 +2,7 @@
 
 # dependencies
 node_modules
+.netlify/
 /.pnp
 .pnp.*
 .yarn/*
@@ -42,3 +43,5 @@ next-env.d.ts
 
 # anchor / solana
 /target
+**/target/
+**/deploy/*-keypair.json

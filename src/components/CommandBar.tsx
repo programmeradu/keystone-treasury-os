@@ -39,6 +39,45 @@ function getToolParts(m: UIMessage) {
   }) || [];
 }
 
+function persistStudioProjectFromToolOutput(output: Record<string, unknown>): string | null {
+  try {
+    const filesRaw = output.files as Record<string, string> | undefined;
+    if (!filesRaw || typeof filesRaw !== "object") return null;
+
+    const appName = typeof output.name === "string" && output.name.trim()
+      ? output.name.trim()
+      : "Untitled Mini-App";
+    const appId = `cmd_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+    const creatorWallet = localStorage.getItem("keystone_wallet_id") || "Operator";
+
+    const codeFiles = Object.entries(filesRaw).reduce((acc, [name, content]) => {
+      acc[name] = { content: String(content ?? "") };
+      return acc;
+    }, {} as Record<string, { content: string }>);
+
+    const projectEntry = {
+      id: appId,
+      name: appName,
+      description: `Generated from command bar (${String(output.template || "react")})`,
+      code: { files: codeFiles },
+      creatorWallet,
+      version: "1.0.0",
+      isPublished: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    const existing = JSON.parse(localStorage.getItem("keystone_studio_projects") || "[]") as Array<Record<string, unknown>>;
+    existing.push(projectEntry);
+    localStorage.setItem("keystone_studio_projects", JSON.stringify(existing));
+
+    return appId;
+  } catch (err) {
+    console.warn("[CommandBar] Failed to persist studio project from tool output:", err);
+    return null;
+  }
+}
+
 // ─── Operation Metadata for Tool Invocation UI ─────────────────────
 const TOOL_META: Record<string, { label: string; color: string; icon: string }> = {
   swap: { label: "Swap", color: "text-blue-400", icon: "⚡" },
@@ -244,6 +283,17 @@ export function CommandBar() {
         if (part.state !== "output-available") continue;
         const output = part.output as Record<string, unknown> | undefined;
         if (!output) continue;
+
+        if (output.operation === "studio_init_miniapp") {
+          const appId = persistStudioProjectFromToolOutput(output);
+          setOpen(false);
+          if (appId) {
+            router.push(`/app/studio?appId=${encodeURIComponent(appId)}`);
+          } else {
+            router.push("/app/studio");
+          }
+          continue;
+        }
 
         if (output.navigateTo) {
           setOpen(false);
