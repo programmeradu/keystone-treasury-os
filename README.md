@@ -72,7 +72,7 @@ Keystone replaces UI clicks with a **Linguistic Command Layer**. Copy and paste 
 * **What happens:** Opens the Keystone Studio. The AI Architect streams custom React/TypeScript code character-by-character into the Monaco editor, running an "Ouroboros" loop to autonomously fix any compiler errors before rendering a live, sandboxed DeFi mini-app.
 
 ### 5. Execution Mode (Background Trading Tool)
-> *"mode:execute Run a sniper bot that watches Raydium for new liquidity pools above $50k and buys instantly with max slippage 0.5%"*
+> *"Run a sniper bot that watches Raydium for new liquidity pools above $50k and buys instantly with max slippage 0.5%"*
 * **What happens:** Keystone does **not** open Studio or build a mini-app. Instead, it routes the request to live execution tools (monitoring + trading), prepares the background trading workflow, runs simulation/firewall checks, and then asks for wallet approval before any transaction is signed.
 
 ---
