@@ -63,13 +63,30 @@ export const authClient = {
                 ? callbackPath
                 : `${window.location.origin}${callbackPath}`;
             const redirectTo = `${window.location.origin}/auth`;
-            const signInUrl = new URL('/api/auth/sign-in/social', window.location.origin);
-            signInUrl.searchParams.set('provider', opts.provider);
-            signInUrl.searchParams.set('callbackURL', callback);
-            signInUrl.searchParams.set('errorCallbackURL', redirectTo);
 
-            // Neon Auth social flow is redirect-based.
-            window.location.assign(signInUrl.toString());
+            // Neon Auth social flow expects POST; submit a form so browser can
+            // follow upstream redirects/cookie exchange correctly.
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/api/auth/sign-in/social';
+            form.style.display = 'none';
+
+            const fields: Record<string, string> = {
+                provider: opts.provider,
+                callbackURL: callback,
+                errorCallbackURL: redirectTo,
+            };
+
+            for (const [name, value] of Object.entries(fields)) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = name;
+                input.value = value;
+                form.appendChild(input);
+            }
+
+            document.body.appendChild(form);
+            form.submit();
         },
     },
     async signOut() {
