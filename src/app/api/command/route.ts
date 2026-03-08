@@ -91,7 +91,7 @@ CRITICAL RULES:
 2. For token swaps (e.g. "Swap 500 SOL to USDC", "Convert 100 USDC to JUP"): use the execute_swap tool. For bridges use the bridge tool. For multi-step flows use execute_swap and bridge together.
 3. For High-Yield Liquidity Deployment (e.g. "Execute yield-discovery..."): use browser_research and then yield_deposit tool.
 4. For Mass Dispatch or Payroll (e.g. "Execute a Mass Dispatch to the contributor list..."): use mass_dispatch tool.
-5. For Portfolio Rebalancing (e.g. "Maintain a 50/50 SOL-USDC asset split..."): use rebalance tool.
+5. For Portfolio Rebalancing (e.g. "Maintain a 50/50 SOL-USDC asset split...", "rebalance smartly"): use rebalance tool. If the user specifies target allocations, pass them. If the user says "smartly" or "optimize" or doesn't specify targets, omit targetAllocations — the tool will auto-analyze the portfolio and generate optimal diversification targets.
 6. For Multisig Quorum Execution (e.g. "Initiate a treasury proposal in the War Room..."): use multisig_proposal tool.
 7. For Predictive Runway Projection (e.g. "Visualize the treasury Depletion Node..."): use foresight_simulation tool (scenario: "runway_projection").
 8. For Market Shock Simulation (e.g. "Redraw the equity curve to show runway impact..."): use foresight_simulation tool (scenario: "market_shock").
@@ -485,25 +485,54 @@ Wallet State: ${JSON.stringify(walletState || {})}
       },
 
       rebalance: {
-        description: "Rebalance treasury portfolio to target allocations.",
+        description: "Rebalance treasury portfolio to target allocations. If targetAllocations is omitted or empty, auto-analyzes portfolio and generates smart diversification targets.",
         inputSchema: z.object({
-          targetAllocations: z.array(z.object({ token: z.string(), percentage: z.number() })).describe("Target portfolio split"),
+          targetAllocations: z.array(z.object({ token: z.string(), percentage: z.number() })).optional().default([]).describe("Target portfolio split. Leave empty for smart auto-rebalance."),
           tolerance: z.number().optional().default(5).describe("Tolerance % before rebalance triggers"),
         }),
         execute: async ({ targetAllocations, tolerance }: { targetAllocations: Array<{ token: string; percentage: number }>; tolerance: number }) => {
           console.log(`[Tool: rebalance] Targets: ${JSON.stringify(targetAllocations)}, tolerance: ${tolerance}%`);
+
+          if (!walletAddress) {
+            return {
+              success: false, operation: "rebalance", targetAllocations, tolerance,
+              trades: [], tradeCount: 0,
+              message: "Wallet not connected. Connect your wallet to rebalance your portfolio.",
+            };
+          }
+
+          const holdings = vaultState?.tokens || walletState?.balances || [];
+          const portfolioValue = Array.isArray(holdings) ? holdings.reduce((sum: number, t: any) => sum + ((t.amount || 0) * (t.price || 0) || t.usdValue || 0), 0) : 0;
+          if (portfolioValue === 0) {
+            return {
+              success: false, operation: "rebalance", targetAllocations, tolerance,
+              trades: [], tradeCount: 0,
+              message: "Portfolio balance is $0. Fund your wallet with tokens before rebalancing.",
+            };
+          }
+
           const coordinator = new ExecutionCoordinator(rpcEndpoint);
           const result = await coordinator.executeStrategy(
             "rebalance_portfolio" as any,
-            { targetAllocations, tolerance: tolerance || 5, currentHoldings: vaultState?.tokens || [], wallet: walletAddress },
+            { targetAllocations, tolerance: tolerance || 5, currentHoldings: holdings, wallet: walletAddress },
             walletAddress || null,
           );
 
           const trades = result.result?.trades || [];
           const serializedTransactions: string[] = result.result?.serializedTransactions || [];
 
+          if (!result.success) {
+            const errMsg = result.errors?.[0]?.message || "Rebalance strategy failed.";
+            return {
+              success: false, operation: "rebalance", targetAllocations, tolerance,
+              trades: [], tradeCount: 0,
+              status: result.status, executionId: result.executionId,
+              message: errMsg,
+            };
+          }
+
           return {
-            success: result.success, operation: "rebalance", targetAllocations, tolerance,
+            success: true, operation: "rebalance", targetAllocations, tolerance,
             trades, tradeCount: trades.length,
             serializedTransactions: serializedTransactions.length > 0 ? serializedTransactions : undefined,
             status: result.status, executionId: result.executionId,
@@ -776,11 +805,18 @@ Wallet State: ${JSON.stringify(walletState || {})}
           const tokenSource = vaultState?.tokens || walletState?.balances;
           const tokens: Array<{ symbol?: string; amount?: number; price?: number }> = Array.isArray(tokenSource) ? tokenSource : [];
           const computedBalance = tokens.reduce((sum, t) => sum + (t.amount || 0) * (t.price || 0), 0);
-          const usingFallback = computedBalance === 0;
-          const totalBalance = computedBalance || 100000;
-          console.log(`[foresight_simulation] Treasury balance: $${Math.round(totalBalance).toLocaleString()} (${usingFallback ? 'FALLBACK — no vault connected' : `LIVE — ${tokens.length} tokens`})`);
-          if (!usingFallback && tokens.length > 0) {
+          const totalBalance = computedBalance;
+          console.log(`[foresight_simulation] Treasury balance: $${Math.round(totalBalance).toLocaleString()} (${totalBalance === 0 ? 'NO BALANCE — vault is empty or not connected' : `LIVE — ${tokens.length} tokens`})`);
+          if (totalBalance > 0 && tokens.length > 0) {
             console.log(`[foresight_simulation] Top tokens:`, tokens.slice(0, 5).map(t => `${t.symbol}: ${t.amount} @ $${t.price}`));
+          }
+
+          if (totalBalance === 0) {
+            return {
+              success: false, operation: "foresight_simulation", scenario, variables, timeframeMonths,
+              dataSource: "none",
+              message: "Treasury balance is $0. Connect a vault with funded tokens to run simulations.",
+            };
           }
 
           if (scenario === "runway_projection") {
@@ -801,8 +837,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
               triggerVisualization: true, chartType: "depletion_node",
               projectedMonths, depletionDate: depletionDate.toISOString().split("T")[0],
               monthlyProjection: projection,
-              dataSource: usingFallback ? "assumed" : "live",
-              message: `Runway projection: ~${projectedMonths} months at $${monthlyBurn.toLocaleString()}/mo burn. Depletion ${depletionDate.toLocaleDateString()}.${usingFallback ? ' (Using estimated $100K balance — connect a vault for live data.)' : ''}`,
+              dataSource: "live",
+              message: `Runway projection: ~${projectedMonths} months at $${monthlyBurn.toLocaleString()}/mo burn. Depletion ${depletionDate.toLocaleDateString()}.`,
             };
           }
 
@@ -813,9 +849,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
             const rawUsdcDepeg = (variables.usdcDepeg as number) || 0;
             const usdcDepeg = rawUsdcDepeg > 1 ? rawUsdcDepeg / 100 : rawUsdcDepeg;
 
-            // If wallet has no real tokens (or all values are zero), synthesize a SOL-only portfolio from fallback balance
-            const tokensValue = tokens.reduce((s, t) => s + (t.amount || 0) * (t.price || 0), 0);
-            const effectiveTokens = tokensValue > 0 ? tokens : [{ symbol: "SOL", amount: totalBalance / 150, price: 150 }];
+            const effectiveTokens = tokens;
 
             const shockedTokens = effectiveTokens.map((t) => {
               let shockedPrice = t.price || 0;
@@ -843,8 +877,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
               originalBalance: Math.round(recalcOriginal), shockedBalance: Math.round(shockedTotal),
               drawdown: `${recalcOriginal > 0 ? (((recalcOriginal - shockedTotal) / recalcOriginal) * 100).toFixed(1) : '0.0'}%`,
               shockedRunwayMonths: shockedRunway, shockedTokens, monthlyProjection,
-              dataSource: usingFallback ? "assumed" : "live",
-              message: `Market shock: portfolio drops ${recalcOriginal > 0 ? (((recalcOriginal - shockedTotal) / recalcOriginal) * 100).toFixed(1) : '0.0'}% to $${Math.round(shockedTotal).toLocaleString()}. Runway: ~${shockedRunway}mo.${usingFallback ? ' (Using estimated $100K balance — connect a vault for live data.)' : ''}`,
+              dataSource: "live",
+              message: `Market shock: portfolio drops ${recalcOriginal > 0 ? (((recalcOriginal - shockedTotal) / recalcOriginal) * 100).toFixed(1) : '0.0'}% to $${Math.round(shockedTotal).toLocaleString()}. Runway: ~${shockedRunway}mo.`,
             };
           }
 
@@ -900,7 +934,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
               solPrice, costPerHire,
               monthlyProjection,
               dataSource: usingFallback ? "assumed" : "live",
-              message: parts.join(". ") + (usingFallback ? " (Using estimated $100K balance — connect a vault for live data.)" : ""),
+              message: parts.join(". "),
             };
           }
 

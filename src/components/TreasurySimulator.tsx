@@ -30,7 +30,7 @@ function parseCommand(command: string): { type: 'vesting' | 'yield' | 'risk' | '
 
 function extractAmount(text: string): number {
   const match = text.match(/(\\d+(?:\\.\\d+)?)(k|m)?/i);
-  if (!match) return 100000;
+  if (!match) return 0;
   let amt = parseFloat(match[1]);
   if (match[2]?.toLowerCase() === 'k') amt *= 1000;
   if (match[2]?.toLowerCase() === 'm') amt *= 1000000;

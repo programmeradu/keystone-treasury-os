@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
+import { auth } from '@/lib/auth/server';
 
 /**
  * Middleware: Dual auth session check + route protection.
@@ -11,6 +12,9 @@ import { jwtVerify } from 'jose';
  * - Public: /api/auth/*, /, /marketplace, /pricing, static assets
  * - Protected: /app/*, /api/studio/*, /api/agent/*
  */
+
+// Use a non-/auth loginUrl here so verifier exchange still runs when callback lands on /auth.
+const handleNeonAuth = auth.middleware({ loginUrl: '/auth/sign-in' });
 
 const SIWS_COOKIE = 'keystone-siws-session';
 
@@ -46,6 +50,13 @@ async function hasSiwsSession(request: NextRequest): Promise<boolean> {
 
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
+
+    // ─── Handle Neon Auth OAuth verifier exchange ────────────────────
+    // When returning from Google/Discord OAuth, the URL contains
+    // neon_auth_session_verifier which must be exchanged for session cookies
+    if (request.nextUrl.searchParams.has('neon_auth_session_verifier')) {
+        return handleNeonAuth(request);
+    }
 
     // ─── Skip public routes ─────────────────────────────────────────
     const publicPaths = [

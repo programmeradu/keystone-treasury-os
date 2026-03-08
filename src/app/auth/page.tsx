@@ -524,6 +524,29 @@ function AuthPageContent() {
         }
     }, [searchParams, addLog]);
 
+    // Social auth sessions (Neon) are separate from SIWS state.
+    // If a Neon session already exists, leave /auth immediately.
+    useEffect(() => {
+        let cancelled = false;
+
+        const redirectIfNeonSession = async () => {
+            try {
+                const { data, error } = await authClient.getSession();
+                if (!cancelled && !error && data?.session) {
+                    router.push('/app');
+                }
+            } catch {
+                // Ignore transient session check errors on auth page load.
+            }
+        };
+
+        redirectIfNeonSession();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [router]);
+
 
 
     const hasLoggedConnect = React.useRef(false);
@@ -594,7 +617,7 @@ function AuthPageContent() {
 
             await authClient.signIn.social({
                 provider,
-                callbackURL: `${window.location.origin}/api/auth/callback/neon`,
+                callbackURL: `${window.location.origin}/app`,
             });
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);

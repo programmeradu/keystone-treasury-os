@@ -4,7 +4,7 @@ import { RoomProvider } from "@/liveblocks.config";
 import { LiveCursors } from "@/components/LiveCursors";
 import { CollaborativeHeader } from "@/components/CollaborativeHeader";
 import { WalletButton } from "@/components/WalletButton";
-import { Suspense } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { useSelf } from "@/liveblocks.config";
 import { getAvatarUrl } from "@/lib/avatars";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -28,6 +28,14 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
             router.push(event.payload);
         }
     });
+
+    // Lazy sync Neon Auth user to DB on first load
+    const syncedRef = useRef(false);
+    useEffect(() => {
+        if (syncedRef.current) return;
+        syncedRef.current = true;
+        fetch('/api/auth/sync', { method: 'POST' }).catch(() => {});
+    }, []);
 
     return (
         <div

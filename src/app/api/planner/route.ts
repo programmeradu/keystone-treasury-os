@@ -213,7 +213,7 @@ export async function POST(req: NextRequest) {
             timing: { startedAt: stepStart, durationMs: Date.now() - stepStart },
           });
         } else if (t === "bridge") {
-          const amount = typeof params.amount === "number" ? params.amount : 100000; // default 100k
+          const amount = typeof params.amount === "number" ? params.amount : 0;
           const token = params.token || "USDC";
           const fromChain = params.fromChain || "ethereum";
           const toChain = params.toChain || constraints?.preferredChain || "base";

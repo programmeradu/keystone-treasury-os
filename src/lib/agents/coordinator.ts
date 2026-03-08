@@ -485,13 +485,79 @@ export class ExecutionCoordinator {
 
       // Resolve target allocations: [{ token, percentage }] → { mint: percent }
       const targets: Record<string, number> = {};
-      if (Array.isArray(input.targetAllocations)) {
+      if (Array.isArray(input.targetAllocations) && input.targetAllocations.length > 0) {
         for (const alloc of input.targetAllocations) {
           const symbol = (alloc.token || "").toUpperCase();
           targets[COMMON_MINTS[symbol] || alloc.token] = alloc.percentage;
         }
-      } else if (input.targets) {
+      } else if (input.targets && Object.keys(input.targets).length > 0) {
         Object.assign(targets, input.targets);
+      } else {
+        // ── Smart Auto-Rebalance: generate targets from current portfolio ──
+        this.log(context.executionId, "No target allocations provided — generating smart diversification targets...");
+
+        // Sort assets by value descending
+        const sorted = [...portfolio].sort((a, b) => b.totalUsdValue - a.totalUsdValue);
+
+        // Identify stablecoins vs volatile assets
+        const STABLECOIN_SYMBOLS = new Set(["USDC", "USDT", "USDH", "DAI", "PYUSD"]);
+        const stableAssets = sorted.filter(a => STABLECOIN_SYMBOLS.has(a.symbol.toUpperCase()));
+        const volatileAssets = sorted.filter(a => !STABLECOIN_SYMBOLS.has(a.symbol.toUpperCase()));
+
+        const stableValue = stableAssets.reduce((s, a) => s + a.totalUsdValue, 0);
+        const volatileValue = volatileAssets.reduce((s, a) => s + a.totalUsdValue, 0);
+        const stablePercent = (stableValue / totalValue) * 100;
+
+        // Strategy: reduce concentration risk
+        // Rule 1: No single asset should exceed 40% of portfolio
+        // Rule 2: Maintain at least 20% in stablecoins for safety
+        // Rule 3: Distribute excess from concentrated assets to underweight ones
+        const MAX_SINGLE_ASSET = 40;
+        const MIN_STABLE_RESERVE = 20;
+
+        // Start with current allocations
+        for (const asset of sorted) {
+          targets[asset.mint] = (asset.totalUsdValue / totalValue) * 100;
+        }
+
+        // Cap any asset over MAX_SINGLE_ASSET and redistribute
+        let surplus = 0;
+        const cappedMints: string[] = [];
+        for (const [mint, pct] of Object.entries(targets)) {
+          if (pct > MAX_SINGLE_ASSET) {
+            surplus += pct - MAX_SINGLE_ASSET;
+            targets[mint] = MAX_SINGLE_ASSET;
+            cappedMints.push(mint);
+          }
+        }
+
+        // If stables are below min reserve, redirect some surplus there
+        if (stablePercent < MIN_STABLE_RESERVE && surplus > 0) {
+          const stableDeficit = MIN_STABLE_RESERVE - stablePercent;
+          const toStable = Math.min(surplus, stableDeficit);
+          // Add to USDC (most liquid stable)
+          const usdcMint = COMMON_MINTS.USDC;
+          targets[usdcMint] = (targets[usdcMint] || 0) + toStable;
+          surplus -= toStable;
+        }
+
+        // Distribute remaining surplus equally among non-capped, non-stable assets
+        if (surplus > 0) {
+          const recipients = Object.keys(targets).filter(
+            m => !cappedMints.includes(m) && !stableAssets.some(a => a.mint === m)
+          );
+          if (recipients.length > 0) {
+            const each = surplus / recipients.length;
+            for (const m of recipients) {
+              targets[m] = (targets[m] || 0) + each;
+            }
+          } else {
+            // All assets are capped or stable — put surplus into USDC
+            targets[COMMON_MINTS.USDC] = (targets[COMMON_MINTS.USDC] || 0) + surplus;
+          }
+        }
+
+        this.log(context.executionId, `Smart targets generated: ${Object.entries(targets).map(([m, p]) => `${assetByMint[m]?.symbol || m.slice(0, 8)}: ${p.toFixed(1)}%`).join(", ")}`);
       }
 
       interface RebalanceOp {
