@@ -21,7 +21,7 @@ async function getOrCreateUserId(walletAddress: string) {
   }
   return userResult[0].id;
 }
-import { getTokenPrice, calculateNextExecution } from "@/lib/jupiter-executor";
+import { getTokenPrice, getBatchTokenPrices, calculateNextExecution } from "@/lib/jupiter-executor";
 import { checkRouteLimit } from "@/lib/rate-limit-middleware";
 
 export const dynamic = "force-dynamic";
@@ -60,12 +60,10 @@ export async function GET(req: Request) {
       const uniqueMints = Array.from(new Set(bots.map(bot => bot.buyTokenMint as string)));
       const priceMap = new Map<string, number>();
 
-      await Promise.all(
-        uniqueMints.map(async (mint) => {
-          const price = await getTokenPrice(mint as string);
-          priceMap.set(mint as string, price ?? 0);
-        })
-      );
+      const batchedPrices = await getBatchTokenPrices(uniqueMints);
+      for (const mint of uniqueMints) {
+        priceMap.set(mint, batchedPrices[mint] ?? 0);
+      }
 
       // Calculate current stats for each bot
       const botsWithStats = bots.map((bot) => {
