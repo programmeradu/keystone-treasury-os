@@ -38,8 +38,8 @@ function createStubHandler() {
         const headers = new Headers(request.headers);
         headers.delete('host');
         headers.delete('content-length');
-        // Avoid leaking deployment proxy host headers to Neon Auth.
-        // Better Auth may validate hostname from these forwarded values.
+        // Strip all proxy/forwarding headers so Neon Auth sees a clean
+        // request and uses its own Host header for origin validation.
         headers.delete('x-forwarded-host');
         headers.delete('x-forwarded-proto');
         headers.delete('x-forwarded-port');
@@ -48,11 +48,11 @@ function createStubHandler() {
         headers.delete('cf-connecting-ip');
         headers.delete('x-nf-client-connection-ip');
 
-        // Set forwarded values to the CLIENT origin so Better Auth's CSRF
-        // check sees x-forwarded-host matching the browser Origin header.
-        headers.set('x-forwarded-host', incoming.host);
-        headers.set('x-forwarded-proto', incoming.protocol.replace(':', ''));
-        headers.set('x-forwarded-port', incoming.port || (incoming.protocol === 'https:' ? '443' : '80'));
+        // Match Origin to the target so Better Auth's CSRF check passes
+        // (it compares Origin against the Host header, which fetch sets
+        // automatically to the target host).
+        headers.set('origin', target.origin);
+        headers.set('referer', target.origin + '/');
 
         const upstream = await fetch(target, {
             method,
