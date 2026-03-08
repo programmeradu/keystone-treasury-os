@@ -38,6 +38,15 @@ function createStubHandler() {
         const headers = new Headers(request.headers);
         headers.delete('host');
         headers.delete('content-length');
+        // Avoid leaking deployment proxy host headers to Neon Auth.
+        // Better Auth may validate hostname from these forwarded values.
+        headers.delete('x-forwarded-host');
+        headers.delete('x-forwarded-proto');
+        headers.delete('x-forwarded-port');
+        headers.delete('x-forwarded-for');
+        headers.delete('x-real-ip');
+        headers.delete('cf-connecting-ip');
+        headers.delete('x-nf-client-connection-ip');
 
         const upstream = await fetch(target, {
             method,
