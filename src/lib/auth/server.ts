@@ -22,7 +22,7 @@ function createStubMiddleware(_opts: { loginUrl: string }) {
 
 function createStubHandler() {
     const proxy = async (request: NextRequest) => {
-        const base = process.env.NEON_AUTH_BASE_URL;
+        const base = process.env.NEON_AUTH_BASE_URL || 'https://ep-plain-hill-alckyy0h.neonauth.c-3.eu-central-1.aws.neon.tech/neondb/auth';
         if (!base) {
             return NextResponse.json(
                 { error: 'NEON_AUTH_BASE_URL is not configured.' },
