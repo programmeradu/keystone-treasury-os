@@ -62,31 +62,37 @@ export const authClient = {
             const callback = callbackPath.startsWith('http')
                 ? callbackPath
                 : `${window.location.origin}${callbackPath}`;
-            const redirectTo = `${window.location.origin}/auth`;
+            const errorCallback = `${window.location.origin}/auth`;
 
-            // Neon Auth social flow expects POST; submit a form so browser can
-            // follow upstream redirects/cookie exchange correctly.
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/api/auth/sign-in/social';
-            form.style.display = 'none';
+            const res = await fetch('/api/auth/sign-in/social', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    provider: opts.provider,
+                    callbackURL: callback,
+                    errorCallbackURL: errorCallback,
+                }),
+                redirect: 'follow',
+            });
 
-            const fields: Record<string, string> = {
-                provider: opts.provider,
-                callbackURL: callback,
-                errorCallbackURL: redirectTo,
-            };
-
-            for (const [name, value] of Object.entries(fields)) {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = name;
-                input.value = value;
-                form.appendChild(input);
+            if (res.redirected) {
+                window.location.href = res.url;
+                return;
             }
 
-            document.body.appendChild(form);
-            form.submit();
+            // Better Auth returns { url, redirect } when Content-Type is JSON
+            const data = await res.json().catch(() => null);
+            const redirectUrl = data?.url || data?.redirect;
+            if (redirectUrl) {
+                window.location.href = redirectUrl;
+            }
+
+            // If the proxy returned a 3xx with Location header
+            const location = res.headers.get('location');
+            if (location) {
+                window.location.href = location;
+            }
         },
     },
     async signOut() {
