@@ -10,7 +10,6 @@ import { getJupiterQuote } from "@/lib/jupiter-executor";
 
 const groq = createGroq({
   apiKey: process.env.GROQ_API_KEY,
-  maxRetries: 0, // fail fast on 429 so fallback to Cloudflare runs instead of 3x retry
 });
 
 // Cloudflare Workers AI fallback — use openai-compatible provider so streaming works (createOpenAI returns v1-style and is rejected by AI SDK 5+)
@@ -31,6 +30,25 @@ const CLOUDFLARE_FALLBACK_MODELS = [
   "@cf/qwen/qwen2.5-coder-32b-instruct",
   "@cf/meta/llama-3.1-8b-instruct",
 ];
+
+// Rate-limit cooldown cache — skip providers that recently returned 429
+const rateLimitCooldown: Record<string, number> = {};
+
+function isRateLimited(providerKey: string): boolean {
+  const until = rateLimitCooldown[providerKey];
+  if (!until) return false;
+  if (Date.now() < until) return true;
+  delete rateLimitCooldown[providerKey]; // expired
+  return false;
+}
+
+function setRateLimitCooldown(providerKey: string, retryAfterSec?: number) {
+  // Default 2-minute cooldown; use retry-after header if available
+  const cooldownMs = (retryAfterSec ?? 120) * 1000;
+  rateLimitCooldown[providerKey] = Date.now() + cooldownMs;
+  const mins = Math.ceil(cooldownMs / 60000);
+  console.log(`[Command API] ${providerKey} rate-limited, skipping for ~${mins}min`);
+}
 
 const TOKEN_MINTS: Record<string, string> = {
   SOL: "So11111111111111111111111111111111111111112",
@@ -77,7 +95,7 @@ CRITICAL RULES:
 6. For Multisig Quorum Execution (e.g. "Initiate a treasury proposal in the War Room..."): use multisig_proposal tool.
 7. For Predictive Runway Projection (e.g. "Visualize the treasury Depletion Node..."): use foresight_simulation tool (scenario: "runway_projection").
 8. For Market Shock Simulation (e.g. "Redraw the equity curve to show runway impact..."): use foresight_simulation tool (scenario: "market_shock").
-9. For Variable Impact Analysis (e.g. "Simulate the impact on the Depletion Node if overhead increases..."): use foresight_simulation tool (scenario: "variable_impact").
+9. For Variable Impact Analysis (e.g. "Simulate the impact on the Depletion Node if overhead increases...", "what if I deposit X SOL and hire Y developers at Z SOL/mo"): use foresight_simulation tool (scenario: "variable_impact"). Extract: newHires (count), costPerHireSOL (SOL/mo cost per hire), depositSOL (SOL deposited), timeframeMonths from the user query. Example: "hire a developer for 3 months at 4 sol/mo" → { newHires: 1, costPerHireSOL: 4, timeframeMonths: 3 }. "deposit 100 SOL" → { depositSOL: 100 }.
 10. For Concentration Risk Assessment (e.g. "Trigger the Risk Radar visualization..."): use risk_assessment tool.
 11. For Yield Performance Forecast (e.g. "Project ending balances and APY..."): use foresight_simulation tool (scenario: "yield_forecast").
 12. For New Protocol Deep-Dive (e.g. "Study the new Meteora dynamic vault documentation..."): use browser_research tool.
@@ -742,7 +760,14 @@ Wallet State: ${JSON.stringify(walletState || {})}
         description: "Run a 'What If' simulation — runway projection, market shock, variable impact, yield forecast. Triggers Depletion Node visualization.",
         inputSchema: z.object({
           scenario: z.enum(["runway_projection", "market_shock", "variable_impact", "yield_forecast", "custom"]).describe("Simulation scenario type"),
-          variables: z.record(z.any()).describe("Scenario variables"),
+          variables: z.record(z.any()).describe(
+            "Scenario variables object. Keys depend on scenario: " +
+            "runway_projection: { monthlyBurn: number (USD/mo) }. " +
+            "market_shock: { solDrop: number (e.g. 0.3 for 30% or 30 for 30%), usdcDepeg?: number, monthlyBurn?: number }. " +
+            "variable_impact: { newHires?: number (count of new hires, default 0), costPerHire?: number (USD cost per hire/mo, default 8000), costPerHireSOL?: number (SOL cost per hire/mo — will be converted to USD at current price), monthlyBurn?: number (current USD burn/mo, default 15000), depositSOL?: number (additional SOL deposit to add to treasury), depositUSD?: number (additional USD deposit to add to treasury) }. " +
+            "yield_forecast: { apy: number (e.g. 0.08 for 8%), principal?: number (USD amount) }. " +
+            "IMPORTANT: When the user mentions hiring someone at X SOL/month, set newHires=1 and costPerHireSOL=X. When the user mentions depositing SOL, set depositSOL to that amount."
+          ),
           timeframeMonths: z.number().optional().default(12).describe("Projection timeframe in months"),
         }),
         execute: async ({ scenario, variables, timeframeMonths }: { scenario: string; variables: Record<string, any>; timeframeMonths: number }) => {
@@ -750,7 +775,13 @@ Wallet State: ${JSON.stringify(walletState || {})}
 
           const tokenSource = vaultState?.tokens || walletState?.balances;
           const tokens: Array<{ symbol?: string; amount?: number; price?: number }> = Array.isArray(tokenSource) ? tokenSource : [];
-          const totalBalance = tokens.reduce((sum, t) => sum + (t.amount || 0) * (t.price || 0), 0) || 100000;
+          const computedBalance = tokens.reduce((sum, t) => sum + (t.amount || 0) * (t.price || 0), 0);
+          const usingFallback = computedBalance === 0;
+          const totalBalance = computedBalance || 100000;
+          console.log(`[foresight_simulation] Treasury balance: $${Math.round(totalBalance).toLocaleString()} (${usingFallback ? 'FALLBACK — no vault connected' : `LIVE — ${tokens.length} tokens`})`);
+          if (!usingFallback && tokens.length > 0) {
+            console.log(`[foresight_simulation] Top tokens:`, tokens.slice(0, 5).map(t => `${t.symbol}: ${t.amount} @ $${t.price}`));
+          }
 
           if (scenario === "runway_projection") {
             const monthlyBurn = (variables.monthlyBurn as number) || 15000;
@@ -770,45 +801,106 @@ Wallet State: ${JSON.stringify(walletState || {})}
               triggerVisualization: true, chartType: "depletion_node",
               projectedMonths, depletionDate: depletionDate.toISOString().split("T")[0],
               monthlyProjection: projection,
-              message: `Runway projection: ~${projectedMonths} months at $${monthlyBurn.toLocaleString()}/mo burn. Depletion ${depletionDate.toLocaleDateString()}.`,
+              dataSource: usingFallback ? "assumed" : "live",
+              message: `Runway projection: ~${projectedMonths} months at $${monthlyBurn.toLocaleString()}/mo burn. Depletion ${depletionDate.toLocaleDateString()}.${usingFallback ? ' (Using estimated $100K balance — connect a vault for live data.)' : ''}`,
             };
           }
 
           if (scenario === "market_shock") {
-            const solDrop = (variables.solDrop as number) || 0.5;
-            const usdcDepeg = (variables.usdcDepeg as number) || 0;
-            const shockedTokens = tokens.map((t) => {
+            // Normalize: if > 1 treat as percentage (e.g. 10 → 0.10), else use as-is (0.1 → 0.10)
+            const rawSolDrop = (variables.solDrop as number) || 0.3;
+            const solDrop = rawSolDrop > 1 ? rawSolDrop / 100 : rawSolDrop;
+            const rawUsdcDepeg = (variables.usdcDepeg as number) || 0;
+            const usdcDepeg = rawUsdcDepeg > 1 ? rawUsdcDepeg / 100 : rawUsdcDepeg;
+
+            // If wallet has no real tokens (or all values are zero), synthesize a SOL-only portfolio from fallback balance
+            const tokensValue = tokens.reduce((s, t) => s + (t.amount || 0) * (t.price || 0), 0);
+            const effectiveTokens = tokensValue > 0 ? tokens : [{ symbol: "SOL", amount: totalBalance / 150, price: 150 }];
+
+            const shockedTokens = effectiveTokens.map((t) => {
               let shockedPrice = t.price || 0;
               if (t.symbol?.toUpperCase() === "SOL" || t.symbol?.toUpperCase() === "WSOL") shockedPrice *= (1 - solDrop);
               if (t.symbol?.toUpperCase() === "USDC") shockedPrice *= (1 - usdcDepeg);
               return { symbol: t.symbol, amount: t.amount || 0, originalPrice: t.price || 0, shockedPrice, shockedValue: (t.amount || 0) * shockedPrice };
             });
+            const recalcOriginal = effectiveTokens.reduce((s, t) => s + (t.amount || 0) * (t.price || 0), 0);
             const shockedTotal = shockedTokens.reduce((s, t) => s + t.shockedValue, 0);
             const monthlyBurn = (variables.monthlyBurn as number) || 15000;
             const shockedRunway = Math.ceil(shockedTotal / monthlyBurn);
+
+            // Build a month-by-month projection for inline chart
+            const monthlyProjection: Array<{ month: number; original: number; shocked: number }> = [];
+            let origBalance = recalcOriginal;
+            let shockBalance = shockedTotal;
+            for (let i = 0; i <= timeframeMonths; i++) {
+              monthlyProjection.push({ month: i, original: Math.round(origBalance), shocked: Math.round(shockBalance) });
+              origBalance = Math.max(0, origBalance - monthlyBurn);
+              shockBalance = Math.max(0, shockBalance - monthlyBurn);
+            }
             return {
               success: true, operation: "foresight_simulation", scenario, variables, timeframeMonths,
               triggerVisualization: true, chartType: "equity_curve",
-              originalBalance: Math.round(totalBalance), shockedBalance: Math.round(shockedTotal),
-              drawdown: `${(((totalBalance - shockedTotal) / totalBalance) * 100).toFixed(1)}%`,
-              shockedRunwayMonths: shockedRunway, shockedTokens,
-              message: `Market shock: portfolio drops ${(((totalBalance - shockedTotal) / totalBalance) * 100).toFixed(1)}% to $${Math.round(shockedTotal).toLocaleString()}. Runway: ~${shockedRunway}mo.`,
+              originalBalance: Math.round(recalcOriginal), shockedBalance: Math.round(shockedTotal),
+              drawdown: `${recalcOriginal > 0 ? (((recalcOriginal - shockedTotal) / recalcOriginal) * 100).toFixed(1) : '0.0'}%`,
+              shockedRunwayMonths: shockedRunway, shockedTokens, monthlyProjection,
+              dataSource: usingFallback ? "assumed" : "live",
+              message: `Market shock: portfolio drops ${recalcOriginal > 0 ? (((recalcOriginal - shockedTotal) / recalcOriginal) * 100).toFixed(1) : '0.0'}% to $${Math.round(shockedTotal).toLocaleString()}. Runway: ~${shockedRunway}mo.${usingFallback ? ' (Using estimated $100K balance — connect a vault for live data.)' : ''}`,
             };
           }
 
           if (scenario === "variable_impact") {
             const newHires = (variables.newHires as number) || 0;
-            const costPerHire = (variables.costPerHire as number) || 8000;
+
+            // Support SOL-denominated cost: convert to USD using current SOL price
+            const solToken = tokens.find((t) => t.symbol?.toUpperCase() === "SOL" || t.symbol?.toUpperCase() === "WSOL");
+            const solPrice = solToken?.price || 150; // fallback SOL price
+            const costPerHireSOL = (variables.costPerHireSOL as number) || 0;
+            const costPerHire = costPerHireSOL > 0 ? Math.round(costPerHireSOL * solPrice) : ((variables.costPerHire as number) || 8000);
+
+            // Support deposits (SOL or USD)
+            const depositSOL = (variables.depositSOL as number) || 0;
+            const depositUSD = (variables.depositUSD as number) || 0;
+            const depositValue = depositSOL * solPrice + depositUSD;
+
             const currentBurn = (variables.monthlyBurn as number) || 15000;
             const newBurn = currentBurn + newHires * costPerHire;
-            const originalRunway = Math.ceil(totalBalance / currentBurn);
-            const newRunway = Math.ceil(totalBalance / newBurn);
+            const effectiveBalance = totalBalance + depositValue;
+            const originalRunway = currentBurn > 0 ? Math.ceil(totalBalance / currentBurn) : 999;
+            const newRunway = newBurn > 0 ? Math.ceil(effectiveBalance / newBurn) : 999;
+
+            // Build month-by-month projection for inline chart
+            const monthlyProjection: Array<{ month: number; original: number; projected: number }> = [];
+            let origBal = totalBalance;
+            let newBal = effectiveBalance;
+            for (let i = 0; i <= timeframeMonths; i++) {
+              monthlyProjection.push({ month: i, original: Math.round(origBal), projected: Math.round(newBal) });
+              origBal = Math.max(0, origBal - currentBurn);
+              newBal = Math.max(0, newBal - newBurn);
+            }
+
+            // Build descriptive message
+            const parts: string[] = [];
+            if (depositValue > 0) {
+              parts.push(`Depositing ${depositSOL > 0 ? `${depositSOL} SOL (~$${Math.round(depositValue).toLocaleString()})` : `$${Math.round(depositValue).toLocaleString()}`} increases treasury to $${Math.round(effectiveBalance).toLocaleString()}`);
+            }
+            if (newHires > 0) {
+              const costLabel = costPerHireSOL > 0 ? `${costPerHireSOL} SOL (~$${costPerHire.toLocaleString()})` : `$${costPerHire.toLocaleString()}`;
+              parts.push(`Adding ${newHires} hire(s) at ${costLabel}/mo increases burn to $${newBurn.toLocaleString()}/mo`);
+            }
+            parts.push(`Runway: ${originalRunway}mo → ${newRunway}mo`);
+
             return {
               success: true, operation: "foresight_simulation", scenario, variables, timeframeMonths,
               triggerVisualization: true, chartType: "depletion_node",
               originalBurn: currentBurn, newBurn, originalRunway, newRunway,
+              effectiveBalance: Math.round(effectiveBalance),
+              originalBalance: Math.round(totalBalance),
+              depositValue: Math.round(depositValue),
               impactMonths: originalRunway - newRunway,
-              message: `Adding ${newHires} hire(s) at $${costPerHire.toLocaleString()}/mo increases burn to $${newBurn.toLocaleString()}/mo. Runway shrinks from ${originalRunway}mo → ${newRunway}mo.`,
+              solPrice, costPerHire,
+              monthlyProjection,
+              dataSource: usingFallback ? "assumed" : "live",
+              message: parts.join(". ") + (usingFallback ? " (Using estimated $100K balance — connect a vault for live data.)" : ""),
             };
           }
 
@@ -1403,71 +1495,125 @@ Wallet State: ${JSON.stringify(walletState || {})}
       );
     }
 
-    // Probe first chunk of stream so we catch provider errors (e.g. Groq 429) server-side and can try fallback
-    async function probeAndReturnStream(
-      response: Response,
-      modelName: string,
-    ): Promise<Response> {
-      const body = response.body;
-      if (!body) return response;
-      const reader = body.getReader();
-      const { value: firstChunk, done } = await reader.read();
-      if (done && !firstChunk) return response;
-      const text = firstChunk ? new TextDecoder().decode(firstChunk) : "";
-      if (
-        /rate_limit|rate limit|429|maxRetriesExceeded|rate_limit_exceeded|limit reached/i.test(text)
-      ) {
-        reader.releaseLock();
-        throw new Error(`Provider error in stream: ${text.slice(0, 200)}`);
-      }
-      const stream = new ReadableStream({
-        start(controller) {
-          if (firstChunk) controller.enqueue(firstChunk);
-          (async () => {
-            try {
-              while (true) {
-                const { value, done: d } = await reader.read();
-                if (d) break;
-                if (value) controller.enqueue(value);
-              }
-            } finally {
-              reader.releaseLock();
-            }
-            controller.close();
-          })();
-        },
-      });
-      return new Response(stream, {
-        headers: response.headers,
-        status: response.status,
-      });
+    function extractRetryAfter(msg: string): number | undefined {
+      const m = msg.match(/try again in (?:(\d+)h)?(?:(\d+)m)?(?:([\d.]+)s)?/i);
+      if (!m) return undefined;
+      return (parseInt(m[1] || "0") * 3600) + (parseInt(m[2] || "0") * 60) + parseFloat(m[3] || "0");
+    }
+
+    function detectRateLimit(err: unknown): boolean {
+      const msg = err instanceof Error ? err.message : String(err);
+      const reason = (err as { reason?: string })?.reason;
+      return (
+        msg.includes("Rate limit") ||
+        msg.includes("rate_limit") ||
+        msg.includes("429") ||
+        msg.includes("maxRetriesExceeded") ||
+        msg.includes("Provider error in stream") ||
+        reason === "maxRetriesExceeded" ||
+        (err as Error)?.name === "AI_RetryError" ||
+        (err as Error)?.name === "AI_APICallError"
+      );
     }
 
     let lastError: unknown = null;
-    for (const { name, model } of modelChain) {
+    for (let i = 0; i < modelChain.length; i++) {
+      const { name, model } = modelChain[i];
+      // Skip providers that are in rate-limit cooldown
+      if (isRateLimited(name)) {
+        console.log(`[Command API] Skipping ${name} (rate-limited, cooldown active)`);
+        continue;
+      }
       try {
-        const result = streamText({ ...streamOptions, model });
+        console.log(`[Command API] Trying model: ${name}`);
+        const result = streamText({ ...streamOptions, model, maxRetries: 0 });
+
+        // The AI SDK throws provider errors (e.g. 429) asynchronously.
+        // The error surfaces on result.text / result.response promises, NOT on reader.read().
+        // We race the first UI stream chunk against the error promise to catch it.
         const response = result.toUIMessageStreamResponse();
-        const probed = await probeAndReturnStream(response, name);
+        const body = response.body;
+        if (!body) {
+          if (name !== "groq/llama-3.3-70b-versatile") {
+            console.log(`[Command API] Using fallback model: ${name}`);
+          }
+          return response;
+        }
+
+        const reader = body.getReader();
+
+        // Race: first stream chunk vs provider error
+        // result.response rejects if the provider returns an error (429, etc.)
+        const errorPromise = Promise.resolve(result.response).then(() => null, (e: unknown) => e);
+        const chunkPromise = reader.read();
+
+        const raceResult = await Promise.race([
+          chunkPromise.then(r => ({ type: "chunk" as const, ...r })),
+          errorPromise.then((e: unknown) => e ? { type: "error" as const, error: e } : null),
+        ].filter(Boolean));
+
+        if (raceResult && typeof raceResult === "object" && "type" in raceResult) {
+          if (raceResult.type === "error") {
+            reader.releaseLock();
+            throw (raceResult as { error: unknown }).error;
+          }
+        }
+
+        // First chunk arrived successfully. Also check for inline error content.
+        const firstRead = raceResult as { type: "chunk"; value?: Uint8Array; done: boolean };
+        if (firstRead.value) {
+          const text = new TextDecoder().decode(firstRead.value);
+          if (/rate.?limit|429|rate_limit_exceeded|limit reached/i.test(text) && text.length < 500) {
+            reader.releaseLock();
+            throw new Error(`Provider stream error from ${name}: ${text.slice(0, 300)}`);
+          }
+        }
+
+        // Provider is confirmed working — re-assemble the stream
+        const finalStream = new ReadableStream({
+          start(controller) {
+            if (firstRead.value) controller.enqueue(firstRead.value);
+            if (firstRead.done) {
+              controller.close();
+              return;
+            }
+            (async () => {
+              try {
+                while (true) {
+                  const { value, done } = await reader.read();
+                  if (done) break;
+                  if (value) controller.enqueue(value);
+                }
+              } finally {
+                reader.releaseLock();
+              }
+              controller.close();
+            })();
+          },
+        });
+
         if (name !== "groq/llama-3.3-70b-versatile") {
           console.log(`[Command API] Using fallback model: ${name}`);
         }
-        return probed;
+        return new Response(finalStream, {
+          headers: response.headers,
+          status: response.status,
+        });
       } catch (err) {
         lastError = err;
         const msg = err instanceof Error ? err.message : String(err);
-        const reason = (err as { reason?: string })?.reason;
-        const isRateLimit =
-          msg.includes("Rate limit") ||
-          msg.includes("429") ||
-          msg.includes("maxRetriesExceeded") ||
-          msg.includes("Provider error in stream") ||
-          reason === "maxRetriesExceeded" ||
-          (err as Error)?.name === "AI_RetryError";
+        const rl = detectRateLimit(err);
+        if (rl) {
+          setRateLimitCooldown(name, extractRetryAfter(msg));
+        }
         console.warn(
-          `[Command API] ${name} failed${isRateLimit ? " (rate limit/retries)" : ""}: ${msg.slice(0, 200)}`,
+          `[Command API] ${name} failed${rl ? " (rate limit)" : ""}: ${msg.slice(0, 300)}`,
         );
-        console.log(`[Command API] Trying next model in fallback chain...`);
+        if (i < modelChain.length - 1) {
+          console.log(`[Command API] Trying next model in fallback chain...`);
+        } else {
+          console.error(`[Command API] All ${modelChain.length} models exhausted.`);
+        }
       }
     }
 

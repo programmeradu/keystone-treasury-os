@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Sparkles } from "@/components/icons";
-import { Check, AlertTriangle, Loader2, Shield, Send, Bot, User, Pen, ExternalLink } from "lucide-react";
+import { Check, AlertTriangle, Loader2, Shield, Send, Bot, User, Pen, ExternalLink, TrendingDown, TrendingUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { IntentRegistry } from "@/lib/agents/registry";
 import { useRouter } from "next/navigation";
@@ -14,6 +14,7 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import ReactMarkdown from "react-markdown";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { VersionedTransaction, Transaction } from "@solana/web3.js";
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip, ReferenceLine } from "recharts";
 
 // Token symbols for logo injection (longest first for regex)
 const TOKEN_SYMBOLS_FOR_LOGOS = [
@@ -230,7 +231,10 @@ export function CommandBar() {
     transport,
     onError: (e: Error) => {
       console.error("[CommandBar] Stream error:", e);
-      toast.error("Agent Error", { description: e.message });
+      // Suppress rate-limit / provider fallback errors — server handles these transparently
+      const msg = e.message || '';
+      if (/rate.?limit|429|retry|provider|groq|cloudflare/i.test(msg)) return;
+      toast.error("Agent Error", { description: msg });
     },
     onFinish: ({ message }) => {
       for (const part of getToolParts(message)) {
@@ -239,10 +243,12 @@ export function CommandBar() {
         if (!output) continue;
 
         if (output.navigateTo) {
+          setOpen(false);
           router.push(output.navigateTo as string);
         }
 
         if (output.operation === "navigate" && output.path) {
+          setOpen(false);
           router.push(output.path as string);
         }
 
@@ -253,7 +259,11 @@ export function CommandBar() {
           const simVariables = foresightVariablesToSimulationVariables(variablesRecord);
 
           simStore.startSimulation(scenario, simVariables, timeframeMonths);
-          router.push("/app/analytics");
+          // Delay navigation so users can see the inline chart preview before navigating
+          setTimeout(() => {
+            setOpen(false);
+            router.push("/app/analytics");
+          }, 4500);
           toast.loading("Running foresight simulation...", {
             id: "foresight-sim",
             description: scenario,
@@ -343,7 +353,8 @@ export function CommandBar() {
         await sendMessage({ text }, {
           body: {
             walletAddress: publicKey?.toBase58() || "",
-            walletState: { balances: vaultTokens || {} },
+            vaultState: { tokens: vaultTokens || [] },
+            walletState: { balances: vaultTokens || [] },
           },
         });
       } catch (err) {
@@ -415,6 +426,182 @@ export function CommandBar() {
             {result.error && (
               <p className="text-[11px] text-red-400 leading-relaxed">{result.error}</p>
             )}
+            {/* ── Foresight Simulation: Inline Mini Chart ── */}
+            {toolName === "foresight_simulation" && success && (() => {
+              const chartType = result.chartType as string;
+              const projection = result.monthlyProjection as Array<Record<string, number>> | undefined;
+
+              // Market Shock: dual-line (original vs shocked)
+              if (chartType === "equity_curve" && projection && projection.length > 0) {
+                const drawdown = result.drawdown as string;
+                const origBal = result.originalBalance as number;
+                const shockBal = result.shockedBalance as number;
+                return (
+                  <div className="mt-2 space-y-2">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <div className="flex items-center gap-1.5">
+                        <TrendingDown size={12} className="text-red-400" />
+                        <span className="text-red-400 font-bold">−{drawdown}</span>
+                        <span className="text-muted-foreground">drawdown</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-[9px] font-mono">
+                        <span className="flex items-center gap-1"><span className="w-2 h-0.5 bg-emerald-400 rounded-full inline-block" /> ${origBal?.toLocaleString()}</span>
+                        <span className="flex items-center gap-1"><span className="w-2 h-0.5 bg-red-400 rounded-full inline-block" /> ${shockBal?.toLocaleString()}</span>
+                      </div>
+                    </div>
+                    <div className="h-[100px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={projection} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                          <defs>
+                            <linearGradient id="foresightOriginal" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#34d399" stopOpacity={0.3} />
+                              <stop offset="100%" stopColor="#34d399" stopOpacity={0} />
+                            </linearGradient>
+                            <linearGradient id="foresightShocked" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#f87171" stopOpacity={0.3} />
+                              <stop offset="100%" stopColor="#f87171" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <XAxis dataKey="month" tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} tickFormatter={(v: number) => `M${v}`} />
+                          <YAxis hide domain={[0, 'auto']} />
+                          <RechartsTooltip
+                            contentStyle={{ background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 10, padding: '4px 8px' }}
+                            labelFormatter={(v: number) => `Month ${v}`}
+                            formatter={(value: number, name: string) => [`$${value.toLocaleString()}`, name === 'original' ? 'Baseline' : 'Shocked']}
+                          />
+                          <Area type="monotone" dataKey="original" stroke="#34d399" strokeWidth={1.5} fill="url(#foresightOriginal)" dot={false} />
+                          <Area type="monotone" dataKey="shocked" stroke="#f87171" strokeWidth={1.5} fill="url(#foresightShocked)" dot={false} />
+                          <ReferenceLine y={0} stroke="#ffffff10" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Variable Impact: dual-line (original vs projected) when both keys present
+              if (chartType === "depletion_node" && projection && projection.length > 0 && projection[0]?.projected !== undefined) {
+                const origRunway = result.originalRunway as number;
+                const newRunway = result.newRunway as number;
+                const diff = origRunway - newRunway;
+                const improved = diff < 0;
+                return (
+                  <div className="mt-2 space-y-2">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <div className="flex items-center gap-1.5">
+                        {improved ? <TrendingUp size={12} className="text-emerald-400" /> : <TrendingDown size={12} className="text-amber-400" />}
+                        <span className={improved ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>
+                          {improved ? `+${Math.abs(diff)}mo` : `−${Math.abs(diff)}mo`}
+                        </span>
+                        <span className="text-muted-foreground">runway impact</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-[9px] font-mono">
+                        <span className="flex items-center gap-1"><span className="w-2 h-0.5 bg-white/40 rounded-full inline-block" /> Current</span>
+                        <span className="flex items-center gap-1"><span className="w-2 h-0.5 bg-emerald-400 rounded-full inline-block" /> Projected</span>
+                      </div>
+                    </div>
+                    <div className="h-[100px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={projection} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                          <defs>
+                            <linearGradient id="foresightOrigVI" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#94a3b8" stopOpacity={0.2} />
+                              <stop offset="100%" stopColor="#94a3b8" stopOpacity={0} />
+                            </linearGradient>
+                            <linearGradient id="foresightProjVI" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#34d399" stopOpacity={0.3} />
+                              <stop offset="100%" stopColor="#34d399" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <XAxis dataKey="month" tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} tickFormatter={(v: number) => `M${v}`} />
+                          <YAxis hide domain={[0, 'auto']} />
+                          <RechartsTooltip
+                            contentStyle={{ background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 10, padding: '4px 8px' }}
+                            labelFormatter={(v: number) => `Month ${v}`}
+                            formatter={(value: number, name: string) => [`$${value.toLocaleString()}`, name === 'original' ? 'Current' : 'Projected']}
+                          />
+                          <Area type="monotone" dataKey="original" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 2" fill="url(#foresightOrigVI)" dot={false} />
+                          <Area type="monotone" dataKey="projected" stroke="#34d399" strokeWidth={1.5} fill="url(#foresightProjVI)" dot={false} />
+                          <ReferenceLine y={0} stroke="#ffffff10" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Runway Projection / Yield Forecast: single area chart
+              if ((chartType === "depletion_node" || chartType === "yield_curve") && projection && projection.length > 0) {
+                const isYield = chartType === "yield_curve";
+                const color = isYield ? "#34d399" : "#f59e0b";
+                const label = isYield ? "Balance" : "Runway";
+                const valueKey = projection[0]?.balance !== undefined ? "balance" : "value";
+                return (
+                  <div className="mt-2 space-y-2">
+                    <div className="flex items-center gap-1.5 text-[10px]">
+                      {isYield ? <TrendingUp size={12} className="text-emerald-400" /> : <TrendingDown size={12} className="text-amber-400" />}
+                      <span className={isYield ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>{label}</span>
+                      <span className="text-muted-foreground">projection</span>
+                    </div>
+                    <div className="h-[80px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={projection} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                          <defs>
+                            <linearGradient id="foresightSingle" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+                              <stop offset="100%" stopColor={color} stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <XAxis dataKey="month" tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} tickFormatter={(v: number) => `M${v}`} />
+                          <YAxis hide domain={[0, 'auto']} />
+                          <RechartsTooltip
+                            contentStyle={{ background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 10, padding: '4px 8px' }}
+                            labelFormatter={(v: number) => `Month ${v}`}
+                            formatter={(value: number) => [`$${value.toLocaleString()}`, label]}
+                          />
+                          <Area type="monotone" dataKey={valueKey} stroke={color} strokeWidth={1.5} fill="url(#foresightSingle)" dot={false} />
+                          <ReferenceLine y={0} stroke="#ffffff10" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Fallback: summary stats grid
+              if (result.originalBalance || result.shockedBalance || result.projectedMonths || result.endingBalance) {
+                return (
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    {result.originalBalance != null && (
+                      <div className="text-center px-2 py-1.5 bg-white/5 rounded-lg">
+                        <div className="text-[9px] text-muted-foreground uppercase">Before</div>
+                        <div className="text-xs font-bold text-foreground">${Number(result.originalBalance).toLocaleString()}</div>
+                      </div>
+                    )}
+                    {result.shockedBalance != null && (
+                      <div className="text-center px-2 py-1.5 bg-red-500/10 rounded-lg">
+                        <div className="text-[9px] text-muted-foreground uppercase">After Shock</div>
+                        <div className="text-xs font-bold text-red-400">${Number(result.shockedBalance).toLocaleString()}</div>
+                      </div>
+                    )}
+                    {result.projectedMonths != null && (
+                      <div className="text-center px-2 py-1.5 bg-amber-500/10 rounded-lg">
+                        <div className="text-[9px] text-muted-foreground uppercase">Runway</div>
+                        <div className="text-xs font-bold text-amber-400">{result.projectedMonths}mo</div>
+                      </div>
+                    )}
+                    {result.endingBalance != null && (
+                      <div className="text-center px-2 py-1.5 bg-emerald-500/10 rounded-lg">
+                        <div className="text-[9px] text-muted-foreground uppercase">End Balance</div>
+                        <div className="text-xs font-bold text-emerald-400">${Number(result.endingBalance).toLocaleString()}</div>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              return null;
+            })()}
             {/* Swap: token logos + route */}
             {(toolName === "swap" || toolName === "execute_swap") && success && (result.inputToken || result.outputToken) && (
               <div className="flex items-center gap-2 flex-wrap mb-2">
