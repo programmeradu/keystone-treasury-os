@@ -101,6 +101,15 @@ function extractLatestUserText(messages: any[] | undefined, prompt?: string): st
   return "";
 }
 
+type PromptMode = "auto" | "build" | "execute";
+
+function parsePromptMode(userText: string): PromptMode {
+  const t = userText.trim().toLowerCase();
+  if (/^(mode\s*:\s*build|\/build\b|#build\b|\[build\]|build mode\b)/.test(t)) return "build";
+  if (/^(mode\s*:\s*execute|\/execute\b|#execute\b|\[execute\]|execute mode\b)/.test(t)) return "execute";
+  return "auto";
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -137,6 +146,10 @@ CRITICAL RULES:
 23. For price/threshold monitors: use set_monitor tool.
 24. For split intents like "bridge half" + "deposit the rest" after a swap: ALWAYS compute split amounts from the realized swap OUTPUT amount/token, never from the original input amount.
 25. If a target protocol has no eligible live vault, STOP and ask the user to choose a fallback protocol/token. Do not present the deposit as completed.
+26. If the user asks to build/create/develop software (bot/app/script/automation), do NOT execute live trading or treasury transaction tools.
+27. For software-build intents, use browser_research + studio_init_miniapp + studio_analyze_code/sdk_hooks as needed, then call navigate with path "/app/studio".
+28. Only use swap/bridge/transfer/stake/deposit/withdraw/rebalance/payroll/dca tools when the user explicitly requests financial execution, not implementation.
+29. Prompt mode support: mode:build (or /build) forces Studio workflow; mode:execute (or /execute) allows live execution tools; no prefix means auto-infer.
 
 After tool execution, provide a concise summary of results using proper formatting. Make sure you fully interpret and fulfill all 20 Keystone commands natively.
 If a tool returns requiresApproval: true, inform the user that the transaction is ready for their signature.
@@ -160,6 +173,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
 
     const userRequestText = extractLatestUserText(messages, prompt);
     const lowerUserRequest = userRequestText.toLowerCase();
+    const promptMode = parsePromptMode(userRequestText);
     const hasHalfDirective = /\bhalf\b/.test(lowerUserRequest);
     const hasRestDirective = /\b(rest|remaining|remainder)\b/.test(lowerUserRequest);
     const hasSplitBridgeDepositFlow =
@@ -168,6 +182,11 @@ Wallet State: ${JSON.stringify(walletState || {})}
       /\bdeposit\b/.test(lowerUserRequest) &&
       hasHalfDirective &&
       hasRestDirective;
+
+    const inferredBuildIntent =
+      /\b(build|create|develop|generate|initialize|make|code|prototype)\b/.test(lowerUserRequest) &&
+      /\b(bot|app|mini-?app|script|automation|agent)\b/.test(lowerUserRequest);
+    const isStudioBuildIntent = promptMode === "build" || (promptMode === "auto" && inferredBuildIntent);
 
     const executionState: {
       lastSwap: null | {
@@ -229,6 +248,18 @@ Wallet State: ${JSON.stringify(walletState || {})}
       return { amount: requestedAmount, adjusted: false as const, reason: undefined as string | undefined };
     };
 
+    const blockExecutionForBuildIntent = (operation: string) => {
+      if (!isStudioBuildIntent) return null;
+      return {
+        success: false,
+        operation,
+        status: "BLOCKED_IN_BUILD_MODE",
+        requiresApproval: false,
+        mode: promptMode,
+        message: "Build intent detected. Execution tools are blocked while scaffolding software. Use Studio tools and finish with navigate('/app/studio'). Use mode:execute to allow live execution tools.",
+      };
+    };
+
     // Tools as plain objects (avoids tool() wrapper overload issues with complex return types)
     const keystoneTools: any = {
       // ━━━━ PILLAR 1: Treasury Execution ━━━━
@@ -241,6 +272,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
           slippage: z.number().optional().default(0.5).describe("Slippage tolerance %"),
         }),
         execute: async ({ inputToken, outputToken, amount, slippage }: any) => {
+          const blocked = blockExecutionForBuildIntent("swap");
+          if (blocked) return blocked;
           console.log(`[Tool: swap] ${amount} ${inputToken} → ${outputToken}`);
           const inMint = resolveTokenMint(inputToken);
           const outMint = resolveTokenMint(outputToken);
@@ -292,6 +325,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
           slippage: z.number().optional().default(0.5).describe("Slippage tolerance in percent"),
         }),
         execute: async ({ inputToken, outputToken, amount, slippage }: { inputToken: string; outputToken: string; amount: number; slippage?: number }) => {
+          const blocked = blockExecutionForBuildIntent("execute_swap");
+          if (blocked) return blocked;
           console.log(`[Tool: execute_swap] ${amount} ${inputToken} → ${outputToken}`);
           const inMint = resolveTokenMint(inputToken);
           const outMint = resolveTokenMint(outputToken);
@@ -427,6 +462,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
           destinationChain: z.string().describe("Destination chain"),
         }),
         execute: async ({ token, amount, sourceChain, destinationChain }: { token: string; amount: number; sourceChain: string; destinationChain: string }) => {
+          const blocked = blockExecutionForBuildIntent("bridge");
+          if (blocked) return blocked;
           const splitAmount = resolveSplitAmount(token, amount);
           const finalAmount = splitAmount.amount;
           console.log(`[Tool: bridge] ${finalAmount} ${token}: ${sourceChain} → ${destinationChain}`);
@@ -520,6 +557,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
           protocol: z.string().describe("Protocol (kamino, meteora, marinade, raydium)"),
         }),
         execute: async ({ token, amount, protocol }: { token: string; amount: number; protocol: string }) => {
+          const blocked = blockExecutionForBuildIntent("yield_deposit");
+          if (blocked) return blocked;
           const splitAmount = resolveSplitAmount(token, amount);
           const finalAmount = splitAmount.amount;
           console.log(`[Tool: yield_deposit] ${finalAmount} ${token} → ${protocol}`);
@@ -1332,6 +1371,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
             files,
             fileCount: Object.keys(files).length,
             entrypoint: "App.tsx",
+            navigateTo: "/app/studio",
             message: `Mini-App "${name}" initialized with ${template} template (${Object.keys(files).length} files). esm.sh import maps configured.`,
           };
         },

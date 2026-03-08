@@ -208,6 +208,7 @@ function localParsePlan(prompt: string): StrategyPlan | null {
     team: "/app/team", members: "/app/team",
     settings: "/app/settings", config: "/app/settings",
     analytics: "/app/analytics", foresight: "/app/analytics",
+    studio: "/app/studio",
   };
   const navMatch = lower.match(/(?:go\s+to|show|open|navigate\s+to|view)\s+(\w+)/i);
   if (navMatch) {
@@ -420,7 +421,7 @@ Operations:
 - "yield_withdraw": Withdraw assets from a lending protocol (parameters: protocol, token, amount)
 - "monitor": Set a persistent alert or rule (parameters: type ["PRICE"|"BALANCE"], target, operator [">"|"<"], value).
 - "plugin_register": Add a new protocol to Keystone (parameters: name, programId, description, operations [{name, description, parameters}]). Use this when user says "Register/Learn protocol X".
-- "navigate": Move to a different page in Keystone (parameters: path). Target paths: "/app" (Dashboard), "/app/team", "/app/settings", "/app/analytics".
+- "navigate": Move to a different page in Keystone (parameters: path). Target paths: "/app" (Dashboard), "/app/team", "/app/settings", "/app/analytics", "/app/studio".
 - "refresh": Sync the vault data and update the dashboard.
 - "ui_query": Answer questions about the user's current data (parameters: query).
 - "governance_list": List all pending team proposals and their status.
@@ -439,6 +440,7 @@ You can learn ANY new protocol seamlessly using the "Infinite Discovery Stack":
 2. Use **r.jina.ai/[URL]** for instant markdown conversion of a specific documentation page.
 3. Use **Firecrawl** if a single page is insufficient (e.g., complex GitBooks) to recursively crawl the entire site for all technical instructions.
 Action: First "plugin_register" the learned capabilities, then execute.
+Build-mode policy: If the user asks to build/create/develop code (bot/app/script/automation), do not plan live transaction operations (swap/bridge/transfer/stake/yield/rebalance/dca). Plan research + studio initialization + code analysis/hooks, then include a final navigate action to "/app/studio".
 For rebalance, always include a targetAllocations object like: { "SOL": 50, "USDC": 30, "JUP": 20 }${pluginContext}`;
 
   // ─── Recall prior knowledge for context ──────────────────────────
