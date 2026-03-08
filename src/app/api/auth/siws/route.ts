@@ -10,8 +10,15 @@ const COOKIE_NAME = 'keystone-siws-session';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 function getJwtSecret() {
-    const secret = process.env.JWT_SECRET || 'keystone_sovereign_os_2026';
-    return new TextEncoder().encode(secret);
+    let secretText = process.env.JWT_SECRET;
+    if (!secretText) {
+        if (process.env.npm_lifecycle_event === 'build') {
+            secretText = 'build_placeholder';
+        } else {
+            throw new Error('JWT_SECRET environment variable is not set');
+        }
+    }
+    return new TextEncoder().encode(secretText);
 }
 
 /**

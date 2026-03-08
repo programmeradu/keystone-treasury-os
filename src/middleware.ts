@@ -34,9 +34,16 @@ async function hasSiwsSession(request: NextRequest): Promise<boolean> {
     if (!token) return false;
 
     try {
-        const secret = new TextEncoder().encode(
-            process.env.JWT_SECRET || 'keystone_sovereign_os_2026'
-        );
+        let secretText = process.env.JWT_SECRET;
+        if (!secretText) {
+            if (process.env.npm_lifecycle_event === 'build') {
+                secretText = 'build_placeholder';
+            } else {
+                console.error('[Middleware] JWT_SECRET is not set');
+                return false;
+            }
+        }
+        const secret = new TextEncoder().encode(secretText);
         await jwtVerify(token, secret, { issuer: 'keystone-treasury-os' });
         return true;
     } catch {
