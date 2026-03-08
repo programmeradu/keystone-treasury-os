@@ -33,10 +33,16 @@ async function hasSiwsSession(request: NextRequest): Promise<boolean> {
     const token = request.cookies.get(SIWS_COOKIE)?.value;
     if (!token) return false;
 
+    if (!process.env.JWT_SECRET) {
+        // Do not crash during Next.js prerendering if middleware is evaluated
+        if (process.env.npm_lifecycle_event === 'build' || process.env.NEXT_PHASE === 'phase-production-build') {
+            return false;
+        }
+        throw new Error('JWT_SECRET is not configured.');
+    }
+
     try {
-        const secret = new TextEncoder().encode(
-            process.env.JWT_SECRET || 'keystone_sovereign_os_2026'
-        );
+        const secret = new TextEncoder().encode(process.env.JWT_SECRET);
         await jwtVerify(token, secret, { issuer: 'keystone-treasury-os' });
         return true;
     } catch {
