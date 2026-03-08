@@ -230,10 +230,13 @@ export function CommandBar() {
   } = useChat({
     transport,
     onError: (e: Error) => {
-      console.error("[CommandBar] Stream error:", e);
-      // Suppress rate-limit / provider fallback errors — server handles these transparently
       const msg = e.message || '';
-      if (/rate.?limit|429|retry|provider|groq|cloudflare/i.test(msg)) return;
+      // Suppress transient provider/fallback errors to avoid false-alarm noise in the console.
+      if (/rate.?limit|429|retry|provider|groq|cloudflare|tool call validation failed|was not in request\.tools|invalid_request_error/i.test(msg)) {
+        console.warn("[CommandBar] Transient stream issue (auto-fallback/retry expected):", msg.slice(0, 220));
+        return;
+      }
+      console.error("[CommandBar] Stream error:", e);
       toast.error("Agent Error", { description: msg });
     },
     onFinish: ({ message }) => {

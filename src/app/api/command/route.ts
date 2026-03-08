@@ -110,6 +110,13 @@ function parsePromptMode(userText: string): PromptMode {
   return "auto";
 }
 
+function isSimpleConversation(text: string): boolean {
+  const t = text.trim().toLowerCase();
+  if (!t) return false;
+  if (t.length > 80) return false;
+  return /^(hi|hello|hey|yo|sup|gm|gn|good\s+morning|good\s+afternoon|good\s+evening|thanks|thank\s+you|ok|okay|cool|nice)\b[!.?\s]*$/.test(t);
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -121,7 +128,7 @@ export async function POST(req: Request) {
 You are NOT a chatbot. You are a Command-Layer Execution Engine.
 
 CRITICAL RULES:
-1. ALWAYS use tools to fulfill user intents. Never just describe what you would do — DO IT.
+1. Use tools to fulfill actionable user intents. Exception: for simple greetings/chit-chat (e.g. "hi", "hello", "thanks"), reply conversationally without calling tools.
 2. For token swaps (e.g. "Swap 500 SOL to USDC", "Convert 100 USDC to JUP"): use the execute_swap tool. For bridges use the bridge tool. For multi-step flows use execute_swap and bridge together.
 3. For High-Yield Liquidity Deployment (e.g. "Execute yield-discovery..."): use browser_research and then yield_deposit tool.
 4. For Mass Dispatch or Payroll (e.g. "Execute a Mass Dispatch to the contributor list..."): use mass_dispatch tool.
@@ -174,6 +181,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
     const userRequestText = extractLatestUserText(messages, prompt);
     const lowerUserRequest = userRequestText.toLowerCase();
     const promptMode = parsePromptMode(userRequestText);
+    const simpleConversation = isSimpleConversation(userRequestText);
     const hasHalfDirective = /\bhalf\b/.test(lowerUserRequest);
     const hasRestDirective = /\b(rest|remaining|remainder)\b/.test(lowerUserRequest);
     const hasSplitBridgeDepositFlow =
@@ -1687,7 +1695,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
       system: systemPrompt,
       messages: formattedMessages,
       stopWhen: stepCountIs(10),
-      tools: keystoneTools,
+      ...(simpleConversation ? {} : { tools: keystoneTools }),
     };
 
     // Model chain: Groq first, then Cloudflare Workers AI fallbacks (after 1–2 tries we fall back)
@@ -1727,6 +1735,10 @@ Wallet State: ${JSON.stringify(walletState || {})}
         (err as Error)?.name === "AI_RetryError" ||
         (err as Error)?.name === "AI_APICallError"
       );
+    }
+
+    function detectToolValidationErrorMessage(msg: string): boolean {
+      return /tool call validation failed|was not in request\.tools|invalid_request_error/i.test(msg);
     }
 
     let lastError: unknown = null;
@@ -1779,6 +1791,10 @@ Wallet State: ${JSON.stringify(walletState || {})}
           if (/rate.?limit|429|rate_limit_exceeded|limit reached/i.test(text) && text.length < 500) {
             reader.releaseLock();
             throw new Error(`Provider stream error from ${name}: ${text.slice(0, 300)}`);
+          }
+          if (detectToolValidationErrorMessage(text) && text.length < 2000) {
+            reader.releaseLock();
+            throw new Error(`Provider tool-call stream error from ${name}: ${text.slice(0, 500)}`);
           }
         }
 
