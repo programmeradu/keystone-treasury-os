@@ -1,10 +1,10 @@
 # Keystone: The Sovereign Operating System for Web3 Treasuries
 
 [![soonami Venturethon](https://img.shields.io/badge/soonami-Venturethon_Submission-36e27b?style=for-the-badge)](https://soonami.io/venturethon)
-[![Framework](https://img.shields.io/badge/Next.js-15.0-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![Framework](https://img.shields.io/badge/Next.js-16.0-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 
-Managing a modern Web3 treasury is currently a high-risk nightmare trapped in "Click-Ops Hell." Teams are forced to juggle fragmented tools for execution, intelligence, and coordination, leading to lost opportunities and the dangerous practice of blind-signing. 
+Managing a modern Web3 treasury is currently a high-risk nightmare trapped in "Click-Ops Hell." Teams are forced to juggle fragmented tools for execution, intelligence, and coordination, leading to lost opportunities and the dangerous practice of blind-signing
 
 **Keystone is the "CLI for the Blockchain".** We are moving the industry from manual "Click-Ops" to intelligent **"Command-Ops"**. Users simply type their strategic intent in natural language, and our federated autonomous agents plan, simulate, and execute complex treasury operations safely.
 
