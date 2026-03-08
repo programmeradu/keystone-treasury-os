@@ -14,10 +14,8 @@ import { LiveblocksProvider } from "@liveblocks/react";
 import { WalletProvider, ConnectionProvider } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { clusterApiUrl } from "@solana/web3.js";
-import {
-  SolflareWalletAdapter,
-  TorusWalletAdapter,
-} from "@solana/wallet-adapter-wallets";
+import { SolflareWalletAdapter } from "@solana/wallet-adapter-solflare";
+import { TorusWalletAdapter } from "@solana/wallet-adapter-torus";
 import "@solana/wallet-adapter-react-ui/styles.css";
 import { useMemo, useCallback } from "react";
 import { VaultProvider } from "@/lib/contexts/VaultContext";
