@@ -524,12 +524,15 @@ function AuthPageContent() {
         }
     }, [searchParams, addLog]);
 
+    // Determine where to go after auth (supports ?redirect= param from middleware)
+    const postAuthRedirect = searchParams.get('redirect') || '/app';
+
     // Handle OAuth completion: exchange Neon Auth session for local JWT
     useEffect(() => {
         if (searchParams.get('oauth') !== 'complete') return;
 
         let cancelled = false;
-        const exchangeSession = async () => {
+        const exchangeSession = async (attempt = 1) => {
             try {
                 addLog('EXCHANGING_OAUTH_SESSION...');
 
@@ -546,8 +549,17 @@ function AuthPageContent() {
                 if (res.ok && !cancelled) {
                     addLog('SESSION_ESTABLISHED');
                     sessionStorage.removeItem('keystone_oauth_pending');
-                    router.push('/app');
+                    // Use window.location for a full navigation so the
+                    // middleware re-runs and sees the newly set cookie.
+                    window.location.href = postAuthRedirect;
                     return;
+                }
+
+                // Retry once after a short delay (handles transient cookie race)
+                if (attempt < 2 && !cancelled) {
+                    addLog('RETRYING_SESSION_EXCHANGE...');
+                    await new Promise(r => setTimeout(r, 1500));
+                    return exchangeSession(attempt + 1);
                 }
 
                 // Fallback: if exchange failed, show error
@@ -569,7 +581,7 @@ function AuthPageContent() {
 
         exchangeSession();
         return () => { cancelled = true; };
-    }, [searchParams, router, addLog]);
+    }, [searchParams, router, addLog, postAuthRedirect]);
 
     // Check if user already has a local JWT session (SIWS or exchanged)
     // and redirect to /app immediately.
@@ -582,14 +594,14 @@ function AuthPageContent() {
                 const siwsRes = await fetch('/api/auth/siws');
                 const siwsData = await siwsRes.json().catch(() => null);
                 if (!cancelled && siwsData?.user) {
-                    router.push('/app');
+                    window.location.href = postAuthRedirect;
                     return;
                 }
 
                 // Also try Neon Auth session via proxy
                 const { data, error } = await authClient.getSession();
                 if (!cancelled && !error && data?.session) {
-                    router.push('/app');
+                    window.location.href = postAuthRedirect;
                 }
             } catch {
                 // Ignore transient session check errors on auth page load.
@@ -627,7 +639,7 @@ function AuthPageContent() {
         if (isAuthenticated) {
             setCurrentStep(2);
             setShowWelcome(true);
-            const timer = setTimeout(() => router.push("/app"), 2000);
+            const timer = setTimeout(() => { window.location.href = postAuthRedirect; }, 2000);
             return () => clearTimeout(timer);
         } else if (connected && publicKey) {
             setCurrentStep(1);
@@ -647,9 +659,9 @@ function AuthPageContent() {
     // If already authenticated on mount, redirect immediately
     useEffect(() => {
         if (!isLoading && isAuthenticated) {
-            router.push("/app");
+            window.location.href = postAuthRedirect;
         }
-    }, [isLoading, isAuthenticated, router]);
+    }, [isLoading, isAuthenticated, postAuthRedirect]);
 
     const handleConnectWallet = useCallback(() => {
         addLog("INITIALIZING_WALLET_ADAPTER...");

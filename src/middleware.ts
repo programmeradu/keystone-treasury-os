@@ -56,13 +56,23 @@ export async function middleware(request: NextRequest) {
     // Strip it and ensure the user lands on /auth?oauth=complete so the
     // client-side exchange flow can create a local JWT session.
     if (request.nextUrl.searchParams.has('neon_auth_session_verifier')) {
-        const cleanUrl = request.nextUrl.clone();
+        // Build the redirect URL using the real origin (handles CF Workers
+        // where request.nextUrl.clone() can produce http://localhost).
+        const origin =
+            request.headers.get('x-forwarded-host')
+                ? `${request.headers.get('x-forwarded-proto') || 'https'}://${request.headers.get('x-forwarded-host')}`
+                : request.nextUrl.origin;
+        const cleanUrl = new URL(request.nextUrl.pathname, origin);
+        // Copy over existing params except the verifier
+        request.nextUrl.searchParams.forEach((value, key) => {
+            if (key !== 'neon_auth_session_verifier') {
+                cleanUrl.searchParams.set(key, value);
+            }
+        });
         // Ensure oauth=complete is present (it should be from callbackURL)
         if (!cleanUrl.searchParams.has('oauth')) {
             cleanUrl.searchParams.set('oauth', 'complete');
         }
-        // Remove the verifier param to keep the URL clean
-        cleanUrl.searchParams.delete('neon_auth_session_verifier');
         console.log('[Middleware] Stripping neon_auth_session_verifier, redirecting to:', cleanUrl.pathname + cleanUrl.search);
         return NextResponse.redirect(cleanUrl);
     }
@@ -129,8 +139,16 @@ export async function middleware(request: NextRequest) {
             );
         }
 
-        const url = request.nextUrl.clone();
-        url.pathname = '/auth';
+        // Use the real origin (CF Workers can make nextUrl.clone() return localhost)
+        const origin =
+            request.headers.get('x-forwarded-host')
+                ? `${request.headers.get('x-forwarded-proto') || 'https'}://${request.headers.get('x-forwarded-host')}`
+                : request.nextUrl.origin;
+        const url = new URL('/auth', origin);
+        // Preserve the intended destination so auth page can redirect back
+        if (pathname !== '/app') {
+            url.searchParams.set('redirect', pathname);
+        }
         return NextResponse.redirect(url);
     }
 

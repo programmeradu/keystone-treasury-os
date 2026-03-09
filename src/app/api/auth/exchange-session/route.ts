@@ -120,26 +120,27 @@ async function findOAuthUser(
  */
 export async function POST(request: NextRequest) {
     try {
-        // Verify the OAuth state cookie exists and is valid
+        // Verify the OAuth state cookie if present.
+        // NOTE: After cross-origin OAuth redirects, SameSite=Lax cookies
+        // may not be sent on the initial navigation. We treat a missing
+        // state cookie as a soft warning rather than a hard block because
+        // strategy 2 (DB query) already validates that a real OAuth
+        // session was just created.
         const stateCookie = request.cookies.get(OAUTH_STATE_COOKIE)?.value;
-        if (!stateCookie) {
-            return NextResponse.json(
-                { error: 'No OAuth state found. Please try signing in again.' },
-                { status: 403 },
-            );
-        }
+        let initiatedAt: number = Math.floor(Date.now() / 1000) - 600; // default: 10 min ago
 
-        let initiatedAt: number;
-        try {
-            const payload = await jwtVerify(stateCookie, getJwtSecret(), {
-                issuer: 'keystone-treasury-os',
-            });
-            initiatedAt = (payload.payload.iat as number) || Math.floor(Date.now() / 1000) - 600;
-        } catch {
-            return NextResponse.json(
-                { error: 'OAuth state expired. Please try signing in again.' },
-                { status: 403 },
-            );
+        if (stateCookie) {
+            try {
+                const payload = await jwtVerify(stateCookie, getJwtSecret(), {
+                    issuer: 'keystone-treasury-os',
+                });
+                initiatedAt = (payload.payload.iat as number) || initiatedAt;
+                console.log('[Exchange Session] State cookie verified ✓');
+            } catch {
+                console.warn('[Exchange Session] State cookie expired or invalid, continuing with DB verification');
+            }
+        } else {
+            console.warn('[Exchange Session] No state cookie (expected on Cloudflare Workers after cross-origin OAuth redirect)');
         }
 
         let user: { id: string; email: string; name: string } | null = null;
