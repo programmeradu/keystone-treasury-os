@@ -36,7 +36,15 @@ export async function createSupabaseServerClient() {
 // ─── Admin Client (service role — server-only, bypasses RLS) ─────────
 export function createAdminClient() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xyzcompany.supabase.co';
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5emNvbXBhbnkiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjE2NDgzMDAwLCJleHAiOjE5MzIwODMwMDB9.XYZ';
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!serviceKey) {
+        if (process.env.npm_lifecycle_event === 'build' || process.env.NEXT_PHASE === 'phase-production-build') {
+            return createClient(url, 'build_placeholder', {
+                auth: { autoRefreshToken: false, persistSession: false },
+            });
+        }
+        throw new Error("SUPABASE_SERVICE_ROLE_KEY environment variable is not set");
+    }
     return createClient(url, serviceKey, {
         auth: { autoRefreshToken: false, persistSession: false },
     });
