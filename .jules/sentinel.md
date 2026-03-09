@@ -1,0 +1,4 @@
+## 2024-05-24 - [CRITICAL] Hardcoded JWT Secret Fallback
+**Vulnerability:** A universally known hardcoded secret (`keystone_sovereign_os_2026`) was used as a fallback for `JWT_SECRET` across `middleware.ts`, `siws/route.ts`, `exchange-session/route.ts`, and `liveblocks-auth/route.ts`.
+**Learning:** Hardcoded fallbacks for sensitive environment variables allow potential attackers to forge sessions if the environment variable is inadvertently missing in production. Application logic must explicitly check for their presence.
+**Prevention:** Strictly prohibit insecure defaults. Enforce the presence of sensitive environment variables by throwing an error or using safe placeholders strictly during the Next.js build phase (`process.env.npm_lifecycle_event === 'build'` or `process.env.NEXT_PHASE === 'phase-production-build'`). Do not use fallback strings.
