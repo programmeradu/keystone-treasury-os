@@ -21,6 +21,8 @@ export type Resource =
     | 'studio_apps'
     | 'dca_bots'
     | 'marketplace_listings'
+    | 'marketplace_reads'
+    | 'developer_registrations'
     | 'alerts'
     | 'tx_cache_days'
     // Atlas resources
@@ -38,7 +40,9 @@ export const TIER_LIMITS: Record<Tier, Partial<Record<Resource, number>>> = {
         ai_architect_runs: 10,       // per day
         studio_apps: 3,              // total
         dca_bots: 1,                 // concurrent
-        marketplace_listings: 1,     // total
+        marketplace_listings: 5,     // per month
+        marketplace_reads: 100,      // per day
+        developer_registrations: 3,  // per month
         alerts: 3,                   // concurrent
         tx_cache_days: 7,            // retention days
     },
@@ -46,7 +50,9 @@ export const TIER_LIMITS: Record<Tier, Partial<Record<Resource, number>>> = {
         ai_architect_runs: 50,
         studio_apps: 15,
         dca_bots: 5,
-        marketplace_listings: 5,
+        marketplace_listings: 25,
+        marketplace_reads: 1000,
+        developer_registrations: 10,
         alerts: 15,
         tx_cache_days: 30,
     },
@@ -55,6 +61,8 @@ export const TIER_LIMITS: Record<Tier, Partial<Record<Resource, number>>> = {
         studio_apps: Infinity,
         dca_bots: 50,
         marketplace_listings: Infinity,
+        marketplace_reads: Infinity,
+        developer_registrations: Infinity,
         alerts: Infinity,
         tx_cache_days: Infinity,
     },
@@ -84,6 +92,8 @@ const RESOURCE_WINDOW: Record<Resource, WindowSize> = {
     studio_apps: 'month',
     dca_bots: 'month',
     marketplace_listings: 'month',
+    marketplace_reads: 'day',
+    developer_registrations: 'month',
     alerts: 'month',
     tx_cache_days: 'month',
     atlas_ai_queries: 'day',

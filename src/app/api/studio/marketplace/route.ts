@@ -11,7 +11,7 @@ import { checkRouteLimit } from "@/lib/rate-limit-middleware";
 
 export async function GET(request: NextRequest) {
   try {
-    const rateLimit = await checkRouteLimit(request, 'marketplace_listings');
+    const rateLimit = await checkRouteLimit(request, 'marketplace_reads');
     if (!rateLimit.allowed) {
       return NextResponse.json({
         error: 'Rate limit exceeded',

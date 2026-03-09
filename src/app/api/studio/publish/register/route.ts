@@ -17,7 +17,7 @@ import { eq, and } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
   try {
-    const rateLimit = await checkRouteLimit(request, "marketplace_listings");
+    const rateLimit = await checkRouteLimit(request, "developer_registrations");
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { error: "Rate limit exceeded", resetAt: rateLimit.resetAt.toISOString() },
