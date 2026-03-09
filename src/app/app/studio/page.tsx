@@ -35,6 +35,7 @@ import { toast } from "@/lib/toast-notifications";
 import { ProjectBrowser } from "@/components/studio/ProjectBrowser";
 import { StudioToolbar } from "@/components/studio/StudioToolbar";
 import { useSearchParams } from "next/navigation";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 interface StudioFile {
     name: string;
@@ -154,6 +155,7 @@ pub struct Initialize {}`,
 
 export default function StudioPage() {
     const user = useSelf();
+    const { publicKey } = useWallet();
     const [appName, setAppName] = useState("Untitled Mini-App");
     const [files, setFiles] = useState<Record<string, StudioFile>>({ ...DEFAULT_FILES });
     const [activeFile, setActiveFile] = useState("App.tsx");
@@ -175,9 +177,9 @@ export default function StudioPage() {
     const hasLoadedFromUrl = useRef(false);
 
     useEffect(() => {
-        const resolvedUserId = localStorage.getItem("keystone_wallet_id") || user?.info?.name || "Operator";
+        const resolvedUserId = publicKey?.toBase58() || user?.info?.name || "Operator";
         setProjectBrowserUserId(resolvedUserId);
-    }, [user?.info?.name]);
+    }, [user?.info?.name, publicKey]);
 
     // Load project from ?appId= query param on mount
     useEffect(() => {
@@ -251,7 +253,7 @@ export default function StudioPage() {
 
         try {
             const appId = currentAppId || "app_" + Math.random().toString(36).substring(2, 15);
-            const creatorWallet = user?.info?.name || "Operator";
+            const creatorWallet = publicKey?.toBase58() || user?.info?.name || "Operator";
 
             const projectCode = {
                 files: Object.entries(files).reduce((acc, [name, file]) => ({
@@ -312,7 +314,7 @@ export default function StudioPage() {
 
         try {
             const appId = currentAppId || "app_" + Math.random().toString(36).substring(2, 15);
-            const creatorName = user?.info?.name || "Operator";
+            const creatorWallet = publicKey?.toBase58() || user?.info?.name || "Operator";
 
             const projectCode = {
                 files: Object.entries(files).reduce((acc, [name, file]) => ({
@@ -323,17 +325,11 @@ export default function StudioPage() {
 
             // Save to DB
             await saveProject(
-                creatorName,
+                creatorWallet,
                 projectCode,
-                { name: appName, description: "Built in Keystone Studio by " + creatorName },
+                { name: appName, description: "Built in Keystone Studio by " + creatorWallet },
                 appId
             );
-
-            // Install to user's library via DB
-            try {
-                const { installApp } = await import("@/actions/studio-actions");
-                await installApp(creatorName, appId);
-            } catch {}
 
             setCurrentAppId(appId);
 

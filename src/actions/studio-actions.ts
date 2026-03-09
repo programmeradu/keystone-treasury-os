@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 
-import { miniApps, purchases, userInstalledApps } from "@/db/schema";
+import { miniApps, purchases, userInstalledApps, users } from "@/db/schema";
 import { eq, desc, inArray, and, isNull } from "drizzle-orm";
 
 export interface ProjectMetadata {
@@ -103,63 +103,38 @@ export async function getProject(appId: string) {
     }
 }
 
-export async function getInstalledApps(userId: string) {
-    if (!db) return [];
+export async function getInstalledApps(walletAddress: string) {
+    if (!db || !walletAddress) return [];
 
     try {
-        // 1. Get apps created by user
+        // 1. Get apps created by user (via wallet address)
         const createdApps = await db
             .select()
             .from(miniApps)
-            .where(eq(miniApps.creatorWallet, userId));
+            .where(eq(miniApps.creatorWallet, walletAddress));
 
-        // 2. Get apps purchased by user
+        // 2. Get apps purchased by user (via wallet address)
         const userPurchases = await db
             .select({ appId: purchases.appId })
             .from(purchases)
-            .where(eq(purchases.buyerWallet, userId));
-
-        // 3. Get apps installed via userInstalledApps (dock order, pinning)
-        const installed = await db
-            .select()
-            .from(userInstalledApps)
-            .where(
-                and(
-                    eq(userInstalledApps.userId, userId),
-                    isNull(userInstalledApps.uninstalledAt)
-                )
-            );
+            .where(eq(purchases.buyerWallet, walletAddress));
 
         const purchasedAppIds = userPurchases.map(p => p.appId);
-        const installedAppIds = installed.map(i => i.appId);
-        const allAppIds = [...new Set([...purchasedAppIds, ...installedAppIds])];
 
         let purchasedApps: typeof createdApps = [];
-        if (allAppIds.length > 0) {
+        if (purchasedAppIds.length > 0) {
             purchasedApps = await db
                 .select()
                 .from(miniApps)
-                .where(inArray(miniApps.id, allAppIds));
+                .where(inArray(miniApps.id, purchasedAppIds));
         }
 
         // Combine and deduplicate
         const allApps = [...createdApps, ...purchasedApps];
         const uniqueApps = Array.from(new Map(allApps.map(item => [item.id, item])).values());
 
-        // Build dock order map
-        const dockOrderMap = new Map(installed.map(i => [i.appId, { order: i.dockOrder, pinned: i.pinned }]));
-
-        // Sort: pinned first → dock order → updatedAt
-        return uniqueApps.sort((a, b) => {
-            const aInfo = dockOrderMap.get(a.id);
-            const bInfo = dockOrderMap.get(b.id);
-            if (aInfo?.pinned && !bInfo?.pinned) return -1;
-            if (!aInfo?.pinned && bInfo?.pinned) return 1;
-            if (aInfo && bInfo) return aInfo.order - bInfo.order;
-            if (aInfo) return -1;
-            if (bInfo) return 1;
-            return b.updatedAt.getTime() - a.updatedAt.getTime();
-        });
+        // Sort by updatedAt descending
+        return uniqueApps.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
     } catch (error) {
         console.error("Failed to fetch installed apps:", error);
@@ -169,16 +144,34 @@ export async function getInstalledApps(userId: string) {
 
 // ─── Install / Uninstall / Dock Management ───────────────────────────
 
-export async function installApp(userId: string, appId: string) {
+/** Resolve a wallet address to the users.id UUID. Returns null if not found. */
+async function resolveUserId(walletAddress: string): Promise<string | null> {
+    if (!db || !walletAddress) return null;
+    try {
+        const rows = await db
+            .select({ id: users.id })
+            .from(users)
+            .where(eq(users.walletAddress, walletAddress))
+            .limit(1);
+        return rows[0]?.id ?? null;
+    } catch {
+        return null;
+    }
+}
+
+export async function installApp(walletAddress: string, appId: string) {
     if (!db) throw new Error("Database not available");
 
     try {
+        const dbUserId = await resolveUserId(walletAddress);
+        if (!dbUserId) return { success: true, message: "Tracked via purchases/creatorWallet" };
+
         const existing = await db
             .select()
             .from(userInstalledApps)
             .where(
                 and(
-                    eq(userInstalledApps.userId, userId),
+                    eq(userInstalledApps.userId, dbUserId),
                     eq(userInstalledApps.appId, appId),
                     isNull(userInstalledApps.uninstalledAt)
                 )
@@ -194,7 +187,7 @@ export async function installApp(userId: string, appId: string) {
             .from(userInstalledApps)
             .where(
                 and(
-                    eq(userInstalledApps.userId, userId),
+                    eq(userInstalledApps.userId, dbUserId),
                     isNull(userInstalledApps.uninstalledAt)
                 )
             );
@@ -206,7 +199,7 @@ export async function installApp(userId: string, appId: string) {
         const installId = generateId("install");
         await db.insert(userInstalledApps).values({
             id: installId,
-            userId,
+            userId: dbUserId,
             appId,
             dockOrder: maxOrder + 1,
         });
@@ -218,16 +211,19 @@ export async function installApp(userId: string, appId: string) {
     }
 }
 
-export async function uninstallApp(userId: string, appId: string) {
+export async function uninstallApp(walletAddress: string, appId: string) {
     if (!db) throw new Error("Database not available");
 
     try {
+        const dbUserId = await resolveUserId(walletAddress);
+        if (!dbUserId) return { success: true };
+
         await db
             .update(userInstalledApps)
             .set({ uninstalledAt: new Date() })
             .where(
                 and(
-                    eq(userInstalledApps.userId, userId),
+                    eq(userInstalledApps.userId, dbUserId),
                     eq(userInstalledApps.appId, appId),
                     isNull(userInstalledApps.uninstalledAt)
                 )
@@ -240,17 +236,20 @@ export async function uninstallApp(userId: string, appId: string) {
     }
 }
 
-export async function reorderDock(userId: string, appIds: string[]) {
+export async function reorderDock(walletAddress: string, appIds: string[]) {
     if (!db) throw new Error("Database not available");
 
     try {
+        const dbUserId = await resolveUserId(walletAddress);
+        if (!dbUserId) return { success: true };
+
         for (let i = 0; i < appIds.length; i++) {
             await db
                 .update(userInstalledApps)
                 .set({ dockOrder: i })
                 .where(
                     and(
-                        eq(userInstalledApps.userId, userId),
+                        eq(userInstalledApps.userId, dbUserId),
                         eq(userInstalledApps.appId, appIds[i]),
                         isNull(userInstalledApps.uninstalledAt)
                     )
@@ -264,16 +263,19 @@ export async function reorderDock(userId: string, appIds: string[]) {
     }
 }
 
-export async function togglePinApp(userId: string, appId: string, pinned: boolean) {
+export async function togglePinApp(walletAddress: string, appId: string, pinned: boolean) {
     if (!db) throw new Error("Database not available");
 
     try {
+        const dbUserId = await resolveUserId(walletAddress);
+        if (!dbUserId) return { success: true };
+
         await db
             .update(userInstalledApps)
             .set({ pinned })
             .where(
                 and(
-                    eq(userInstalledApps.userId, userId),
+                    eq(userInstalledApps.userId, dbUserId),
                     eq(userInstalledApps.appId, appId),
                     isNull(userInstalledApps.uninstalledAt)
                 )
@@ -334,39 +336,25 @@ export async function publishApp(
     }
 }
 
-export async function checkOwnership(userId: string, appId: string): Promise<boolean> {
-    if (!db) return false;
+export async function checkOwnership(walletAddress: string, appId: string): Promise<boolean> {
+    if (!db || !walletAddress) return false;
 
     try {
-        // Check purchases
-        const purchaseRows = await db
-            .select({ id: purchases.id })
-            .from(purchases)
-            .where(and(eq(purchases.buyerWallet, userId), eq(purchases.appId, appId)))
-            .limit(1);
-        if (purchaseRows.length > 0) return true;
-
-        // Check installed apps
-        const installRows = await db
-            .select({ id: userInstalledApps.id })
-            .from(userInstalledApps)
-            .where(
-                and(
-                    eq(userInstalledApps.userId, userId),
-                    eq(userInstalledApps.appId, appId),
-                    isNull(userInstalledApps.uninstalledAt)
-                )
-            )
-            .limit(1);
-        if (installRows.length > 0) return true;
-
         // Check if creator
         const creatorRows = await db
             .select({ id: miniApps.id })
             .from(miniApps)
-            .where(and(eq(miniApps.id, appId), eq(miniApps.creatorWallet, userId)))
+            .where(and(eq(miniApps.id, appId), eq(miniApps.creatorWallet, walletAddress)))
             .limit(1);
-        return creatorRows.length > 0;
+        if (creatorRows.length > 0) return true;
+
+        // Check purchases
+        const purchaseRows = await db
+            .select({ id: purchases.id })
+            .from(purchases)
+            .where(and(eq(purchases.buyerWallet, walletAddress), eq(purchases.appId, appId)))
+            .limit(1);
+        return purchaseRows.length > 0;
     } catch {
         return false;
     }

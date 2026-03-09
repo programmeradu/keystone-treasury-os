@@ -184,11 +184,11 @@ async function compileCloud(
     const solpgUrl = process.env.SOLPG_API_URL || "https://api.solpg.io";
 
     try {
-        // Format files for SolPG API
-        const sourceFiles = Object.entries(files).map(([name, content]) => ({
-            path: `src/${name}`,
+        // Format files for SolPG API — expects array of [path, content] tuples
+        const sourceFiles = Object.entries(files).map(([name, content]) => [
+            `src/${name}`,
             content,
-        }));
+        ]);
 
         const res = await fetch(`${solpgUrl}/build`, {
             method: "POST",

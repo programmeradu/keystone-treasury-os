@@ -13,6 +13,7 @@ import { CollaborativeHeader } from "@/components/CollaborativeHeader";
 import { WalletButton } from "@/components/WalletButton";
 import { toast } from "@/lib/toast-notifications";
 import { NotificationBell } from "@/components/NotificationBell";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 async function loadAppDetails(appId: string): Promise<any | null> {
     try {
@@ -27,10 +28,11 @@ async function loadAppDetails(appId: string): Promise<any | null> {
     return null;
 }
 
-async function checkIfInstalled(appId: string, userId: string): Promise<string | null> {
+async function checkIfInstalled(appId: string, walletAddress: string): Promise<string | null> {
+    if (!walletAddress) return null;
     try {
         const { getInstalledApps } = await import("@/actions/studio-actions");
-        const apps = await getInstalledApps(userId);
+        const apps = await getInstalledApps(walletAddress);
         const found = apps.find((a: any) => a.id === appId);
         return found ? (found.version || "1.0.0") : null;
     } catch {
@@ -41,6 +43,7 @@ async function checkIfInstalled(appId: string, userId: string): Promise<string |
 export default function AppDetailPage() {
     const params = useParams();
     const appId = params.appId as string;
+    const { publicKey } = useWallet();
 
     const [app, setApp] = React.useState<any>(null);
     const [showPurchaseModal, setShowPurchaseModal] = React.useState(false);
@@ -48,9 +51,9 @@ export default function AppDetailPage() {
 
     React.useEffect(() => {
         loadAppDetails(appId).then(setApp);
-        // Check if already installed via DB
-        checkIfInstalled(appId, "").then(v => { if (v) setInstalledVersion(v); });
-    }, [appId]);
+        const walletAddress = publicKey?.toBase58() || "";
+        checkIfInstalled(appId, walletAddress).then(v => { if (v) setInstalledVersion(v); });
+    }, [appId, publicKey]);
 
     if (!app) {
         return (

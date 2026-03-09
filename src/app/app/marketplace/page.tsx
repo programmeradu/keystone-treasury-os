@@ -14,6 +14,7 @@ import { PremiumModal, PremiumModalHeader, PremiumModalTitle, PremiumModalDescri
 import { ListingModal } from "@/components/studio/ListingModal";
 import { NotificationBell } from "@/components/NotificationBell";
 import Link from "next/link";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 const CATEGORIES = ["All", "DeFi", "NFT", "Governance", "Analytics", "Utility", "Trading", "Security", "Social"];
 
@@ -29,6 +30,7 @@ export default function MarketplacePage() {
     const [loadingApps, setLoadingApps] = useState(true);
 
     const { network, setNetwork } = useNetwork();
+    const { publicKey } = useWallet();
 
     const loadMarketplaceListings = useCallback(async () => {
         setLoadingApps(true);
@@ -54,14 +56,15 @@ export default function MarketplacePage() {
             (async () => {
                 try {
                     const { getInstalledApps } = await import("@/actions/studio-actions");
-                    const apps = await getInstalledApps("");
+                    const walletAddress = publicKey?.toBase58() || "";
+                    const apps = await getInstalledApps(walletAddress);
                     setLibraryApps(apps);
                 } catch {
                     setLibraryApps([]);
                 }
             })();
         }
-    }, [showPublishPicker]);
+    }, [showPublishPicker, publicKey]);
 
     useEffect(() => {
         const lower = search.toLowerCase();

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { getInstalledApps } from "@/actions/studio-actions";
 import { useSelf } from "@/liveblocks.config";
+import { useWallet } from "@solana/wallet-adapter-react";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,15 +24,17 @@ import { notify } from "@/lib/notifications";
 
 export default function LibraryPage() {
     const user = useSelf();
+    const { publicKey } = useWallet();
     const [apps, setApps] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [listingApp, setListingApp] = useState<any>(null);
 
+    const walletAddress = publicKey?.toBase58() || user?.info?.name || "";
+
     async function handleUninstall(app: any) {
         try {
             const { uninstallApp } = await import("@/actions/studio-actions");
-            const userId = user?.info?.name || "";
-            await uninstallApp(userId, app.id);
+            await uninstallApp(walletAddress, app.id);
             setApps(prev => prev.filter(a => a.id !== app.id));
             toast.success(`"${app.name}" uninstalled`, {
                 description: "Removed from your Library.",
@@ -43,11 +46,10 @@ export default function LibraryPage() {
 
     async function handleDelist(app: any) {
         try {
-            const userId = user?.info?.name || "";
             await fetch("/api/studio/marketplace", {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ appId: app.id, creatorWallet: userId, isPublished: false }),
+                body: JSON.stringify({ appId: app.id, creatorWallet: walletAddress, isPublished: false }),
             });
             setApps(prev => prev.map(a => a.id === app.id ? { ...a, isPublished: false } : a));
             toast.success(`"${app.name}" delisted`, {
@@ -61,12 +63,11 @@ export default function LibraryPage() {
 
     useEffect(() => {
         loadApps();
-    }, [user]);
+    }, [user, publicKey]);
 
     async function loadApps() {
         try {
-            const userId = user?.info?.name || "";
-            const data = await getInstalledApps(userId);
+            const data = await getInstalledApps(walletAddress);
             setApps(data);
         } catch (error) {
             console.error(error);

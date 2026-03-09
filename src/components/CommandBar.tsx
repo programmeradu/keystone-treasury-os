@@ -39,7 +39,7 @@ function getToolParts(m: UIMessage) {
   }) || [];
 }
 
-function persistStudioProjectFromToolOutput(output: Record<string, unknown>): string | null {
+function persistStudioProjectFromToolOutput(output: Record<string, unknown>, walletAddress: string): string | null {
   try {
     const filesRaw = output.files as Record<string, string> | undefined;
     if (!filesRaw || typeof filesRaw !== "object") return null;
@@ -48,7 +48,7 @@ function persistStudioProjectFromToolOutput(output: Record<string, unknown>): st
       ? output.name.trim()
       : "Untitled Mini-App";
     const appId = `cmd_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-    const creatorWallet = "Operator";
+    const creatorWallet = walletAddress || "Operator";
 
     const codeFiles = Object.entries(filesRaw).reduce((acc, [name, content]) => {
       acc[name] = { content: String(content ?? "") };
@@ -274,7 +274,7 @@ export function CommandBar() {
         if (!output) continue;
 
         if (output.operation === "studio_init_miniapp") {
-          const appId = persistStudioProjectFromToolOutput(output);
+          const appId = persistStudioProjectFromToolOutput(output, publicKey?.toBase58() || "");
           setOpen(false);
           if (appId) {
             router.push(`/app/studio?appId=${encodeURIComponent(appId)}`);
