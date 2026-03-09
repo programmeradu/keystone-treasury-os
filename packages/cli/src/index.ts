@@ -10,6 +10,7 @@ import { runDev } from "./commands/dev.js";
 import { runGenerate } from "./commands/generate.js";
 import { runDeploy } from "./commands/deploy.js";
 import { runShip } from "./commands/ship.js";
+import { runRegister } from "./commands/register.js";
 import { loadConfig, saveConfig } from "./commands/config.js";
 
 const program = new Command();
@@ -17,7 +18,7 @@ const program = new Command();
 program
   .name("keystone")
   .description("CLI for Keystone Studio Mini-Apps — Sovereign OS 2026")
-  .version("0.2.0");
+  .version("1.0.0");
 
 program
   .command("init [dir]")
@@ -251,9 +252,10 @@ program
   .option("-w, --wallet <address>", "Creator wallet (overrides config)")
   .option("--private-key <key>", "Base58 private key for signing")
   .option("--cluster <cluster>", "Solana cluster: devnet or mainnet-beta")
+  .option("--api-url <url>", "Keystone OS API URL (e.g. https://keystone.example.com)")
   .option("--skip-arweave", "Skip Arweave upload")
   .option("-y, --yes", "Skip confirmation prompts")
-  .action(async (dir: string = ".", opts: { name?: string; description?: string; wallet?: string; privateKey?: string; cluster?: string; skipArweave?: boolean; yes?: boolean }) => {
+  .action(async (dir: string = ".", opts: { name?: string; description?: string; wallet?: string; privateKey?: string; cluster?: string; apiUrl?: string; skipArweave?: boolean; yes?: boolean }) => {
     try {
       const result = await runShip({ dir, ...opts });
       if (result.ok) {
@@ -267,6 +269,49 @@ program
         console.log("\n");
       } else {
         console.error(`\n  Ship failed:\n  ${result.error}`);
+        process.exit(1);
+      }
+    } catch (err) {
+      console.error(err instanceof Error ? err.message : err);
+      process.exit(1);
+    }
+  });
+
+// ─── Register (Developer Auth) ───────────────────────────────────
+program
+  .command("register")
+  .description("Register as a developer — get a wallet + publish token (via Turnkey or BYO key)")
+  .option("-w, --wallet <address>", "Use your own wallet (BYO mode)")
+  .option("-l, --label <label>", "Developer label (default: 'default')")
+  .option("--api-url <url>", "Keystone API URL", "https://keystone.stauniverse.tech")
+  .option("-d, --dir <dir>", "Directory to save config", ".")
+  .action(async (opts: { wallet?: string; label?: string; apiUrl?: string; dir?: string }) => {
+    try {
+      console.log("\n  Keystone Developer Registration\n");
+      if (opts.wallet) {
+        console.log(`  Mode: BYO Key (${opts.wallet.slice(0, 8)}...)`);
+      } else {
+        console.log("  Mode: Turnkey-managed wallet (auto-provisioned)");
+      }
+      console.log("");
+
+      const result = await runRegister({
+        dir: opts.dir,
+        wallet: opts.wallet,
+        label: opts.label,
+        apiUrl: opts.apiUrl,
+      });
+
+      if (result.ok) {
+        console.log("  Registration successful!\n");
+        console.log(`  Wallet:  ${result.walletAddress}`);
+        console.log(`  Token:   ${result.developerToken!.slice(0, 8)}...${result.developerToken!.slice(-4)}`);
+        console.log(`  Mode:    ${result.mode}`);
+        console.log("\n  Saved to keystone.config.json");
+        console.log("\n  You can now publish:");
+        console.log("    keystone ship\n");
+      } else {
+        console.error(`  Registration failed: ${result.error}`);
         process.exit(1);
       }
     } catch (err) {

@@ -17,66 +17,29 @@ import Link from "next/link";
 
 const CATEGORIES = ["All", "DeFi", "NFT", "Governance", "Analytics", "Utility", "Trading", "Security", "Social"];
 
-// Mock data — creator wallets are display-only placeholders (not valid Solana addresses)
-const MOCK_APPS = [
-    {
-        id: "app_1",
-        name: "Solana Token Sniper",
-        description: "Automatically detect and buy new token launches on Raydium with customizable filters.",
-        priceUsdc: 50,
-        rating: 4.8,
-        installs: 1240,
-        creatorWallet: "7KeY...StUdIo",
-        category: "DeFi"
-    },
-    {
-        id: "app_2",
-        name: "NFT Portfolio Visualizer",
-        description: "A stunning 3D gallery view for your Solana NFT collection with floor price tracking.",
-        priceUsdc: 0,
-        rating: 4.5,
-        installs: 8503,
-        creatorWallet: "8BoX...CrEaTr",
-        category: "NFT"
-    },
-    {
-        id: "app_3",
-        name: "Yield Farming Auto-Compounder",
-        description: "Optimize your Kamino and Meteora positions with auto-compounding strategies.",
-        priceUsdc: 100,
-        rating: 4.9,
-        installs: 532,
-        creatorWallet: "9FaR...Yield",
-        category: "DeFi"
-    },
-    {
-        id: "app_4",
-        name: "DAO Voter Bot",
-        description: "Never miss a governance proposal. Auto-vote based on your preferences.",
-        priceUsdc: 10,
-        rating: 4.2,
-        installs: 300,
-        creatorWallet: "3Gov...Voter",
-        category: "Governance"
-    }
-];
-
 export default function MarketplacePage() {
     const [search, setSearch] = useState("");
-    const [allApps, setAllApps] = useState(MOCK_APPS);
-    const [filteredApps, setFilteredApps] = useState(MOCK_APPS);
+    const [allApps, setAllApps] = useState<any[]>([]);
+    const [filteredApps, setFilteredApps] = useState<any[]>([]);
     const [showPublishPicker, setShowPublishPicker] = useState(false);
     const [libraryApps, setLibraryApps] = useState<any[]>([]);
     const [listingApp, setListingApp] = useState<any>(null);
     const [categoryFilter, setCategoryFilter] = useState("All");
     const [showFilters, setShowFilters] = useState(false);
+    const [loadingApps, setLoadingApps] = useState(true);
 
     const { network, setNetwork } = useNetwork();
 
-    const loadMarketplaceListings = useCallback(() => {
+    const loadMarketplaceListings = useCallback(async () => {
+        setLoadingApps(true);
         try {
+            // Fetch published apps from the database
+            const res = await fetch("/api/studio/marketplace");
+            const dbApps = res.ok ? await res.json() : [];
+
+            // Merge with any localStorage draft listings
             const stored = JSON.parse(localStorage.getItem("keystone_marketplace_listings") || "[]");
-            const listedApps = stored.map((app: any) => ({
+            const localApps = stored.map((app: any) => ({
                 id: app.id,
                 name: app.name,
                 description: app.description,
@@ -87,16 +50,18 @@ export default function MarketplacePage() {
                 category: app.category || "utility",
                 iconUrl: app.iconUrl || undefined,
             }));
-            // Listed apps first, then mock apps (deduplicated by id)
-            const merged = [...listedApps, ...MOCK_APPS];
+
+            const merged = [...localApps, ...dbApps];
             const unique = Array.from(new Map(merged.map((a: any) => [a.id, a])).values());
             setAllApps(unique);
         } catch {
-            setAllApps(MOCK_APPS);
+            setAllApps([]);
+        } finally {
+            setLoadingApps(false);
         }
     }, []);
 
-    // Load listed apps from localStorage on mount
+    // Load apps on mount
     useEffect(() => {
         loadMarketplaceListings();
     }, [loadMarketplaceListings]);
@@ -233,19 +198,32 @@ export default function MarketplacePage() {
                     )}
 
                     {/* App Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {filteredApps.map(app => (
-                            <MiniAppCard key={app.id} app={app} />
-                        ))}
-                    </div>
+                    {loadingApps ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {Array.from({ length: 4 }).map((_, i) => (
+                                <div key={i} className="bg-card border border-border rounded-2xl p-6 animate-pulse">
+                                    <div className="h-4 bg-muted rounded w-3/4 mb-3" />
+                                    <div className="h-3 bg-muted rounded w-full mb-2" />
+                                    <div className="h-3 bg-muted rounded w-2/3 mb-6" />
+                                    <div className="h-8 bg-muted rounded w-1/3" />
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {filteredApps.map(app => (
+                                <MiniAppCard key={app.id} app={app} />
+                            ))}
+                        </div>
+                    )}
 
-                    {filteredApps.length === 0 && (
+                    {!loadingApps && filteredApps.length === 0 && (
                         <div className="text-center py-32">
                             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
                                 <Search className="w-8 h-8 text-muted-foreground" />
                             </div>
                             <h3 className="text-xl font-bold mb-2">No apps found</h3>
-                            <p className="text-muted-foreground">Try adjusting your search terms.</p>
+                            <p className="text-muted-foreground">Publish your first app or adjust your search.</p>
                         </div>
                     )}
                 </div>

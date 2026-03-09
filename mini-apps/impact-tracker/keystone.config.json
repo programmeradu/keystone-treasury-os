@@ -1,0 +1,8 @@
+{
+  "name": "Impact Tracker",
+  "description": "Analyze the environmental and social impact of your treasury. Carbon footprint, green scores, and sustainability recommendations.",
+  "wallet": "9agsk4cgDFrcz2xBoTfitPVQcBPV6bB65LcQMkppYn8n",
+  "category": "Utility",
+  "cluster": "devnet",
+  "apiUrl": "https://keystone.stauniverse.tech"
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Vault Balance Dashboard",
+  "description": "Real-time portfolio overview with grid/list views, allocation bars, and total value tracking across all vault tokens.",
+  "wallet": "9agsk4cgDFrcz2xBoTfitPVQcBPV6bB65LcQMkppYn8n",
+  "category": "Analytics",
+  "cluster": "devnet",
+  "apiUrl": "https://keystone.stauniverse.tech"
+}

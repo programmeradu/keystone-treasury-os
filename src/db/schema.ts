@@ -536,3 +536,18 @@ export const atlasSessions = pgTable('atlas_sessions', {
   userIdx: index('atlas_sessions_user_idx').on(table.userId),
   expiresIdx: index('atlas_sessions_expires_idx').on(table.expiresAt),
 }));
+
+// ─── Developer Tokens (CLI Auth for Marketplace Publish) ─────────────
+export const developerTokens = pgTable('developer_tokens', {
+  id: serial('id').primaryKey(),
+  token: text('token').notNull().unique(), // UUID bearer token
+  walletAddress: text('wallet_address').notNull(), // Solana wallet (Turnkey-provisioned or BYO)
+  turnkeySubOrgId: text('turnkey_sub_org_id'), // null if BYO key
+  label: text('label').notNull().default('default'), // friendly name
+  revoked: boolean('revoked').notNull().default(false),
+  lastUsedAt: timestamp('last_used_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  tokenIdx: index('developer_tokens_token_idx').on(table.token),
+  walletIdx: index('developer_tokens_wallet_idx').on(table.walletAddress),
+}));

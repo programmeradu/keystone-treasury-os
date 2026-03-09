@@ -95,6 +95,21 @@ export async function middleware(request: NextRequest) {
 
     const isAuthenticated = hasSiws || hasNeon;
 
+    // ─── Public API routes (no auth required) ───────────────────────
+    const publicApiPaths = ['/api/studio/marketplace'];
+    if (publicApiPaths.some((p) => pathname === p || (pathname.startsWith(p) && request.method === 'GET'))) {
+        return NextResponse.next({ request: { headers: request.headers } });
+    }
+
+    // ─── CLI auth bypass: let bearer-token / wallet-signature requests through ──
+    // The publish route handler does its own verification of these credentials.
+    if (
+        (pathname === '/api/studio/publish' || pathname.startsWith('/api/studio/publish/')) &&
+        (request.headers.has('authorization') || request.headers.has('x-keystone-signature'))
+    ) {
+        return NextResponse.next({ request: { headers: request.headers } });
+    }
+
     // ─── Protect /app/* and /api/* routes ───────────────────────────
     const protectedPaths = ['/app', '/api/studio', '/api/agent', '/api/dca'];
 

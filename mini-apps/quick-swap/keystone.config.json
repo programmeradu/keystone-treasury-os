@@ -1,0 +1,8 @@
+{
+  "name": "Quick Swap Widget",
+  "description": "Swap tokens instantly with Jupiter aggregator. SOL, USDC, USDT, JUP presets with price impact and route visualization.",
+  "wallet": "9agsk4cgDFrcz2xBoTfitPVQcBPV6bB65LcQMkppYn8n",
+  "category": "DeFi",
+  "cluster": "devnet",
+  "apiUrl": "https://keystone.stauniverse.tech"
+}

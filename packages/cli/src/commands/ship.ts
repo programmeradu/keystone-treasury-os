@@ -21,6 +21,7 @@ export interface ShipOptions {
     cluster?: string;
     skipArweave?: boolean;
     yes?: boolean;
+    apiUrl?: string;
 }
 
 export interface ShipResult {
@@ -101,8 +102,11 @@ export async function runShip(options: ShipOptions): Promise<ShipResult> {
         description,
         creatorWallet: wallet,
         privateKey: merged.privateKey || options.privateKey,
+        bearerToken: merged.apiKey,
         cluster: (merged.cluster || options.cluster || "devnet") as any,
         skipArweave: options.skipArweave,
+        apiUrl: options.apiUrl || merged.apiUrl,
+        category: merged.category,
     });
 
     if (!publishResult.ok) {

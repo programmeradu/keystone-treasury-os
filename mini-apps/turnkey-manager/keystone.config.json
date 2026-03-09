@@ -1,0 +1,8 @@
+{
+  "name": "Turnkey Wallet Manager",
+  "description": "Secure wallet management with Turnkey. Create wallets, sign transactions, and manage keys with enterprise-grade security.",
+  "wallet": "9agsk4cgDFrcz2xBoTfitPVQcBPV6bB65LcQMkppYn8n",
+  "category": "Security",
+  "cluster": "devnet",
+  "apiUrl": "https://keystone.stauniverse.tech"
+}

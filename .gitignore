@@ -45,3 +45,8 @@ next-env.d.ts
 /target
 **/target/
 **/deploy/*-keypair.json
+
+# one-off scripts with secrets
+scripts/gen-keypair.mjs
+scripts/create-developer-tokens.mjs
+scripts/seed-mini-apps.mjs

@@ -598,11 +598,34 @@ async function registerOnChain(opts) {
     return null;
   }
 }
-async function registerToRegistry(apiUrl, payload) {
+async function registerToRegistry(apiUrl, payload, auth) {
   try {
-    const res = await fetch(`${apiUrl.replace(/\/$/, "")}/api/studio/publish`, {
+    const baseUrl = apiUrl.replace(/\/$/, "");
+    const headers = { "Content-Type": "application/json" };
+    if (auth?.bearerToken) {
+      headers["Authorization"] = `Bearer ${auth.bearerToken}`;
+    } else if (auth?.privateKey) {
+      try {
+        const nonceRes = await fetch(`${baseUrl}/api/studio/publish/auth`);
+        if (nonceRes.ok) {
+          const { nonce } = await nonceRes.json();
+          const { Keypair } = await import("@solana/web3.js");
+          const bs58 = (await import("bs58")).default;
+          const nacl = await import("tweetnacl");
+          const keypair = Keypair.fromSecretKey(bs58.decode(auth.privateKey));
+          const messageBytes = new TextEncoder().encode(nonce);
+          const signature = nacl.sign.detached(messageBytes, keypair.secretKey);
+          headers["X-Keystone-Wallet"] = keypair.publicKey.toBase58();
+          headers["X-Keystone-Signature"] = bs58.encode(Buffer.from(signature));
+          headers["X-Keystone-Nonce"] = nonce;
+        }
+      } catch (e) {
+        console.warn("[publish] Wallet signature auth failed, trying without auth:", e.message);
+      }
+    }
+    const res = await fetch(`${baseUrl}/api/studio/publish`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(payload)
     });
     if (!res.ok) {
@@ -682,16 +705,23 @@ ${gatekeeper.errors.map((e) => `  ${e.file}:${e.line} \u2014 ${e.message}`).join
     console.log("  [4/4] On-chain registration skipped (no private key)");
   }
   if (options.apiUrl) {
-    await registerToRegistry(options.apiUrl, {
-      name: options.name,
-      description: options.description,
-      code: codeJson,
-      creatorWallet: options.creatorWallet,
-      arweaveTxId: arweaveTxId ?? void 0,
-      codeHash,
-      securityScore: gatekeeper.securityScore,
-      category: options.category ?? "utility"
-    });
+    await registerToRegistry(
+      options.apiUrl,
+      {
+        name: options.name,
+        description: options.description,
+        code: codeJson,
+        creatorWallet: options.creatorWallet,
+        arweaveTxId: arweaveTxId ?? void 0,
+        codeHash,
+        securityScore: gatekeeper.securityScore,
+        category: options.category ?? "utility"
+      },
+      {
+        bearerToken: options.bearerToken,
+        privateKey: options.privateKey
+      }
+    );
   }
   return {
     ok: true,
@@ -1348,8 +1378,11 @@ ${gatekeeper.errors.map((e) => `    ${e.file}:${e.line} \u2014 ${e.message}`).jo
     description,
     creatorWallet: wallet,
     privateKey: merged.privateKey || options.privateKey,
+    bearerToken: merged.apiKey,
     cluster: merged.cluster || options.cluster || "devnet",
-    skipArweave: options.skipArweave
+    skipArweave: options.skipArweave,
+    apiUrl: options.apiUrl || merged.apiUrl,
+    category: merged.category
   });
   if (!publishResult.ok) {
     return { ok: false, error: publishResult.error };
@@ -1365,9 +1398,45 @@ ${gatekeeper.errors.map((e) => `    ${e.file}:${e.line} \u2014 ${e.message}`).jo
   };
 }
 
+// src/commands/register.ts
+async function runRegister(options) {
+  const apiUrl = (options.apiUrl || "https://keystone.stauniverse.tech").replace(/\/$/, "");
+  const payload = {};
+  if (options.label) payload.label = options.label;
+  if (options.wallet) payload.walletAddress = options.wallet;
+  try {
+    const res = await fetch(`${apiUrl}/api/studio/publish/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+      return { ok: false, error: err.error || `Registration failed (${res.status})` };
+    }
+    const data = await res.json();
+    const config = loadConfig(options.dir);
+    config.wallet = data.walletAddress;
+    config.apiKey = data.developerToken;
+    if (!config.apiUrl) config.apiUrl = apiUrl;
+    saveConfig(config, options.dir);
+    return {
+      ok: true,
+      walletAddress: data.walletAddress,
+      developerToken: data.developerToken,
+      mode: data.mode
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Registration failed"
+    };
+  }
+}
+
 // src/index.ts
 var program = new import_commander.Command();
-program.name("keystone").description("CLI for Keystone Studio Mini-Apps \u2014 Sovereign OS 2026").version("0.2.0");
+program.name("keystone").description("CLI for Keystone Studio Mini-Apps \u2014 Sovereign OS 2026").version("1.0.0");
 program.command("init [dir]").description("Scaffold a new Mini-App").action((dir) => {
   try {
     runInit(dir);
@@ -1542,7 +1611,7 @@ Deploy failed: ${result.error}`);
     process.exit(1);
   }
 });
-program.command("ship [dir]").description("Ship mini-app to marketplace (validate + build + publish in one step)").option("-n, --name <name>", "App name (overrides config)").option("-d, --description <desc>", "App description (overrides config)").option("-w, --wallet <address>", "Creator wallet (overrides config)").option("--private-key <key>", "Base58 private key for signing").option("--cluster <cluster>", "Solana cluster: devnet or mainnet-beta").option("--skip-arweave", "Skip Arweave upload").option("-y, --yes", "Skip confirmation prompts").action(async (dir = ".", opts) => {
+program.command("ship [dir]").description("Ship mini-app to marketplace (validate + build + publish in one step)").option("-n, --name <name>", "App name (overrides config)").option("-d, --description <desc>", "App description (overrides config)").option("-w, --wallet <address>", "Creator wallet (overrides config)").option("--private-key <key>", "Base58 private key for signing").option("--cluster <cluster>", "Solana cluster: devnet or mainnet-beta").option("--api-url <url>", "Keystone OS API URL (e.g. https://keystone.example.com)").option("--skip-arweave", "Skip Arweave upload").option("-y, --yes", "Skip confirmation prompts").action(async (dir = ".", opts) => {
   try {
     const result = await runShip({ dir, ...opts });
     if (result.ok) {
@@ -1559,6 +1628,38 @@ program.command("ship [dir]").description("Ship mini-app to marketplace (validat
       console.error(`
   Ship failed:
   ${result.error}`);
+      process.exit(1);
+    }
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : err);
+    process.exit(1);
+  }
+});
+program.command("register").description("Register as a developer \u2014 get a wallet + publish token (via Turnkey or BYO key)").option("-w, --wallet <address>", "Use your own wallet (BYO mode)").option("-l, --label <label>", "Developer label (default: 'default')").option("--api-url <url>", "Keystone API URL", "https://keystone.stauniverse.tech").option("-d, --dir <dir>", "Directory to save config", ".").action(async (opts) => {
+  try {
+    console.log("\n  Keystone Developer Registration\n");
+    if (opts.wallet) {
+      console.log(`  Mode: BYO Key (${opts.wallet.slice(0, 8)}...)`);
+    } else {
+      console.log("  Mode: Turnkey-managed wallet (auto-provisioned)");
+    }
+    console.log("");
+    const result = await runRegister({
+      dir: opts.dir,
+      wallet: opts.wallet,
+      label: opts.label,
+      apiUrl: opts.apiUrl
+    });
+    if (result.ok) {
+      console.log("  Registration successful!\n");
+      console.log(`  Wallet:  ${result.walletAddress}`);
+      console.log(`  Token:   ${result.developerToken.slice(0, 8)}...${result.developerToken.slice(-4)}`);
+      console.log(`  Mode:    ${result.mode}`);
+      console.log("\n  Saved to keystone.config.json");
+      console.log("\n  You can now publish:");
+      console.log("    keystone ship\n");
+    } else {
+      console.error(`  Registration failed: ${result.error}`);
       process.exit(1);
     }
   } catch (err) {

@@ -24,6 +24,8 @@ export interface PublishOptions {
   skipArweave?: boolean;
   /** Base58 private key for signing tx */
   privateKey?: string;
+  /** Bearer token from keystone register */
+  bearerToken?: string;
   /** Solana cluster: devnet (default) or mainnet-beta */
   cluster?: "devnet" | "mainnet-beta";
   /** Register on KeystoneMarket. Pass price in USDC cents. */
@@ -178,6 +180,10 @@ async function registerOnChain(opts: {
 
 /**
  * Register via Keystone API server (non-chain fallback).
+ * Supports three auth methods:
+ *   1. Bearer token (from keystone register) — stored in config.apiKey
+ *   2. Wallet signature — signs a challenge nonce with private key
+ *   3. No auth — falls back if neither is available (will likely 401)
  */
 async function registerToRegistry(
   apiUrl: string,
@@ -190,12 +196,48 @@ async function registerToRegistry(
     codeHash?: string;
     securityScore?: number;
     category?: string;
+  },
+  auth?: {
+    bearerToken?: string;
+    privateKey?: string;
   }
 ): Promise<{ appId: string } | null> {
   try {
-    const res = await fetch(`${apiUrl.replace(/\/$/, "")}/api/studio/publish`, {
+    const baseUrl = apiUrl.replace(/\/$/, "");
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+
+    // Auth method 1: Bearer token (from keystone register)
+    if (auth?.bearerToken) {
+      headers["Authorization"] = `Bearer ${auth.bearerToken}`;
+    }
+    // Auth method 2: Wallet signature
+    else if (auth?.privateKey) {
+      try {
+        // Fetch challenge nonce
+        const nonceRes = await fetch(`${baseUrl}/api/studio/publish/auth`);
+        if (nonceRes.ok) {
+          const { nonce } = (await nonceRes.json()) as { nonce: string };
+
+          const { Keypair } = await import("@solana/web3.js");
+          const bs58 = (await import("bs58")).default;
+          const nacl = await import("tweetnacl");
+
+          const keypair = Keypair.fromSecretKey(bs58.decode(auth.privateKey));
+          const messageBytes = new TextEncoder().encode(nonce);
+          const signature = nacl.sign.detached(messageBytes, keypair.secretKey);
+
+          headers["X-Keystone-Wallet"] = keypair.publicKey.toBase58();
+          headers["X-Keystone-Signature"] = bs58.encode(Buffer.from(signature));
+          headers["X-Keystone-Nonce"] = nonce;
+        }
+      } catch (e) {
+        console.warn("[publish] Wallet signature auth failed, trying without auth:", (e as Error).message);
+      }
+    }
+
+    const res = await fetch(`${baseUrl}/api/studio/publish`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
@@ -289,16 +331,23 @@ export async function runPublish(options: PublishOptions): Promise<PublishResult
 
   // Also try API registry if URL provided
   if (options.apiUrl) {
-    await registerToRegistry(options.apiUrl, {
-      name: options.name,
-      description: options.description,
-      code: codeJson,
-      creatorWallet: options.creatorWallet,
-      arweaveTxId: arweaveTxId ?? undefined,
-      codeHash,
-      securityScore: gatekeeper.securityScore,
-      category: options.category ?? "utility",
-    });
+    await registerToRegistry(
+      options.apiUrl,
+      {
+        name: options.name,
+        description: options.description,
+        code: codeJson,
+        creatorWallet: options.creatorWallet,
+        arweaveTxId: arweaveTxId ?? undefined,
+        codeHash,
+        securityScore: gatekeeper.securityScore,
+        category: options.category ?? "utility",
+      },
+      {
+        bearerToken: options.bearerToken,
+        privateKey: options.privateKey,
+      }
+    );
   }
 
   return {
