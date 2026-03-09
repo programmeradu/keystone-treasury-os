@@ -2,7 +2,6 @@ import { NextRequest } from "next/server";
 
 // Simple SSE stream that emits synthetic OHLCV candles by polling our existing price proxy
 // Query: ?symbol=SOL&interval=5s (interval supports: 2s,5s,10s,30s,60s)
-export const runtime = "edge";
 
 function parseInterval(ms: string | null): number {
   switch ((ms || "5s").toLowerCase()) {

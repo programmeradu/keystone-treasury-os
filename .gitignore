@@ -53,3 +53,4 @@ scripts/seed-mini-apps.mjs
 
 # build artifacts
 build-output.txt
+.open-next/
