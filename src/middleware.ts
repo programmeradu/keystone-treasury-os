@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { jwtVerify, SignJWT } from 'jose';
+import { jwtVerify } from 'jose';
 
 /**
  * Middleware: Dual auth session check + route protection.
@@ -47,89 +47,24 @@ async function hasSiwsSession(request: NextRequest): Promise<boolean> {
     }
 }
 
-/**
- * Try to exchange a Neon Auth session verifier for a local JWT session.
- * The verifier is appended to the callbackURL by Neon Auth after
- * successful OAuth. We use it as a session token to call Neon Auth's
- * get-session endpoint and retrieve the authenticated user info.
- */
-async function exchangeVerifier(
-    verifier: string,
-): Promise<{ userId: string; email?: string; name?: string } | null> {
-    const base = process.env.NEON_AUTH_BASE_URL;
-    if (!base) return null;
-
-    try {
-        // Try using the verifier as a session token – Neon Auth may
-        // accept it via any of these cookie names.
-        const cookieStr = [
-            `__Secure-neon-auth.session_token=${verifier}`,
-            `neon-auth.session_token=${verifier}`,
-            `better-auth.session_token=${verifier}`,
-        ].join('; ');
-
-        const res = await fetch(`${base.replace(/\/$/, '')}/get-session`, {
-            headers: { Cookie: cookieStr, Accept: 'application/json' },
-        });
-
-        if (res.ok) {
-            const data = await res.json();
-            const user = data?.user || data?.data?.user;
-            if (user?.id) {
-                return { userId: user.id, email: user.email, name: user.name };
-            }
-        }
-    } catch (err) {
-        console.error('[Middleware] Verifier exchange error:', err);
-    }
-
-    return null;
-}
-
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // ─── Handle Neon Auth OAuth verifier exchange ────────────────────
-    // When returning from Google/Discord OAuth, the URL may contain
-    // neon_auth_session_verifier which we exchange for a local JWT.
+    // After Google/Discord OAuth, Neon Auth redirects back with
+    // ?neon_auth_session_verifier=xxx appended to the callbackURL.
+    // Strip it and ensure the user lands on /auth?oauth=complete so the
+    // client-side exchange flow can create a local JWT session.
     if (request.nextUrl.searchParams.has('neon_auth_session_verifier')) {
-        const verifier = request.nextUrl.searchParams.get('neon_auth_session_verifier')!;
-        console.log('[Middleware] Exchanging neon_auth_session_verifier…');
-
-        const session = await exchangeVerifier(verifier);
-        if (session) {
-            const token = await new SignJWT({
-                sub: session.userId,
-                wallet: `neon_${session.userId}`,
-                email: session.email,
-                method: 'neon-oauth',
-            })
-                .setProtectedHeader({ alg: 'HS256' })
-                .setIssuedAt()
-                .setExpirationTime('7d')
-                .setIssuer('keystone-treasury-os')
-                .sign(getJwtSecret());
-
-            // Redirect to /app with a clean URL and the new session cookie.
-            const appUrl = request.nextUrl.clone();
-            appUrl.pathname = '/app';
-            appUrl.search = '';
-
-            const response = NextResponse.redirect(appUrl);
-            response.cookies.set(SIWS_COOKIE, token, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
-                path: '/',
-                maxAge: 60 * 60 * 24 * 7,
-            });
-            console.log('[Middleware] Verifier exchanged – redirecting to /app');
-            return response;
+        const cleanUrl = request.nextUrl.clone();
+        // Ensure oauth=complete is present (it should be from callbackURL)
+        if (!cleanUrl.searchParams.has('oauth')) {
+            cleanUrl.searchParams.set('oauth', 'complete');
         }
-
-        console.log('[Middleware] Verifier exchange failed – falling through');
-        // Fall through to let the auth page handle it via the exchange-session endpoint.
-        return NextResponse.next();
+        // Remove the verifier param to keep the URL clean
+        cleanUrl.searchParams.delete('neon_auth_session_verifier');
+        console.log('[Middleware] Stripping neon_auth_session_verifier, redirecting to:', cleanUrl.pathname + cleanUrl.search);
+        return NextResponse.redirect(cleanUrl);
     }
 
     // ─── Skip public routes ─────────────────────────────────────────

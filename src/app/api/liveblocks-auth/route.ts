@@ -11,9 +11,15 @@ const NEON_AUTH_COOKIE_NAMES = [
     "better-auth.session_token",
 ];
 
-const liveblocks = new Liveblocks({
-    secret: process.env.LIVEBLOCKS_SECRET_KEY!,
-});
+let _liveblocks: Liveblocks | null = null;
+function getLiveblocks() {
+    if (!_liveblocks) {
+        const secret = process.env.LIVEBLOCKS_SECRET_KEY;
+        if (!secret) throw new Error("LIVEBLOCKS_SECRET_KEY is not set");
+        _liveblocks = new Liveblocks({ secret });
+    }
+    return _liveblocks;
+}
 
 function getJwtSecret() {
     return new TextEncoder().encode(
@@ -117,7 +123,7 @@ export async function POST(request: NextRequest) {
         userId.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0) %
         colorPalette.length;
 
-    const session = liveblocks.prepareSession(userId, {
+    const session = getLiveblocks().prepareSession(userId, {
         userInfo: {
             name: userName || "Anonymous",
             color: colorPalette[colorIndex],
