@@ -101,6 +101,14 @@ export async function middleware(request: NextRequest) {
         return NextResponse.next({ request: { headers: request.headers } });
     }
 
+    // ─── CLI publish endpoints (self-authenticated, no cookies needed) ──
+    // /api/studio/publish/auth   — GET, returns challenge nonce (public)
+    // /api/studio/publish/register — POST, registers developer (rate-limited, self-protected)
+    // /api/studio/publish        — POST with bearer/signature headers (route does own auth)
+    if (pathname === '/api/studio/publish/auth' || pathname === '/api/studio/publish/register') {
+        return NextResponse.next({ request: { headers: request.headers } });
+    }
+
     // ─── CLI auth bypass: let bearer-token / wallet-signature requests through ──
     // The publish route handler does its own verification of these credentials.
     if (
