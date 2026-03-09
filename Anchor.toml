@@ -5,10 +5,10 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-keystone_marketplace = "FAFVo6Sr1fmRnvcMcXU2XUrWEyzfPHoF8q5u4ZPNRLqT"
+keystone_marketplace = "F8kN2gs4kqHtz2bkJZLbtNm6j8e7EUSarYDQcXff8iQY"
 
 [programs.localnet]
-keystone_marketplace = "FAFVo6Sr1fmRnvcMcXU2XUrWEyzfPHoF8q5u4ZPNRLqT"
+keystone_marketplace = "F8kN2gs4kqHtz2bkJZLbtNm6j8e7EUSarYDQcXff8iQY"
 
 [registry]
 url = "https://api.apr.dev"

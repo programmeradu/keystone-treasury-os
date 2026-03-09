@@ -17,18 +17,7 @@ export default function RunPage() {
 
     useEffect(() => {
         async function load() {
-            // Try localStorage first
-            try {
-                const stored = JSON.parse(localStorage.getItem("keystone_library_apps") || "[]");
-                const found = stored.find((a: any) => a.id === appId);
-                if (found) {
-                    setProject(found);
-                    setLoading(false);
-                    return;
-                }
-            } catch {}
-
-            // Fall back to DB
+            // Load from DB
             try {
                 const data = await getProject(appId);
                 if (data) {

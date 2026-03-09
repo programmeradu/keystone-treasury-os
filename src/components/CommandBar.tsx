@@ -48,28 +48,17 @@ function persistStudioProjectFromToolOutput(output: Record<string, unknown>): st
       ? output.name.trim()
       : "Untitled Mini-App";
     const appId = `cmd_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-    const creatorWallet = localStorage.getItem("keystone_wallet_id") || "Operator";
+    const creatorWallet = "Operator";
 
     const codeFiles = Object.entries(filesRaw).reduce((acc, [name, content]) => {
       acc[name] = { content: String(content ?? "") };
       return acc;
     }, {} as Record<string, { content: string }>);
 
-    const projectEntry = {
-      id: appId,
-      name: appName,
-      description: `Generated from command bar (${String(output.template || "react")})`,
-      code: { files: codeFiles },
-      creatorWallet,
-      version: "1.0.0",
-      isPublished: false,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-
-    const existing = JSON.parse(localStorage.getItem("keystone_studio_projects") || "[]") as Array<Record<string, unknown>>;
-    existing.push(projectEntry);
-    localStorage.setItem("keystone_studio_projects", JSON.stringify(existing));
+    // Save to DB via server action
+    import("@/actions/studio-actions").then(({ saveProject }) => {
+      saveProject(creatorWallet, { files: codeFiles }, { name: appName, description: `Generated from command bar (${String(output.template || "react")})` }, appId);
+    }).catch(() => {});
 
     return appId;
   } catch (err) {

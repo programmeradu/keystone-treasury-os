@@ -14,44 +14,28 @@ import { WalletButton } from "@/components/WalletButton";
 import { toast } from "@/lib/toast-notifications";
 import { NotificationBell } from "@/components/NotificationBell";
 
-// Fallback mock data for legacy/demo app IDs
-const MOCK_APPS: Record<string, any> = {
-    "app_1": {
-        id: "app_1", name: "Solana Token Sniper",
-        description: "The ultimate tool for efficient token acquisition on the Solana network. \n\nFeatures:\n- Real-time Raydium pool monitoring\n- Configurable slippage and gas settings\n- Anti-rug checks via RugCheck API\n- Auto-sell strategies based on PnL\n\nPerfect for high-frequency traders who need speed and precision. Built with Rust for maximum performance and security.",
-        priceUsdc: 50, rating: 4.8, installs: 1240, creatorWallet: "7KeY...StUdIo", category: "DeFi", version: "1.2.4", updatedAt: "2 days ago",
-    },
-    "app_2": {
-        id: "app_2", name: "NFT Portfolio Visualizer",
-        description: "A stunning 3D gallery view for your Solana NFT collection with floor price tracking.",
-        priceUsdc: 0, rating: 4.5, installs: 8503, creatorWallet: "8BoX...CrEaTr", category: "NFT", version: "2.0.1", updatedAt: "1 week ago",
-    },
-    "app_3": {
-        id: "app_3", name: "Yield Farming Auto-Compounder",
-        description: "Optimize your Kamino and Meteora positions with auto-compounding strategies.",
-        priceUsdc: 100, rating: 4.9, installs: 532, creatorWallet: "9FaR...Yield", category: "DeFi", version: "1.0.0", updatedAt: "3 days ago",
-    },
-    "app_4": {
-        id: "app_4", name: "DAO Voter Bot",
-        description: "Never miss a governance proposal. Auto-vote based on your preferences.",
-        priceUsdc: 10, rating: 4.2, installs: 300, creatorWallet: "3Gov...Voter", category: "Governance", version: "0.9.0", updatedAt: "5 days ago",
-    },
-};
-
-function loadAppDetails(appId: string) {
-    // Try localStorage marketplace listings first
+async function loadAppDetails(appId: string): Promise<any | null> {
     try {
-        const listings = JSON.parse(localStorage.getItem("keystone_marketplace_listings") || "[]");
-        const found = listings.find((a: any) => a.id === appId);
-        if (found) {
-            return {
-                ...found,
-                updatedAt: found.updatedAt ? new Date(found.updatedAt).toLocaleDateString() : "Recently",
-            };
+        const res = await fetch(`/api/studio/marketplace?appId=${encodeURIComponent(appId)}`);
+        if (res.ok) {
+            const app = await res.json();
+            if (app && !app.error) {
+                return { ...app, updatedAt: app.createdAt ? new Date(app.createdAt).toLocaleDateString() : "Recently" };
+            }
         }
     } catch {}
-    // Fall back to mock
-    return MOCK_APPS[appId] || null;
+    return null;
+}
+
+async function checkIfInstalled(appId: string, userId: string): Promise<string | null> {
+    try {
+        const { getInstalledApps } = await import("@/actions/studio-actions");
+        const apps = await getInstalledApps(userId);
+        const found = apps.find((a: any) => a.id === appId);
+        return found ? (found.version || "1.0.0") : null;
+    } catch {
+        return null;
+    }
 }
 
 export default function AppDetailPage() {
@@ -63,13 +47,9 @@ export default function AppDetailPage() {
     const [installedVersion, setInstalledVersion] = React.useState<string | null>(null);
 
     React.useEffect(() => {
-        setApp(loadAppDetails(appId));
-        // Check if already installed
-        try {
-            const library = JSON.parse(localStorage.getItem("keystone_library_apps") || "[]");
-            const found = library.find((a: any) => a.id === appId);
-            if (found) setInstalledVersion(found.version || "1.0.0");
-        } catch {}
+        loadAppDetails(appId).then(setApp);
+        // Check if already installed via DB
+        checkIfInstalled(appId, "").then(v => { if (v) setInstalledVersion(v); });
     }, [appId]);
 
     if (!app) {

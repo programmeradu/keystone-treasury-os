@@ -5,6 +5,7 @@ import { CreditCard, CheckCircle2, BarChart3, Package, Zap, Store, ShoppingCart 
 import { Logo } from "@/components/icons";
 import { useNotificationStore } from "@/lib/notifications";
 import { formatDistanceToNow } from "date-fns";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 interface AppStats {
     appsCreated: number;
@@ -14,23 +15,21 @@ interface AppStats {
     totalEarnedSol: number;
 }
 
-function getStats(): AppStats {
+async function loadStatsFromDb(wallet: string): Promise<AppStats> {
     try {
-        const library = JSON.parse(localStorage.getItem("keystone_library_apps") || "[]");
-        const listings = JSON.parse(localStorage.getItem("keystone_marketplace_listings") || "[]");
-        const purchases = JSON.parse(localStorage.getItem("keystone_purchases") || "[]");
+        const { getProjects, getInstalledApps } = await import("@/actions/studio-actions");
+        const projects = await getProjects(wallet);
+        const installed = await getInstalledApps(wallet);
 
-        // Count purchased apps from both library entries (new) and purchases store (legacy)
-        const libraryPurchased = library.filter((a: any) => a.purchasedAt);
-        const purchaseCount = Math.max(libraryPurchased.length, purchases.length);
-        const totalSpentFromPurchases = purchases.reduce((s: number, p: any) => s + (p.amount || p.priceUsdc || 0), 0);
-        const totalSpentFromLibrary = libraryPurchased.reduce((s: number, a: any) => s + (a.priceUsdc || 0), 0);
-        const totalSpent = Math.max(totalSpentFromPurchases, totalSpentFromLibrary);
-        const totalEarned = listings.reduce((s: number, a: any) => s + ((a.installs || 0) * (a.priceUsdc || 0) * 0.8), 0);
+        const listed = projects.filter((p: any) => p.isPublished);
+        const purchased = installed.filter((a: any) => a.creatorWallet !== wallet);
+        const totalEarned = listed.reduce((s: number, a: any) => s + ((a.installs || 0) * parseFloat(a.priceUsdc || "0") * 0.8), 0);
+        const totalSpent = purchased.reduce((s: number, a: any) => s + parseFloat(a.priceUsdc || "0"), 0);
+
         return {
-            appsCreated: library.length,
-            appsListed: listings.length,
-            appsPurchased: purchaseCount,
+            appsCreated: projects.length,
+            appsListed: listed.length,
+            appsPurchased: purchased.length,
             totalSpentSol: totalSpent,
             totalEarnedSol: totalEarned,
         };
@@ -42,8 +41,12 @@ function getStats(): AppStats {
 export const BillingView = () => {
     const [stats, setStats] = useState<AppStats>({ appsCreated: 0, appsListed: 0, appsPurchased: 0, totalSpentSol: 0, totalEarnedSol: 0 });
     const { notifications } = useNotificationStore();
+    const { publicKey } = useWallet();
 
-    useEffect(() => { setStats(getStats()); }, []);
+    useEffect(() => {
+        const wallet = publicKey?.toBase58() || "";
+        loadStatsFromDb(wallet).then(setStats);
+    }, [publicKey]);
 
     // Derive purchase history from notifications
     const purchaseNotifs = notifications

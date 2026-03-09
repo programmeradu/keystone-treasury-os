@@ -285,3 +285,89 @@ export async function togglePinApp(userId: string, appId: string, pinned: boolea
         return { success: false, error: "Pin toggle failed" };
     }
 }
+
+// ─── Marketplace Publish ─────────────────────────────────────────────
+
+export async function publishApp(
+    userId: string,
+    appId: string,
+    opts: {
+        description: string;
+        priceUsdc: number;
+        category: string;
+        screenshotUrl?: string;
+    }
+) {
+    if (!db) throw new Error("Database not available");
+
+    try {
+        // Verify ownership
+        const rows = await db
+            .select({ creatorWallet: miniApps.creatorWallet })
+            .from(miniApps)
+            .where(eq(miniApps.id, appId))
+            .limit(1);
+
+        if (rows.length === 0) {
+            return { success: false, error: "App not found" };
+        }
+        if (rows[0].creatorWallet !== userId) {
+            return { success: false, error: "Not authorized" };
+        }
+
+        await db
+            .update(miniApps)
+            .set({
+                isPublished: true,
+                description: opts.description,
+                priceUsdc: String(opts.priceUsdc),
+                category: opts.category,
+                screenshotUrl: opts.screenshotUrl,
+                updatedAt: new Date(),
+            })
+            .where(eq(miniApps.id, appId));
+
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to publish app:", error);
+        return { success: false, error: "Publish failed" };
+    }
+}
+
+export async function checkOwnership(userId: string, appId: string): Promise<boolean> {
+    if (!db) return false;
+
+    try {
+        // Check purchases
+        const purchaseRows = await db
+            .select({ id: purchases.id })
+            .from(purchases)
+            .where(and(eq(purchases.buyerWallet, userId), eq(purchases.appId, appId)))
+            .limit(1);
+        if (purchaseRows.length > 0) return true;
+
+        // Check installed apps
+        const installRows = await db
+            .select({ id: userInstalledApps.id })
+            .from(userInstalledApps)
+            .where(
+                and(
+                    eq(userInstalledApps.userId, userId),
+                    eq(userInstalledApps.appId, appId),
+                    isNull(userInstalledApps.uninstalledAt)
+                )
+            )
+            .limit(1);
+        if (installRows.length > 0) return true;
+
+        // Check if creator
+        const creatorRows = await db
+            .select({ id: miniApps.id })
+            .from(miniApps)
+            .where(and(eq(miniApps.id, appId), eq(miniApps.creatorWallet, userId)))
+            .limit(1);
+        return creatorRows.length > 0;
+    } catch {
+        return false;
+    }
+}

@@ -27,11 +27,11 @@ export default function LibraryPage() {
     const [loading, setLoading] = useState(true);
     const [listingApp, setListingApp] = useState<any>(null);
 
-    function handleUninstall(app: any) {
+    async function handleUninstall(app: any) {
         try {
-            const library = JSON.parse(localStorage.getItem("keystone_library_apps") || "[]");
-            const updated = library.filter((a: any) => a.id !== app.id);
-            localStorage.setItem("keystone_library_apps", JSON.stringify(updated));
+            const { uninstallApp } = await import("@/actions/studio-actions");
+            const userId = user?.info?.name || "";
+            await uninstallApp(userId, app.id);
             setApps(prev => prev.filter(a => a.id !== app.id));
             toast.success(`"${app.name}" uninstalled`, {
                 description: "Removed from your Library.",
@@ -41,23 +41,14 @@ export default function LibraryPage() {
         }
     }
 
-    function handleDelist(app: any) {
+    async function handleDelist(app: any) {
         try {
-            // Remove from marketplace listings
-            const listings = JSON.parse(localStorage.getItem("keystone_marketplace_listings") || "[]");
-            const updated = listings.filter((a: any) => a.id !== app.id);
-            localStorage.setItem("keystone_marketplace_listings", JSON.stringify(updated));
-
-            // Update library entry
-            const library = JSON.parse(localStorage.getItem("keystone_library_apps") || "[]");
-            const idx = library.findIndex((a: any) => a.id === app.id);
-            if (idx >= 0) {
-                library[idx].isPublished = false;
-                delete library[idx].priceUsdc;
-                localStorage.setItem("keystone_library_apps", JSON.stringify(library));
-            }
-
-            // Update local state
+            const userId = user?.info?.name || "";
+            await fetch("/api/studio/marketplace", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ appId: app.id, creatorWallet: userId, isPublished: false }),
+            });
             setApps(prev => prev.map(a => a.id === app.id ? { ...a, isPublished: false } : a));
             toast.success(`"${app.name}" delisted`, {
                 description: "Removed from the Marketplace.",
@@ -74,27 +65,8 @@ export default function LibraryPage() {
 
     async function loadApps() {
         try {
-            // Try DB first
-            const userId = user?.info?.name || "7KeY...StUdIo";
-            let data: any[] = [];
-            try {
-                data = await getInstalledApps(userId);
-            } catch {
-                // DB not available
-            }
-
-            // Merge with localStorage library
-            try {
-                const stored = JSON.parse(localStorage.getItem("keystone_library_apps") || "[]");
-                if (stored.length > 0) {
-                    const merged = [...stored, ...data];
-                    const unique = Array.from(new Map(merged.map((a: any) => [a.id, a])).values());
-                    data = unique;
-                }
-            } catch {
-                // localStorage parse error
-            }
-
+            const userId = user?.info?.name || "";
+            const data = await getInstalledApps(userId);
             setApps(data);
         } catch (error) {
             console.error(error);

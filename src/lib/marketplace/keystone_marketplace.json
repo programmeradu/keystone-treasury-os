@@ -1,375 +1,61 @@
 {
-    "address": "FAFVo6Sr1fmRnvcMcXU2XUrWEyzfPHoF8q5u4ZPNRLqT",
+    "address": "F8kN2gs4kqHtz2bkJZLbtNm6j8e7EUSarYDQcXff8iQY",
     "metadata": {
         "name": "keystone_marketplace",
-        "version": "0.1.0",
+        "version": "1.0.0",
         "spec": "0.1.0",
         "description": "Keystone Marketplace — On-chain app registry with 80/20 revenue split and License NFT minting."
     },
     "instructions": [
         {
-            "name": "registerApp",
-            "docs": [
-                "Register a new app in the marketplace. Only the developer can call this."
-            ],
-            "discriminator": [
-                1,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0
-            ],
+            "name": "initializeApp",
+            "docs": ["Initialize an app listing for sale."],
             "accounts": [
-                {
-                    "name": "developer",
-                    "writable": true,
-                    "signer": true
-                },
-                {
-                    "name": "appRegistry",
-                    "writable": true,
-                    "pda": {
-                        "seeds": [
-                            {
-                                "kind": "const",
-                                "value": "app_registry"
-                            },
-                            {
-                                "kind": "arg",
-                                "path": "appId"
-                            }
-                        ]
-                    }
-                },
-                {
-                    "name": "systemProgram",
-                    "address": "11111111111111111111111111111111"
-                }
+                { "name": "appRegistry", "writable": true, "pda": { "seeds": [{ "kind": "const", "value": "app_registry" }, { "kind": "arg", "path": "appId" }] } },
+                { "name": "developer", "writable": true, "signer": true },
+                { "name": "systemProgram", "address": "11111111111111111111111111111111" }
             ],
             "args": [
-                {
-                    "name": "appId",
-                    "type": {
-                        "array": [
-                            "u8",
-                            32
-                        ]
-                    }
-                },
-                {
-                    "name": "priceUsdc",
-                    "type": "u64"
-                },
-                {
-                    "name": "ipfsCid",
-                    "type": {
-                        "array": [
-                            "u8",
-                            46
-                        ]
-                    }
-                }
+                { "name": "appId", "type": { "array": ["u8", 32] } },
+                { "name": "priceUsdc", "type": "u64" },
+                { "name": "developerFeeBps", "type": "u16" },
+                { "name": "ipfsCid", "type": { "array": ["u8", 64] } }
             ]
         },
         {
             "name": "purchaseApp",
-            "docs": [
-                "Purchase an app. Splits payment 80/20 between developer and Keystone treasury."
-            ],
-            "discriminator": [
-                2,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0
-            ],
+            "docs": ["Purchase app: split USDC 80/20, mint License NFT to buyer."],
             "accounts": [
-                {
-                    "name": "buyer",
-                    "writable": true,
-                    "signer": true
-                },
-                {
-                    "name": "appRegistry",
-                    "writable": true
-                },
-                {
-                    "name": "developer",
-                    "writable": true
-                },
-                {
-                    "name": "treasury",
-                    "writable": true
-                },
-                {
-                    "name": "buyerTokenAccount",
-                    "writable": true
-                },
-                {
-                    "name": "developerTokenAccount",
-                    "writable": true
-                },
-                {
-                    "name": "treasuryTokenAccount",
-                    "writable": true
-                },
-                {
-                    "name": "usdcMint"
-                },
-                {
-                    "name": "licenseAuthority",
-                    "pda": {
-                        "seeds": [
-                            {
-                                "kind": "const",
-                                "value": "license_authority"
-                            },
-                            {
-                                "kind": "account",
-                                "path": "appRegistry"
-                            }
-                        ]
-                    }
-                },
-                {
-                    "name": "licenseMint",
-                    "writable": true
-                },
-                {
-                    "name": "buyerLicenseAccount",
-                    "writable": true
-                },
-                {
-                    "name": "tokenProgram",
-                    "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-                },
-                {
-                    "name": "associatedTokenProgram",
-                    "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-                },
-                {
-                    "name": "systemProgram",
-                    "address": "11111111111111111111111111111111"
-                },
-                {
-                    "name": "rent",
-                    "address": "SysvarRent111111111111111111111111111111111"
-                }
-            ],
-            "args": []
-        },
-        {
-            "name": "updatePrice",
-            "docs": [
-                "Update the price of an app. Only the developer can call this."
-            ],
-            "discriminator": [
-                3,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0
-            ],
-            "accounts": [
-                {
-                    "name": "developer",
-                    "signer": true
-                },
-                {
-                    "name": "appRegistry",
-                    "writable": true
-                }
+                { "name": "appRegistry", "writable": true, "pda": { "seeds": [{ "kind": "const", "value": "app_registry" }, { "kind": "arg", "path": "appId" }] } },
+                { "name": "developer" },
+                { "name": "buyer", "writable": true, "signer": true },
+                { "name": "buyerUsdcAccount", "writable": true },
+                { "name": "developerUsdcAccount", "writable": true },
+                { "name": "treasuryUsdcAccount", "writable": true },
+                { "name": "usdcMint" },
+                { "name": "licenseMint", "writable": true },
+                { "name": "licenseAuthority", "pda": { "seeds": [{ "kind": "const", "value": "license_authority" }, { "kind": "account", "path": "appRegistry" }] } },
+                { "name": "buyerLicenseAccount", "writable": true },
+                { "name": "tokenProgram", "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" },
+                { "name": "systemProgram", "address": "11111111111111111111111111111111" }
             ],
             "args": [
-                {
-                    "name": "newPriceUsdc",
-                    "type": "u64"
-                }
+                { "name": "appId", "type": { "array": ["u8", 32] } }
             ]
-        },
-        {
-            "name": "delistApp",
-            "docs": [
-                "Delist an app from the marketplace. Only the developer can call this."
-            ],
-            "discriminator": [
-                4,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0
-            ],
-            "accounts": [
-                {
-                    "name": "developer",
-                    "signer": true
-                },
-                {
-                    "name": "appRegistry",
-                    "writable": true
-                }
-            ],
-            "args": []
-        },
-        {
-            "name": "withdrawEscrow",
-            "docs": [
-                "Withdraw accumulated escrow funds. Called by developer after sale confirmation period."
-            ],
-            "discriminator": [
-                5,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0
-            ],
-            "accounts": [
-                {
-                    "name": "developer",
-                    "writable": true,
-                    "signer": true
-                },
-                {
-                    "name": "appRegistry"
-                },
-                {
-                    "name": "escrowVault",
-                    "writable": true,
-                    "pda": {
-                        "seeds": [
-                            {
-                                "kind": "const",
-                                "value": "escrow"
-                            },
-                            {
-                                "kind": "account",
-                                "path": "appRegistry"
-                            }
-                        ]
-                    }
-                },
-                {
-                    "name": "developerTokenAccount",
-                    "writable": true
-                },
-                {
-                    "name": "tokenProgram",
-                    "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-                }
-            ],
-            "args": []
         }
     ],
     "accounts": [
         {
             "name": "AppRegistry",
-            "discriminator": [
-                10,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0
-            ],
             "type": {
                 "kind": "struct",
                 "fields": [
-                    {
-                        "name": "developer",
-                        "type": "pubkey"
-                    },
-                    {
-                        "name": "priceUsdc",
-                        "type": "u64"
-                    },
-                    {
-                        "name": "developerFeeBps",
-                        "type": "u16"
-                    },
-                    {
-                        "name": "ipfsCid",
-                        "type": {
-                            "array": [
-                                "u8",
-                                46
-                            ]
-                        }
-                    },
-                    {
-                        "name": "isListed",
-                        "type": "bool"
-                    },
-                    {
-                        "name": "totalPurchases",
-                        "type": "u64"
-                    },
-                    {
-                        "name": "totalRevenue",
-                        "type": "u64"
-                    },
-                    {
-                        "name": "escrowBalance",
-                        "type": "u64"
-                    },
-                    {
-                        "name": "createdAt",
-                        "type": "i64"
-                    },
-                    {
-                        "name": "updatedAt",
-                        "type": "i64"
-                    }
-                ]
-            }
-        },
-        {
-            "name": "EscrowVault",
-            "discriminator": [
-                11,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0
-            ],
-            "type": {
-                "kind": "struct",
-                "fields": [
-                    {
-                        "name": "appRegistry",
-                        "type": "pubkey"
-                    },
-                    {
-                        "name": "balance",
-                        "type": "u64"
-                    },
-                    {
-                        "name": "lastWithdrawal",
-                        "type": "i64"
-                    },
-                    {
-                        "name": "confirmationPeriod",
-                        "type": "i64"
-                    }
+                    { "name": "developer", "type": "pubkey" },
+                    { "name": "priceUsdc", "type": "u64" },
+                    { "name": "developerFeeBps", "type": "u16" },
+                    { "name": "ipfsCid", "type": { "array": ["u8", 64] } },
+                    { "name": "isListed", "type": "bool" },
+                    { "name": "bump", "type": "u8" }
                 ]
             }
         }
@@ -377,100 +63,19 @@
     "events": [
         {
             "name": "PurchaseEvent",
-            "discriminator": [
-                20,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0
-            ],
             "fields": [
-                {
-                    "name": "appId",
-                    "type": {
-                        "array": [
-                            "u8",
-                            32
-                        ]
-                    }
-                },
-                {
-                    "name": "buyer",
-                    "type": "pubkey"
-                },
-                {
-                    "name": "developer",
-                    "type": "pubkey"
-                },
-                {
-                    "name": "price",
-                    "type": "u64"
-                },
-                {
-                    "name": "developerShare",
-                    "type": "u64"
-                },
-                {
-                    "name": "protocolShare",
-                    "type": "u64"
-                },
-                {
-                    "name": "escrowDeposit",
-                    "type": "u64"
-                },
-                {
-                    "name": "timestamp",
-                    "type": "i64"
-                }
+                { "name": "appId", "type": { "array": ["u8", 32] } },
+                { "name": "buyer", "type": "pubkey" },
+                { "name": "developer", "type": "pubkey" },
+                { "name": "price", "type": "u64" },
+                { "name": "developerShare", "type": "u64" },
+                { "name": "protocolShare", "type": "u64" },
+                { "name": "timestamp", "type": "i64" }
             ]
         }
     ],
     "errors": [
-        {
-            "code": 6000,
-            "name": "Unauthorized",
-            "msg": "Only the developer can perform this action"
-        },
-        {
-            "code": 6001,
-            "name": "AppNotListed",
-            "msg": "This app is not listed for sale"
-        },
-        {
-            "code": 6002,
-            "name": "InsufficientFunds",
-            "msg": "Buyer has insufficient USDC balance"
-        },
-        {
-            "code": 6003,
-            "name": "EscrowLocked",
-            "msg": "Escrow funds are still within confirmation period"
-        },
-        {
-            "code": 6004,
-            "name": "InvalidPrice",
-            "msg": "Price must be greater than 0"
-        }
-    ],
-    "types": [],
-    "constants": [
-        {
-            "name": "DEVELOPER_FEE_BPS",
-            "type": "u16",
-            "value": "8000"
-        },
-        {
-            "name": "PROTOCOL_FEE_BPS",
-            "type": "u16",
-            "value": "2000"
-        },
-        {
-            "name": "ESCROW_CONFIRMATION_SECONDS",
-            "type": "i64",
-            "value": "259200"
-        }
+        { "code": 6000, "name": "AppNotListed", "msg": "App is not listed for sale" },
+        { "code": 6001, "name": "InvalidLicenseAuthority", "msg": "Invalid license authority PDA" }
     ]
 }

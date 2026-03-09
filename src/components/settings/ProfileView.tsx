@@ -30,12 +30,17 @@ function saveProfile(p: UserProfile) {
 }
 
 function getAppStats() {
+    // Stats will be loaded asynchronously from DB
+    return { appsCreated: 0, appsListed: 0 };
+}
+
+async function loadAppStatsFromDb(wallet: string): Promise<{ appsCreated: number; appsListed: number }> {
     try {
-        const library = JSON.parse(localStorage.getItem("keystone_library_apps") || "[]");
-        const listings = JSON.parse(localStorage.getItem("keystone_marketplace_listings") || "[]");
+        const { getProjects } = await import("@/actions/studio-actions");
+        const projects = await getProjects(wallet);
         return {
-            appsCreated: library.length,
-            appsListed: listings.length,
+            appsCreated: projects.length,
+            appsListed: projects.filter((p: any) => p.isPublished).length,
         };
     } catch {
         return { appsCreated: 0, appsListed: 0 };
@@ -50,12 +55,13 @@ export const ProfileView = ({ onNavigate }: { onNavigate?: (view: string) => voi
     const [editName, setEditName] = useState(profile.displayName);
     const [stats, setStats] = useState({ appsCreated: 0, appsListed: 0 });
 
-    useEffect(() => {
-        setStats(getAppStats());
-    }, []);
-
     const walletAddress = connected && publicKey ? publicKey.toBase58() : null;
     const shortWallet = walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "Not Connected";
+
+    useEffect(() => {
+        const wallet = walletAddress || "";
+        loadAppStatsFromDb(wallet).then(setStats);
+    }, [walletAddress]);
 
     const handleSaveName = () => {
         const name = editName.trim() || "Keystone Operator";

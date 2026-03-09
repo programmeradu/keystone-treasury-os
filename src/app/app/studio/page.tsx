@@ -186,27 +186,7 @@ export default function StudioPage() {
         if (!appIdParam) return;
         hasLoadedFromUrl.current = true;
 
-        // Try localStorage saved projects first
-        try {
-            const projects = JSON.parse(localStorage.getItem("keystone_studio_projects") || "[]");
-            const found = projects.find((p: any) => p.id === appIdParam);
-            if (found) {
-                handleLoadProject(found);
-                return;
-            }
-        } catch (e) { console.warn("[Studio] Failed to load from saved projects:", e); }
-
-        // Try localStorage library apps
-        try {
-            const library = JSON.parse(localStorage.getItem("keystone_library_apps") || "[]");
-            const found = library.find((a: any) => a.id === appIdParam);
-            if (found) {
-                handleLoadProject(found);
-                return;
-            }
-        } catch (e) { console.warn("[Studio] Failed to load from library apps:", e); }
-
-        // Try DB as last resort
+        // Load from DB
         (async () => {
             try {
                 const { getProject } = await import("@/actions/studio-actions");
@@ -271,7 +251,7 @@ export default function StudioPage() {
 
         try {
             const appId = currentAppId || "app_" + Math.random().toString(36).substring(2, 15);
-            const creatorWallet = localStorage.getItem("keystone_wallet_id") || user?.info?.name || "Operator";
+            const creatorWallet = user?.info?.name || "Operator";
 
             const projectCode = {
                 files: Object.entries(files).reduce((acc, [name, file]) => ({
@@ -280,40 +260,13 @@ export default function StudioPage() {
                 }), {} as Record<string, { content: string }>)
             };
 
-            const projectEntry = {
-                id: appId,
-                name: appName,
-                description: "Created in Keystone Studio",
-                code: projectCode,
+            // Save to DB
+            await saveProject(
                 creatorWallet,
-                version: "1.0.0",
-                isPublished: false,
-                createdAt: Date.now(),
-                updatedAt: Date.now(),
-            };
-
-            // Save to localStorage
-            const existing = JSON.parse(localStorage.getItem("keystone_studio_projects") || "[]");
-            const idx = existing.findIndex((p: { id: string }) => p.id === appId);
-            if (idx >= 0) {
-                projectEntry.createdAt = existing[idx].createdAt;
-                existing[idx] = projectEntry;
-            } else {
-                existing.push(projectEntry);
-            }
-            localStorage.setItem("keystone_studio_projects", JSON.stringify(existing));
-
-            // Also try DB if available
-            try {
-                await saveProject(
-                    creatorWallet,
-                    projectCode,
-                    { name: appName, description: "Created in Keystone Studio" },
-                    appId
-                );
-            } catch (e) {
-                console.warn("[Studio] DB save failed, using localStorage fallback:", e);
-            }
+                projectCode,
+                { name: appName, description: "Created in Keystone Studio" },
+                appId
+            );
 
             setCurrentAppId(appId);
             toast.dismiss(toastId);
@@ -361,45 +314,26 @@ export default function StudioPage() {
             const appId = currentAppId || "app_" + Math.random().toString(36).substring(2, 15);
             const creatorName = user?.info?.name || "Operator";
 
-            const libraryEntry = {
-                id: appId,
-                name: appName,
-                description: "Built in Keystone Studio by " + creatorName,
-                code: {
-                    files: Object.entries(files).reduce((acc, [name, file]) => ({
-                        ...acc,
-                        [name]: { content: file.content }
-                    }), {} as Record<string, { content: string }>),
-                },
-                creatorWallet: localStorage.getItem("keystone_wallet_id") || creatorName,
-                category: "utility",
-                isPublished: false,
-                version: "1.0.0",
-                createdAt: Date.now(),
-                updatedAt: Date.now(),
+            const projectCode = {
+                files: Object.entries(files).reduce((acc, [name, file]) => ({
+                    ...acc,
+                    [name]: { content: file.content }
+                }), {} as Record<string, { content: string }>),
             };
 
-            // Save to localStorage library
-            const existing = JSON.parse(localStorage.getItem("keystone_library_apps") || "[]");
-            const idx = existing.findIndex((a: { id: string }) => a.id === appId);
-            if (idx >= 0) {
-                existing[idx] = { ...libraryEntry, createdAt: existing[idx].createdAt };
-            } else {
-                existing.push(libraryEntry);
-            }
-            localStorage.setItem("keystone_library_apps", JSON.stringify(existing));
+            // Save to DB
+            await saveProject(
+                creatorName,
+                projectCode,
+                { name: appName, description: "Built in Keystone Studio by " + creatorName },
+                appId
+            );
 
-            // Also try saving to DB if available
+            // Install to user's library via DB
             try {
-                await saveProject(
-                    libraryEntry.creatorWallet,
-                    libraryEntry.code,
-                    { name: appName, description: libraryEntry.description },
-                    appId
-                );
-            } catch (e) {
-                console.warn("[Studio] DB save failed, using localStorage fallback:", e);
-            }
+                const { installApp } = await import("@/actions/studio-actions");
+                await installApp(creatorName, appId);
+            } catch {}
 
             setCurrentAppId(appId);
 

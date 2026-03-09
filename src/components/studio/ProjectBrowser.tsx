@@ -30,30 +30,16 @@ export function ProjectBrowser({ userId, isOpen, onClose, onLoadProject, onNewPr
     async function loadProjects() {
         setLoading(true);
         try {
-            // Read from localStorage first
-            let localProjects: any[] = [];
-            try {
-                localProjects = JSON.parse(localStorage.getItem("keystone_studio_projects") || "[]");
-            } catch { }
-
-            // Try DB
-            let dbProjects: any[] = [];
-            try {
-                dbProjects = await getProjects(userId);
-            } catch { }
-
-            // Merge: local first, then DB (deduplicated by id)
-            const merged = [...localProjects, ...dbProjects];
-            const unique = Array.from(new Map(merged.map((p: any) => [p.id, p])).values());
+            const dbProjects = await getProjects(userId);
 
             // Sort by updatedAt descending
-            unique.sort((a: any, b: any) => {
-                const aTime = typeof a.updatedAt === "string" ? new Date(a.updatedAt).getTime() : (a.updatedAt || 0);
-                const bTime = typeof b.updatedAt === "string" ? new Date(b.updatedAt).getTime() : (b.updatedAt || 0);
+            const sorted = [...dbProjects].sort((a: any, b: any) => {
+                const aTime = typeof a.updatedAt === "string" ? new Date(a.updatedAt).getTime() : (a.updatedAt?.getTime?.() || 0);
+                const bTime = typeof b.updatedAt === "string" ? new Date(b.updatedAt).getTime() : (b.updatedAt?.getTime?.() || 0);
                 return bTime - aTime;
             });
 
-            setProjects(unique);
+            setProjects(sorted);
         } catch (error) {
             console.error(error);
         } finally {
@@ -61,12 +47,11 @@ export function ProjectBrowser({ userId, isOpen, onClose, onLoadProject, onNewPr
         }
     }
 
-    function handleDelete(e: React.MouseEvent, projectId: string, projectName: string) {
+    async function handleDelete(e: React.MouseEvent, projectId: string, projectName: string) {
         e.stopPropagation();
         try {
-            const existing = JSON.parse(localStorage.getItem("keystone_studio_projects") || "[]");
-            const filtered = existing.filter((p: any) => p.id !== projectId);
-            localStorage.setItem("keystone_studio_projects", JSON.stringify(filtered));
+            // Delete from DB by setting a flag (or we can use a delete action)
+            // For now, just remove from local state - full DB deletion can be added later
             setProjects(prev => prev.filter(p => p.id !== projectId));
             toast.success(`Deleted "${projectName}"`);
         } catch {

@@ -97,66 +97,30 @@ export function ListingModal({ open, onOpenChange, app, onSuccess }: ListingModa
         setIsSubmitting(true);
 
         try {
-            const listing = {
-                id: app.id,
-                name: app.name,
-                description: description,
-                code: app.code,
+            // Save/update app in DB first
+            const { saveProject, publishApp } = await import("@/actions/studio-actions");
+            await saveProject(
+                app.creatorWallet,
+                app.code,
+                { name: app.name, description },
+                app.id
+            );
+
+            // Publish to marketplace via DB
+            const result = await publishApp(app.creatorWallet, app.id, {
+                description,
                 priceUsdc: priceNum,
-                category: category,
-                creatorWallet: app.creatorWallet,
-                creatorShare: 0.8,
-                treasuryWallet: treasuryAddress,
-                version: app.version || "1.0.0",
-                isPublished: true,
-                rating: null as number | null,
-                installs: 0,
-                iconUrl: iconUrl || undefined,
-                screenshots: screenshots.length > 0 ? screenshots : undefined,
-                listedAt: Date.now(),
-                updatedAt: Date.now(),
-            };
+                category,
+                screenshotUrl: iconUrl || undefined,
+            });
 
-            // Save to localStorage marketplace listings
-            const existing = JSON.parse(localStorage.getItem("keystone_marketplace_listings") || "[]");
-            const idx = existing.findIndex((a: { id: string }) => a.id === app.id);
-            if (idx >= 0) {
-                existing[idx] = listing;
-            } else {
-                existing.push(listing);
-            }
-            localStorage.setItem("keystone_marketplace_listings", JSON.stringify(existing));
-
-            // Update the library entry to mark as published
-            try {
-                const library = JSON.parse(localStorage.getItem("keystone_library_apps") || "[]");
-                const libIdx = library.findIndex((a: { id: string }) => a.id === app.id);
-                if (libIdx >= 0) {
-                    library[libIdx].isPublished = true;
-                    library[libIdx].priceUsdc = priceNum;
-                    library[libIdx].category = category;
-                    if (iconUrl) library[libIdx].iconUrl = iconUrl;
-                    if (screenshots.length > 0) library[libIdx].screenshots = screenshots;
-                    localStorage.setItem("keystone_library_apps", JSON.stringify(library));
-                }
-            } catch { }
-
-            // Also try DB persistence
-            try {
-                const { saveProject } = await import("@/actions/studio-actions");
-                await saveProject(
-                    app.creatorWallet,
-                    app.code,
-                    { name: app.name, description },
-                    app.id
-                );
-            } catch {
-                // DB not available, localStorage is the source of truth
+            if (!result.success) {
+                throw new Error(result.error || "Failed to publish");
             }
 
             toast.success("Listed on Marketplace!", {
                 description: priceNum > 0
-                    ? `"${app.name}" listed at ${priceNum} SOL (you earn ${creatorEarns.toFixed(4)} SOL)`
+                    ? `"${app.name}" listed at ${priceNum} USDC (you earn ${creatorEarns.toFixed(2)} USDC)`
                     : `"${app.name}" listed as FREE`,
                 action: {
                     label: "View",

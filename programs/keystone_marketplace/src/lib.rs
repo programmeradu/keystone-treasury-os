@@ -6,7 +6,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
 // Run `anchor build` then `anchor keys sync` to set program ID
-declare_id!("FAFVo6Sr1fmRnvcMcXU2XUrWEyzfPHoF8q5u4ZPNRLqT");
+declare_id!("F8kN2gs4kqHtz2bkJZLbtNm6j8e7EUSarYDQcXff8iQY");
 
 #[program]
 pub mod keystone_marketplace {
@@ -63,10 +63,11 @@ pub mod keystone_marketplace {
         );
         token::transfer(cpi_ctx, protocol_share)?;
 
+        let app_registry_key = ctx.accounts.app_registry.key();
         let (license_authority_pda, _) = Pubkey::find_program_address(
             &[
                 b"license_authority",
-                app_registry.key().as_ref(),
+                app_registry_key.as_ref(),
             ],
             ctx.program_id,
         );
@@ -77,8 +78,8 @@ pub mod keystone_marketplace {
         );
 
         let seeds = &[
-            b"license_authority",
-            app_registry.key().as_ref(),
+            b"license_authority" as &[u8],
+            app_registry_key.as_ref(),
             &[ctx.bumps.license_authority],
         ];
         let signer = &[&seeds[..]];
@@ -109,7 +110,6 @@ pub mod keystone_marketplace {
 }
 
 #[account]
-#[derive(Default)]
 pub struct AppRegistry {
     pub developer: Pubkey,
     pub price_usdc: u64,
@@ -117,6 +117,19 @@ pub struct AppRegistry {
     pub ipfs_cid: [u8; 64],
     pub is_listed: bool,
     pub bump: u8,
+}
+
+impl Default for AppRegistry {
+    fn default() -> Self {
+        Self {
+            developer: Pubkey::default(),
+            price_usdc: 0,
+            developer_fee_bps: 0,
+            ipfs_cid: [0u8; 64],
+            is_listed: false,
+            bump: 0,
+        }
+    }
 }
 
 #[event]
@@ -165,7 +178,7 @@ pub struct PurchaseApp<'info> {
         bump = app_registry.bump,
         has_one = developer
     )]
-    pub app_registry: Account<'info, AppRegistry>,
+    pub app_registry: Box<Account<'info, AppRegistry>>,
 
     /// Developer wallet (must match app_registry.developer)
     /// CHECK: Used only for has_one verification
@@ -179,27 +192,27 @@ pub struct PurchaseApp<'info> {
         constraint = buyer_usdc_account.owner == buyer.key(),
         constraint = buyer_usdc_account.mint == usdc_mint.key()
     )]
-    pub buyer_usdc_account: Account<'info, TokenAccount>,
+    pub buyer_usdc_account: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
         constraint = developer_usdc_account.mint == usdc_mint.key()
     )]
-    pub developer_usdc_account: Account<'info, TokenAccount>,
+    pub developer_usdc_account: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
         constraint = treasury_usdc_account.mint == usdc_mint.key()
     )]
-    pub treasury_usdc_account: Account<'info, TokenAccount>,
+    pub treasury_usdc_account: Box<Account<'info, TokenAccount>>,
 
-    pub usdc_mint: Account<'info, Mint>,
+    pub usdc_mint: Box<Account<'info, Mint>>,
 
     #[account(
         mut,
         mint::decimals = 0
     )]
-    pub license_mint: Account<'info, Mint>,
+    pub license_mint: Box<Account<'info, Mint>>,
 
     /// PDA: seeds = [b"license_authority", app_registry.key()]
     /// Must be the mint_authority of license_mint
@@ -215,7 +228,7 @@ pub struct PurchaseApp<'info> {
         constraint = buyer_license_account.owner == buyer.key(),
         constraint = buyer_license_account.mint == license_mint.key()
     )]
-    pub buyer_license_account: Account<'info, TokenAccount>,
+    pub buyer_license_account: Box<Account<'info, TokenAccount>>,
 
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,

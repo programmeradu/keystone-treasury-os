@@ -50,3 +50,6 @@ next-env.d.ts
 scripts/gen-keypair.mjs
 scripts/create-developer-tokens.mjs
 scripts/seed-mini-apps.mjs
+
+# build artifacts
+build-output.txt

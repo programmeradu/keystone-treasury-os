@@ -1,11 +1,13 @@
 import React, { useState } from "react";
 import { PremiumModal, PremiumModalHeader, PremiumModalTitle, PremiumModalDescription, PremiumModalFooter } from "@/components/ui/PremiumModal";
 import { Button } from "@/components/ui/button";
-import { Loader2, ShieldCheck, CheckCircle2, Wallet, ExternalLink, AlertTriangle } from "lucide-react";
+import { Loader2, ShieldCheck, CheckCircle2, Wallet, ExternalLink, AlertTriangle, Award } from "lucide-react";
 import { toast } from "@/lib/toast-notifications";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { marketplacePayments, isValidSolanaAddress } from "@/lib/studio/marketplace-payments";
+import { buildPurchaseTransaction, isAppOnChain } from "@/lib/marketplace/client";
+import { PublicKey } from "@solana/web3.js";
 import { notify } from "@/lib/notifications";
 
 interface PurchaseModalProps {
@@ -30,76 +32,53 @@ export function PurchaseModal({ open, onOpenChange, app, onSuccess }: PurchaseMo
     const [isProcessing, setIsProcessing] = useState(false);
     const [step, setStep] = useState<"confirm" | "signing" | "confirming" | "success">("confirm");
     const [txSignature, setTxSignature] = useState<string | null>(null);
+    const [licenseMintAddr, setLicenseMintAddr] = useState<string | null>(null);
 
     const isPaidApp = (app.priceUsdc || 0) > 0;
     const creatorHasValidWallet = isValidSolanaAddress(app.creatorWallet);
     const canDoRealTx = connected && publicKey && signTransaction && isPaidApp && creatorHasValidWallet;
 
-    /** Check if the buyer already owns this app */
-    function isAlreadyOwned(): boolean {
+    /** Check if the buyer already owns this app via DB */
+    async function isAlreadyOwned(): Promise<boolean> {
+        if (!publicKey) return false;
         try {
-            const library = JSON.parse(localStorage.getItem("keystone_library_apps") || "[]");
-            return library.some((a: any) => a.id === app.id);
+            const { checkOwnership } = await import("@/actions/studio-actions");
+            return await checkOwnership(publicKey.toBase58(), app.id);
         } catch {
             return false;
         }
     }
 
-    /** Record purchase receipt + install app to library */
-    function recordPurchaseAndInstall(signature?: string) {
-        // Record purchase with 80/20 split
-        const purchase: Record<string, any> = {
-            id: "purchase_" + Math.random().toString(36).substring(2, 12),
-            appId: app.id,
-            appName: app.name,
-            buyerWallet: publicKey?.toBase58() || localStorage.getItem("keystone_wallet_id") || "anonymous",
-            priceUsdc: app.priceUsdc || 0,
-            creatorPayout: (app.priceUsdc || 0) * 0.8,
-            keystoneFee: (app.priceUsdc || 0) * 0.2,
-            creatorWallet: app.creatorWallet,
-            purchasedAt: Date.now(),
-        };
-        if (signature) purchase.txSignature = signature;
+    /** Record purchase receipt + install app via DB */
+    async function recordPurchaseAndInstall(signature?: string) {
+        const buyerWallet = publicKey?.toBase58() || "anonymous";
 
-        const purchases = JSON.parse(localStorage.getItem("keystone_purchases") || "[]");
-        purchases.push(purchase);
-        localStorage.setItem("keystone_purchases", JSON.stringify(purchases));
-
-        // Install app to buyer's library
-        const libraryEntry = {
-            id: app.id,
-            name: app.name,
-            description: app.description || "",
-            code: app.code || { files: {} },
-            creatorWallet: app.creatorWallet,
-            category: app.category || "utility",
-            isPublished: false,
-            version: app.version || "1.0.0",
-            priceUsdc: app.priceUsdc || 0,
-            purchasedAt: Date.now(),
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-        };
-        const library = JSON.parse(localStorage.getItem("keystone_library_apps") || "[]");
-        if (!library.find((a: any) => a.id === app.id)) {
-            library.push(libraryEntry);
-            localStorage.setItem("keystone_library_apps", JSON.stringify(library));
-        }
-
-        // Increment install count in marketplace listing
+        // Record purchase to DB
         try {
-            const listings = JSON.parse(localStorage.getItem("keystone_marketplace_listings") || "[]");
-            const idx = listings.findIndex((a: any) => a.id === app.id);
-            if (idx >= 0) {
-                listings[idx].installs = (listings[idx].installs || 0) + 1;
-                localStorage.setItem("keystone_marketplace_listings", JSON.stringify(listings));
-            }
-        } catch { }
+            await fetch("/api/studio/marketplace/purchase", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    appId: app.id,
+                    buyerWallet,
+                    txSignature: signature || null,
+                    amountUsdc: app.priceUsdc || 0,
+                    creatorPayout: (app.priceUsdc || 0) * 0.8,
+                    keystoneFee: (app.priceUsdc || 0) * 0.2,
+                }),
+            });
+        } catch {}
+
+        // Install to user's library via DB
+        try {
+            const { installApp } = await import("@/actions/studio-actions");
+            await installApp(buyerWallet, app.id);
+        } catch {}
     }
 
     const handlePurchase = async () => {
         // Prevent double-purchase / double-payment
-        if (isAlreadyOwned()) {
+        if (await isAlreadyOwned()) {
             toast.info("You already own this app.", {
                 description: "Check your Library to launch it.",
                 action: {
@@ -117,7 +96,7 @@ export function PurchaseModal({ open, onOpenChange, app, onSuccess }: PurchaseMo
             if (!isPaidApp) {
                 setStep("signing");
                 await new Promise(r => setTimeout(r, 500));
-                recordPurchaseAndInstall();
+                await recordPurchaseAndInstall();
                 setStep("success");
                 toast.success("Installed!", { description: `"${app.name}" added to your Library` });
                 notify.install(app.name);
@@ -129,54 +108,90 @@ export function PurchaseModal({ open, onOpenChange, app, onSuccess }: PurchaseMo
             if (canDoRealTx) {
                 setStep("signing");
 
-                // Build the 80/20 split transaction
-                const { transaction, lastValidBlockHeight } = await marketplacePayments.createPurchaseTransaction(
+                // Treasury wallet — deployer wallet for protocol fees
+                const treasuryWallet = new PublicKey("9agsk4cgDFrcz2xBoTfitPVQcBPV6bB65LcQMkppYn8n");
+
+                // Check if app is registered on-chain for License NFT flow
+                const onChain = await isAppOnChain(connection, app.id).catch(() => false);
+
+                let signature: string;
+                let mintAddress: string | undefined;
+
+                if (onChain) {
+                  // ── ON-CHAIN: USDC split + License NFT mint ──
+                  const { transaction, licenseMintKeypair, lastValidBlockHeight } = await buildPurchaseTransaction({
                     connection,
-                    publicKey!,
-                    app.creatorWallet,
-                    app.priceUsdc,
-                    "SOL"
-                );
+                    buyer: publicKey!,
+                    appId: app.id,
+                    developer: new PublicKey(app.creatorWallet),
+                    treasuryWallet,
+                  });
 
-                // Sign via wallet adapter (triggers wallet popup)
-                const signed = await signTransaction!(transaction);
-
-                // Send to network
-                setStep("confirming");
-                const signature = await connection.sendRawTransaction(signed.serialize(), {
+                  mintAddress = licenseMintKeypair?.publicKey.toBase58();
+                  const signed = await signTransaction!(transaction);
+                  setStep("confirming");
+                  signature = await connection.sendRawTransaction(signed.serialize(), {
                     skipPreflight: false,
                     preflightCommitment: "confirmed",
-                });
-                setTxSignature(signature);
+                  });
+                  setTxSignature(signature);
+                  if (mintAddress) setLicenseMintAddr(mintAddress);
 
-                // Wait for confirmation
-                await connection.confirmTransaction({
-                    signature,
-                    blockhash: transaction.recentBlockhash!,
-                    lastValidBlockHeight,
-                }, "confirmed");
+                  await connection.confirmTransaction({ signature, blockhash: transaction.recentBlockhash!, lastValidBlockHeight }, "confirmed");
+                } else {
+                  // ── FALLBACK: basic SOL transfer (app not on-chain yet) ──
+                  const { transaction, lastValidBlockHeight } = await marketplacePayments.createPurchaseTransaction(
+                    connection, publicKey!, app.creatorWallet, app.priceUsdc, "SOL"
+                  );
+                  const signed = await signTransaction!(transaction);
+                  setStep("confirming");
+                  signature = await connection.sendRawTransaction(signed.serialize(), {
+                    skipPreflight: false, preflightCommitment: "confirmed",
+                  });
+                  setTxSignature(signature);
+                  await connection.confirmTransaction({ signature, blockhash: transaction.recentBlockhash!, lastValidBlockHeight }, "confirmed");
+                }
 
-                // Record with real signature
-                recordPurchaseAndInstall(signature);
+                // Record purchase + install via DB
+                await recordPurchaseAndInstall(signature);
+
+                // Record license mint if on-chain
+                if (mintAddress) {
+                  try {
+                    await fetch("/api/studio/marketplace/purchase", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        appId: app.id,
+                        buyerWallet: publicKey!.toBase58(),
+                        txSignature: signature,
+                        amountUsdc: app.priceUsdc,
+                        creatorPayout: app.priceUsdc * 0.8,
+                        keystoneFee: app.priceUsdc * 0.2,
+                        licenseMint: mintAddress,
+                      }),
+                    });
+                  } catch { /* non-blocking */ }
+                }
+
                 setStep("success");
-                toast.success("Payment confirmed on-chain!", {
-                    description: `${(app.priceUsdc * 0.8).toFixed(4)} SOL → creator, ${(app.priceUsdc * 0.2).toFixed(4)} SOL → platform`,
+                toast.success(onChain ? "License NFT minted!" : "Payment confirmed on-chain!", {
+                    description: onChain
+                      ? `License NFT minted + ${(app.priceUsdc * 0.8).toFixed(2)} USDC → creator`
+                      : `${(app.priceUsdc * 0.8).toFixed(4)} SOL → creator, ${(app.priceUsdc * 0.2).toFixed(4)} SOL → platform`,
                 });
                 notify.purchase(app.name, app.priceUsdc, signature);
 
             } else {
-                // ── PAID APP, no wallet: demo mode ──
-                setStep("signing");
-                await new Promise(r => setTimeout(r, 2000));
-                recordPurchaseAndInstall();
-                setStep("success");
-                toast.success("Purchase recorded (demo)", {
-                    description: "Connect a wallet for real on-chain transactions.",
+                // ── PAID APP, no wallet: prompt to connect ──
+                toast.error("Please connect your wallet to purchase.", {
+                    description: "A Solana wallet is required for on-chain purchases.",
                 });
-                notify.purchase(app.name, app.priceUsdc);
+                setIsProcessing(false);
+                return;
             }
 
-            setTimeout(() => { onSuccess(); onOpenChange(false); setStep("confirm"); setTxSignature(null); }, 1500);
+            setTimeout(() => { onSuccess(); onOpenChange(false); setStep("confirm"); setTxSignature(null); setLicenseMintAddr(null); }, 1500);
 
         } catch (error: any) {
             console.error("Purchase failed:", error);
@@ -212,11 +227,15 @@ export function PurchaseModal({ open, onOpenChange, app, onSuccess }: PurchaseMo
                         <>
                             <div className="flex justify-between items-center text-xs text-muted-foreground pt-2 border-t border-border">
                                 <span>Creator receives (80%)</span>
-                                <span>{(app.priceUsdc * 0.8).toFixed(4)} SOL</span>
+                                <span>{(app.priceUsdc * 0.8).toFixed(2)} USDC</span>
                             </div>
                             <div className="flex justify-between items-center text-xs text-muted-foreground">
                                 <span>Platform fee (20%)</span>
-                                <span>{(app.priceUsdc * 0.2).toFixed(4)} SOL</span>
+                                <span>{(app.priceUsdc * 0.2).toFixed(2)} USDC</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg border border-primary/20 bg-primary/5 text-primary">
+                                <Award size={12} />
+                                <span>License NFT will be minted to your wallet</span>
                             </div>
                         </>
                     )}
@@ -272,9 +291,16 @@ export function PurchaseModal({ open, onOpenChange, app, onSuccess }: PurchaseMo
                 <div className="py-8 flex flex-col items-center justify-center text-center space-y-4">
                     <CheckCircle2 className="w-16 h-16 text-emerald-400" />
                     <div>
-                        <h3 className="font-bold text-xl">Payment Complete!</h3>
+                        <h3 className="font-bold text-xl">{licenseMintAddr ? "License NFT Minted!" : "Payment Complete!"}</h3>
                         <p className="text-sm text-muted-foreground">App installed to your Library.</p>
                     </div>
+                    {licenseMintAddr && (
+                        <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg border border-primary/20 bg-primary/5 text-primary">
+                            <Award size={14} />
+                            <span className="font-mono">{licenseMintAddr.slice(0, 6)}...{licenseMintAddr.slice(-4)}</span>
+                            <span className="text-muted-foreground">License NFT</span>
+                        </div>
+                    )}
                     {txSignature && (
                         <a
                             href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`}

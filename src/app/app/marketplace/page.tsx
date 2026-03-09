@@ -33,27 +33,9 @@ export default function MarketplacePage() {
     const loadMarketplaceListings = useCallback(async () => {
         setLoadingApps(true);
         try {
-            // Fetch published apps from the database
             const res = await fetch("/api/studio/marketplace");
             const dbApps = res.ok ? await res.json() : [];
-
-            // Merge with any localStorage draft listings
-            const stored = JSON.parse(localStorage.getItem("keystone_marketplace_listings") || "[]");
-            const localApps = stored.map((app: any) => ({
-                id: app.id,
-                name: app.name,
-                description: app.description,
-                priceUsdc: app.priceUsdc || 0,
-                rating: app.rating || null,
-                installs: app.installs || 0,
-                creatorWallet: app.creatorWallet || "Unknown",
-                category: app.category || "utility",
-                iconUrl: app.iconUrl || undefined,
-            }));
-
-            const merged = [...localApps, ...dbApps];
-            const unique = Array.from(new Map(merged.map((a: any) => [a.id, a])).values());
-            setAllApps(unique);
+            setAllApps(Array.isArray(dbApps) ? dbApps : []);
         } catch {
             setAllApps([]);
         } finally {
@@ -69,12 +51,15 @@ export default function MarketplacePage() {
     // Load library apps when publish picker opens
     useEffect(() => {
         if (showPublishPicker) {
-            try {
-                const stored = JSON.parse(localStorage.getItem("keystone_library_apps") || "[]");
-                setLibraryApps(stored);
-            } catch {
-                setLibraryApps([]);
-            }
+            (async () => {
+                try {
+                    const { getInstalledApps } = await import("@/actions/studio-actions");
+                    const apps = await getInstalledApps("");
+                    setLibraryApps(apps);
+                } catch {
+                    setLibraryApps([]);
+                }
+            })();
         }
     }, [showPublishPicker]);
 
