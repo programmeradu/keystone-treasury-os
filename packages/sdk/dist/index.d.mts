@@ -20,6 +20,17 @@ interface TurnkeyState {
     signTransaction: (transaction: unknown, description?: string) => Promise<{
         signature: string;
     }>;
+    wallets?: {
+        id: string;
+        name: string;
+        address: string;
+    }[];
+    activeWallet?: string;
+    createWallet?: (opts: {
+        name: string;
+    }) => Promise<{
+        address: string;
+    }>;
 }
 interface ObservabilityConfig {
     provider?: "langfuse" | "helicone";
@@ -61,6 +72,16 @@ interface ImpactReport {
     }[];
     simulationHash?: string;
     zkspProof?: string;
+    carbonKg?: number;
+    greenScore?: number;
+    socialScore?: number;
+    breakdown?: {
+        symbol: string;
+        protocol?: string;
+        carbonKg?: number;
+        score?: number;
+    }[];
+    recommendations?: string[];
 }
 interface JupiterSwapParams {
     inputMint: string;
@@ -72,6 +93,7 @@ interface JupiterSwapResult {
     swapTransaction: string;
     lastValidBlockHeight: number;
     prioritizationFeeLamports?: number;
+    txid?: string;
 }
 interface YieldPath {
     protocol: string;

@@ -29,7 +29,7 @@ export default function App() {
   const handleCreateWallet = async () => {
     setCreatingWallet(true);
     try {
-      await createWallet({ name: 'Keystone Vault ' + (wallets.length + 1) });
+      await createWallet?.({ name: 'Keystone Vault ' + ((wallets?.length ?? 0) + 1) });
     } finally {
       setCreatingWallet(false);
     }
@@ -74,7 +74,7 @@ export default function App() {
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-400">
-            Managed Wallets ({wallets.length})
+            Managed Wallets ({wallets?.length ?? 0})
           </h2>
           <button
             onClick={handleCreateWallet}
@@ -85,9 +85,9 @@ export default function App() {
           </button>
         </div>
 
-        {wallets.length > 0 ? (
+        {(wallets?.length ?? 0) > 0 ? (
           <div className="space-y-2">
-            {wallets.map((w: any, i: number) => (
+            {wallets?.map((w: any, i: number) => (
               <div
                 key={i}
                 className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-colors ${

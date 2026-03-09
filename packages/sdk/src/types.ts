@@ -24,6 +24,9 @@ export interface TurnkeyState {
     transaction: unknown,
     description?: string
   ) => Promise<{ signature: string }>;
+  wallets?: { id: string; name: string; address: string }[];
+  activeWallet?: string;
+  createWallet?: (opts: { name: string }) => Promise<{ address: string }>;
 }
 
 export interface ObservabilityConfig {
@@ -63,6 +66,11 @@ export interface ImpactReport {
   diff: { symbol: string; delta: number; percentChange: number }[];
   simulationHash?: string;
   zkspProof?: string;
+  carbonKg?: number;
+  greenScore?: number;
+  socialScore?: number;
+  breakdown?: { symbol: string; protocol?: string; carbonKg?: number; score?: number }[];
+  recommendations?: string[];
 }
 
 export interface JupiterSwapParams {
@@ -76,6 +84,7 @@ export interface JupiterSwapResult {
   swapTransaction: string;
   lastValidBlockHeight: number;
   prioritizationFeeLamports?: number;
+  txid?: string;
 }
 
 export interface YieldPath {
