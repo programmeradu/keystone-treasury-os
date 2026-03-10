@@ -33,6 +33,8 @@ function getJwtSecret() {
  *   3. Upsert user in Neon DB
  *   4. Issue signed JWT session cookie
  */
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
     try {
         const { message, signature, walletAddress } = await request.json();

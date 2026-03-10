@@ -44,6 +44,8 @@ function getJwtSecret() {
  * The room ID requested in the body is validated to ensure the user only
  * joins rooms they own (user-scoped) or are invited to (vault-scoped).
  */
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
     let userId: string | null = null;
     let userName: string | null = null;

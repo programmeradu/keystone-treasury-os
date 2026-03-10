@@ -31,6 +31,8 @@ function getJwtSecret() {
  * Called before OAuth to set a signed state cookie that proves the user
  * initiated the flow from our app.
  */
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
     const stateToken = await new SignJWT({ purpose: 'oauth-state' })
         .setProtectedHeader({ alg: 'HS256' })
