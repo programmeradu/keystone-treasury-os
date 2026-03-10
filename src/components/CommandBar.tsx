@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Sparkles } from "@/components/icons";
-import { Check, AlertTriangle, Loader2, Shield, Send, Bot, User, Pen, ExternalLink, TrendingDown, TrendingUp } from "lucide-react";
+import { Check, AlertTriangle, Loader2, Shield, Send, Bot, User, Pen, ExternalLink, TrendingDown, TrendingUp, Rocket, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { IntentRegistry } from "@/lib/agents/registry";
 import { useRouter } from "next/navigation";
@@ -605,7 +605,35 @@ export function CommandBar() {
                 );
               }
 
+
               return null;
+            })()}
+            {/* ── Studio: Mini-App Launch Card ── */}
+            {toolName === "studio_init_miniapp" && success && (() => {
+                const appId = result.appId as string | undefined;
+                const path = appId ? `/app/studio?appId=${encodeURIComponent(appId)}` : "/app/studio";
+                return (
+                  <div className="mt-3 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 text-emerald-400">
+                          <Rocket size={14} />
+                          <span className="text-xs font-bold uppercase tracking-wider">App Generated</span>
+                        </div>
+                        <p className="text-[10px] text-emerald-500/80">
+                          {result.fileCount} files prepared in the {result.template} template. 
+                          {appId ? " Saved to your portfolio." : ""}
+                        </p>
+                      </div>
+                      <button 
+                        onClick={() => { setOpen(false); router.push(path); }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-emerald-950 text-[10px] font-bold uppercase rounded-lg transition-colors shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_20px_rgba(16,185,129,0.5)]"
+                      >
+                        Launch App <ArrowRight size={12} />
+                      </button>
+                    </div>
+                  </div>
+                );
             })()}
             {/* Swap: token logos + route */}
             {(toolName === "swap" || toolName === "execute_swap") && success && (result.inputToken || result.outputToken) && (

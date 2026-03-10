@@ -1542,15 +1542,13 @@ Wallet State: ${JSON.stringify(walletState || {})}
              }
           }
 
-          const navigationTarget = finalAppId ? `/app/studio?appId=${finalAppId}` : "/app/studio";
-
           return {
             success: true, operation: "studio_init_miniapp", name, template,
             files,
             fileCount: Object.keys(files).length,
             entrypoint: "App.tsx",
-            navigateTo: navigationTarget,
-            message: `Mini-App "${name}" initialized with ${template} template (${Object.keys(files).length} files). ${finalAppId ? "Project saved. Redirecting to Studio..." : "esm.sh import maps configured."}`,
+            appId: finalAppId, // Send back the generated Database appId so the UI can render a launch button
+            message: `Mini-App "${name}" initialized with ${template} template (${Object.keys(files).length} files). ${finalAppId ? "Project saved." : "esm.sh import maps configured."}`,
           };
         },
       },
