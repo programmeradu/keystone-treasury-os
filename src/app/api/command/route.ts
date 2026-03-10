@@ -156,8 +156,9 @@ CRITICAL RULES:
 26. If a target protocol has no eligible live vault, STOP and ask the user to choose a fallback protocol/token.
 27. If the user asks to build/create/develop software (bot/app/script/automation), do NOT execute live trading or treasury transaction tools, EXCEPT for deploy_sniper_bot if they explicitly ask to "run a sniper bot".
 28. For software-build intents, use browser_research + studio_init_miniapp + studio_analyze_code/sdk_hooks as needed, then call navigate with path "/app/studio".
-29. Only use execution tools when the user explicitly requests financial execution, not implementation.
-30. Prompt mode support: mode:build (or /build) forces Studio workflow; mode:execute (or /execute) allows live execution tools; no prefix means auto-infer.
+29. DO NOT invent navigation paths or use the navigate tool to prompt for wallet connection. The UI handles wallet connection automatically.
+30. Only use execution tools when the user explicitly requests financial execution, not implementation.
+31. Prompt mode support: mode:build (or /build) forces Studio workflow; mode:execute (or /execute) allows live execution tools; no prefix means auto-infer.
 
 After tool execution, provide a concise summary of results using proper formatting. Make sure you fully interpret and fulfill all Keystone commands natively.
 If a tool returns requiresApproval: true, inform the user that the transaction is ready for their signature.
@@ -1795,7 +1796,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
 
       // ━━━━ UTILITY TOOLS ━━━━
       navigate: {
-        description: "Navigate to a page within Keystone OS.",
+        description: "Navigate to a page within Keystone OS. Only use valid routes (e.g., /app/studio). Do NOT invent routes like /app/wallet.",
         inputSchema: z.object({
           path: z.string().describe("Path to navigate to"),
           reason: z.string().optional().describe("Why"),

@@ -39,34 +39,7 @@ function getToolParts(m: UIMessage) {
   }) || [];
 }
 
-function persistStudioProjectFromToolOutput(output: Record<string, unknown>, walletAddress: string): string | null {
-  try {
-    const filesRaw = output.files as Record<string, string> | undefined;
-    if (!filesRaw || typeof filesRaw !== "object") return null;
-
-    const appName = typeof output.name === "string" && output.name.trim()
-      ? output.name.trim()
-      : "Untitled Mini-App";
-    const appId = `cmd_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-    const creatorWallet = walletAddress || "Operator";
-
-    const codeFiles = Object.entries(filesRaw).reduce((acc, [name, content]) => {
-      acc[name] = { content: String(content ?? "") };
-      return acc;
-    }, {} as Record<string, { content: string }>);
-
-    // Save to DB via server action
-    import("@/actions/studio-actions").then(({ saveProject }) => {
-      saveProject(creatorWallet, { files: codeFiles }, { name: appName, description: `Generated from command bar (${String(output.template || "react")})` }, appId);
-    }).catch(() => {});
-
-    return appId;
-  } catch (err) {
-    console.warn("[CommandBar] Failed to persist studio project from tool output:", err);
-    return null;
-  }
-}
-
+// Removed persistStudioProjectFromToolOutput as background saving is natively handled by the route handler.
 // ─── Operation Metadata for Tool Invocation UI ─────────────────────
 const TOOL_META: Record<string, { label: string; color: string; icon: string }> = {
   swap: { label: "Swap", color: "text-blue-400", icon: "⚡" },
@@ -273,17 +246,7 @@ export function CommandBar() {
         const output = part.output as Record<string, unknown> | undefined;
         if (!output) continue;
 
-        if (output.operation === "studio_init_miniapp") {
-          const appId = persistStudioProjectFromToolOutput(output, publicKey?.toBase58() || "");
-          setOpen(false);
-          if (appId) {
-            router.push(`/app/studio?appId=${encodeURIComponent(appId)}`);
-          } else {
-            router.push("/app/studio");
-          }
-          continue;
-        }
-
+// Special handling block for studio_init_miniapp removed; relies on default output.navigateTo instead.
         if (output.navigateTo) {
           setOpen(false);
           router.push(output.navigateTo as string);
