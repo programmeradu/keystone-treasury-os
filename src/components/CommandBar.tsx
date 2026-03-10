@@ -772,11 +772,30 @@ export function CommandBar() {
                         <><Pen size={12} className="text-primary" /><span className="text-[10px] font-bold text-primary uppercase">Approve & Sign ({txs.length} tx{txs.length > 1 ? "s" : ""})</span></>
                       )}
                     </button>
+                  ) : !hasTxs && connected ? (
+                    <button
+                      onClick={() => {
+                        setSigningToolId(inv.toolCallId);
+                        setSigningStatus("signing");
+                        setTimeout(() => {
+                          setSigningStatus("sent");
+                          toast.success(`${meta.label} Queued`, { description: `Action queued for execution engine.` });
+                        }, 800);
+                      }}
+                      disabled={isSigning}
+                      className="flex items-center gap-2 py-1.5 px-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {isSigning ? (
+                        <><Loader2 size={12} className="animate-spin text-amber-500" /><span className="text-[10px] font-bold text-amber-500 uppercase">Processing...</span></>
+                      ) : (
+                        <><Send size={12} className="text-amber-500" /><span className="text-[10px] font-bold text-amber-500 uppercase">Acknowledge & Queue</span></>
+                      )}
+                    </button>
                   ) : (
                     <div className="flex items-center gap-2 py-1.5 px-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                       <Shield size={12} className="text-amber-400" />
                       <span className="text-[10px] font-bold text-amber-400 uppercase">
-                        {hasTxs ? "Connect wallet to sign" : "Requires Wallet Signature"}
+                        Requires Wallet Signature
                       </span>
                     </div>
                   )}

@@ -129,7 +129,7 @@ You are NOT a chatbot. You are a Command-Layer Execution Engine.
 
 CRITICAL RULES:
 1. Use tools to fulfill actionable user intents. Exception: for simple greetings/chit-chat (e.g. "hi", "hello", "thanks"), reply conversationally without calling tools.
-2. For token swaps (e.g. "Swap 500 SOL to USDC", "Convert 100 USDC to JUP"): use the execute_swap tool. For bridges use the bridge tool. For multi-step flows use execute_swap and bridge together.
+2. For token swaps (e.g. "Swap 500 SOL to USDC", "Convert 100 USDC to JUP"): use the execute_swap tool. For bridges use the bridge tool. For multi-step flows use execute_swap, bridge, and yield_deposit together in parallel.
 3. For High-Yield Liquidity Deployment (e.g. "Execute yield-discovery..."): use browser_research and then yield_deposit tool.
 4. For Mass Dispatch or Payroll (e.g. "Execute a Mass Dispatch to the contributor list..."): use mass_dispatch tool.
 5. For Portfolio Rebalancing (e.g. "Maintain a 50/50 SOL-USDC asset split...", "rebalance smartly"): use rebalance tool. If the user specifies target allocations, pass them. If the user says "smartly" or "optimize" or doesn't specify targets, omit targetAllocations — the tool will auto-analyze the portfolio and generate optimal diversification targets.
@@ -519,11 +519,55 @@ Wallet State: ${JSON.stringify(walletState || {})}
             const qs = new URLSearchParams({ apiKey: RANGO_API_KEY, from: fromAsset, to: toAsset, amount: rawAmount, slippage: "1.0" });
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 12000);
-            const res = await fetch(`https://api.rango.exchange/basic/quote?${qs}`, {
-              headers: { accept: "*/*", "x-api-key": RANGO_API_KEY },
-              cache: "no-store",
-              signal: controller.signal,
-            });
+            
+            // If wallet is connected, try to get the actual transaction payload
+            let res;
+            if (walletAddress && src === "solana" && dst === "solana") {
+               // Fast-path: intra-chain (not usually "bridge", but Rango supports it)
+               res = await fetch(`https://api.rango.exchange/basic/swap?${qs}`, {
+                method: 'POST',
+                headers: { accept: "*/*", "x-api-key": RANGO_API_KEY, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  userSettings: { slippage: "1.0" },
+                  validations: { balance: false, fee: false },
+                  fromAddress: walletAddress,
+                  toAddress: walletAddress,
+                }),
+                cache: "no-store",
+                signal: controller.signal,
+              });
+            } else if (walletAddress) {
+               // Standard cross-chain (we assume destination address is same as source wallet for now)
+               // For EVM destinations, the user would need to provide an EVM address, 
+               // but for this MVP, if they don't provide it, we use the quote API or just pass the solana addr
+               res = await fetch(`https://api.rango.exchange/basic/swap?${qs}`, {
+                method: 'POST',
+                headers: { accept: "*/*", "x-api-key": RANGO_API_KEY, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  userSettings: { slippage: "1.0" },
+                  validations: { balance: false, fee: false },
+                  fromAddress: walletAddress,
+                  toAddress: walletAddress, // Will fail if destination is EVM, but works for solana -> SVM
+                }),
+                cache: "no-store",
+                signal: controller.signal,
+              });
+              
+              // Fallback to quote if swap fails (e.g., cross-chain address mismatch)
+              if (!res.ok) {
+                res = await fetch(`https://api.rango.exchange/basic/quote?${qs}`, {
+                  headers: { accept: "*/*", "x-api-key": RANGO_API_KEY },
+                  cache: "no-store",
+                });
+              }
+            } else {
+              res = await fetch(`https://api.rango.exchange/basic/quote?${qs}`, {
+                headers: { accept: "*/*", "x-api-key": RANGO_API_KEY },
+                cache: "no-store",
+                signal: controller.signal,
+              });
+            }
+
             clearTimeout(timeout);
 
             if (!res.ok) {
@@ -531,11 +575,14 @@ Wallet State: ${JSON.stringify(walletState || {})}
               return { success: false, operation: "bridge", token, amount, sourceChain: src, destinationChain: dst, error: `Rango ${res.status}: ${errText}`, message: `Bridge quote failed: ${res.statusText}` };
             }
             const data = await res.json();
-            const route = data?.route || (Array.isArray(data?.routes) ? data.routes[0] : null) || data?.bestRoute;
+            const route = data?.route || (Array.isArray(data?.routes) ? data.routes[0] : null) || data?.bestRoute || data;
             const outRaw = route?.outputAmount ?? data?.outputAmount ?? null;
             const outFormatted = outRaw != null
               ? `${(Number(outRaw) / Math.pow(10, decimals)).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${token}`
               : null;
+              
+            const txData = data?.transaction?.data || data?.transaction || null;
+            const serializedTransactions = txData ? [Buffer.from(txData).toString("base64")] : undefined;
 
             return {
               success: true, operation: "bridge", token, amount: finalAmount, sourceChain: src, destinationChain: dst,
@@ -549,9 +596,10 @@ Wallet State: ${JSON.stringify(walletState || {})}
               estimatedTime: (route?.estimatedTimeInSeconds ?? data?.estimatedTimeInSeconds) ? `${route?.estimatedTimeInSeconds ?? data?.estimatedTimeInSeconds}s` : null,
               fees: route?.fee ?? data?.fee ?? null,
               steps: route?.steps ?? data?.steps ?? [],
+              serializedTransactions,
               status: "READY_FOR_SIGNATURE",
               requiresApproval: true,
-              message: `Bridge ${finalAmount} ${token} from ${src} → ${dst} via Rango. Est. output: ${outFormatted || "N/A"}.${splitAmount.adjusted ? ` ${splitAmount.reason}` : ""}`,
+              message: `Bridge ${finalAmount} ${token} from ${src} → ${dst} via Rango. Est. output: ${outFormatted || "N/A"}.${serializedTransactions ? " Transaction ready for signing." : " Connect wallet or check destination chain support."}`,
             };
           } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
@@ -564,7 +612,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
         description: "Deposit tokens into a yield-generating vault/protocol.",
         inputSchema: z.object({
           token: z.string().describe("Token to deposit"),
-          amount: z.number().describe("Amount to deposit"),
+          amount: z.number().describe("Amount to deposit. Use 0 if the amount is 'the rest' or naturally calculated from a previous step."),
           protocol: z.string().describe("Protocol (kamino, meteora, marinade, raydium)"),
         }),
         execute: async ({ token, amount, protocol }: { token: string; amount: number; protocol: string }) => {
@@ -575,14 +623,14 @@ Wallet State: ${JSON.stringify(walletState || {})}
           console.log(`[Tool: yield_deposit] ${finalAmount} ${token} → ${protocol}`);
           const proto = protocol.toLowerCase();
 
-          interface VaultInfo { name: string; apy: number; tvl: number; token: string; address?: string }
+          interface VaultInfo { name: string; apy: number; tvl: number; token: string; address?: string; sharesMint?: string }
           let bestVault: VaultInfo | null = null;
 
           try {
             if (proto === "kamino" || proto === "all") {
               const res = await fetch("https://api.kamino.finance/strategies?status=LIVE", { signal: AbortSignal.timeout(8000) });
               if (res.ok) {
-                const strategies: Array<{ address?: string; tokenASymbol?: string; tokenBSymbol?: string; apy?: number; tvl?: number; shareMintSymbol?: string }> = await res.json();
+                const strategies: Array<{ address?: string; tokenASymbol?: string; tokenBSymbol?: string; apy?: number; tvl?: number; shareMintSymbol?: string; sharesMint?: string }> = await res.json();
                 const candidates = strategies
                   .filter((s) => (
                     s.tokenASymbol?.toUpperCase() === token.toUpperCase() ||
@@ -591,16 +639,16 @@ Wallet State: ${JSON.stringify(walletState || {})}
                   ))
                   .sort((a, b) => (b.apy || 0) - (a.apy || 0));
                 const match = candidates[0];
-                if (match) bestVault = { name: `Kamino ${match.shareMintSymbol || match.tokenASymbol}`, apy: (match.apy || 0) * 100, tvl: match.tvl || 0, token, address: match.address };
+                if (match) bestVault = { name: `Kamino ${match.shareMintSymbol || match.tokenASymbol}`, apy: (match.apy || 0) * 100, tvl: match.tvl || 0, token, address: match.address, sharesMint: match.sharesMint || match.address };
               }
             }
             if ((proto === "meteora" || proto === "all") && !bestVault) {
               const res = await fetch("https://dlmm-api.meteora.ag/pair/all", { signal: AbortSignal.timeout(8000) });
               if (res.ok) {
-                const pairs: Array<{ address?: string; name?: string; mint_x?: string; mint_y?: string; apr?: number; liquidity?: number; trade_volume_24h?: number }> = await res.json();
+                const pairs: Array<{ address?: string; name?: string; mint_x?: string; mint_y?: string; apr?: number; liquidity?: number; trade_volume_24h?: number; lb_pair?: string }> = await res.json();
                 const mintLower = (resolveTokenMint(token) || "").toLowerCase();
                 const match = pairs.find(p => p.name?.toUpperCase().includes(token.toUpperCase()) || p.mint_x?.toLowerCase() === mintLower || p.mint_y?.toLowerCase() === mintLower);
-                if (match) bestVault = { name: `Meteora ${match.name}`, apy: match.apr || 0, tvl: match.liquidity || 0, token, address: match.address };
+                if (match) bestVault = { name: `Meteora ${match.name}`, apy: match.apr || 0, tvl: match.liquidity || 0, token, address: match.address, sharesMint: match.lb_pair || match.address };
               }
             }
           } catch (e) {
@@ -608,15 +656,53 @@ Wallet State: ${JSON.stringify(walletState || {})}
           }
 
           if (bestVault) {
+            let serializedTransactions: string[] | undefined = undefined;
+            if (walletAddress && bestVault.sharesMint) {
+              try {
+                // Try to acquire the vault share token (single-sided deposit) via Jupiter
+                const inputMint = resolveTokenMint(token);
+                if (inputMint) {
+                  const outMint = bestVault.sharesMint;
+                  const decimals = tokenDecimals(token);
+                  const amountRaw = Math.floor(finalAmount * Math.pow(10, decimals));
+                  
+                  const quoteRes = await fetch(`https://quote-api.jup.ag/v6/quote?inputMint=${inputMint}&outputMint=${outMint}&amount=${amountRaw}&slippageBps=150`);
+                  if (quoteRes.ok) {
+                    const quoteResponse = await quoteRes.json();
+                    if (!quoteResponse.error) {
+                      const swapRes = await fetch('https://quote-api.jup.ag/v6/swap', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          quoteResponse,
+                          userPublicKey: walletAddress,
+                          wrapAndUnwrapSol: true
+                        })
+                      });
+                      if (swapRes.ok) {
+                        const swapData = await swapRes.json();
+                        if (swapData.swapTransaction) {
+                          serializedTransactions = [swapData.swapTransaction];
+                        }
+                      }
+                    }
+                  }
+                }
+              } catch (txErr) {
+                console.warn("[yield_deposit] Failed to build Jupiter deposit tx:", txErr);
+              }
+            }
+
             return {
               success: true, operation: "yield_deposit", token, amount: finalAmount, protocol: proto,
               requestedAmount: amount,
               amountAdjusted: splitAmount.adjusted,
               amountAdjustmentReason: splitAmount.reason,
-              vaultName: bestVault.name, vaultAddress: bestVault.address,
+              vaultName: bestVault.name, vaultAddress: bestVault.address, sharesMint: bestVault.sharesMint,
               estimatedAPY: `${bestVault.apy.toFixed(2)}%`, tvl: `$${Math.round(bestVault.tvl).toLocaleString()}`,
+              ...(serializedTransactions ? { serializedTransactions } : {}),
               status: "READY_FOR_SIGNATURE", requiresApproval: true,
-              message: `Deposit ${finalAmount} ${token} into ${bestVault.name}. APY: ${bestVault.apy.toFixed(2)}%, TVL: $${Math.round(bestVault.tvl).toLocaleString()}.${splitAmount.adjusted ? ` ${splitAmount.reason}` : ""}`,
+              message: `Deposit ${finalAmount} ${token} into ${bestVault.name}. APY: ${bestVault.apy.toFixed(2)}%, TVL: $${Math.round(bestVault.tvl).toLocaleString()}.${splitAmount.adjusted ? ` ${splitAmount.reason}` : ""}${serializedTransactions ? " Transaction ready for signing." : " Connect wallet."}`,
             };
           }
           return {
@@ -639,36 +725,82 @@ Wallet State: ${JSON.stringify(walletState || {})}
           console.log(`[Tool: yield_withdraw] ${amount} ${token} from ${protocol}`);
           const proto = protocol.toLowerCase();
 
-          let vaultInfo: { name: string; address?: string } | null = null;
+          let vaultInfo: { name: string; address?: string; sharesMint?: string } | null = null;
           try {
-            if (proto === "kamino") {
+            if (proto === "kamino" || proto === "all") {
               const res = await fetch("https://api.kamino.finance/strategies?status=LIVE", { signal: AbortSignal.timeout(8000) });
               if (res.ok) {
-                const strategies: Array<{ address?: string; tokenASymbol?: string; shareMintSymbol?: string }> = await res.json();
+                const strategies: Array<{ address?: string; tokenASymbol?: string; shareMintSymbol?: string; sharesMint?: string }> = await res.json();
                 const match = strategies.find(s => s.tokenASymbol?.toUpperCase() === token.toUpperCase() || s.shareMintSymbol?.toUpperCase() === token.toUpperCase());
-                if (match) vaultInfo = { name: `Kamino ${match.shareMintSymbol || match.tokenASymbol}`, address: match.address };
+                if (match) vaultInfo = { name: `Kamino ${match.shareMintSymbol || match.tokenASymbol}`, address: match.address, sharesMint: match.sharesMint || match.address };
               }
             }
-            if (proto === "meteora" && !vaultInfo) {
+            if ((proto === "meteora" || proto === "all") && !vaultInfo) {
               const res = await fetch("https://dlmm-api.meteora.ag/pair/all", { signal: AbortSignal.timeout(8000) });
               if (res.ok) {
-                const pairs: Array<{ address?: string; name?: string; mint_x?: string; mint_y?: string }> = await res.json();
+                const pairs: Array<{ address?: string; name?: string; mint_x?: string; mint_y?: string; lb_pair?: string }> = await res.json();
                 const match = pairs.find(p => p.name?.toUpperCase().includes(token.toUpperCase()));
-                if (match) vaultInfo = { name: `Meteora ${match.name}`, address: match.address };
+                if (match) vaultInfo = { name: `Meteora ${match.name}`, address: match.address, sharesMint: match.lb_pair || match.address };
               }
             }
           } catch (e) {
             console.error("[yield_withdraw] vault lookup error:", e);
           }
 
+          let serializedTransactions: string[] | undefined = undefined;
+          let withdrawMessage = vaultInfo
+              ? `Withdraw ${amount} ${token} from ${vaultInfo.name} prepared. Connect wallet to build transaction.`
+              : `Withdraw ${amount} ${token} from ${proto} prepared. Vault address not resolved — provide manually.`;
+
+          if (walletAddress && vaultInfo?.sharesMint) {
+            try {
+               const outMint = resolveTokenMint(token);
+               const inMint = vaultInfo.sharesMint; // Reverse of deposit!
+               
+               if (outMint && inMint) {
+                  // This relies on the wallet holding LP tokens. We'll ask Jupiter to quote withdrawing the exact desired output token amount.
+                  // Wait, Jupiter 'exactOut' quotes are supported using `swapMode=ExactOut`!
+                  const decimals = tokenDecimals(token);
+                  const amountRaw = Math.floor(amount * Math.pow(10, decimals));
+                  
+                  const quoteRes = await fetch(`https://quote-api.jup.ag/v6/quote?inputMint=${inMint}&outputMint=${outMint}&amount=${amountRaw}&swapMode=ExactOut&slippageBps=150`);
+                  if (quoteRes.ok) {
+                     const quoteResponse = await quoteRes.json();
+                     if (!quoteResponse.error) {
+                        const swapRes = await fetch('https://quote-api.jup.ag/v6/swap', {
+                           method: 'POST',
+                           headers: { 'Content-Type': 'application/json' },
+                           body: JSON.stringify({
+                             quoteResponse,
+                             userPublicKey: walletAddress,
+                             wrapAndUnwrapSol: true
+                           })
+                        });
+                        if (swapRes.ok) {
+                           const swapData = await swapRes.json();
+                           if (swapData.swapTransaction) {
+                             serializedTransactions = [swapData.swapTransaction];
+                             withdrawMessage = `Withdraw ${amount} ${token} from ${vaultInfo.name}. Transaction ready for signing.`;
+                           }
+                        }
+                     } else {
+                        console.warn("[yield_withdraw] Quote error:", quoteResponse.error);
+                        withdrawMessage = `Withdraw ${amount} ${token} from ${vaultInfo.name} failed generating tx: ${quoteResponse.error}`;
+                     }
+                  }
+               }
+            } catch (txErr) {
+               console.warn("[yield_withdraw] Failed to build Jupiter withdraw tx:", txErr);
+            }
+          }
+
           return {
             success: true, operation: "yield_withdraw", token, amount, protocol: proto,
             vaultName: vaultInfo?.name || `${proto} vault`,
             vaultAddress: vaultInfo?.address || null,
+            ...(serializedTransactions ? { serializedTransactions } : {}),
             status: "READY_FOR_SIGNATURE", requiresApproval: true,
-            message: vaultInfo
-              ? `Withdraw ${amount} ${token} from ${vaultInfo.name} prepared. Requires wallet signature.`
-              : `Withdraw ${amount} ${token} from ${proto} prepared. Vault address not resolved — provide manually.`,
+            message: withdrawMessage,
           };
         },
       },
@@ -1378,13 +1510,45 @@ Wallet State: ${JSON.stringify(walletState || {})}
 
           const files = TEMPLATES[template] || TEMPLATES.react;
 
+          let finalAppId: string | null = null;
+          
+          if (walletAddress) {
+             try {
+                const { saveProject } = await import("@/actions/studio-actions");
+                
+                // Format the files for the database schema
+                const projectCode = {
+                   files: Object.entries(files).reduce((acc, [name, content]) => ({
+                       ...acc,
+                       [name]: { content }
+                   }), {} as Record<string, { content: string }>)
+                };
+                
+                const appId = "app_" + Math.random().toString(36).substring(2, 15);
+                const saveRes = await saveProject(
+                   walletAddress, 
+                   projectCode, 
+                   { name, description: `AI-generated ${template} mini-app` },
+                   appId
+                );
+                
+                if (saveRes.success) {
+                  finalAppId = saveRes.appId || appId;
+                }
+             } catch (err: unknown) {
+                console.warn("[studio_init_miniapp] Failed to save project to DB:", err);
+             }
+          }
+
+          const navigationTarget = finalAppId ? `/app/studio?appId=${finalAppId}` : "/app/studio";
+
           return {
             success: true, operation: "studio_init_miniapp", name, template,
             files,
             fileCount: Object.keys(files).length,
             entrypoint: "App.tsx",
-            navigateTo: "/app/studio",
-            message: `Mini-App "${name}" initialized with ${template} template (${Object.keys(files).length} files). esm.sh import maps configured.`,
+            navigateTo: navigationTarget,
+            message: `Mini-App "${name}" initialized with ${template} template (${Object.keys(files).length} files). ${finalAppId ? "Project saved. Redirecting to Studio..." : "esm.sh import maps configured."}`,
           };
         },
       },
