@@ -22,9 +22,14 @@ function getLiveblocks() {
 }
 
 function getJwtSecret() {
-    return new TextEncoder().encode(
-        process.env.JWT_SECRET || "keystone_sovereign_os_2026"
-    );
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        if (process.env.npm_lifecycle_event === 'build' || process.env.NEXT_PHASE === 'phase-production-build') {
+            return new TextEncoder().encode('build_placeholder_secret');
+        }
+        throw new Error('JWT_SECRET environment variable is missing');
+    }
+    return new TextEncoder().encode(secret);
 }
 
 /**
@@ -34,6 +39,8 @@ function getJwtSecret() {
  * The room ID requested in the body is validated to ensure the user only
  * joins rooms they own (user-scoped) or are invited to (vault-scoped).
  */
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
     let userId: string | null = null;
     let userName: string | null = null;
