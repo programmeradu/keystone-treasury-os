@@ -311,7 +311,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
             const serializedTransactions = result.result?.serializedTransactions;
             return {
               success: true, status: result.status, inputToken, outputToken, inputAmount: amount,
-              outputAmount: sr.outAmount,
+              outputAmount: outAmount,
+              rawOutputAmount: sr.outAmount,
               outputAmountFormatted: `${humanOut} ${outputToken}`,
               priceImpact: sr.priceImpact, riskLevel: sr.riskLevel,
               simulationPassed: sr.simulationPassed, firewallChecks: sr.firewallChecks || {},
@@ -364,7 +365,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
             const serializedTransactions = result.result?.serializedTransactions;
             return {
               success: true, status: result.status, inputToken, outputToken, inputAmount: amount,
-              outputAmount: sr.outAmount,
+              outputAmount: outAmount,
+              rawOutputAmount: sr.outAmount,
               outputAmountFormatted: `${humanOut} ${outputToken}`,
               priceImpact: sr.priceImpact, riskLevel: sr.riskLevel,
               simulationPassed: sr.simulationPassed, firewallChecks: sr.firewallChecks || {},
