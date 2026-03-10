@@ -1514,32 +1514,31 @@ Wallet State: ${JSON.stringify(walletState || {})}
 
           let finalAppId: string | null = null;
           
-          if (walletAddress) {
-             try {
-                const { saveProject } = await import("@/actions/studio-actions");
-                
-                // Format the files for the database schema
-                const projectCode = {
-                   files: Object.entries(files).reduce((acc, [name, content]) => ({
-                       ...acc,
-                       [name]: { content }
-                   }), {} as Record<string, { content: string }>)
-                };
-                
-                const appId = "app_" + Math.random().toString(36).substring(2, 15);
-                const saveRes = await saveProject(
-                   walletAddress, 
-                   projectCode, 
-                   { name, description: `AI-generated ${template} mini-app` },
-                   appId
-                );
-                
-                if (saveRes.success) {
-                  finalAppId = saveRes.appId || appId;
-                }
-             } catch (err: unknown) {
-                console.warn("[studio_init_miniapp] Failed to save project to DB:", err);
+          try {
+             const resolvedWallet = walletAddress || "Operator";
+             const { saveProject } = await import("@/actions/studio-actions");
+             
+             // Format the files for the database schema
+             const projectCode = {
+                files: Object.entries(files).reduce((acc, [name, content]) => ({
+                    ...acc,
+                    [name]: { content }
+                }), {} as Record<string, { content: string }>)
+             };
+             
+             const appId = "app_" + Math.random().toString(36).substring(2, 15);
+             const saveRes = await saveProject(
+                resolvedWallet, 
+                projectCode, 
+                { name, description: `AI-generated ${template} mini-app` },
+                appId
+             );
+             
+             if (saveRes.success) {
+               finalAppId = saveRes.appId || appId;
              }
+          } catch (err: unknown) {
+             console.warn("[studio_init_miniapp] Failed to save project to DB:", err);
           }
 
           return {
