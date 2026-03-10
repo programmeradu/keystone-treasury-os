@@ -24,7 +24,12 @@ function getLiveblocks() {
 function getJwtSecret() {
     const secret = process.env.JWT_SECRET;
     if (!secret) {
-        if (process.env.npm_lifecycle_event === 'build' || process.env.NEXT_PHASE === 'phase-production-build') {
+        if (
+            process.env.npm_lifecycle_event?.includes('build') ||
+            process.env.NEXT_PHASE === 'phase-production-build' ||
+            process.env.CF_PAGES === '1' ||
+            process.env.npm_config_argv?.includes('build')
+        ) {
             return new TextEncoder().encode('build_placeholder_secret');
         }
         throw new Error('JWT_SECRET environment variable is missing');
