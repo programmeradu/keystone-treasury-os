@@ -68,8 +68,8 @@ Keystone replaces UI clicks with a **Linguistic Command Layer**. Copy and paste 
 * **What happens:** The Knowledge Engine dynamically scrapes and reads the documentation, storing the insights in our native Postgres persistent memory so the Universal Operator learns how to use the protocol for future commands.
 
 ### 4. Zero-Build IDE (The AI Architect)
-> *"Build a Sniper Bot that watches Raydium for new liquidity pools > $50k and buys instantly"*
-* **What happens:** Opens the Keystone Studio. The AI Architect streams custom React/TypeScript code character-by-character into the Monaco editor, running an "Ouroboros" loop to autonomously fix any compiler errors before rendering a live, sandboxed DeFi mini-app.
+> *"Build a mini app that visualizes my treasury"*
+* **What happens:** The AI Architect streams custom React/TypeScript code into the live database, preparing the dashboard files, and presents a Launch App button. Clicking it drops you into the Keystone Studio where your sandboxed mini-app is instantly compiled and running.
 
 ### 5. Execution Mode (Background Trading Tool)
 > *"Run a sniper bot that watches Raydium for new liquidity pools above $50k and buys instantly with max slippage 0.5%"*
