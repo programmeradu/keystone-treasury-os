@@ -69,6 +69,49 @@ export async function getJupiterQuote(
 /**
  * Get current price for a token pair from Jupiter
  */
+/**
+ * Batch get current prices for multiple tokens from Jupiter Price API v2
+ * Much faster and less rate-limited than individual quote simulations
+ */
+export async function getBatchTokenPrices(
+  mints: string[],
+  vsToken: string = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' // USDC
+): Promise<Record<string, number>> {
+  if (!mints.length) return {};
+
+  try {
+    const url = new URL('https://api.jup.ag/price/v2');
+    url.searchParams.append('ids', mints.join(','));
+    url.searchParams.append('vsToken', vsToken);
+
+    const response = await fetch(url.toString(), {
+      headers: { 'Accept': 'application/json' },
+    });
+
+    if (!response.ok) {
+      console.error('Jupiter batch price error:', await response.text());
+      return {};
+    }
+
+    const { data } = await response.json();
+    const prices: Record<string, number> = {};
+
+    // Parse prices from the response data
+    if (data) {
+      for (const [mint, info] of Object.entries(data) as any) {
+        if (info && info.price) {
+          prices[mint] = parseFloat(info.price);
+        }
+      }
+    }
+
+    return prices;
+  } catch (error) {
+    console.error('Failed to batch get token prices:', error);
+    return {};
+  }
+}
+
 export async function getTokenPrice(
   inputMint: string,
   outputMint: string = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' // USDC
