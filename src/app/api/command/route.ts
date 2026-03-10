@@ -155,7 +155,7 @@ CRITICAL RULES:
 25. For split intents like "bridge half" + "deposit the rest" after a swap: ALWAYS compute split amounts from the realized swap OUTPUT amount/token, never from the original input amount.
 26. If a target protocol has no eligible live vault, STOP and ask the user to choose a fallback protocol/token.
 27. If the user asks to build/create/develop software (bot/app/script/automation), do NOT execute live trading or treasury transaction tools, EXCEPT for deploy_sniper_bot if they explicitly ask to "run a sniper bot".
-28. For software-build intents, use browser_research + studio_init_miniapp + studio_analyze_code/sdk_hooks as needed, then call navigate with path "/app/studio".
+28. For software-build intents... use studio_init_miniapp. DO NOT call navigate with path "/app/studio" afterwards; the UI presents a launch card. IMPORTANT: If the user provides specific logic or UI requirements, you MUST write the full React TSX code and pass it in the customAppTsxCode parameter of studio_init_miniapp!
 29. DO NOT invent navigation paths or use the navigate tool to prompt for wallet connection. The UI handles wallet connection automatically.
 30. Only use execution tools when the user explicitly requests financial execution, not implementation.
 31. Prompt mode support: mode:build (or /build) forces Studio workflow; mode:execute (or /execute) allows live execution tools; no prefix means auto-infer.
@@ -1489,8 +1489,9 @@ Wallet State: ${JSON.stringify(walletState || {})}
         inputSchema: z.object({
           name: z.string().describe("Mini-App project name"),
           template: z.enum(["react", "dashboard", "defi"]).optional().default("react").describe("Template: react (default), dashboard (data grid), defi (swap form)"),
+          customAppTsxCode: z.string().optional().describe("If the user details specific UI/logic requirements, you MUST write the COMPLETE React code for App.tsx here using Tailwind CSS and @keystone-os/sdk imports. Do NOT use this if they just ask for a generic template."),
         }),
-        execute: async ({ name, template }: { name: string; template: string }) => {
+        execute: async ({ name, template, customAppTsxCode }: { name: string; template: string; customAppTsxCode?: string }) => {
           console.log(`[Tool: studio_init_miniapp] ${name} (${template})`);
 
           const safeName = name.replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -1510,7 +1511,11 @@ Wallet State: ${JSON.stringify(walletState || {})}
             },
           };
 
-          const files = TEMPLATES[template] || TEMPLATES.react;
+          const files = { ...(TEMPLATES[template] || TEMPLATES.react) };
+
+          if (customAppTsxCode) {
+            files["App.tsx"] = customAppTsxCode;
+          }
 
           let finalAppId: string | null = null;
           
