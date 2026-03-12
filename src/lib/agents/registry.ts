@@ -19,7 +19,7 @@ class AgentIntentRegistry {
     register(intent: Omit<MonitorIntent, "id" | "createdAt" | "status">) {
         const newIntent: MonitorIntent = {
             ...intent,
-            id: globalThis.crypto.randomUUID().replace(/-/g, '').substring(0, 16),
+            id: Math.random().toString(36).substr(2, 9),
             status: "ACTIVE",
             createdAt: Date.now()
         };

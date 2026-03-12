@@ -33,7 +33,7 @@ export const useToastStore = create<ToastStore>((set, get) => ({
   toasts: [],
   
   addToast: (toast) => {
-    const id = toast.id || `t_${Date.now()}_${globalThis.crypto.randomUUID().replace(/-/g, '').substring(0, 16)}`;
+    const id = toast.id || `t_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     const duration = toast.duration ?? 5000;
 
     const newToast: Toast = {
