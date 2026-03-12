@@ -1,0 +1,4 @@
+## 2024-05-24 - Hardcoded Secrets & Insecure Randomness
+**Vulnerability:** Several files contained hardcoded fallback values for `JWT_SECRET` and various Supabase secrets. Using `Math.random()` to generate identifiers like `appId` and `botId`.
+**Learning:** Hardcoded default secrets can lead to token forgery and data exposure if environment variables fail to load. `Math.random()` does not provide sufficient entropy for IDs, opening up the risk for predictability and ID collisions. For environment variable verification, build scripts like Next.js `npm_lifecycle_event === 'build'` or `NEXT_PHASE` need to be checked to avoid failing the static build where runtime variables are absent.
+**Prevention:** Never use default fallback strings for sensitive secrets in code—always use strict undefined checks and fail securely during runtime. Always use cryptographically secure random generators such as `globalThis.crypto.randomUUID()` for unique identifiers.
