@@ -8,7 +8,7 @@ export function createBrowserClient() {
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     if (!url || !anonKey) {
         if (process.env.npm_lifecycle_event === 'build' || process.env.NEXT_PHASE === 'phase-production-build') {
-             return createClient('placeholder', 'placeholder');
+             return createClient('https://dummy.supabase.co', 'placeholder');
         }
         throw new Error('NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is not set');
     }
@@ -23,7 +23,7 @@ export async function createSupabaseServerClient() {
 
     if (!url || !anonKey) {
         if (process.env.npm_lifecycle_event === 'build' || process.env.NEXT_PHASE === 'phase-production-build') {
-             return createServerClient('placeholder', 'placeholder', { cookies: { getAll: () => [], setAll: () => {} } });
+             return createServerClient('https://dummy.supabase.co', 'placeholder', { cookies: { getAll: () => [], setAll: () => {} } });
         }
         throw new Error('NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is not set');
     }
@@ -53,7 +53,7 @@ export function createAdminClient() {
 
     if (!url || !serviceKey) {
         if (process.env.npm_lifecycle_event === 'build' || process.env.NEXT_PHASE === 'phase-production-build') {
-             return createClient('placeholder', 'placeholder');
+             return createClient('https://dummy.supabase.co', 'placeholder');
         }
         throw new Error('NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not set');
     }
