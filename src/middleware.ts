@@ -30,9 +30,13 @@ function hasNeonAuthSession(request: NextRequest): boolean {
 }
 
 function getJwtSecret() {
-    return new TextEncoder().encode(
-        process.env.JWT_SECRET || 'keystone_sovereign_os_2026'
-    );
+    if (!process.env.JWT_SECRET) {
+        if (process.env.npm_lifecycle_event === 'build' || process.env.NEXT_PHASE === 'phase-production-build') {
+            return new TextEncoder().encode('build_placeholder');
+        }
+        throw new Error('JWT_SECRET is not set');
+    }
+    return new TextEncoder().encode(process.env.JWT_SECRET);
 }
 
 async function hasSiwsSession(request: NextRequest): Promise<boolean> {
