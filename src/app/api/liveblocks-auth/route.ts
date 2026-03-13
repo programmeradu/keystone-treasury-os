@@ -22,9 +22,12 @@ function getLiveblocks() {
 }
 
 function getJwtSecret() {
-    return new TextEncoder().encode(
-        process.env.JWT_SECRET || "keystone_sovereign_os_2026"
-    );
+    const isBuildPhase = process.env.npm_lifecycle_event === 'build' || process.env.NEXT_PHASE === 'phase-production-build';
+    if (!process.env.JWT_SECRET && !isBuildPhase) {
+        throw new Error('JWT_SECRET environment variable is not set');
+    }
+    const secret = process.env.JWT_SECRET || (isBuildPhase ? 'build-placeholder-secret-1234567890' : '');
+    return new TextEncoder().encode(secret);
 }
 
 /**

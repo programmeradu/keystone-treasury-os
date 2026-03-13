@@ -10,7 +10,11 @@ const OAUTH_STATE_COOKIE = 'keystone-oauth-state';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 function getJwtSecret() {
-    const secret = process.env.JWT_SECRET || 'keystone_sovereign_os_2026';
+    const isBuildPhase = process.env.npm_lifecycle_event === 'build' || process.env.NEXT_PHASE === 'phase-production-build';
+    if (!process.env.JWT_SECRET && !isBuildPhase) {
+        throw new Error('JWT_SECRET environment variable is not set');
+    }
+    const secret = process.env.JWT_SECRET || (isBuildPhase ? 'build-placeholder-secret-1234567890' : '');
     return new TextEncoder().encode(secret);
 }
 
