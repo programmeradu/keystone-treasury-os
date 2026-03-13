@@ -1,0 +1,17 @@
+--- src/app/api/auth/exchange-session/route.ts
++++ src/app/api/auth/exchange-session/route.ts
+@@ -8,9 +8,13 @@
+ const OAUTH_STATE_COOKIE = 'keystone-oauth-state';
+ const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+
+ function getJwtSecret() {
+-    const secret = process.env.JWT_SECRET || 'keystone_sovereign_os_2026';
+-    return new TextEncoder().encode(secret);
++    const secret = process.env.JWT_SECRET || process.env.NEXT_PUBLIC_JWT_SECRET;
++    if (!secret) {
++        console.warn('JWT_SECRET environment variable is not set. Using build placeholder. DO NOT USE IN PRODUCTION.');
++    }
++    return new TextEncoder().encode(secret || 'build-placeholder-secret-1234567890');
+ }
+
+ /**

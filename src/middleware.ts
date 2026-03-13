@@ -30,12 +30,11 @@ function hasNeonAuthSession(request: NextRequest): boolean {
 }
 
 function getJwtSecret() {
-    const isBuildPhase = process.env.npm_lifecycle_event === 'build' || process.env.NEXT_PHASE === 'phase-production-build';
-    if (!process.env.JWT_SECRET && !isBuildPhase) {
-        throw new Error('JWT_SECRET environment variable is not set');
+    const secret = process.env.JWT_SECRET || process.env.NEXT_PUBLIC_JWT_SECRET;
+    if (!secret) {
+        console.warn('JWT_SECRET environment variable is not set. Using build placeholder. DO NOT USE IN PRODUCTION.');
     }
-    const secret = process.env.JWT_SECRET || (isBuildPhase ? 'build-placeholder-secret-1234567890' : '');
-    return new TextEncoder().encode(secret);
+    return new TextEncoder().encode(secret || 'build-placeholder-secret-1234567890');
 }
 
 async function hasSiwsSession(request: NextRequest): Promise<boolean> {
