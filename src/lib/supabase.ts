@@ -36,7 +36,10 @@ export async function createSupabaseServerClient() {
 // ─── Admin Client (service role — server-only, bypasses RLS) ─────────
 export function createAdminClient() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xyzcompany.supabase.co';
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5emNvbXBhbnkiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjE2NDgzMDAwLCJleHAiOjE5MzIwODMwMDB9.XYZ';
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!serviceKey) {
+        throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set. Refusing to operate securely.");
+    }
     return createClient(url, serviceKey, {
         auth: { autoRefreshToken: false, persistSession: false },
     });
