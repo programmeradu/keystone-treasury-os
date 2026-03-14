@@ -10,8 +10,15 @@ const COOKIE_NAME = 'keystone-siws-session';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 function getJwtSecret() {
-    const secret = process.env.JWT_SECRET;
-    if (!secret) throw new Error('JWT_SECRET is not set');
+    let secret = process.env.JWT_SECRET;
+    // SECURITY: Fail fast to prevent use of predictable default secrets
+    if (!secret) {
+        if (process.env.NODE_ENV === 'test') {
+            secret = 'dummy_secret_for_testing';
+        } else {
+            throw new Error('JWT_SECRET is not set');
+        }
+    }
     return new TextEncoder().encode(secret);
 }
 

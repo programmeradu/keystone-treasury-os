@@ -4,18 +4,34 @@ import { cookies } from 'next/headers';
 
 // ─── Browser Client (public, for client components) ──────────────────
 export function createBrowserClient() {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!url || !anonKey) throw new Error('NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is not set');
+    let url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    let anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    // SECURITY: Fail fast to prevent use of predictable default secrets
+    if (!url || !anonKey) {
+        if (process.env.NODE_ENV === 'test') {
+            url = 'https://dummy.supabase.co';
+            anonKey = 'dummy_anon_key';
+        } else {
+            throw new Error('NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is not set');
+        }
+    }
     return createClient(url, anonKey);
 }
 
 // ─── Server Client (for API routes and server components) ────────────
 export async function createSupabaseServerClient() {
     const cookieStore = await cookies();
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!url || !anonKey) throw new Error('NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is not set');
+    let url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    let anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    // SECURITY: Fail fast to prevent use of predictable default secrets
+    if (!url || !anonKey) {
+        if (process.env.NODE_ENV === 'test') {
+            url = 'https://dummy.supabase.co';
+            anonKey = 'dummy_anon_key';
+        } else {
+            throw new Error('NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is not set');
+        }
+    }
 
     return createServerClient(url, anonKey, {
         cookies: {
@@ -37,9 +53,17 @@ export async function createSupabaseServerClient() {
 
 // ─── Admin Client (service role — server-only, bypasses RLS) ─────────
 export function createAdminClient() {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url || !serviceKey) throw new Error('NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not set');
+    let url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    let serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    // SECURITY: Fail fast to prevent use of predictable default secrets
+    if (!url || !serviceKey) {
+        if (process.env.NODE_ENV === 'test') {
+            url = 'https://dummy.supabase.co';
+            serviceKey = 'dummy_service_key';
+        } else {
+            throw new Error('NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not set');
+        }
+    }
     return createClient(url, serviceKey, {
         auth: { autoRefreshToken: false, persistSession: false },
     });
