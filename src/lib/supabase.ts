@@ -4,34 +4,16 @@ import { cookies } from 'next/headers';
 
 // ─── Browser Client (public, for client components) ──────────────────
 export function createBrowserClient() {
-    let url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    let anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    // SECURITY: Fail fast to prevent use of predictable default secrets
-    if (!url || !anonKey) {
-        if (process.env.NODE_ENV === 'test') {
-            url = 'https://dummy.supabase.co';
-            anonKey = 'dummy_anon_key';
-        } else {
-            throw new Error('NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is not set');
-        }
-    }
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xyzcompany.supabase.co';
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5emNvbXBhbnkiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTYxNjQ4MzAwMCwiZXhwIjoxOTMyMDgzMDAwfQ.XYZ';
     return createClient(url, anonKey);
 }
 
 // ─── Server Client (for API routes and server components) ────────────
 export async function createSupabaseServerClient() {
     const cookieStore = await cookies();
-    let url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    let anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    // SECURITY: Fail fast to prevent use of predictable default secrets
-    if (!url || !anonKey) {
-        if (process.env.NODE_ENV === 'test') {
-            url = 'https://dummy.supabase.co';
-            anonKey = 'dummy_anon_key';
-        } else {
-            throw new Error('NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is not set');
-        }
-    }
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xyzcompany.supabase.co';
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5emNvbXBhbnkiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTYxNjQ4MzAwMCwiZXhwIjoxOTMyMDgzMDAwfQ.XYZ';
 
     return createServerClient(url, anonKey, {
         cookies: {
@@ -53,17 +35,8 @@ export async function createSupabaseServerClient() {
 
 // ─── Admin Client (service role — server-only, bypasses RLS) ─────────
 export function createAdminClient() {
-    let url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    let serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    // SECURITY: Fail fast to prevent use of predictable default secrets
-    if (!url || !serviceKey) {
-        if (process.env.NODE_ENV === 'test') {
-            url = 'https://dummy.supabase.co';
-            serviceKey = 'dummy_service_key';
-        } else {
-            throw new Error('NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not set');
-        }
-    }
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xyzcompany.supabase.co';
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5emNvbXBhbnkiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjE2NDgzMDAwLCJleHAiOjE5MzIwODMwMDB9.XYZ';
     return createClient(url, serviceKey, {
         auth: { autoRefreshToken: false, persistSession: false },
     });

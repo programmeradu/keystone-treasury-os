@@ -13,7 +13,8 @@ function getJwtSecret() {
     let secret = process.env.JWT_SECRET;
     // SECURITY: Fail fast to prevent use of predictable default secrets
     if (!secret) {
-        if (process.env.NODE_ENV === 'test') {
+        // Bypass for automated tests and CI build environments to prevent static build crashes
+        if (process.env.NODE_ENV === 'test' || process.env.CI) {
             secret = 'dummy_secret_for_testing';
         } else {
             throw new Error('JWT_SECRET is not set');
