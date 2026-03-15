@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, memo } from "react";
 import { ExternalLink, Repeat, Copy, Check } from "lucide-react";
 
 interface Asset {
@@ -19,7 +19,16 @@ interface AssetInventoryTableProps {
     assets: Asset[];
 }
 
-export const AssetInventoryTable = ({ assets }: AssetInventoryTableProps) => {
+/**
+ * ⚡ Bolt Optimization:
+ * Wrapped AssetInventoryTable with React.memo to prevent unnecessary re-renders.
+ * The table displays a list of assets and is frequently rendered when its parent
+ * component updates, but its props rarely change unless new data is fetched.
+ *
+ * Impact: Prevents full table re-render loop on parent state changes, saving CPU cycles
+ * on complex DOM tree reconciliation.
+ */
+export const AssetInventoryTable = memo(function AssetInventoryTable({ assets }: AssetInventoryTableProps) {
     const [copiedMint, setCopiedMint] = useState<string | null>(null);
 
     const handleCopy = (mint: string) => {
@@ -116,4 +125,4 @@ export const AssetInventoryTable = ({ assets }: AssetInventoryTableProps) => {
             </table>
         </div>
     );
-};
+});
