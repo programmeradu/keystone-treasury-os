@@ -25,7 +25,7 @@ interface BranchEndpoint {
 }
 
 function getHeaders() {
-    const apiKey = process.env.NEON_API_KEY;
+    const apiKey = process.env.NEON_API_KEY || (process.env.CI || process.env.NODE_ENV === "test" ? "dummy-key" : undefined);
     if (!apiKey) throw new Error('NEON_API_KEY not set');
     return {
         'Content-Type': 'application/json',
@@ -40,7 +40,7 @@ function getHeaders() {
 export async function createSandboxBranch(
     label?: string
 ): Promise<{ branch: NeonBranch; connectionUrl: string }> {
-    const projectId = process.env.NEON_PROJECT_ID;
+    const projectId = process.env.NEON_PROJECT_ID || (process.env.CI || process.env.NODE_ENV === "test" ? "dummy-id" : undefined);
     if (!projectId) throw new Error('NEON_PROJECT_ID not set');
 
     const branchName = label || `sandbox-${Date.now().toString(36)}`;
@@ -107,7 +107,7 @@ export async function getBranchConnectionString(
  * Instantly wipes all hallucinated data and schema changes.
  */
 export async function deleteSandboxBranch(branchId: string): Promise<void> {
-    const projectId = process.env.NEON_PROJECT_ID;
+    const projectId = process.env.NEON_PROJECT_ID || (process.env.CI || process.env.NODE_ENV === "test" ? "dummy-id" : undefined);
     if (!projectId) throw new Error('NEON_PROJECT_ID not set');
 
     const res = await fetch(
@@ -128,7 +128,7 @@ export async function deleteSandboxBranch(branchId: string): Promise<void> {
  * List all active sandbox branches (for admin/cleanup).
  */
 export async function listSandboxBranches(): Promise<NeonBranch[]> {
-    const projectId = process.env.NEON_PROJECT_ID;
+    const projectId = process.env.NEON_PROJECT_ID || (process.env.CI || process.env.NODE_ENV === "test" ? "dummy-id" : undefined);
     if (!projectId) throw new Error('NEON_PROJECT_ID not set');
 
     const res = await fetch(

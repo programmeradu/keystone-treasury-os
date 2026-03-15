@@ -70,7 +70,7 @@ Explain in plain language what this means for a trader. Return JSON only.`;
     let responseText = "";
 
     if (selectedProvider === "groq") {
-      const apiKey = process.env.GROQ_API_KEY;
+      const apiKey = process.env.GROQ_API_KEY || (process.env.CI || process.env.NODE_ENV === "test" ? "dummy-key" : undefined);
       if (!apiKey) throw new Error("GROQ_API_KEY not configured");
 
       const groq = new Groq({ apiKey });
@@ -86,7 +86,7 @@ Explain in plain language what this means for a trader. Return JSON only.`;
 
       responseText = message.choices[0]?.message?.content || "";
     } else if (selectedProvider === "github") {
-      const apiKey = process.env.GITHUB_TOKEN;
+      const apiKey = process.env.GITHUB_TOKEN || (process.env.CI || process.env.NODE_ENV === "test" ? "dummy-key" : undefined);
       if (!apiKey) throw new Error("GITHUB_TOKEN not configured");
 
       const client = new OpenAI({
@@ -168,7 +168,7 @@ Explain what this means.`;
     let responseText = "";
 
     if (selectedProvider === "groq") {
-      const apiKey = process.env.GROQ_API_KEY;
+      const apiKey = process.env.GROQ_API_KEY || (process.env.CI || process.env.NODE_ENV === "test" ? "dummy-key" : undefined);
       if (!apiKey) throw new Error("GROQ_API_KEY not configured");
 
       const groq = new Groq({ apiKey });
@@ -184,7 +184,7 @@ Explain what this means.`;
 
       responseText = message.choices[0]?.message?.content || "";
     } else if (selectedProvider === "github") {
-      const apiKey = process.env.GITHUB_TOKEN;
+      const apiKey = process.env.GITHUB_TOKEN || (process.env.CI || process.env.NODE_ENV === "test" ? "dummy-key" : undefined);
       if (!apiKey) throw new Error("GITHUB_TOKEN not configured");
 
       const client = new OpenAI({
@@ -236,7 +236,7 @@ Is this diversified enough? What are the risks?`;
     let responseText = "";
 
     if (selectedProvider === "groq") {
-      const apiKey = process.env.GROQ_API_KEY;
+      const apiKey = process.env.GROQ_API_KEY || (process.env.CI || process.env.NODE_ENV === "test" ? "dummy-key" : undefined);
       if (!apiKey) throw new Error("GROQ_API_KEY not configured");
 
       const groq = new Groq({ apiKey });
@@ -252,7 +252,7 @@ Is this diversified enough? What are the risks?`;
 
       responseText = message.choices[0]?.message?.content || "";
     } else if (selectedProvider === "github") {
-      const apiKey = process.env.GITHUB_TOKEN;
+      const apiKey = process.env.GITHUB_TOKEN || (process.env.CI || process.env.NODE_ENV === "test" ? "dummy-key" : undefined);
       if (!apiKey) throw new Error("GITHUB_TOKEN not configured");
 
       const client = new OpenAI({
