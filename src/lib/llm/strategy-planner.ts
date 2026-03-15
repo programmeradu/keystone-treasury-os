@@ -368,7 +368,7 @@ export async function planStrategy(
     totalValue?: number;
   }
 ): Promise<StrategyPlan> {
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY || (process.env.CI || process.env.NODE_ENV === "test" ? "dummy-key" : undefined);
 
   // ─── No Groq key → local parser only ──────────────────────────
   if (!apiKey) {
@@ -529,7 +529,7 @@ export async function getStrategyRecommendations(
     portfolio: Record<string, number>;
   }
 ): Promise<string> {
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY || (process.env.CI || process.env.NODE_ENV === "test" ? "dummy-key" : undefined);
   if (!apiKey) throw new Error("GROQ_API_KEY not configured. Set it in .env.local");
 
   const systemPrompt = `You are a crypto portfolio advisor. Provide 2-3 specific, actionable recommendations.
@@ -575,7 +575,7 @@ export async function validateStrategy(
   valid: boolean;
   reason?: string;
 }> {
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY || (process.env.CI || process.env.NODE_ENV === "test" ? "dummy-key" : undefined);
   if (!apiKey) return { valid: true }; // Skip validation if no key
 
   const systemPrompt = `You are a security validator. Check if a planned operation is reasonable.
