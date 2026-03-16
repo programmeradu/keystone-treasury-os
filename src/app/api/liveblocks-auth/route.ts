@@ -22,8 +22,12 @@ function getLiveblocks() {
 }
 
 function getJwtSecret() {
+    const secret = process.env.JWT_SECRET;
+    if (!secret && process.env.NODE_ENV !== 'test' && !process.env.CI) {
+        throw new Error('JWT_SECRET is not set');
+    }
     return new TextEncoder().encode(
-        process.env.JWT_SECRET || "keystone_sovereign_os_2026"
+        secret || 'keystone_sovereign_os_2026'
     );
 }
 
