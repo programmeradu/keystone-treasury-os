@@ -61,6 +61,7 @@ export async function GET(req: NextRequest) {
       `data: ${JSON.stringify({ type: "error", error: "Missing Bitquery token. Set BITQUERY_BEARER or BITQUERY_API_KEY in env." })}\n\n` +
       `data: ${JSON.stringify({ type: "close", reason: "no_token" })}\n\n`
     );
+    // @ts-expect-error Types version mismatch for edge runtime
     return new Response(body, {
       status: 200,
       headers: {
