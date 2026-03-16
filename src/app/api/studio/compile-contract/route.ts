@@ -12,10 +12,10 @@ import { NextRequest, NextResponse } from "next/server";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as crypto from "node:crypto";
-import { exec } from "node:child_process";
+import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
-const execAsync = promisify(exec);
+const execAsync = promisify(execFile);
 
 interface CompileRequest {
     files: Record<string, string>; // filename -> Rust source code
@@ -112,8 +112,8 @@ anchor-spl = "0.30.1"
             "utf-8"
         );
 
-        // Run anchor build
-        const { stdout, stderr } = await execAsync("anchor build", {
+        // [SECURITY] Use arguments array with anchor build to prevent command injection
+        const { stdout, stderr } = await execAsync("anchor", ["build"], {
             cwd: tmpDir,
             timeout: 120000, // 2 min timeout
         });
