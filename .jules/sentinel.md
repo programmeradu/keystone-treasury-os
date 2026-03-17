@@ -1,4 +1,0 @@
-## 2024-05-24 - [Fix Hardcoded Secrets in Authentication API Routes]
-**Vulnerability:** Found hardcoded fallback JWT secrets in `src/app/api/auth/exchange-session/route.ts` and `src/app/api/auth/siws/route.ts` (`process.env.JWT_SECRET || 'keystone_sovereign_os_2026'`).
-**Learning:** Hardcoded secrets as fallbacks for missing environment variables pose a critical security risk. If deployed without setting the variable, the application relies on a known, compromised secret for authentication tokens, leading to widespread token forging.
-**Prevention:** In production, sensitive variables like JWT secrets must be required. For development/testing, fail securely or use properly isolated mock values. Never use a hardcoded, guessable fallback secret in application code meant for production. Use fail-fast initialization instead.
