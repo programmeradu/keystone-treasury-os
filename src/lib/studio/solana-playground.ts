@@ -135,17 +135,25 @@ export async function deployProgram(
     // In a real production app, we would use a "Session Key" or an ephemeral keypair 
     // funded by the main wallet to do the chunked upload, then the main wallet signs the final "deploy" instruction.
 
-    // For this step, we will implement a simplified "Deploy" that:
-    // a) Assumes the program is small enough (or mocks the loop)
-    // b) Sends 1 transaction to "simulate" the deployment on-chain (Memo or Transfer).
+    // Implement Ephemeral Keypair strategy for chunked upload (mock).
+    const ephemeralKeypair = Keypair.generate();
+    console.log(`[Deploy] Generated Ephemeral Keypair for chunked upload: ${ephemeralKeypair.publicKey.toString()}`);
 
-    // TODO: Implement Ephemeral Keypair strategy for chunked upload.
+    let uploadedBytes = 0;
+    const chunkSize = 1024; // 1KB mock chunks
+
+    while (uploadedBytes < programBuffer.length) {
+        const chunk = programBuffer.slice(uploadedBytes, uploadedBytes + chunkSize);
+        uploadedBytes += chunk.length;
+        console.log(`[Deploy] Uploading chunk (${uploadedBytes}/${programBuffer.length} bytes)...`);
+        await new Promise(resolve => setTimeout(resolve, 100)); // Simulate chunk upload delay
+    }
 
     // For now, let's create a new Keypair for the program and return its ID.
     const programKeypair = Keypair.generate();
 
     // Simulate network activity
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     console.log("Deployed Program ID:", programKeypair.publicKey.toString());
 

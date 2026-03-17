@@ -450,7 +450,9 @@ export function LivePreview({
             const description = String(params.description || "Sign transaction");
             setLogs(prev => [...prev.slice(-500), `[info] [Turnkey] Sign request: ${description}`]);
 
-            // TODO Phase 2.1: Simulation Firewall — fork, simulate, present state diff
+            const simulationResult = await stubImpactReport({ transaction: params.transaction });
+            setLogs(prev => [...prev.slice(-500), `[info] [Simulation Firewall] Impact: ${JSON.stringify(simulationResult)}`]);
+
             // For now, mock signing with delay
             await new Promise(r => setTimeout(r, 800));
             const sig = "sig_turnkey_" + crypto.randomUUID().slice(0, 12);
