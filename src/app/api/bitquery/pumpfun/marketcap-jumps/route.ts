@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
       `data: ${JSON.stringify({ type: "error", error: "Missing Bitquery token. Set BITQUERY_BEARER or BITQUERY_API_KEY in env." })}\n\n` +
       `data: ${JSON.stringify({ type: "close", reason: "no_token" })}\n\n`
     );
-    return new Response(body, {
+    return new Response(body as any, {
       status: 200,
       headers: {
         "Content-Type": "text/event-stream",
@@ -180,7 +180,7 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  return new Response(stream, {
+  return new Response(stream as any, {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache, no-transform",
