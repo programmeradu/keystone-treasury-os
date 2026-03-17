@@ -7,7 +7,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { Connection, PublicKey, Transaction, TransactionInstruction, SystemProgram } from "@solana/web3.js";
-import crypto from "crypto";
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,8 +53,10 @@ export async function POST(request: NextRequest) {
     Buffer.from(ipfsCid, "utf-8").copy(ipfsCidBytes, 0, 0, Math.min(ipfsCid.length, 64));
 
     // Compute Anchor discriminator
-    const discHash = crypto.createHash("sha256").update("global:initialize_app").digest();
-    const disc = discHash.subarray(0, 8);
+    const encoder = new TextEncoder();
+    const discData = encoder.encode("global:initialize_app");
+    const hashBuffer = await crypto.subtle.digest("SHA-256", discData as any);
+    const disc = Buffer.from(new Uint8Array(hashBuffer).slice(0, 8));
 
     let parsedPrice = Number(priceUsdc) || 0;
     if (isNaN(parsedPrice) || parsedPrice < 0) {
