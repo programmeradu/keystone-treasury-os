@@ -57,7 +57,11 @@ export async function POST(request: NextRequest) {
     const discHash = crypto.createHash("sha256").update("global:initialize_app").digest();
     const disc = discHash.subarray(0, 8);
 
-    const priceUsdcBigInt = BigInt(Math.round((priceUsdc || 0) * 1_000_000));
+    let parsedPrice = Number(priceUsdc) || 0;
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+      parsedPrice = 0;
+    }
+    const priceUsdcBigInt = BigInt(Math.round(parsedPrice * 1_000_000));
     const developerFeeBps = 8000;
 
     const data = Buffer.alloc(8 + 32 + 8 + 2 + 64);

@@ -106,6 +106,13 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
       throw new Error("Database not available");
     }
 
+    // Phase 2 TODO: Validate wallet balance
+    // const balance = await checkBalance(bot.walletAddress, bot.paymentTokenMint);
+    // if (balance < bot.amountUsd) {
+    //   await pauseBot(bot.id, "Insufficient balance");
+    //   return { success: false, error: "Insufficient balance" };
+    // }
+
     // Get Jupiter quote
     const USDC_DECIMALS = 6;
     const amountInSmallestUnit = Math.floor(bot.amountUsd * Math.pow(10, USDC_DECIMALS));
@@ -204,6 +211,9 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
     const duration = Date.now() - startTime;
     console.log(`[Bot ${bot.id}] Execution successful in ${duration}ms`);
 
+    // Phase 2 TODO: Send notification email
+    // await sendExecutionNotification(bot, executionResult);
+
     return { success: true };
 
   } catch (error: any) {
@@ -250,6 +260,7 @@ async function recordFailedExecution(bot: any, errorMessage: string) {
 
     if (shouldPause) {
       console.warn(`[Bot ${bot.id}] Paused after ${newFailedAttempts} failures`);
+      // Phase 2 TODO: Send notification email
     }
   } catch (error) {
     console.error(`[Bot ${bot.id}] Failed to record execution failure:`, error);
