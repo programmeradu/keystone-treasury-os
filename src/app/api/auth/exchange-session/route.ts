@@ -127,6 +127,8 @@ async function findOAuthUser(
  *   2. Direct query of Better Auth DB tables
  *   3. User info supplied in request body (fallback)
  */
+export const runtime = 'edge';
+
 export async function POST(request: NextRequest) {
     try {
         // Verify the OAuth state cookie exists and is valid
