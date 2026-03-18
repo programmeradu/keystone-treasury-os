@@ -1,0 +1,4 @@
+## 2025-03-18 - Hardcoded JWT Secret Vulnerability
+**Vulnerability:** Found hardcoded fallback strings for `JWT_SECRET` across multiple critical authentication files (`src/middleware.ts`, `src/app/api/auth/siws/route.ts`, `src/app/api/auth/exchange-session/route.ts`, `src/app/api/liveblocks-auth/route.ts`).
+**Learning:** Hardcoded default secrets create a false sense of security where an application might appear fully configured and secure but silently fallback to an insecure, universally known key if the environment variables are not correctly mapped or deployed.
+**Prevention:** Always enforce fail-fast behavior by explicitly checking for required sensitive environment variables like `JWT_SECRET`. If they are missing, throw a fatal error immediately, preventing the application from booting or processing requests under insecure defaults. Only bypass these checks explicitly for test environments.
