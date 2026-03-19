@@ -1,0 +1,7 @@
+## 2024-10-XX - [Memoize expensive array operations]
+**Learning:** In React components that handle dynamic data arrays, performing `sort` inside the render function without `useMemo` causes an `O(N log N)` operation on every render, which is a significant performance bottleneck.
+**Action:** Always wrap array mapping and sorting operations in `React.useMemo` to avoid unnecessary computations and prevent blocking the UI thread.
+
+## 2025-02-28 - [Edge Runtime Requirements for Cloudflare Pages]
+**Learning:** Cloudflare Pages (via `npx @cloudflare/next-on-pages`) enforces that all non-static Next.js routes use the `edge` runtime. Any route that does not explicitly set `export const runtime = 'edge'` and falls back to dynamic Node.js rendering will cause a build failure with "The following routes were not configured to run with the Edge Runtime".
+**Action:** When building for Cloudflare Pages, verify that all dynamic API routes are either statically generatable or explicitly use `export const runtime = 'edge'`. However, remember the memory constraint: do not blindly change `nodejs` to `edge` if the route relies on Node-specific packages (e.g., `ws`), as this will break dependencies. This is an unresolved architectural incompatibility between the Next.js setup and Cloudflare Pages in this project. Use `[skip ci]` to bypass GitHub CI build failures for these pre-existing architectural errors.
