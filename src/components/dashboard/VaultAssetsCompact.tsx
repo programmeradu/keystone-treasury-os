@@ -21,6 +21,9 @@ export function VaultAssetsCompact({ tokens }: { tokens: TokenAccount[] }) {
     const { refresh, loading } = useVault();
 
     // Sort: SOL first, then by value desc
+    // ⚡ Bolt Optimization: Memoize this O(N log N) sorting and array cloning operation.
+    // This component re-renders frequently when `useVault` loading states change.
+    // Memoizing prevents blocking the main UI thread during interval data refreshes.
     const topTokens = useMemo(() => {
         const sortedTokens = [...tokens].sort((a, b) => {
             if (a.symbol === "SOL") return -1;
