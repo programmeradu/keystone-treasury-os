@@ -22,9 +22,14 @@ function getLiveblocks() {
 }
 
 function getJwtSecret() {
-    return new TextEncoder().encode(
-        process.env.JWT_SECRET || "keystone_sovereign_os_2026"
-    );
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        if (process.env.NODE_ENV === "test" || process.env.CI) {
+            return new TextEncoder().encode("dummy_secret_for_testing");
+        }
+        throw new Error("JWT_SECRET environment variable is missing");
+    }
+    return new TextEncoder().encode(secret);
 }
 
 /**
