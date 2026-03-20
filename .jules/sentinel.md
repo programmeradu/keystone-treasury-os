@@ -1,0 +1,5 @@
+
+## 2024-03-20 - [Fix Path Traversal in API Contract Compilation]
+**Vulnerability:** Found a path traversal vulnerability in `src/app/api/studio/compile-contract/route.ts` where the client could provide arbitrary filenames (like `../../../etc/passwd`) to write files outside of the intended compilation directory.
+**Learning:** The API allowed client-side `filename` strings to be directly joined via `path.join()` without verifying whether the resolved path escaped the target sandbox directory, or if the string contained path traversal characters like `../`. Similarly, `programName` was passed directly from the client without strict alphanumeric validation, opening up potential directory traversal or command injection risks during shell execution.
+**Prevention:** Always perform strict validation on file paths or filenames provided by the client. Ensure no traversal characters (`..`, `/`, `\`) exist in filenames if they are expected to be relative to a flat directory, and restrict custom names like `programName` using strict regexes (e.g., `/^[a-zA-Z0-9_-]+$/`).
