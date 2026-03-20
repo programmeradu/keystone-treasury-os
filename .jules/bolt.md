@@ -1,0 +1,3 @@
+## 2024-05-24 - [Parallelize Multiple Independent Network Requests]
+**Learning:** In heavily orchestrated agent workflows (e.g., ExecutionCoordinator), doing N independent network requests sequentially (like fetching Jupiter quotes and building raw swap transactions) severely blocks execution, causing an O(N) penalty in response time. The existing `executeRebalance` method performed consecutive iteration via a `for...of` loop waiting for external APIs to resolve.
+**Action:** Always identify loops iterating over remote API calls where state isn't chained, and refactor them using `Promise.all` over `.map()` to achieve optimal concurrency.
