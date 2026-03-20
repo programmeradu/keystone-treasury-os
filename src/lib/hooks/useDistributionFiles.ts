@@ -217,7 +217,7 @@ export function useDistributionFiles() {
     ): DistributionFile => {
         const now = Date.now();
         const newFile: DistributionFile = {
-            id: `dist_${now}_${Math.random().toString(36).slice(2, 8)}`,
+            id: `dist_${now}_${globalThis.crypto.randomUUID().replace(/-/g, '').substring(0, 16)}`,
             name,
             tokenSummary: computeTokenSummary(entries),
             entries,

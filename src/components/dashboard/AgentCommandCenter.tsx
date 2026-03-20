@@ -65,7 +65,7 @@ export function AgentCommandCenter() {
         const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
 
         setLogs(prev => [...prev.slice(-50), { // Keep last 50 logs
-            id: Math.random().toString(36),
+            id: globalThis.crypto.randomUUID().replace(/-/g, '').substring(0, 16),
             timestamp: timeString,
             message,
             type

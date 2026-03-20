@@ -40,7 +40,7 @@ export function SparklineArea({ data, width = 120, height = 28, className = "" }
     }));
     const linePts = coords.map((c) => `${c.x},${c.y}`).join(" ");
     const area = `M${coords[0].x},${height} ` + coords.map((c) => `L${c.x},${c.y}`).join(" ") + ` L${coords[coords.length - 1].x},${height} Z`;
-    return { pts: linePts, areaPath: area, up: data[data.length - 1] >= data[0], uid: `area-${Math.random().toString(36).slice(2, 8)}` };
+    return { pts: linePts, areaPath: area, up: data[data.length - 1] >= data[0], uid: `area-${globalThis.crypto.randomUUID().replace(/-/g, '').substring(0, 16)}` };
   }, [data, width, height]);
 
   if (!data || data.length < 2) return null;

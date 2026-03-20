@@ -340,7 +340,7 @@ export class WalletTransactionExecutor {
     riskLevel: "low" | "medium" | "high";
     metadata?: Record<string, any>;
   }): ApprovalRequest {
-    const id = `approval_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const id = `approval_${Date.now()}_${globalThis.crypto.randomUUID().replace(/-/g, '').substring(0, 16)}`;
     const approval: ApprovalRequest = {
       id,
       type: input.type,

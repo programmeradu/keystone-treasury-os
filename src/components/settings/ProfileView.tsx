@@ -73,7 +73,7 @@ export const ProfileView = ({ onNavigate }: { onNavigate?: (view: string) => voi
     };
 
     const handleRandomizeAvatar = () => {
-        const seed = `user_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const seed = `user_${Date.now()}_${globalThis.crypto.randomUUID().replace(/-/g, '').substring(0, 16)}`;
         const updated = { ...profile, avatarSeed: seed };
         setProfile(updated);
         saveProfile(updated);
