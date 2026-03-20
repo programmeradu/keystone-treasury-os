@@ -1,0 +1,352 @@
+⚡️ @cloudflare/next-on-pages CLI v.1.13.16
+⚡️ Detected Package Manager: npm (11.11.0)
+⚡️ Preparing project...
+⚡️ Project is ready
+⚡️ Building project...
+▲  WARNING! Build not running on Vercel. System environment variables will not be available.
+▲
+▲  Warning: Detected "engines": { "node": ">=20" } in your `package.json` that will automatically upgrade when a new major Node.js Version is released. Learn More: https://vercel.link/node-version
+▲  WARNING: You should not upload the `.next` directory.
+▲  Installing dependencies...
+▲  up to date in 6s
+▲  438 packages are looking for funding
+▲  run `npm fund` for details
+▲  Detected Next.js version: 15.5.12
+▲  Running "npm run build"
+▲  > app@0.1.0 prebuild
+▲  > npm run generate:types
+▲  > app@0.1.0 generate:types
+▲  > npx tsx scripts/generate-sdk-types.ts
+▲  🔧 Generating SDK type definitions for Monaco…
+▲  📄 types.ts: 13 declarations
+▲  🪝 AppEventBus.ts: 0 interfaces, 1 exports
+▲  🪝 useACEReport.ts: 2 interfaces, 1 exports
+▲  🪝 useAgentHandoff.ts: 1 interfaces, 1 exports
+▲  🪝 useEncryptedSecret.ts: 1 interfaces, 1 exports
+▲  🪝 useFetch.ts: 0 interfaces, 1 exports
+▲  🪝 useGaslessTx.ts: 1 interfaces, 1 exports
+▲  🪝 useImpactReport.ts: 1 interfaces, 1 exports
+▲  🪝 useJupiterSwap.ts: 2 interfaces, 1 exports
+▲  🪝 useMCPClient.ts: 2 interfaces, 1 exports
+▲  🪝 useMCPServer.ts: 2 interfaces, 1 exports
+▲  🪝 useNotification.ts: 2 interfaces, 1 exports
+▲  🪝 usePortfolio.ts: 3 interfaces, 1 exports
+▲  🪝 useSIWS.ts: 0 interfaces, 1 exports
+▲  🪝 useStorage.ts: 1 interfaces, 1 exports
+▲  🪝 useTaxForensics.ts: 3 interfaces, 1 exports
+▲  🪝 useTheme.ts: 1 interfaces, 1 exports
+▲  🪝 useTokenPrice.ts: 1 interfaces, 1 exports
+▲  🪝 useTurnkey.ts: 0 interfaces, 1 exports
+▲  🪝 useVault.ts: 0 interfaces, 1 exports
+▲  🪝 useYieldOptimizer.ts: 1 interfaces, 1 exports
+▲  ✅ Generated: src/generated/keystone-sdk-types.ts
+▲  13 core types + 24 hook interfaces + 20 hook exports
+▲  > app@0.1.0 build
+▲  > cross-env NEXT_TELEMETRY_DISABLED=1 NEXT_PRIVATE_BUILD_WORKER_COUNT=1 NODE_OPTIONS=--max-old-space-size=4096 next build
+▲  ▲ Next.js 15.5.12
+▲
+▲  Creating an optimized production build ...
+▲  ✓ Compiled successfully in 64s
+▲  Skipping linting
+▲  Checking validity of types ...
+▲  Collecting page data ...
+▲  KnowledgeBase: Missing TAVILY_API_KEY
+▲  KnowledgeBase: Missing JINA_API_KEY
+▲  KnowledgeBase: Missing FIRECRAWL_API_KEY
+▲  ⚠ Using edge runtime on a page currently disables static generation for that page
+▲  KnowledgeBase: Missing TAVILY_API_KEY
+▲  KnowledgeBase: Missing JINA_API_KEY
+▲  KnowledgeBase: Missing FIRECRAWL_API_KEY
+▲  bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+▲  KnowledgeBase: Missing TAVILY_API_KEY
+▲  KnowledgeBase: Missing JINA_API_KEY
+▲  KnowledgeBase: Missing FIRECRAWL_API_KEY
+▲  Generating static pages (0/86) ...
+▲  KnowledgeBase: Missing TAVILY_API_KEY
+▲  KnowledgeBase: Missing JINA_API_KEY
+▲  KnowledgeBase: Missing FIRECRAWL_API_KEY
+▲  Generating static pages (21/86)
+▲  Generating static pages (42/86)
+▲  KnowledgeBase: Missing TAVILY_API_KEY
+▲  KnowledgeBase: Missing JINA_API_KEY
+▲  KnowledgeBase: Missing FIRECRAWL_API_KEY
+▲  bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+▲  bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+▲  bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+▲  Generating static pages (64/86)
+▲  ✓ Generating static pages (86/86)
+▲  Finalizing page optimization ...
+▲  Collecting build traces ...
+▲
+▲  Route (app)                                              Size  First Load JS
+▲  ┌ ○ /                                                 34.8 kB         416 kB
+▲  ├ ○ /_not-found                                          1 kB         106 kB
+▲  ├ ƒ /api/agent                                          397 B         105 kB
+▲  ├ ƒ /api/agent/knowledge                                397 B         105 kB
+▲  ├ ƒ /api/agentic                                        397 B         105 kB
+▲  ├ ƒ /api/agentic/approve                                397 B         105 kB
+▲  ├ ƒ /api/agentic/execute-with-wallet                    397 B         105 kB
+▲  ├ ƒ /api/agentic/history                                397 B         105 kB
+▲  ├ ƒ /api/ai/parse                                       397 B         105 kB
+▲  ├ ƒ /api/ai/parse-atlas-command                         397 B         105 kB
+▲  ├ ƒ /api/ai/text                                        397 B         105 kB
+▲  ├ ƒ /api/airdrops/scan                                  397 B         105 kB
+▲  ├ ƒ /api/airdrops/sources/airdropsio/solana             397 B         105 kB
+▲  ├ ƒ /api/airdrops/speculative/solana                    397 B         105 kB
+▲  ├ ƒ /api/alerts/cron                                    397 B         105 kB
+▲  ├ ƒ /api/alerts/subscribe                               397 B         105 kB
+▲  ├ ƒ /api/alerts/verify                                  397 B         105 kB
+▲  ├ ƒ /api/analytics/benchmarks                           397 B         105 kB
+▲  ├ ƒ /api/analytics/fees                                 397 B         105 kB
+▲  ├ ƒ /api/analytics/flows                                397 B         105 kB
+▲  ├ ƒ /api/analytics/history                              397 B         105 kB
+▲  ├ ƒ /api/analytics/trades                               397 B         105 kB
+▲  ├ ƒ /api/atlas/session                                  397 B         105 kB
+▲  ├ ƒ /api/auth/[...path]                                 397 B         105 kB
+▲  ├ ƒ /api/auth/callback                                  397 B         105 kB
+▲  ├ ƒ /api/auth/callback/neon                             397 B         105 kB
+▲  ├ ƒ /api/auth/exchange-session                          397 B         105 kB
+▲  ├ ƒ /api/auth/link-wallet                               397 B         105 kB
+▲  ├ ƒ /api/auth/nonce                                     397 B         105 kB
+▲  ├ ƒ /api/auth/siws                                      397 B         105 kB
+▲  ├ ƒ /api/auth/sync                                      397 B         105 kB
+▲  ├ ƒ /api/bitquery/ohlcv/stream                          397 B         105 kB
+▲  ├ ƒ /api/bitquery/price/index                           397 B         105 kB
+▲  ├ ƒ /api/bitquery/pumpfun/curve-95                      397 B         105 kB
+▲  ├ ƒ /api/bitquery/pumpfun/marketcap-jumps               397 B         105 kB
+▲  ├ ƒ /api/bridge/quote                                   397 B         105 kB
+▲  ├ ƒ /api/chain/eth/block-number                         397 B         105 kB
+▲  ├ ƒ /api/command                                        397 B         105 kB
+▲  ├ ƒ /api/cron/dca-execute                               397 B         105 kB
+▲  ├ ƒ /api/defillama/tvl                                  397 B         105 kB
+▲  ├ ƒ /api/delegation/request                             397 B         105 kB
+▲  ├ ƒ /api/delegation/status                              397 B         105 kB
+▲  ├ ƒ /api/download-project                               397 B         105 kB
+▲  ├ ƒ /api/ens/resolve                                    397 B         105 kB
+▲  ├ ƒ /api/execute                                        397 B         105 kB
+▲  ├ ƒ /api/foresight/parse                                397 B         105 kB
+▲  ├ ƒ /api/gas/estimate                                   397 B         105 kB
+▲  ├ ƒ /api/github/delete                                  397 B         105 kB
+▲  ├ ƒ /api/github/me                                      397 B         105 kB
+▲  ├ ƒ /api/github/repos                                   397 B         105 kB
+▲  ├ ƒ /api/helius/addresses/[address]/transactions        397 B         105 kB
+▲  ├ ƒ /api/helius/das/token-accounts                      397 B         105 kB
+▲  ├ ƒ /api/helius/das/wallet-holdings                     397 B         105 kB
+▲  ├ ƒ /api/jupiter/historical-price                       397 B         105 kB
+▲  ├ ƒ /api/jupiter/price                                  397 B         105 kB
+▲  ├ ƒ /api/jupiter/quote                                  397 B         105 kB
+▲  ├ ƒ /api/jupiter/swap                                   397 B         105 kB
+▲  ├ ƒ /api/jupiter/trending                               397 B         105 kB
+▲  ├ ƒ /api/learn/click                                    397 B         105 kB
+▲  ├ ƒ /api/learn/log-input                                397 B         105 kB
+▲  ├ ƒ /api/learn/retrain                                  397 B         105 kB
+▲  ├ ƒ /api/learn/suggestions                              397 B         105 kB
+▲  ├ ƒ /api/liveblocks-auth                                397 B         105 kB
+▲  ├ ƒ /api/lp/apy                                         397 B         105 kB
+▲  ├ ƒ /api/marinade/stake                                 397 B         105 kB
+▲  ├ ƒ /api/monitors/evaluate                              397 B         105 kB
+▲  ├ ƒ /api/moralis/solana/holders/[address]               397 B         105 kB
+▲  ├ ƒ /api/moralis/solana/holders/[address]/historical    397 B         105 kB
+▲  ├ ƒ /api/moralis/solana/holders/[address]/stats         397 B         105 kB
+▲  ├ ƒ /api/moralis/trending                               397 B         105 kB
+▲  ├ ƒ /api/og                                             397 B         105 kB
+▲  ├ ƒ /api/planner                                        397 B         105 kB
+▲  ├ ƒ /api/price                                          397 B         105 kB
+▲  ├ ƒ /api/proxy                                          397 B         105 kB
+▲  ├ ƒ /api/quotes                                         397 B         105 kB
+▲  ├ ƒ /api/research                                       397 B         105 kB
+▲  ├ ƒ /api/rpc                                            397 B         105 kB
+▲  ├ ƒ /api/runs                                           397 B         105 kB
+▲  ├ ƒ /api/runs/[short_id]                                397 B         105 kB
+▲  ├ ƒ /api/simulate                                       397 B         105 kB
+▲  ├ ƒ /api/simulation                                     397 B         105 kB
+▲  ├ ƒ /api/solana/dca-bot                                 397 B         105 kB
+▲  ├ ƒ /api/solana/dca-execute                             397 B         105 kB
+▲  ├ ƒ /api/solana/execute-rebalance                       397 B         105 kB
+▲  ├ ƒ /api/solana/jito-bundle                             397 B         105 kB
+▲  ├ ƒ /api/solana/mev-scan                                397 B         105 kB
+▲  ├ ƒ /api/solana/rebalance-calculator                    397 B         105 kB
+▲  ├ ƒ /api/solana/rpc                                     397 B         105 kB
+▲  ├ ƒ /api/solana/rug-check                               397 B         105 kB
+▲  ├ ƒ /api/solana/tax-analysis                            397 B         105 kB
+▲  ├ ƒ /api/solana/transaction-bundle                      397 B         105 kB
+▲  ├ ƒ /api/studio/compile-contract                        397 B         105 kB
+▲  ├ ƒ /api/studio/export-pdf                              397 B         105 kB
+▲  ├ ƒ /api/studio/extract-data                            397 B         105 kB
+▲  ├ ƒ /api/studio/generate                                397 B         105 kB
+▲  ├ ƒ /api/studio/generate-image                          397 B         105 kB
+▲  ├ ƒ /api/studio/marketplace                             397 B         105 kB
+▲  ├ ƒ /api/studio/marketplace/purchase                    397 B         105 kB
+▲  ├ ƒ /api/studio/marketplace/register                    397 B         105 kB
+▲  ├ ƒ /api/studio/publish                                 397 B         105 kB
+▲  ├ ƒ /api/studio/publish/auth                            397 B         105 kB
+▲  ├ ƒ /api/studio/publish/register                        397 B         105 kB
+▲  ├ ƒ /api/studio/render-markdown                         397 B         105 kB
+▲  ├ ƒ /api/studio/screenshot                              397 B         105 kB
+▲  ├ ƒ /api/studio/test-app                                397 B         105 kB
+▲  ├ ƒ /api/studio/test-key                                397 B         105 kB
+▲  ├ ƒ /api/swap/permit2/price                             397 B         105 kB
+▲  ├ ƒ /api/swap/quote                                     397 B         105 kB
+▲  ├ ƒ /api/tier                                           397 B         105 kB
+▲  ├ ƒ /api/tools/browser                                  397 B         105 kB
+▲  ├ ƒ /api/tools/yield-scanner                            397 B         105 kB
+▲  ├ ƒ /api/turnkey/register                               397 B         105 kB
+▲  ├ ƒ /api/yield/rates                                    397 B         105 kB
+▲  ├ ƒ /api/yields                                         397 B         105 kB
+▲  ├ ○ /app                                              20.9 kB         518 kB
+▲  ├ ○ /app/analytics                                    47.3 kB         493 kB
+▲  ├ ○ /app/library                                      5.52 kB         373 kB
+▲  ├ ○ /app/marketplace                                  6.47 kB         379 kB
+▲  ├ ƒ /app/marketplace/[appId]                          14.3 kB         302 kB
+▲  ├ ƒ /app/run/[appId]                                  2.67 kB         128 kB
+▲  ├ ○ /app/settings                                     14.6 kB         299 kB
+▲  ├ ○ /app/studio                                       47.9 kB         372 kB
+▲  ├ ○ /app/team                                         8.26 kB         389 kB
+▲  ├ ○ /app/treasury                                     20.1 kB         406 kB
+▲  ├ ƒ /atlas                                            41.9 kB         319 kB
+▲  ├ ○ /auth                                             11.6 kB         165 kB
+▲  ├ ƒ /github-cleanup                                   6.78 kB         152 kB
+▲  ├ ○ /hello                                              937 B         106 kB
+▲  ├ ○ /icon.svg                                             0 B            0 B
+▲  ├ ○ /manifest.webmanifest                               397 B         105 kB
+▲  ├ ○ /mobile/signer                                    2.83 kB         108 kB
+▲  └ ○ /working-swap                                     4.76 kB         194 kB
+▲  + First Load JS shared by all                          105 kB
+▲  ├ chunks/1255-31341e05e682b6b5.js                   45.5 kB
+▲  ├ chunks/4bd1b696-182b6b13bdad92e3.js               54.2 kB
+▲  └ other shared chunks (total)                       4.99 kB
+▲
+▲
+▲  ƒ Middleware                                          39.8 kB
+▲  ○  (Static)   prerendered as static content
+▲  ƒ  (Dynamic)  server-rendered on demand
+▲  Traced Next.js server files in: 505.11ms
+▲  Created all serverless functions in: 1.279s
+▲  Collected static files (public/, static/, .next/static): 64.399ms
+▲  Build Completed in .vercel/output [3m]
+⚡️ Completed `npx vercel build`.
+
+⚡️ ERROR: Failed to produce a Cloudflare Pages build from the project.
+⚡️
+⚡️ 	The following routes were not configured to run with the Edge Runtime:
+⚡️ 	  - /api/agent/knowledge
+⚡️ 	  - /api/agent
+⚡️ 	  - /api/agentic/approve
+⚡️ 	  - /api/agentic/execute-with-wallet
+⚡️ 	  - /api/agentic/history
+⚡️ 	  - /api/agentic
+⚡️ 	  - /api/ai/parse-atlas-command
+⚡️ 	  - /api/ai/parse
+⚡️ 	  - /api/ai/text
+⚡️ 	  - /api/airdrops/scan
+⚡️ 	  - /api/airdrops/sources/airdropsio/solana
+⚡️ 	  - /api/airdrops/speculative/solana
+⚡️ 	  - /api/alerts/cron
+⚡️ 	  - /api/alerts/subscribe
+⚡️ 	  - /api/alerts/verify
+⚡️ 	  - /api/analytics/benchmarks
+⚡️ 	  - /api/analytics/fees
+⚡️ 	  - /api/analytics/flows
+⚡️ 	  - /api/analytics/history
+⚡️ 	  - /api/analytics/trades
+⚡️ 	  - /api/atlas/session
+⚡️ 	  - /api/auth/[...path]
+⚡️ 	  - /api/auth/callback/neon
+⚡️ 	  - /api/auth/callback
+⚡️ 	  - /api/auth/exchange-session
+⚡️ 	  - /api/auth/link-wallet
+⚡️ 	  - /api/auth/nonce
+⚡️ 	  - /api/auth/siws
+⚡️ 	  - /api/auth/sync
+⚡️ 	  - /api/bitquery/price/index
+⚡️ 	  - /api/bitquery/pumpfun/curve-95
+⚡️ 	  - /api/bitquery/pumpfun/marketcap-jumps
+⚡️ 	  - /api/bridge/quote
+⚡️ 	  - /api/chain/eth/block-number
+⚡️ 	  - /api/command
+⚡️ 	  - /api/cron/dca-execute
+⚡️ 	  - /api/defillama/tvl
+⚡️ 	  - /api/delegation/request
+⚡️ 	  - /api/delegation/status
+⚡️ 	  - /api/download-project
+⚡️ 	  - /api/ens/resolve
+⚡️ 	  - /api/execute
+⚡️ 	  - /api/foresight/parse
+⚡️ 	  - /api/gas/estimate
+⚡️ 	  - /api/github/delete
+⚡️ 	  - /api/github/me
+⚡️ 	  - /api/github/repos
+⚡️ 	  - /api/helius/addresses/[address]/transactions
+⚡️ 	  - /api/helius/das/token-accounts
+⚡️ 	  - /api/helius/das/wallet-holdings
+⚡️ 	  - /api/jupiter/historical-price
+⚡️ 	  - /api/jupiter/price
+⚡️ 	  - /api/jupiter/quote
+⚡️ 	  - /api/jupiter/swap
+⚡️ 	  - /api/jupiter/trending
+⚡️ 	  - /api/learn/click
+⚡️ 	  - /api/learn/log-input
+⚡️ 	  - /api/learn/retrain
+⚡️ 	  - /api/learn/suggestions
+⚡️ 	  - /api/liveblocks-auth
+⚡️ 	  - /api/lp/apy
+⚡️ 	  - /api/marinade/stake
+⚡️ 	  - /api/monitors/evaluate
+⚡️ 	  - /api/moralis/solana/holders/[address]/historical
+⚡️ 	  - /api/moralis/solana/holders/[address]/stats
+⚡️ 	  - /api/moralis/solana/holders/[address]
+⚡️ 	  - /api/moralis/trending
+⚡️ 	  - /api/og
+⚡️ 	  - /api/planner
+⚡️ 	  - /api/price
+⚡️ 	  - /api/proxy
+⚡️ 	  - /api/quotes
+⚡️ 	  - /api/research
+⚡️ 	  - /api/rpc
+⚡️ 	  - /api/runs/[short_id]
+⚡️ 	  - /api/runs
+⚡️ 	  - /api/simulate
+⚡️ 	  - /api/simulation
+⚡️ 	  - /api/solana/dca-bot
+⚡️ 	  - /api/solana/dca-execute
+⚡️ 	  - /api/solana/execute-rebalance
+⚡️ 	  - /api/solana/jito-bundle
+⚡️ 	  - /api/solana/mev-scan
+⚡️ 	  - /api/solana/rebalance-calculator
+⚡️ 	  - /api/solana/rpc
+⚡️ 	  - /api/solana/rug-check
+⚡️ 	  - /api/solana/tax-analysis
+⚡️ 	  - /api/solana/transaction-bundle
+⚡️ 	  - /api/studio/compile-contract
+⚡️ 	  - /api/studio/export-pdf
+⚡️ 	  - /api/studio/extract-data
+⚡️ 	  - /api/studio/generate-image
+⚡️ 	  - /api/studio/generate
+⚡️ 	  - /api/studio/marketplace/purchase
+⚡️ 	  - /api/studio/marketplace/register
+⚡️ 	  - /api/studio/marketplace
+⚡️ 	  - /api/studio/publish/auth
+⚡️ 	  - /api/studio/publish/register
+⚡️ 	  - /api/studio/publish
+⚡️ 	  - /api/studio/render-markdown
+⚡️ 	  - /api/studio/screenshot
+⚡️ 	  - /api/studio/test-app
+⚡️ 	  - /api/studio/test-key
+⚡️ 	  - /api/swap/permit2/price
+⚡️ 	  - /api/swap/quote
+⚡️ 	  - /api/tier
+⚡️ 	  - /api/tools/browser
+⚡️ 	  - /api/tools/yield-scanner
+⚡️ 	  - /api/turnkey/register
+⚡️ 	  - /api/yield/rates
+⚡️ 	  - /api/yields
+⚡️ 	  - /app/marketplace/[appId]
+⚡️ 	  - /app/run/[appId]
+⚡️ 	  - /atlas
+⚡️ 	  - /github-cleanup
+⚡️
+⚡️ 	Please make sure that all your non-static routes export the following edge runtime route segment config:
+⚡️ 	  export const runtime = 'edge';
+⚡️
+⚡️ 	You can read more about the Edge Runtime on the Next.js documentation:
+⚡️ 	  https://nextjs.org/docs/app/building-your-application/rendering/edge-and-nodejs-runtimes
