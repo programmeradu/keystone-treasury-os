@@ -234,6 +234,14 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        // Validate program name (prevent directory traversal/command injection)
+        if (!/^[a-zA-Z0-9_-]+$/.test(programName)) {
+            return NextResponse.json(
+                { error: "Invalid program name" },
+                { status: 400 }
+            );
+        }
+
         // Ensure at least one .rs file
         const rsFiles = Object.entries(files).filter(([name]) => name.endsWith(".rs"));
         if (rsFiles.length === 0) {
@@ -241,6 +249,17 @@ export async function POST(req: NextRequest) {
                 { error: "No Rust (.rs) source files found" },
                 { status: 400 }
             );
+        }
+
+        // Validate file paths to prevent path traversal
+        for (const filename of Object.keys(files)) {
+            // Check for path traversal characters
+            if (filename.includes("..") || filename.startsWith("/") || filename.startsWith("\\")) {
+                return NextResponse.json(
+                    { error: `Invalid file path detected: ${filename}` },
+                    { status: 400 }
+                );
+            }
         }
 
         let result: CompileResult;
