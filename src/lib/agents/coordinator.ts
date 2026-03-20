@@ -193,14 +193,16 @@ export class ExecutionCoordinator {
     try {
       // Step 1: Get token metadata
       this.log(context.executionId, "Fetching token metadata...");
-      const inMetadata = await this.lookupAgent.executeAgent(context, {
-        action: "resolve_token_metadata",
-        params: { mint: input.inputMint || input.inMint }
-      });
-      const outMetadata = await this.lookupAgent.executeAgent(context, {
-        action: "resolve_token_metadata",
-        params: { mint: input.outputMint || input.outMint }
-      });
+      const [inMetadata, outMetadata] = await Promise.all([
+        this.lookupAgent.executeAgent(context, {
+          action: "resolve_token_metadata",
+          params: { mint: input.inputMint || input.inMint }
+        }),
+        this.lookupAgent.executeAgent(context, {
+          action: "resolve_token_metadata",
+          params: { mint: input.outputMint || input.outMint }
+        })
+      ]);
 
       context.progress = 15;
       this.updateProgress(context);
@@ -594,97 +596,103 @@ export class ExecutionCoordinator {
 
       // ── Phase 3: Get real Jupiter quotes for each trade ──
       this.log(context.executionId, `Fetching Jupiter quotes for ${operations.length} trades...`);
-      const trades: any[] = [];
+      const trades = await Promise.all(
+        operations.map(async (op) => {
+          try {
+            let inMint: string;
+            let outMint: string;
+            let amountSmallestUnit: number;
 
-      for (const op of operations) {
-        try {
-          let inMint: string;
-          let outMint: string;
-          let amountSmallestUnit: number;
+            if (op.action === "sell" && op.asset) {
+              // Sell: we know the exact token amount from the DAS portfolio
+              inMint = op.mint;
+              outMint = USDC_MINT;
+              const fractionToSell = op.usdValue / op.asset.totalUsdValue;
+              amountSmallestUnit = Math.floor(
+                fractionToSell * op.asset.amount * Math.pow(10, op.asset.decimals)
+              );
+            } else {
+              // Buy: spend USDC (6 decimals, $1 parity)
+              inMint = USDC_MINT;
+              outMint = op.mint;
+              amountSmallestUnit = Math.floor(op.usdValue * 1e6);
+            }
 
-          if (op.action === "sell" && op.asset) {
-            // Sell: we know the exact token amount from the DAS portfolio
-            inMint = op.mint;
-            outMint = USDC_MINT;
-            const fractionToSell = op.usdValue / op.asset.totalUsdValue;
-            amountSmallestUnit = Math.floor(
-              fractionToSell * op.asset.amount * Math.pow(10, op.asset.decimals)
-            );
-          } else {
-            // Buy: spend USDC (6 decimals, $1 parity)
-            inMint = USDC_MINT;
-            outMint = op.mint;
-            amountSmallestUnit = Math.floor(op.usdValue * 1e6);
+            if (amountSmallestUnit <= 0) return null;
+
+            const quote = await getJupiterQuote(inMint, outMint, amountSmallestUnit);
+            if (!quote) {
+              return { ...this.formatTradeBase(op), quoteError: "No Jupiter route available" };
+            }
+
+            return {
+              ...this.formatTradeBase(op),
+              inputAmount: amountSmallestUnit,
+              quote: {
+                inputMint: quote.inputMint,
+                outputMint: quote.outputMint,
+                inAmount: quote.inAmount,
+                outAmount: quote.outAmount,
+                priceImpactPct: quote.priceImpactPct,
+                routePlan: quote.routePlan,
+                slippageBps: quote.slippageBps,
+              },
+            };
+          } catch (err: any) {
+            this.log(context.executionId, `Quote failed for ${op.symbol}: ${err.message}`);
+            return { ...this.formatTradeBase(op), quoteError: err.message };
           }
-
-          if (amountSmallestUnit <= 0) continue;
-
-          const quote = await getJupiterQuote(inMint, outMint, amountSmallestUnit);
-          if (!quote) {
-            trades.push({ ...this.formatTradeBase(op), quoteError: "No Jupiter route available" });
-            continue;
-          }
-
-          trades.push({
-            ...this.formatTradeBase(op),
-            inputAmount: amountSmallestUnit,
-            quote: {
-              inputMint: quote.inputMint,
-              outputMint: quote.outputMint,
-              inAmount: quote.inAmount,
-              outAmount: quote.outAmount,
-              priceImpactPct: quote.priceImpactPct,
-              routePlan: quote.routePlan,
-              slippageBps: quote.slippageBps,
-            },
-          });
-        } catch (err: any) {
-          this.log(context.executionId, `Quote failed for ${op.symbol}: ${err.message}`);
-          trades.push({ ...this.formatTradeBase(op), quoteError: err.message });
-        }
-      }
+        })
+      ).then(results => results.filter(Boolean));
 
       context.progress = 65;
       this.updateProgress(context);
 
       // ── Phase 4: Build serialized swap transactions via Jupiter Swap API ──
-      this.log(context.executionId, `Building swap transactions for ${trades.filter((t: any) => t.quote).length} quoted trades...`);
+      this.log(context.executionId, `Building swap transactions for ${trades.filter((t: any) => t?.quote).length} quoted trades...`);
       const serializedTransactions: string[] = [];
       const jupiterApiKey = process.env.NEXT_PUBLIC_JUPITER_API_KEY || "";
       const swapHeaders: Record<string, string> = { "Content-Type": "application/json" };
       if (jupiterApiKey) swapHeaders["x-api-key"] = jupiterApiKey;
 
-      for (const trade of trades) {
-        if (!trade.quote) continue;
-        try {
-          const swapRes = await fetch("https://lite-api.jup.ag/swap/v1/swap", {
-            method: "POST",
-            headers: swapHeaders,
-            body: JSON.stringify({
-              quoteResponse: trade.quote,
-              userPublicKey: wallet,
-              wrapAndUnwrapSol: true,
-              dynamicComputeUnitLimit: true,
-              prioritizationFeeLamports: "auto",
-            }),
-          });
+      const transactionResults = await Promise.all(
+        trades.map(async (trade: any) => {
+          if (!trade || !trade.quote) return null;
+          try {
+            const swapRes = await fetch("https://lite-api.jup.ag/swap/v1/swap", {
+              method: "POST",
+              headers: swapHeaders,
+              body: JSON.stringify({
+                quoteResponse: trade.quote,
+                userPublicKey: wallet,
+                wrapAndUnwrapSol: true,
+                dynamicComputeUnitLimit: true,
+                prioritizationFeeLamports: "auto",
+              }),
+            });
 
-          if (swapRes.ok) {
-            const { swapTransaction } = await swapRes.json();
-            if (swapTransaction) {
-              serializedTransactions.push(swapTransaction);
-              trade.serializedTransaction = swapTransaction;
+            if (swapRes.ok) {
+              const { swapTransaction } = await swapRes.json();
+              if (swapTransaction) {
+                trade.serializedTransaction = swapTransaction;
+                return swapTransaction;
+              }
+            } else {
+              const errText = await swapRes.text();
+              this.log(context.executionId, `Swap build failed for ${trade.symbol}: ${errText}`);
+              trade.swapBuildError = errText;
             }
-          } else {
-            const errText = await swapRes.text();
-            this.log(context.executionId, `Swap build failed for ${trade.symbol}: ${errText}`);
-            trade.swapBuildError = errText;
+          } catch (swapErr: any) {
+            this.log(context.executionId, `Swap build error for ${trade.symbol}: ${swapErr.message}`);
+            trade.swapBuildError = swapErr.message;
           }
-        } catch (swapErr: any) {
-          this.log(context.executionId, `Swap build error for ${trade.symbol}: ${swapErr.message}`);
-          trade.swapBuildError = swapErr.message;
-        }
-      }
+          return null;
+        })
+      );
+
+      transactionResults.forEach(tx => {
+        if (tx) serializedTransactions.push(tx);
+      });
 
       context.progress = 85;
       this.updateProgress(context);
