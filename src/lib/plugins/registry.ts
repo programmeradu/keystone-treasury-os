@@ -24,7 +24,7 @@ class UniversalPluginRegistry {
     register(plugin: Omit<KeystonePlugin, "id" | "registeredAt">) {
         const newPlugin: KeystonePlugin = {
             ...plugin,
-            id: `plugin_${globalThis.crypto.randomUUID().replace(/-/g, '').substring(0, 16)}`,
+            id: `plugin_${Math.random().toString(36).substr(2, 9)}`,
             registeredAt: Date.now()
         };
         this.plugins.push(newPlugin);

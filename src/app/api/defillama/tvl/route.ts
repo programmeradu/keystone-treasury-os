@@ -101,7 +101,7 @@ export async function POST(req: Request) {
 
     const payload = {
       ok: true,
-      runId: `defillama-${globalThis.crypto.randomUUID().replace(/-/g, '').substring(0, 16)}`,
+      runId: `defillama-${Math.random().toString(36).slice(2, 10)}`,
       summary,
       details,
       references,

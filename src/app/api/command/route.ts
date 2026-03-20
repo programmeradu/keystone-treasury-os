@@ -1531,7 +1531,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
                 }), {} as Record<string, { content: string }>)
              };
              
-             const appId = "app_" + globalThis.crypto.randomUUID().replace(/-/g, '').substring(0, 16);
+             const appId = "app_" + Math.random().toString(36).substring(2, 15);
              const saveRes = await saveProject(
                 resolvedWallet, 
                 projectCode, 
@@ -1880,7 +1880,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
             };
           }
 
-          const botId = "bot_" + globalThis.crypto.randomUUID().replace(/-/g, '').substring(0, 16);
+          const botId = "bot_" + Math.random().toString(36).substring(2, 9);
           
           return {
              success: true, operation: "deploy_sniper_bot", exchange, liquidityThreshold, maxSlippage,
