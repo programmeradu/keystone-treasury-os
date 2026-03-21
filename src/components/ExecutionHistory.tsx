@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ExecutionStatus } from "@/lib/agents/types";
 import { formatDistanceToNow } from "date-fns";
 
@@ -81,16 +81,19 @@ export function ExecutionHistory({
     }
   };
 
-  const filteredExecutions = filter
-    ? executions.filter((e) => e.strategy === filter || e.status === filter)
-    : executions;
+  // ⚡ Bolt: Wrapped in useMemo to prevent O(N log N) filtering/sorting on every render
+  const sortedExecutions = useMemo(() => {
+    const filteredExecutions = filter
+      ? executions.filter((e) => e.strategy === filter || e.status === filter)
+      : executions;
 
-  const sortedExecutions = [...filteredExecutions].sort((a, b) => {
-    if (sortBy === "newest") {
-      return b.createdAt - a.createdAt;
-    }
-    return a.createdAt - b.createdAt;
-  });
+    return [...filteredExecutions].sort((a, b) => {
+      if (sortBy === "newest") {
+        return b.createdAt - a.createdAt;
+      }
+      return a.createdAt - b.createdAt;
+    });
+  }, [executions, filter, sortBy]);
 
   if (compact) {
     return (
