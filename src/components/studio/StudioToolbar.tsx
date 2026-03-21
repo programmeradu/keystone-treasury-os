@@ -332,7 +332,8 @@ function buildPreviewHtml(code: string): string {
       var App = _m.exports.default || _m.exports;
       ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
     } catch(e) {
-      document.getElementById('root').innerHTML = '<div style="color:#ef4444;padding:20px;font-family:monospace"><strong>Error:</strong> ' + e.message + '</div>';
+      document.getElementById('root').innerHTML = '<div style="color:#ef4444;padding:20px;font-family:monospace"><strong>Error:</strong> <span id="error-msg"></span></div>';
+      document.getElementById('error-msg').textContent = e.message;
     }
   </script>
 </body>

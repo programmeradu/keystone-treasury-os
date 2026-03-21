@@ -1,0 +1,4 @@
+## 2024-05-20 - DOM-Based XSS via Unsafe DOM Manipulation
+**Vulnerability:** Found multiple instances where `innerHTML` was used to concatenate raw error messages or dynamically provided inputs (like token symbols) into the DOM structure within standard components and `srcDoc` iframes.
+**Learning:** Even internal error logs, runtime exceptions, and seemingly benign external API data can introduce Cross-Site Scripting (XSS) if unsanitized user inputs or error stacks are directly bound into strings used for `innerHTML` injection.
+**Prevention:** Avoid string concatenation with `innerHTML`. Provide static DOM structure (via template literals or HTML) that specifies placeholder elements (e.g. `id="error-msg"`), then safely inject variable strings using `document.getElementById('...').textContent`.
