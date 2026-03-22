@@ -6,6 +6,8 @@ import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { SignJWT, jwtVerify } from 'jose';
 
+export const runtime = "edge";
+
 const COOKIE_NAME = 'keystone-siws-session';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
@@ -13,6 +15,7 @@ function getJwtSecret() {
     let secret = process.env.JWT_SECRET;
     if (!secret) {
         if (process.env.NODE_ENV === 'test' || process.env.CI) {
+            // Dummy secret required for Next.js static generation to succeed in CI
             secret = 'dummy_secret_for_testing_purposes_only';
         } else {
             throw new Error('JWT_SECRET environment variable is not set');

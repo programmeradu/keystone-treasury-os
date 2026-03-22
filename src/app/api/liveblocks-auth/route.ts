@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { Liveblocks } from "@liveblocks/node";
 import { jwtVerify } from "jose";
 
+export const runtime = "edge";
+
 const SIWS_COOKIE = "keystone-siws-session";
 const NEON_AUTH_COOKIE_NAMES = [
     "__Secure-neon-auth.session_token",

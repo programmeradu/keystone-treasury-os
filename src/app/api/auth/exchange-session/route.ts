@@ -5,6 +5,8 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
+export const runtime = "edge";
+
 const COOKIE_NAME = 'keystone-siws-session';
 const OAUTH_STATE_COOKIE = 'keystone-oauth-state';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
