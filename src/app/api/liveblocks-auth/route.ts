@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { Liveblocks } from "@liveblocks/node";
 import { jwtVerify } from "jose";
 
+export const runtime = "edge";
+
 const SIWS_COOKIE = "keystone-siws-session";
 const NEON_AUTH_COOKIE_NAMES = [
     "__Secure-neon-auth.session_token",
@@ -22,9 +24,15 @@ function getLiveblocks() {
 }
 
 function getJwtSecret() {
-    return new TextEncoder().encode(
-        process.env.JWT_SECRET || "keystone_sovereign_os_2026"
-    );
+    let secret = process.env.JWT_SECRET;
+    if (!secret) {
+        if (process.env.NODE_ENV === "test" || process.env.CI) {
+            secret = "dummy_secret_for_testing_purposes_only";
+        } else {
+            throw new Error("JWT_SECRET environment variable is not set");
+        }
+    }
+    return new TextEncoder().encode(secret);
 }
 
 /**
