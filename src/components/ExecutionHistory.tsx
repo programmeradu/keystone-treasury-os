@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { ExecutionStatus } from "@/lib/agents/types";
 import { formatDistanceToNow } from "date-fns";
 
@@ -81,21 +81,16 @@ export function ExecutionHistory({
     }
   };
 
-  // ⚡ Bolt Optimization: Memoize execution history sorting and filtering
-  // Expected Impact: Prevents O(N log N) re-computation on every render,
-  // reducing UI thread blocking during unrelated state changes.
-  const sortedExecutions = useMemo(() => {
-    const filteredExecutions = filter
-      ? executions.filter((e) => e.strategy === filter || e.status === filter)
-      : executions;
+  const filteredExecutions = filter
+    ? executions.filter((e) => e.strategy === filter || e.status === filter)
+    : executions;
 
-    return [...filteredExecutions].sort((a, b) => {
-      if (sortBy === "newest") {
-        return b.createdAt - a.createdAt;
-      }
-      return a.createdAt - b.createdAt;
-    });
-  }, [executions, filter, sortBy]);
+  const sortedExecutions = [...filteredExecutions].sort((a, b) => {
+    if (sortBy === "newest") {
+      return b.createdAt - a.createdAt;
+    }
+    return a.createdAt - b.createdAt;
+  });
 
   if (compact) {
     return (
