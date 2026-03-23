@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { knowledgeBase } from "@/lib/knowledge";
 
 export const maxDuration = 60; // Allow 60s for scraping
+export const runtime = 'edge';
 
 export async function POST(req: NextRequest) {
     try {
