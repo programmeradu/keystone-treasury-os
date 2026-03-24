@@ -35,6 +35,16 @@ describe("supabase.ts: getEnvOrDummy()", () => {
         expect(result).toBe(dummy);
     });
 
+    it("should throw an error if env var is missing and CI is truthy but not strictly 'true'", () => {
+        process.env.NODE_ENV = "production";
+        process.env.CI = "1";
+        const dummy = "dummy-value";
+
+        expect(() => {
+            getEnvOrDummy(undefined, dummy, "TEST_VAR");
+        }).toThrow("Missing required environment variable: TEST_VAR");
+    });
+
     it("should throw an error on client even if CI is true (if not test env)", () => {
         process.env.NODE_ENV = "production";
         process.env.CI = "true";

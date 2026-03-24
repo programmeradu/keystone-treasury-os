@@ -15,7 +15,7 @@ export function getEnvOrDummy(envVar: string | undefined, dummy: string, varName
 
     // Allow dummy on the server during CI builds (e.g. Next.js static generation)
     // The typeof window check ensures `process.env.CI` doesn't statically replace and leak the dummy token into the client bundle
-    if (typeof window === 'undefined' && process.env.CI) return dummy;
+    if (typeof window === 'undefined' && process.env.CI === 'true') return dummy;
 
     throw new Error(`Missing required environment variable: ${varName}`);
 }
