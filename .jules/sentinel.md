@@ -1,0 +1,4 @@
+## 2025-01-22 - DOM-Based XSS via innerHTML Concatenation
+**Vulnerability:** DOM-Based Cross-Site Scripting (XSS) due to unescaped user-controlled or dynamic content (like error messages and token symbols) being directly concatenated into the `innerHTML` of elements.
+**Learning:** Directly concatenating variables into HTML strings and assigning them to `innerHTML` allows arbitrary HTML and scripts to be executed within the browser's context. This is especially risky in environments like Next.js apps handling data from APIs or user inputs that might not be fully sanitized.
+**Prevention:** Avoid string concatenation with `innerHTML` for dynamic content. Instead, define the static structure via `innerHTML` and set dynamic content using the safe `textContent` property on targeted placeholder elements (e.g., using `querySelector` or IDs).
