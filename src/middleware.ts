@@ -31,7 +31,7 @@ function hasNeonAuthSession(request: NextRequest): boolean {
 
 function getJwtSecret() {
     return new TextEncoder().encode(
-        process.env.JWT_SECRET || 'keystone_sovereign_os_2026'
+        process.env.JWT_SECRET || ((process.env.NODE_ENV === 'test' || (typeof window === 'undefined' && process.env.CI)) ? 'dummy_secret_for_ci.XYZ' : (() => { throw new Error('JWT_SECRET environment variable is missing') })())
     );
 }
 
