@@ -10,7 +10,7 @@ const COOKIE_NAME = 'keystone-siws-session';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 function getJwtSecret() {
-    const secret = process.env.JWT_SECRET || 'keystone_sovereign_os_2026';
+    const secret = process.env.JWT_SECRET || ((process.env.NODE_ENV === 'test' || (typeof window === 'undefined' && process.env.CI)) ? 'dummy_secret_for_ci.XYZ' : (() => { throw new Error('JWT_SECRET environment variable is missing') })());
     return new TextEncoder().encode(secret);
 }
 
