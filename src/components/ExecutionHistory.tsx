@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ExecutionStatus } from "@/lib/agents/types";
 import { formatDistanceToNow } from "date-fns";
 
@@ -81,16 +81,24 @@ export function ExecutionHistory({
     }
   };
 
-  const filteredExecutions = filter
-    ? executions.filter((e) => e.strategy === filter || e.status === filter)
-    : executions;
+  // Performance optimization: Memoize executions filtering to avoid re-evaluating on every render.
+  // Impact: Reduces CPU time when rendering the history component, preventing O(n) filter loops when other states change.
+  const filteredExecutions = useMemo(() => {
+    return filter
+      ? executions.filter((e) => e.strategy === filter || e.status === filter)
+      : executions;
+  }, [filter, executions]);
 
-  const sortedExecutions = [...filteredExecutions].sort((a, b) => {
-    if (sortBy === "newest") {
-      return b.createdAt - a.createdAt;
-    }
-    return a.createdAt - b.createdAt;
-  });
+  // Performance optimization: Memoize sorting logic to avoid O(n log n) operations on every render.
+  // Impact: Removes expensive array sorts when parent states change, improving execution history rendering speed.
+  const sortedExecutions = useMemo(() => {
+    return [...filteredExecutions].sort((a, b) => {
+      if (sortBy === "newest") {
+        return b.createdAt - a.createdAt;
+      }
+      return a.createdAt - b.createdAt;
+    });
+  }, [filteredExecutions, sortBy]);
 
   if (compact) {
     return (
