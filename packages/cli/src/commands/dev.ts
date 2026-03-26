@@ -184,9 +184,11 @@ function buildHTML(appCode: string): string {
         if (typeof App !== 'function') throw new Error('App.tsx must export a default React component');
         ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
       } catch (err) {
-        document.getElementById('root').innerHTML = '<div style="color:#ef4444;padding:20px;font-family:monospace">' +
+        var rootEl = document.getElementById('root');
+        rootEl.innerHTML = '<div style="color:#ef4444;padding:20px;font-family:monospace">' +
           '<strong style="color:#f87171">Runtime Error</strong><br/>' +
-          '<span style="color:#fca5a5">' + (err.message || err) + '</span></div>';
+          '<span id="ks-err-msg" style="color:#fca5a5"></span></div>';
+        document.getElementById('ks-err-msg').textContent = err.message || err;
         console.error(err);
       }
     })();
