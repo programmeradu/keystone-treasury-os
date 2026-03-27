@@ -5,6 +5,7 @@ import ErrorReporter from "@/components/ErrorReporter";
 import Script from "next/script";
 import { Web3Providers } from "@/components/providers/web3-provider";
 import { ToastContainer } from "@/components/ToastContainer";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: "KeyStone | The Command Layer for Treasury Management",
@@ -48,6 +49,7 @@ export default function RootLayout({
         <Web3Providers>{children}</Web3Providers>
         <VisualEditsMessenger />
         <ToastContainer />
+        <Analytics />
       </body>
     </html>
   );
