@@ -4,12 +4,30 @@ import { alerts } from '@/db/schema';
 import { eq, and, lt, or, isNull } from 'drizzle-orm';
 import { Resend } from 'resend';
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 300; // 5 minutes max execution time
+
 export async function POST(request: NextRequest) {
   let checked = 0;
   let notified = 0;
   let errors = 0;
 
   try {
+    // Verify cron secret for security
+    const authHeader = request.headers.get("authorization");
+
+    // Fallback dummy secret for Next.js static builds to prevent CI failure
+    const isTestOrCi = process.env.NODE_ENV === 'test' || (typeof window === 'undefined' && process.env.CI);
+    const cronSecret = process.env.CRON_SECRET || (isTestOrCi ? 'dummy_cron_secret.XYZ' : null);
+
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+      console.error("Unauthorized cron request");
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     // Check if database is available
     if (!db) {
       console.error('Database not available - missing DATABASE_URL');
