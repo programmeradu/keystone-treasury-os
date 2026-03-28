@@ -7,6 +7,7 @@ import { knowledgeBase } from "@/lib/knowledge";
 import { knowledgeMemory } from "@/lib/knowledge-memory";
 import { ExecutionCoordinator } from "@/lib/agents/coordinator";
 import { getJupiterQuote } from "@/lib/jupiter-executor";
+import { generateId } from "@/lib/utils";
 
 const groq = createGroq({
   apiKey: process.env.GROQ_API_KEY,
@@ -1531,7 +1532,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
                 }), {} as Record<string, { content: string }>)
              };
              
-             const appId = "app_" + Math.random().toString(36).substring(2, 15);
+             const appId = "app_" + generateId();
              const saveRes = await saveProject(
                 resolvedWallet, 
                 projectCode, 
@@ -1880,7 +1881,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
             };
           }
 
-          const botId = "bot_" + Math.random().toString(36).substring(2, 9);
+          const botId = "bot_" + generateId();
           
           return {
              success: true, operation: "deploy_sniper_bot", exchange, liquidityThreshold, maxSlippage,

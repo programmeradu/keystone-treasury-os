@@ -115,8 +115,8 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
 
     // Get Jupiter quote
     const USDC_DECIMALS = 6;
-    const amountInSmallestUnit = Math.floor(bot.amountUsd * Math.pow(10, USDC_DECIMALS));
-    const slippageBps = Math.floor((bot.maxSlippage || 0.5) * 100);
+    const amountInSmallestUnit = Math.floor(Number(bot.amountUsd) * Math.pow(10, USDC_DECIMALS));
+    const slippageBps = Math.floor((Number(bot.maxSlippage) || 0.5) * 100);
 
     // Validate delegation before proceeding
     console.log(`[Bot ${bot.id}] Validating delegation...`);
@@ -143,8 +143,8 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
 
     // Validate slippage is acceptable
     const quotedSlippagePct = quote.slippageBps / 100;
-    if (quotedSlippagePct > bot.maxSlippage) {
-      console.warn(`[Bot ${bot.id}] Slippage too high: ${quotedSlippagePct}% > ${bot.maxSlippage}%`);
+    if (quotedSlippagePct > Number(bot.maxSlippage)) {
+      console.warn(`[Bot ${bot.id}] Slippage too high: ${quotedSlippagePct}% > ${Number(bot.maxSlippage)}%`);
       await skipExecution(bot, "Slippage too high");
       return { success: false, error: "Slippage too high" };
     }
