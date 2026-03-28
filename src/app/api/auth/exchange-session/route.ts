@@ -10,7 +10,13 @@ const OAUTH_STATE_COOKIE = 'keystone-oauth-state';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 function getJwtSecret() {
-    const secret = process.env.JWT_SECRET || 'keystone_sovereign_os_2026';
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        if (process.env.npm_lifecycle_event === 'build' || process.env.NEXT_PHASE === 'phase-production-build') {
+            return new TextEncoder().encode('build_placeholder_secret');
+        }
+        throw new Error('JWT_SECRET environment variable is missing');
+    }
     return new TextEncoder().encode(secret);
 }
 
@@ -20,6 +26,8 @@ function getJwtSecret() {
  * Called before OAuth to set a signed state cookie that proves the user
  * initiated the flow from our app.
  */
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
     const stateToken = await new SignJWT({ purpose: 'oauth-state' })
         .setProtectedHeader({ alg: 'HS256' })
