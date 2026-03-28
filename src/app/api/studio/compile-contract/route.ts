@@ -44,15 +44,22 @@ async function compileLocal(
     programName: string
 ): Promise<CompileResult> {
     // Create a temporary Anchor project
-    const tmpDir = path.join(process.cwd(), ".keystone", "contracts", `build_${Date.now()}`);
-    const srcDir = path.join(tmpDir, "programs", programName, "src");
+    const tmpDir = path.resolve(process.cwd(), ".keystone", "contracts", `build_${Date.now()}`);
+    const srcDir = path.resolve(tmpDir, "programs", programName, "src");
 
     try {
         fs.mkdirSync(srcDir, { recursive: true });
 
         // Write source files
         for (const [filename, content] of Object.entries(files)) {
-            const filePath = path.join(srcDir, filename);
+            const filePath = path.resolve(srcDir, filename);
+            // Security: Prevent path traversal by ensuring the resolved path is within srcDir
+            if (!filePath.startsWith(srcDir + path.sep)) {
+                return {
+                    ok: false,
+                    error: `Invalid file path detected: ${filename}`
+                };
+            }
             fs.mkdirSync(path.dirname(filePath), { recursive: true });
             fs.writeFileSync(filePath, content, "utf-8");
         }
@@ -226,6 +233,14 @@ export async function POST(req: NextRequest) {
     try {
         const body: CompileRequest = await req.json();
         const { files, programName = "keystone_app", useCloud = false } = body;
+
+        // Security: Validate programName to prevent command injection and path traversal
+        if (!/^[a-zA-Z0-9_-]+$/.test(programName)) {
+            return NextResponse.json(
+                { error: "Invalid program name provided" },
+                { status: 400 }
+            );
+        }
 
         if (!files || Object.keys(files).length === 0) {
             return NextResponse.json(
