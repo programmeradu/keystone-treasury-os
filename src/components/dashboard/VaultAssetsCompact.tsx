@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { ArrowRight, Copy, ExternalLink, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -19,13 +20,17 @@ interface TokenAccount {
 export function VaultAssetsCompact({ tokens }: { tokens: TokenAccount[] }) {
     const { refresh, loading } = useVault();
 
-    // Sort: SOL first, then by value desc
-    const sortedTokens = [...tokens].sort((a, b) => {
-        if (a.symbol === "SOL") return -1;
-        if (b.symbol === "SOL") return 1;
-        return (b.value || 0) - (a.value || 0);
-    });
-    const topTokens = sortedTokens.slice(0, 5); // Show top 5
+    // ⚡ Bolt: Performance Improvement
+    // Wrap token sorting in useMemo to prevent expensive O(N log N) re-computations on every render.
+    // Expected impact: Reduces main thread blocking during frequent UI updates (e.g., streaming prices).
+    const topTokens = useMemo(() => {
+        const sorted = [...tokens].sort((a, b) => {
+            if (a.symbol === "SOL") return -1;
+            if (b.symbol === "SOL") return 1;
+            return (b.value || 0) - (a.value || 0);
+        });
+        return sorted.slice(0, 5);
+    }, [tokens]);
 
     return (
         <div className="h-full min-h-[300px] w-full bg-card border border-border rounded-2xl relative overflow-hidden flex flex-col shadow-lg">
