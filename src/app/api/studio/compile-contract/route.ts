@@ -43,6 +43,11 @@ async function compileLocal(
     files: Record<string, string>,
     programName: string
 ): Promise<CompileResult> {
+    // 🛡️ Sentinel: Validate programName to prevent path traversal and command injection
+    if (!/^[a-zA-Z0-9_-]+$/.test(programName)) {
+        return { ok: false, error: "Invalid programName: Must contain only alphanumeric characters, underscores, and hyphens." };
+    }
+
     // Create a temporary Anchor project
     const tmpDir = path.join(process.cwd(), ".keystone", "contracts", `build_${Date.now()}`);
     const srcDir = path.join(tmpDir, "programs", programName, "src");
@@ -51,8 +56,14 @@ async function compileLocal(
         fs.mkdirSync(srcDir, { recursive: true });
 
         // Write source files
+        const absoluteSrcDir = path.resolve(srcDir);
         for (const [filename, content] of Object.entries(files)) {
-            const filePath = path.join(srcDir, filename);
+            // 🛡️ Sentinel: Prevent path traversal when writing source files
+            const filePath = path.resolve(srcDir, filename);
+            if (!filePath.startsWith(absoluteSrcDir + path.sep)) {
+                return { ok: false, error: `Invalid filename: Path traversal detected for '${filename}'` };
+            }
+
             fs.mkdirSync(path.dirname(filePath), { recursive: true });
             fs.writeFileSync(filePath, content, "utf-8");
         }
@@ -181,6 +192,11 @@ async function compileCloud(
     files: Record<string, string>,
     programName: string
 ): Promise<CompileResult> {
+    // 🛡️ Sentinel: Validate programName
+    if (!/^[a-zA-Z0-9_-]+$/.test(programName)) {
+        return { ok: false, error: "Invalid programName: Must contain only alphanumeric characters, underscores, and hyphens." };
+    }
+
     const solpgUrl = process.env.SOLPG_API_URL || "https://api.solpg.io";
 
     try {
