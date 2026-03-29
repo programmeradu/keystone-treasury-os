@@ -41,6 +41,7 @@ export const PROTOCOL_FEE_BPS = 2000;
 async function anchorDiscriminator(name: string): Promise<Buffer> {
   const encoder = new TextEncoder();
   const data = encoder.encode(`global:${name}`);
+  // @ts-expect-error Edge runtime compatibility
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
   return Buffer.from(new Uint8Array(hashBuffer).slice(0, 8));
 }
