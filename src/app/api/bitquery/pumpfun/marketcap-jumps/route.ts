@@ -58,11 +58,9 @@ export async function GET(req: NextRequest) {
     "";
   if (!token) {
     const enc = new TextEncoder();
-    const body = enc.encode(
-      `data: ${JSON.stringify({ type: "error", error: "Missing Bitquery token. Set BITQUERY_BEARER or BITQUERY_API_KEY in env." })}\n\n` +
-      `data: ${JSON.stringify({ type: "close", reason: "no_token" })}\n\n`
-    );
-    return new Response(body, {
+    const message = `data: ${JSON.stringify({ type: "error", error: "Missing Bitquery token. Set BITQUERY_BEARER or BITQUERY_API_KEY in env." })}\n\n` +
+      `data: ${JSON.stringify({ type: "close", reason: "no_token" })}\n\n`;
+    return new Response(message, {
       status: 200,
       headers: {
         "Content-Type": "text/event-stream",
