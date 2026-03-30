@@ -12,10 +12,10 @@ import { NextRequest, NextResponse } from "next/server";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as crypto from "node:crypto";
-import { exec } from "node:child_process";
+import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 interface CompileRequest {
     files: Record<string, string>; // filename -> Rust source code
@@ -113,7 +113,7 @@ anchor-spl = "0.30.1"
         );
 
         // Run anchor build
-        const { stdout, stderr } = await execAsync("anchor build", {
+        const { stdout, stderr } = await execFileAsync("anchor", ["build"], {
             cwd: tmpDir,
             timeout: 120000, // 2 min timeout
         });
@@ -226,6 +226,14 @@ export async function POST(req: NextRequest) {
     try {
         const body: CompileRequest = await req.json();
         const { files, programName = "keystone_app", useCloud = false } = body;
+
+        // 🛡️ Sentinel: Prevent path traversal and command injection
+        if (!/^[a-zA-Z0-9_-]+$/.test(programName)) {
+            return NextResponse.json(
+                { error: "Invalid program name. Only alphanumeric characters, dashes, and underscores are allowed." },
+                { status: 400 }
+            );
+        }
 
         if (!files || Object.keys(files).length === 0) {
             return NextResponse.json(
