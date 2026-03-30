@@ -55,8 +55,20 @@ function evaluate(operator: string, currentValue: number, threshold: number, las
  * Evaluates all active monitors and triggers notifications.
  * Designed to be called by a cron job (every 60s).
  */
-export async function POST() {
+export async function POST(req: Request) {
   try {
+    // Verify cron secret for security
+    const authHeader = req.headers.get("authorization");
+    const cronSecret = process.env.CRON_SECRET;
+
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+      console.error("Unauthorized cron request");
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     if (!db) {
       return NextResponse.json({ success: false, error: "Database not initialized" }, { status: 503 });
     }
