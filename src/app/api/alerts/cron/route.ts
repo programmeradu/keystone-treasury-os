@@ -10,6 +10,18 @@ export async function POST(request: NextRequest) {
   let errors = 0;
 
   try {
+    // Verify cron secret for security
+    const authHeader = request.headers.get("authorization");
+    const cronSecret = process.env.CRON_SECRET;
+
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+      console.error("Unauthorized cron request");
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     // Check if database is available
     if (!db) {
       console.error('Database not available - missing DATABASE_URL');
