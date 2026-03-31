@@ -1,4 +1,5 @@
 "use client";
+import { generateId } from "@/lib/utils";
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
@@ -252,7 +253,7 @@ export default function StudioPage() {
         const toastId = toast.loading("Saving project...");
 
         try {
-            const appId = currentAppId || "app_" + Math.random().toString(36).substring(2, 15);
+            const appId = currentAppId || generateId("app");
             const creatorWallet = publicKey?.toBase58() || user?.info?.name || "Operator";
 
             const projectCode = {
@@ -313,7 +314,7 @@ export default function StudioPage() {
         const toastId = toast.loading("Shipping to Library...");
 
         try {
-            const appId = currentAppId || "app_" + Math.random().toString(36).substring(2, 15);
+            const appId = currentAppId || generateId("app");
             const creatorWallet = publicKey?.toBase58() || user?.info?.name || "Operator";
 
             const projectCode = {

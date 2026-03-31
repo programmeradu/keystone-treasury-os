@@ -1,4 +1,5 @@
 "use client";
+import { generateId } from "@/lib/utils";
 
 /**
  * Wallet Interaction Layer
@@ -340,7 +341,7 @@ export class WalletTransactionExecutor {
     riskLevel: "low" | "medium" | "high";
     metadata?: Record<string, any>;
   }): ApprovalRequest {
-    const id = `approval_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const id = generateId("approval");
     const approval: ApprovalRequest = {
       id,
       type: input.type,

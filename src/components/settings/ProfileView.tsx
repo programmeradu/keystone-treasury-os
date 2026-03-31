@@ -1,4 +1,5 @@
 "use client";
+import { generateId } from "@/lib/utils";
 
 import React, { useState, useEffect } from "react";
 import { User, Shield, Key, Fingerprint, Award, Wallet, Package, Store, Pencil, Check, RefreshCw } from "lucide-react";
@@ -73,7 +74,7 @@ export const ProfileView = ({ onNavigate }: { onNavigate?: (view: string) => voi
     };
 
     const handleRandomizeAvatar = () => {
-        const seed = `user_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const seed = generateId("user");
         const updated = { ...profile, avatarSeed: seed };
         setProfile(updated);
         saveProfile(updated);

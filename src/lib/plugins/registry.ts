@@ -1,3 +1,4 @@
+import { generateId } from "@/lib/utils";
 export interface PluginOperation {
     name: string;
     description: string;
@@ -24,7 +25,7 @@ class UniversalPluginRegistry {
     register(plugin: Omit<KeystonePlugin, "id" | "registeredAt">) {
         const newPlugin: KeystonePlugin = {
             ...plugin,
-            id: `plugin_${Math.random().toString(36).substr(2, 9)}`,
+            id: generateId("plugin"),
             registeredAt: Date.now()
         };
         this.plugins.push(newPlugin);

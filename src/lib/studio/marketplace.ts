@@ -1,3 +1,4 @@
+import { generateId } from "@/lib/utils";
 import { db } from "@/db";
 import { miniApps, purchases, reviews } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
@@ -15,7 +16,7 @@ export const marketplace = {
     // Create a new Mini-App (Draft)
     createApp: async (data: CreateAppData) => {
         if (!db) throw new Error("Database not initialized");
-        const id = `app_${Math.random().toString(36).substring(2, 10)}`;
+        const id = generateId("app");
 
         await db.insert(miniApps).values({
             id,
@@ -74,7 +75,7 @@ export const marketplace = {
         keystoneFee: number;
     }) => {
         if (!db) throw new Error("Database not initialized");
-        const id = `purch_${Math.random().toString(36).substring(2, 10)}`;
+        const id = generateId("purch");
 
         await db.insert(purchases).values({
             id,

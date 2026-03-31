@@ -4,6 +4,7 @@ import { db } from "@/db";
 
 import { miniApps, purchases, userInstalledApps, users } from "@/db/schema";
 import { eq, desc, inArray, and, isNull } from "drizzle-orm";
+import { generateId } from "@/lib/utils";
 
 export interface ProjectMetadata {
     name: string;
@@ -13,10 +14,6 @@ export interface ProjectMetadata {
 export interface ProjectCode {
     files: Record<string, { content: string }>;
     content?: string;
-}
-
-function generateId(prefix: string = "app"): string {
-    return `${prefix}_${globalThis.crypto.randomUUID().replace(/-/g, '').substring(0, 16)}`;
 }
 
 export async function saveProject(

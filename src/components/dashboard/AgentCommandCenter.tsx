@@ -1,4 +1,5 @@
 "use client";
+import { generateId } from "@/lib/utils";
 
 import { useEffect, useState, useRef } from "react";
 import { Terminal, Cpu, Activity, ShieldCheck, Zap } from "lucide-react";
@@ -65,7 +66,7 @@ export function AgentCommandCenter() {
         const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
 
         setLogs(prev => [...prev.slice(-50), { // Keep last 50 logs
-            id: Math.random().toString(36),
+            id: generateId(),
             timestamp: timeString,
             message,
             type

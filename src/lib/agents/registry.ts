@@ -1,4 +1,5 @@
 "use client";
+import { generateId } from "@/lib/utils";
 
 export interface MonitorIntent {
     id: string;
@@ -19,7 +20,7 @@ class AgentIntentRegistry {
     register(intent: Omit<MonitorIntent, "id" | "createdAt" | "status">) {
         const newIntent: MonitorIntent = {
             ...intent,
-            id: Math.random().toString(36).substr(2, 9),
+            id: generateId(),
             status: "ACTIVE",
             createdAt: Date.now()
         };

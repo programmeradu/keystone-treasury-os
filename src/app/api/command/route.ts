@@ -1,3 +1,4 @@
+import { generateId } from "@/lib/utils";
 import { streamText, stepCountIs, convertToModelMessages } from "ai";
 import { createGroq } from "@ai-sdk/groq";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
@@ -1531,7 +1532,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
                 }), {} as Record<string, { content: string }>)
              };
              
-             const appId = "app_" + Math.random().toString(36).substring(2, 15);
+             const appId = generateId("app");
              const saveRes = await saveProject(
                 resolvedWallet, 
                 projectCode, 
@@ -1880,7 +1881,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
             };
           }
 
-          const botId = "bot_" + Math.random().toString(36).substring(2, 9);
+          const botId = generateId("bot");
           
           return {
              success: true, operation: "deploy_sniper_bot", exchange, liquidityThreshold, maxSlippage,

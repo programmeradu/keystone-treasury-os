@@ -1,4 +1,5 @@
 "use client";
+import { generateId } from "@/lib/utils";
 
 import { create } from "zustand";
 
@@ -128,7 +129,7 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
 
         const item: Notification = {
             ...n,
-            id: `notif_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            id: generateId("notif"),
             timestamp: Date.now(),
             read: false,
         };
