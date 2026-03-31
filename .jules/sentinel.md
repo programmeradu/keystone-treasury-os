@@ -1,0 +1,4 @@
+## 2024-05-24 - Command Injection via child_process.exec
+**Vulnerability:** The `exec` function from `node:child_process` was being used to execute external commands (`solana` and `anchor`) with string concatenation for arguments, allowing potential command injection vulnerabilities if user input were ever included in these arguments.
+**Learning:** Using `exec` executes commands within a shell environment which will process shell metacharacters.
+**Prevention:** Always use `execFile` or `spawn` from `node:child_process` and pass arguments as an array instead of concatenating them into a single string. This avoids shell interpretation and mitigates the risk of command injection.
