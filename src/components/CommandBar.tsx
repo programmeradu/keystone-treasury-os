@@ -320,6 +320,12 @@ export function CommandBar() {
     }
   }, [messages]);
 
+  // ⚡ Bolt: Performance Improvement
+  // Expected impact: Prevents expensive O(N) array filtering operations on every render.
+  const assistantMessageCount = useMemo(() => {
+    return messages.filter((m) => m.role === "assistant").length;
+  }, [messages]);
+
   // Focus input when opened
   useEffect(() => {
     if (open) {
@@ -973,7 +979,7 @@ export function CommandBar() {
                   </span>
                   {messages.length > 0 && (
                     <span className="text-foreground/30">
-                      • {messages.filter((m) => m.role === "assistant").length} response{messages.filter((m) => m.role === "assistant").length !== 1 ? "s" : ""}
+                      • {assistantMessageCount} response{assistantMessageCount !== 1 ? "s" : ""}
                     </span>
                   )}
                 </div>
