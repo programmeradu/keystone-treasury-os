@@ -1,3 +1,4 @@
+import { generateId } from "@/lib/utils";
 import { NextResponse } from "next/server";
 
 // Lightweight prompt parsers
@@ -101,7 +102,7 @@ export async function POST(req: Request) {
 
     const payload = {
       ok: true,
-      runId: `defillama-${Math.random().toString(36).slice(2, 10)}`,
+      runId: generateId("defillama"),
       summary,
       details,
       references,

@@ -1,4 +1,5 @@
 "use client";
+import { generateId } from "@/lib/utils";
 
 import { useState, useEffect, useCallback } from "react";
 
@@ -217,7 +218,7 @@ export function useDistributionFiles() {
     ): DistributionFile => {
         const now = Date.now();
         const newFile: DistributionFile = {
-            id: `dist_${now}_${Math.random().toString(36).slice(2, 8)}`,
+            id: generateId("dist"),
             name,
             tokenSummary: computeTokenSummary(entries),
             entries,

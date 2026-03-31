@@ -1,3 +1,4 @@
+import { generateId } from "@/lib/utils";
 /**
  * Custom toast notification system
  * Drop-in replacement for Sonner with premium UI
@@ -33,7 +34,7 @@ export const useToastStore = create<ToastStore>((set, get) => ({
   toasts: [],
   
   addToast: (toast) => {
-    const id = toast.id || `t_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const id = toast.id || generateId("t");
     const duration = toast.duration ?? 5000;
 
     const newToast: Toast = {

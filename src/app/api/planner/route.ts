@@ -1,9 +1,10 @@
+import { generateId } from "@/lib/utils";
 import { NextRequest } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
     const startedAt = Date.now();
-    const runId = `plan_${startedAt}_${Math.random().toString(36).slice(2, 8)}`;
+    const runId = generateId(`plan_${startedAt}`);
     const origin = new URL(req.url).origin;
 
     // simple retry helper with jittered backoff + soft timeout
@@ -414,7 +415,7 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     // Global safety net: never surface a 400; return a safe default plan
     const startedAt = Date.now();
-    const runId = `plan_err_${startedAt}_${Math.random().toString(36).slice(2, 8)}`;
+    const runId = generateId(`plan_err_${startedAt}`);
     const fallback = {
       ok: true,
       intent: "yield",
