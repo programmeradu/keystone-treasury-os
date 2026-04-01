@@ -58,11 +58,11 @@ export async function GET(req: NextRequest) {
     "";
   if (!token) {
     const enc = new TextEncoder();
-    const body = enc.encode(
+    const bodyText =
       `data: ${JSON.stringify({ type: "error", error: "Missing Bitquery token. Set BITQUERY_BEARER or BITQUERY_API_KEY in env." })}\n\n` +
-      `data: ${JSON.stringify({ type: "close", reason: "no_token" })}\n\n`
-    );
-    return new Response(body, {
+      `data: ${JSON.stringify({ type: "close", reason: "no_token" })}\n\n`;
+    const body = enc.encode(bodyText);
+    return new Response(body as any, {
       status: 200,
       headers: {
         "Content-Type": "text/event-stream",
