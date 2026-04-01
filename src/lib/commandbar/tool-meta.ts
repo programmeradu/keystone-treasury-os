@@ -1,0 +1,30 @@
+// Feature: commandbar-god-mode
+// Shared TOOL_META registry for all tool invocation UI across CommandBar sub-components.
+
+export const TOOL_META: Record<string, { label: string; color: string; icon: string }> = {
+  swap: { label: "Swap", color: "text-blue-400", icon: "⚡" },
+  execute_swap: { label: "Swap", color: "text-blue-400", icon: "⚡" },
+  transfer: { label: "Transfer", color: "text-purple-400", icon: "📤" },
+  stake: { label: "Stake", color: "text-emerald-400", icon: "🔒" },
+  bridge: { label: "Bridge", color: "text-cyan-400", icon: "🌉" },
+  yield_deposit: { label: "Deposit", color: "text-green-400", icon: "📥" },
+  yield_withdraw: { label: "Withdraw", color: "text-orange-400", icon: "📤" },
+  rebalance: { label: "Rebalance", color: "text-indigo-400", icon: "⚖️" },
+  mass_dispatch: { label: "Payroll", color: "text-pink-400", icon: "💸" },
+  multisig_proposal: { label: "Proposal", color: "text-amber-400", icon: "🏛️" },
+  execute_dca: { label: "DCA", color: "text-teal-400", icon: "📊" },
+  foresight_simulation: { label: "Foresight", color: "text-violet-400", icon: "🔮" },
+  risk_assessment: { label: "Risk Radar", color: "text-red-400", icon: "🎯" },
+  browser_research: { label: "Research", color: "text-purple-400", icon: "🔍" },
+  idl_extraction: { label: "IDL Extract", color: "text-yellow-400", icon: "📄" },
+  sentiment_analysis: { label: "Sentiment", color: "text-sky-400", icon: "📡" },
+  studio_init_miniapp: { label: "Init App", color: "text-emerald-400", icon: "🚀" },
+  studio_analyze_code: { label: "Analyze", color: "text-blue-400", icon: "🔬" },
+  security_firewall: { label: "Firewall", color: "text-red-400", icon: "🛡️" },
+  marketplace_publish: { label: "Publish", color: "text-green-400", icon: "🏪" },
+  sdk_hooks: { label: "SDK Hooks", color: "text-cyan-400", icon: "🪝" },
+  navigate: { label: "Navigate", color: "text-muted-foreground", icon: "🧭" },
+  set_monitor: { label: "Monitor", color: "text-amber-400", icon: "👁️" },
+  deploy_sniper_bot: { label: "Sniper Bot", color: "text-red-400", icon: "🎯" },
+  protocol_sdk_analyze: { label: "SDK Analyze", color: "text-yellow-400", icon: "🔬" },
+};

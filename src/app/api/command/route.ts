@@ -266,7 +266,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
         status: "BLOCKED_IN_BUILD_MODE",
         requiresApproval: false,
         mode: promptMode,
-        message: "Build intent detected. Execution tools are blocked while scaffolding software. Use Studio tools and finish with navigate('/app/studio'). Use mode:execute to allow live execution tools.",
+        message:
+          "Build intent detected. Financial execution tools are blocked while scaffolding software. Use Studio tools (e.g. studio_init_miniapp). Prefix with mode:execute (or /execute) to allow live treasury execution.",
       };
     };
 
@@ -449,6 +450,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
           provider: z.string().optional().default("marinade").describe("Staking provider (marinade, jito, blazestake, msol)"),
         }),
         execute: async ({ amount, provider }: { amount: number; provider: string }) => {
+          const blocked = blockExecutionForBuildIntent("stake");
+          if (blocked) return blocked;
           console.log(`[Tool: stake] ${amount} SOL via ${provider}`);
           const coordinator = new ExecutionCoordinator(rpcEndpoint);
           const result = await coordinator.executeStrategy(
@@ -724,6 +727,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
           protocol: z.string().describe("Protocol"),
         }),
         execute: async ({ token, amount, protocol }: { token: string; amount: number; protocol: string }) => {
+          const blocked = blockExecutionForBuildIntent("yield_withdraw");
+          if (blocked) return blocked;
           console.log(`[Tool: yield_withdraw] ${amount} ${token} from ${protocol}`);
           const proto = protocol.toLowerCase();
 
@@ -814,6 +819,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
           tolerance: z.number().optional().default(5).describe("Tolerance % before rebalance triggers"),
         }),
         execute: async ({ targetAllocations, tolerance }: { targetAllocations: Array<{ token: string; percentage: number }>; tolerance: number }) => {
+          const blocked = blockExecutionForBuildIntent("rebalance");
+          if (blocked) return blocked;
           console.log(`[Tool: rebalance] Targets: ${JSON.stringify(targetAllocations)}, tolerance: ${tolerance}%`);
 
           if (!walletAddress) {
@@ -872,6 +879,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
           recipients: z.array(z.object({ address: z.string(), amount: z.number(), label: z.string().optional() })).describe("List of recipients"),
         }),
         execute: async ({ token, recipients }: { token: string; recipients: Array<{ address: string; amount: number; label?: string }> }) => {
+          const blocked = blockExecutionForBuildIntent("mass_dispatch");
+          if (blocked) return blocked;
           console.log(`[Tool: mass_dispatch] ${token} to ${recipients.length} recipients`);
           const total = recipients.reduce((sum, r) => sum + r.amount, 0);
 
@@ -1025,6 +1034,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
           iterations: z.number().describe("Number of execution cycles"),
         }),
         execute: async ({ inputToken, outputToken, totalAmount, frequency, iterations }: { inputToken: string; outputToken: string; totalAmount: number; frequency: string; iterations: number }) => {
+          const blocked = blockExecutionForBuildIntent("execute_dca");
+          if (blocked) return blocked;
           console.log(`[Tool: execute_dca] ${totalAmount} ${inputToken} → ${outputToken} over ${iterations} ${frequency} cycles`);
           if (iterations <= 0) {
             return { success: false, operation: "execute_dca", error: "iterations must be greater than 0" };
@@ -1298,12 +1309,34 @@ Wallet State: ${JSON.stringify(walletState || {})}
         }),
         execute: async ({ threshold }: any) => {
           console.log(`[Tool: risk_assessment] threshold: ${threshold}%`);
-          const holdings = vaultState?.tokens || [];
-          const totalValue = holdings.reduce((sum: number, t: any) => sum + (t.usdValue || 0), 0);
-          const risks = holdings
-            .map((t: any) => ({ token: t.symbol, value: t.usdValue || 0, percentage: totalValue > 0 ? ((t.usdValue || 0) / totalValue) * 100 : 0 }))
-            .filter((t: any) => t.percentage >= (threshold || 50));
-          return { success: true, operation: "risk_assessment", threshold, totalValue, concentrationRisks: risks, riskCount: risks.length, triggerVisualization: true, chartType: "risk_radar", message: risks.length > 0 ? `⚠️ ${risks.length} asset(s) exceed ${threshold}% threshold.` : `✅ No concentration risks above ${threshold}%.` };
+          const holdings: any[] = Array.isArray(vaultState?.tokens) ? vaultState.tokens : [];
+          const tokenValue = (t: any) => {
+            const fromUsd = typeof t.usdValue === "number" && Number.isFinite(t.usdValue) ? t.usdValue : null;
+            if (fromUsd != null) return fromUsd;
+            return (Number(t.amount) || 0) * (Number(t.price) || 0);
+          };
+          const totalValue = holdings.reduce((sum: number, t: any) => sum + tokenValue(t), 0);
+          const concentrations = holdings.map((t: any) => {
+            const value = tokenValue(t);
+            const percentage = totalValue > 0 ? (value / totalValue) * 100 : 0;
+            return { token: t.symbol, value, percentage };
+          });
+          const risks = concentrations.filter((t: any) => t.percentage >= (threshold || 50));
+          return {
+            success: true,
+            operation: "risk_assessment",
+            threshold,
+            totalValue,
+            concentrationRisks: risks,
+            concentrations,
+            riskCount: risks.length,
+            triggerVisualization: true,
+            chartType: "risk_radar",
+            message:
+              risks.length > 0
+                ? `⚠️ ${risks.length} asset(s) exceed ${threshold}% threshold.`
+                : `✅ No concentration risks above ${threshold}%.`,
+          };
         },
       },
 

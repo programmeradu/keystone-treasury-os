@@ -1,8 +1,13 @@
 "use client";
 
+// Feature: commandbar-god-mode
+// Root CommandBar component — God Mode execution layer.
+// Merges and supersedes CommandBar.tsx + CommandBar.stream.tsx.
+// Requirements: 1.1–1.8, 2.6, 3.1, 3.6, 3.7, 13.1, 13.4, 16.1–16.4, 17.1–17.3
+
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Sparkles } from "@/components/icons";
-import { Check, AlertTriangle, Loader2, Shield, Send, Bot, User, Pen, ExternalLink, TrendingDown, TrendingUp, Rocket, ArrowRight } from "lucide-react";
+import { Send } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { IntentRegistry } from "@/lib/agents/registry";
 import { useRouter } from "next/navigation";
@@ -11,67 +16,85 @@ import { useSimulationStore, type SimulationResult } from "@/lib/stores/simulati
 import { useVault } from "@/lib/contexts/VaultContext";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import ReactMarkdown from "react-markdown";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { VersionedTransaction, Transaction } from "@solana/web3.js";
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip, ReferenceLine } from "recharts";
+import { useCommandBarSigningStore } from "@/lib/stores/commandbar-signing-store";
+import { ChatMessage } from "@/components/commandbar/ChatMessage";
+import { EmptyState } from "@/components/commandbar/EmptyState";
+import { TOKEN_LOGOS } from "@/components/commandbar/ChatMessage";
 
-// Token symbols for logo injection (longest first for regex)
-const TOKEN_SYMBOLS_FOR_LOGOS = [
-  "JITOSOL", "MSOL", "BSOL", "USDC", "USDT", "BONK", "PYTH", "TRUMP",
-  "JUP", "RAY", "WIF", "JTO", "SOL",
-];
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-function getTextContent(m: UIMessage): string {
-  return m.parts
-    ?.filter((p): p is Extract<typeof p, { type: "text" }> => p.type === "text")
-    .map((p) => p.text)
-    .join("") || "";
+type PromptMode = "auto" | "build" | "execute";
+
+/** Requirement 12.2–12.4: only these routes may be pushed from tool results. */
+const ALLOWED_COMMAND_BAR_ROUTES = new Set([
+  "/app",
+  "/app/treasury",
+  "/app/analytics",
+  "/app/studio",
+  "/app/marketplace",
+  "/app/library",
+  "/app/team",
+  "/app/settings",
+  "/app/atlas",
+]);
+
+function normalizeNavPath(path: string): string {
+  const u = path.trim();
+  const noQuery = u.split("?")[0]?.split("#")[0] ?? u;
+  return noQuery.length > 1 && noQuery.endsWith("/") ? noQuery.slice(0, -1) : noQuery;
 }
+
+function isAllowedCommandBarRoute(path: string): boolean {
+  return ALLOWED_COMMAND_BAR_ROUTES.has(normalizeNavPath(path));
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getToolParts(m: UIMessage) {
-  return m.parts?.flatMap((p) => {
-    if (p.type === "dynamic-tool") return [p];
-    if (typeof p.type === "string" && p.type.startsWith("tool-") && "toolCallId" in p) {
-      return [{ ...p, type: "dynamic-tool" as const, toolName: p.type.slice(5) }];
-    }
-    return [];
-  }) || [];
+  return (
+    m.parts?.flatMap((p) => {
+      if (p.type === "dynamic-tool") return [p];
+      if (
+        typeof p.type === "string" &&
+        p.type.startsWith("tool-") &&
+        "toolCallId" in p
+      ) {
+        return [{ ...p, type: "dynamic-tool" as const, toolName: p.type.slice(5) }];
+      }
+      return [];
+    }) || []
+  );
 }
 
-// Removed persistStudioProjectFromToolOutput as background saving is natively handled by the route handler.
-// ─── Operation Metadata for Tool Invocation UI ─────────────────────
-const TOOL_META: Record<string, { label: string; color: string; icon: string }> = {
-  swap: { label: "Swap", color: "text-blue-400", icon: "⚡" },
-  transfer: { label: "Transfer", color: "text-purple-400", icon: "📤" },
-  stake: { label: "Stake", color: "text-emerald-400", icon: "🔒" },
-  bridge: { label: "Bridge", color: "text-cyan-400", icon: "🌉" },
-  yield_deposit: { label: "Deposit", color: "text-green-400", icon: "📥" },
-  yield_withdraw: { label: "Withdraw", color: "text-orange-400", icon: "📤" },
-  rebalance: { label: "Rebalance", color: "text-indigo-400", icon: "⚖️" },
-  mass_dispatch: { label: "Payroll", color: "text-pink-400", icon: "💸" },
-  multisig_proposal: { label: "Proposal", color: "text-amber-400", icon: "🏛️" },
-  execute_dca: { label: "DCA", color: "text-teal-400", icon: "📊" },
-  foresight_simulation: { label: "Foresight", color: "text-violet-400", icon: "🔮" },
-  risk_assessment: { label: "Risk Radar", color: "text-red-400", icon: "🎯" },
-  browser_research: { label: "Research", color: "text-purple-400", icon: "🔍" },
-  idl_extraction: { label: "IDL Extract", color: "text-yellow-400", icon: "📄" },
-  sentiment_analysis: { label: "Sentiment", color: "text-sky-400", icon: "📡" },
-  studio_init_miniapp: { label: "Init App", color: "text-emerald-400", icon: "🚀" },
-  studio_analyze_code: { label: "Analyze", color: "text-blue-400", icon: "🔬" },
-  security_firewall: { label: "Firewall", color: "text-red-400", icon: "🛡️" },
-  marketplace_publish: { label: "Publish", color: "text-green-400", icon: "🏪" },
-  sdk_hooks: { label: "SDK Hooks", color: "text-cyan-400", icon: "🪝" },
-  navigate: { label: "Navigate", color: "text-muted-foreground", icon: "🧭" },
-  set_monitor: { label: "Monitor", color: "text-amber-400", icon: "👁️" },
-  execute_swap: { label: "Swap", color: "text-blue-400", icon: "⚡" },
-};
+/** Parse prompt mode prefix from user input (client-side, for footer display only). Matches /api/command `parsePromptMode`. */
+function parsePromptModeFromInput(text: string): PromptMode {
+  const t = text.trim().toLowerCase();
+  if (/^(mode\s*:\s*build|\/build\b|#build\b|\[build\]|build mode\b)/.test(t)) return "build";
+  if (/^(mode\s*:\s*execute|\/execute\b|#execute\b|\[execute\]|execute mode\b)/.test(t)) return "execute";
+  return "auto";
+}
 
-/** Convert foresight_simulation tool variables (record) to /api/simulation SimulationVariable[] */
+/** Convert foresight_simulation tool variables to /api/simulation SimulationVariable[] */
 function foresightVariablesToSimulationVariables(
   variables: Record<string, unknown>,
-): Array<{ id: string; label: string; type: "price_change" | "burn_rate" | "inflow" | "outflow" | "yield_apy" | "custom"; asset?: string; value: number; unit: "percent" | "usd" | "tokens" }> {
-  const out: Array<{ id: string; label: string; type: "price_change" | "burn_rate" | "inflow" | "outflow" | "yield_apy" | "custom"; asset?: string; value: number; unit: "percent" | "usd" | "tokens" }> = [];
+): Array<{
+  id: string;
+  label: string;
+  type: "price_change" | "burn_rate" | "inflow" | "outflow" | "yield_apy" | "custom";
+  asset?: string;
+  value: number;
+  unit: "percent" | "usd" | "tokens";
+}> {
+  const out: Array<{
+    id: string;
+    label: string;
+    type: "price_change" | "burn_rate" | "inflow" | "outflow" | "yield_apy" | "custom";
+    asset?: string;
+    value: number;
+    unit: "percent" | "usd" | "tokens";
+  }> = [];
   if (typeof variables.solDrop === "number") {
     out.push({ id: "sol-drop", label: "SOL price change", type: "price_change", asset: "SOL", value: -variables.solDrop, unit: "percent" });
   }
@@ -88,7 +111,13 @@ function foresightVariablesToSimulationVariables(
     out.push({ id: "principal", label: "Principal", type: "custom", value: variables.principal, unit: "usd" });
   }
   if (typeof variables.newHires === "number") {
-    out.push({ id: "new-hires", label: "New hires", type: "outflow", value: (variables.newHires * ((variables.costPerHire as number) || 8000)), unit: "usd" });
+    out.push({
+      id: "new-hires",
+      label: "New hires",
+      type: "outflow",
+      value: variables.newHires * ((variables.costPerHire as number) || 8000),
+      unit: "usd",
+    });
   }
   if (out.length === 0) {
     out.push({ id: "default", label: "Scenario", type: "custom", value: 0, unit: "percent" });
@@ -96,145 +125,117 @@ function foresightVariablesToSimulationVariables(
   return out;
 }
 
-// Token logos for swap UI (symbol → logo URL)
-const TOKEN_LOGOS: Record<string, string> = {
-  SOL: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
-  USDC: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png",
-  USDT: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB/logo.png",
-  JUP: "https://static.jup.ag/jup/icon.png",
-  BONK: "https://arweave.net/hQiPZOsRZXGXBJd_82PhVdlM_hACsT_q6wqwf5cSY7I",
-  RAY: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R/logo.png",
-  MSOL: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So/logo.png",
-  JITOSOL: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn/logo.png",
-  JTO: "https://metadata.jup.ag/token/jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL/logo",
-  BSOL: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1/logo.png",
-  PYTH: "https://pyth.network/token.svg",
-  WIF: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm/logo.png",
-  TRUMP: "https://dd.dexscreener.com/ds-data/tokens/solana/6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN.png",
-};
-
-/** Injects token logo + symbol into a string; returns React nodes for use inside markdown. */
-function injectTokenLogosIntoString(text: string, logos: Record<string, string>): React.ReactNode[] {
-  if (!text || typeof text !== "string") return [text];
-  const re = new RegExp(`\\b(${TOKEN_SYMBOLS_FOR_LOGOS.join("|")})\\b`, "g");
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match;
-  while ((match = re.exec(text)) !== null) {
-    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
-    const symbol = match[1];
-    const url = logos[symbol];
-    parts.push(
-      <span key={`${match.index}-${symbol}`} className="inline-flex items-center gap-1 align-middle">
-        {url ? <img src={url} alt="" className="h-3.5 w-3.5 rounded-full object-cover inline-block" /> : null}
-        <span className="font-mono text-inherit">{symbol}</span>
-      </span>
-    );
-    lastIndex = re.lastIndex;
-  }
-  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
-  return parts.length > 0 ? parts : [text];
-}
-
-function processChildrenWithTokenLogos(children: React.ReactNode, logos: Record<string, string>): React.ReactNode {
-  if (typeof children === "string") return <>{injectTokenLogosIntoString(children, logos)}</>;
-  if (Array.isArray(children)) return <>{children.map((c, i) => <React.Fragment key={i}>{processChildrenWithTokenLogos(c, logos)}</React.Fragment>)}</>;
-  return children as React.ReactNode;
-}
+// ─── CommandBar ───────────────────────────────────────────────────────────────
 
 export function CommandBar() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [signingToolId, setSigningToolId] = useState<string | null>(null);
-  const [signingStatus, setSigningStatus] = useState<"idle" | "signing" | "sent" | "error">("idle");
-  const [txSignatures, setTxSignatures] = useState<string[]>([]);
+  const [promptMode, setPromptMode] = useState<PromptMode>("auto");
+
+  const { setSigningToolId, setSigningStatus, setTxSignatures } =
+    useCommandBarSigningStore();
+
   const router = useRouter();
   const simStore = useSimulationStore();
   const { vaultTokens } = useVault();
   const { connection } = useConnection();
   const { publicKey, signAllTransactions, signTransaction, connected } = useWallet();
+
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const modalPanelRef = useRef<HTMLDivElement>(null);
 
-  const handleSignTransactions = useCallback(async (
-    toolCallId: string,
-    serialized: string[],
-    operation: string,
-  ) => {
-    if (!connected || !publicKey || (!signAllTransactions && !signTransaction)) {
-      toast.error("Wallet not connected", { description: "Please connect your wallet to sign transactions." });
-      return;
-    }
+  // ─── Signing ───────────────────────────────────────────────────────────────
 
-    setSigningToolId(toolCallId);
-    setSigningStatus("signing");
-    setTxSignatures([]);
+  const handleSignTransactions = useCallback(
+    async (toolCallId: string, serialized: string[], operation: string) => {
+      if (!connected || !publicKey || (!signAllTransactions && !signTransaction)) {
+        toast.error("Wallet not connected", {
+          description: "Please connect your wallet to sign transactions.",
+        });
+        return;
+      }
 
-    try {
-      const deserialized = serialized.map((b64) => {
-        const buf = Buffer.from(b64, "base64");
-        try {
-          return VersionedTransaction.deserialize(buf);
-        } catch {
-          return Transaction.from(buf);
+      setSigningToolId(toolCallId);
+      setSigningStatus("signing");
+      setTxSignatures([]);
+
+      try {
+        const deserialized = serialized.map((b64) => {
+          const buf = Buffer.from(b64, "base64");
+          try {
+            return VersionedTransaction.deserialize(buf);
+          } catch {
+            return Transaction.from(buf);
+          }
+        });
+
+        let signed: (VersionedTransaction | Transaction)[];
+        if (signAllTransactions && deserialized.length > 1) {
+          signed = await signAllTransactions(deserialized as VersionedTransaction[]);
+        } else {
+          signed = [];
+          for (const tx of deserialized) {
+            const s = await (
+              signTransaction as (
+                tx: VersionedTransaction | Transaction,
+              ) => Promise<VersionedTransaction | Transaction>
+            )(tx);
+            signed.push(s);
+          }
         }
-      });
 
-      let signed: (VersionedTransaction | Transaction)[];
-      if (signAllTransactions && deserialized.length > 1) {
-        signed = await signAllTransactions(deserialized as VersionedTransaction[]);
-      } else {
-        signed = [];
-        for (const tx of deserialized) {
-          const s = await (signTransaction as (tx: VersionedTransaction | Transaction) => Promise<VersionedTransaction | Transaction>)(tx);
-          signed.push(s);
+        const sigs: string[] = [];
+        for (const tx of signed) {
+          const raw = tx.serialize();
+          const sig = await connection.sendRawTransaction(raw, {
+            skipPreflight: false,
+            preflightCommitment: "confirmed",
+          });
+          sigs.push(sig);
+        }
+
+        setTxSignatures(sigs);
+        setSigningStatus("sent");
+        toast.success(`${operation} signed & sent`, {
+          description: `${sigs.length} transaction(s) confirmed. Sig: ${sigs[0]?.slice(0, 12)}…`,
+        });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[CommandBar] Signing error:", msg);
+        setSigningStatus("error");
+        if (msg.includes("User rejected") || msg.includes("cancelled")) {
+          toast.error("Transaction rejected", {
+            description: "You declined the signing request.",
+          });
+        } else {
+          toast.error("Signing failed", { description: msg });
         }
       }
+    },
+    [connected, publicKey, signAllTransactions, signTransaction, connection, setSigningToolId, setSigningStatus, setTxSignatures],
+  );
 
-      const sigs: string[] = [];
-      for (const tx of signed) {
-        const raw = tx instanceof VersionedTransaction
-          ? tx.serialize()
-          : tx.serialize();
-        const sig = await connection.sendRawTransaction(raw, { skipPreflight: false, preflightCommitment: "confirmed" });
-        sigs.push(sig);
-      }
-
-      setTxSignatures(sigs);
-      setSigningStatus("sent");
-      toast.success(`${operation} signed & sent`, {
-        description: `${sigs.length} transaction(s) confirmed. Sig: ${sigs[0]?.slice(0, 12)}…`,
-      });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error("[CommandBar] Signing error:", msg);
-      setSigningStatus("error");
-      if (msg.includes("User rejected") || msg.includes("cancelled")) {
-        toast.error("Transaction rejected", { description: "You declined the signing request." });
-      } else {
-        toast.error("Signing failed", { description: msg });
-      }
-    }
-  }, [connected, publicKey, signAllTransactions, signTransaction, connection]);
+  // ─── Chat ──────────────────────────────────────────────────────────────────
 
   const transport = useMemo(
     () => new DefaultChatTransport({ api: "/api/command" }),
     [],
   );
 
-  const {
-    messages,
-    sendMessage,
-    setMessages,
-    status,
-    error: chatError,
-  } = useChat({
+  const { messages, sendMessage, setMessages, status, error: chatError } = useChat({
     transport,
     onError: (e: Error) => {
-      const msg = e.message || '';
-      // Suppress transient provider/fallback errors to avoid false-alarm noise in the console.
-      if (/rate.?limit|429|retry|provider|groq|cloudflare|tool call validation failed|was not in request\.tools|invalid_request_error/i.test(msg)) {
-        console.warn("[CommandBar] Transient stream issue (auto-fallback/retry expected):", msg.slice(0, 220));
+      const msg = e.message || "";
+      if (
+        /rate.?limit|429|retry|provider|groq|cloudflare|tool call validation failed|was not in request\.tools|invalid_request_error/i.test(
+          msg,
+        )
+      ) {
+        console.warn(
+          "[CommandBar] Transient stream issue (auto-fallback/retry expected):",
+          msg.slice(0, 220),
+        );
         return;
       }
       console.error("[CommandBar] Stream error:", e);
@@ -246,25 +247,34 @@ export function CommandBar() {
         const output = part.output as Record<string, unknown> | undefined;
         if (!output) continue;
 
-// Special handling block for studio_init_miniapp removed; relies on default output.navigateTo instead.
-        if (output.navigateTo) {
+        const pushIfAllowed = (path: string) => {
+          if (!isAllowedCommandBarRoute(path)) {
+            console.warn("[CommandBar] Blocked navigation to disallowed path:", path);
+            return;
+          }
           setOpen(false);
-          router.push(output.navigateTo as string);
+          router.push(normalizeNavPath(path));
+        };
+
+        if (typeof output.navigateTo === "string" && output.navigateTo.trim()) {
+          pushIfAllowed(output.navigateTo);
         }
 
-        if (output.operation === "navigate" && output.path) {
-          setOpen(false);
-          router.push(output.path as string);
+        if (output.operation === "navigate" && typeof output.path === "string" && output.path.trim()) {
+          pushIfAllowed(output.path);
         }
 
-        if (output.operation === "foresight_simulation" && output.variables) {
+        if (
+          output.operation === "foresight_simulation" &&
+          output.variables &&
+          output.success !== false
+        ) {
           const scenario = output.scenario as string;
           const timeframeMonths = (output.timeframeMonths as number) || 12;
           const variablesRecord = output.variables as Record<string, unknown>;
           const simVariables = foresightVariablesToSimulationVariables(variablesRecord);
 
           simStore.startSimulation(scenario, simVariables, timeframeMonths);
-          // Delay navigation so users can see the inline chart preview before navigating
           setTimeout(() => {
             setOpen(false);
             router.push("/app/analytics");
@@ -284,14 +294,25 @@ export function CommandBar() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              portfolio: portfolio.length > 0 ? portfolio : [{ symbol: "SOL", amount: 0, price: 0 }],
+              portfolio:
+                portfolio.length > 0
+                  ? portfolio
+                  : [{ symbol: "SOL", amount: 0, price: 0 }],
               variables: simVariables,
               timeframeMonths,
               granularity: "monthly",
               priceSource: "vault",
             }),
           })
-            .then((r) => (r.ok ? r.json() : r.json().then((err: { error?: string }) => Promise.reject(new Error(err.error || "Simulation failed")))))
+            .then((r) =>
+              r.ok
+                ? r.json()
+                : r
+                    .json()
+                    .then((err: { error?: string }) =>
+                      Promise.reject(new Error(err.error || "Simulation failed")),
+                    ),
+            )
             .then((simResult: SimulationResult) => {
               simStore.setResult(simResult);
               const pct = simResult.summary?.deltaPercent ?? 0;
@@ -312,22 +333,63 @@ export function CommandBar() {
   });
 
   const isStreaming = status === "streaming" || status === "submitted";
+  const agentBusy = isStreaming || submitPulse;
 
-  // Scroll to bottom on new messages
+  useEffect(() => {
+    if (!isStreaming) setSubmitPulse(false);
+  }, [isStreaming]);
+
+  // ─── Handlers ──────────────────────────────────────────────────────────────
+
+  const handleClose = useCallback(() => {
+    setOpen(false);
+    setMessages([]);
+    setPromptMode("auto");
+    setSubmitPulse(false);
+  }, [setMessages]);
+
+  const handleModalKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key !== "Tab") return;
+    const root = modalPanelRef.current;
+    if (!root) return;
+    const sel =
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const items = [...root.querySelectorAll<HTMLElement>(sel)].filter(
+      (el) => el.offsetParent !== null || el === document.activeElement,
+    );
+    if (items.length === 0) return;
+    const first = items[0]!;
+    const last = items[items.length - 1]!;
+    const active = document.activeElement as HTMLElement | null;
+    if (e.shiftKey) {
+      if (active === first || (active && !root.contains(active))) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else if (active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }, []);
+
+  // ─── Effects ───────────────────────────────────────────────────────────────
+
+  // Auto-scroll to latest message
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // Focus input when opened
+  // Auto-focus input within 150ms of opening (Requirement 1.7)
   useEffect(() => {
     if (open) {
-      setTimeout(() => inputRef.current?.focus(), 100);
+      const t = setTimeout(() => inputRef.current?.focus(), 100);
+      return () => clearTimeout(t);
     }
   }, [open]);
 
-  // ─── Keyboard Shortcuts ────────────────────────────────────────
+  // Keyboard shortcuts: Cmd+K toggle, Escape close (Requirements 1.2, 1.3, 16.1)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -341,12 +403,13 @@ export function CommandBar() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open]);
+  }, [open, handleClose]);
 
-  const handleClose = useCallback(() => {
-    setOpen(false);
-    setMessages([]);
-  }, [setMessages]);
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setInput(val);
+    setPromptMode(parsePromptModeFromInput(val));
+  }, []);
 
   const handleFormSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -354,455 +417,43 @@ export function CommandBar() {
       if (!input.trim() || isStreaming) return;
       const text = input.trim();
       setInput("");
+      setPromptMode("auto");
       try {
-        await sendMessage({ text }, {
-          body: {
-            walletAddress: publicKey?.toBase58() || "",
-            vaultState: { tokens: vaultTokens || [] },
-            walletState: { balances: vaultTokens || [] },
+        await sendMessage(
+          { text },
+          {
+            body: {
+              walletAddress: publicKey?.toBase58() || "",
+              vaultState: { tokens: vaultTokens || [] },
+              walletState: { balances: vaultTokens || [] },
+            },
           },
-        });
+        );
       } catch (err) {
         console.error("[CommandBar] Send error:", err);
       }
     },
-    [input, isStreaming, sendMessage, vaultTokens, publicKey],
+    [input, agentBusy, sendMessage, vaultTokens, publicKey],
   );
 
-  // ─── Render Tool Invocation Card ─────────────────────────────────
-  const renderToolInvocation = (inv: ReturnType<typeof getToolParts>[number] & Record<string, any>) => {
-    const toolName = inv.toolName || "unknown";
-    const meta = TOOL_META[toolName] || { label: toolName, color: "text-muted-foreground", icon: "⚙️" };
-    const isComplete = inv.state === "output-available";
-    const result: Record<string, any> | null = isComplete ? (inv.output as Record<string, any>) : null;
-    const success = result?.success !== false;
+  const handleChipClick = useCallback((text: string) => {
+    setInput(text);
+    setPromptMode(parsePromptModeFromInput(text));
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }, []);
 
-    return (
-      <div key={inv.toolCallId} className="w-full max-w-md mt-2 bg-muted/30 border border-white/10 rounded-xl overflow-hidden">
-        {/* Tool Header */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-white/5">
-          <div className="flex items-center gap-2">
-            <span className="text-sm">{meta.icon}</span>
-            <span className={`text-xs font-bold uppercase ${meta.color}`}>{meta.label}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            {!isComplete ? (
-              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                <Loader2 size={12} className="animate-spin text-primary" />
-                <span>Executing...</span>
-              </div>
-            ) : success ? (
-              <div className="flex items-center gap-1 text-[10px] text-emerald-400">
-                <Check size={12} />
-                <span>Complete</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1 text-[10px] text-red-400">
-                <AlertTriangle size={12} />
-                <span>Failed</span>
-              </div>
-            )}
-          </div>
-        </div>
+  // ─── Wallet display ────────────────────────────────────────────────────────
 
-        {/* Tool Args */}
-        <div className="px-3 py-2">
-          {Boolean(inv.input && typeof inv.input === "object") && (
-            <div className="text-[11px] text-foreground/70 font-mono space-y-0.5">
-              {Object.entries(inv.input as Record<string, unknown>).map(([key, value]) => {
-                if (typeof value === "object") return null; // skip complex args
-                return (
-                  <div key={key} className="flex items-center gap-2">
-                    <span className="text-muted-foreground">{key}:</span>
-                    <span className="text-foreground/90">{String(value)}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+  const walletDisplay = publicKey
+    ? `${publicKey.toBase58().slice(0, 4)}…${publicKey.toBase58().slice(-4)}`
+    : "Not connected";
 
-        {/* Tool Result */}
-        {isComplete && result && (
-          <div className={`px-3 py-2 border-t border-white/5 ${success ? "bg-emerald-500/5" : "bg-red-500/5"}`}>
-            {result.message && (
-              <p className="text-[11px] text-foreground/80 leading-relaxed">{result.message}</p>
-            )}
-            {result.error && (
-              <p className="text-[11px] text-red-400 leading-relaxed">{result.error}</p>
-            )}
-            {/* ── Foresight Simulation: Inline Mini Chart ── */}
-            {toolName === "foresight_simulation" && success && (() => {
-              const chartType = result.chartType as string;
-              const projection = result.monthlyProjection as Array<Record<string, number>> | undefined;
-
-              // Market Shock: dual-line (original vs shocked)
-              if (chartType === "equity_curve" && projection && projection.length > 0) {
-                const drawdown = result.drawdown as string;
-                const origBal = result.originalBalance as number;
-                const shockBal = result.shockedBalance as number;
-                return (
-                  <div className="mt-2 space-y-2">
-                    <div className="flex items-center justify-between text-[10px]">
-                      <div className="flex items-center gap-1.5">
-                        <TrendingDown size={12} className="text-red-400" />
-                        <span className="text-red-400 font-bold">−{drawdown}</span>
-                        <span className="text-muted-foreground">drawdown</span>
-                      </div>
-                      <div className="flex items-center gap-3 text-[9px] font-mono">
-                        <span className="flex items-center gap-1"><span className="w-2 h-0.5 bg-emerald-400 rounded-full inline-block" /> ${origBal?.toLocaleString()}</span>
-                        <span className="flex items-center gap-1"><span className="w-2 h-0.5 bg-red-400 rounded-full inline-block" /> ${shockBal?.toLocaleString()}</span>
-                      </div>
-                    </div>
-                    <div className="h-[100px] w-full">
-                      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={80}>
-                        <AreaChart data={projection} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-                          <defs>
-                            <linearGradient id="foresightOriginal" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#34d399" stopOpacity={0.3} />
-                              <stop offset="100%" stopColor="#34d399" stopOpacity={0} />
-                            </linearGradient>
-                            <linearGradient id="foresightShocked" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#f87171" stopOpacity={0.3} />
-                              <stop offset="100%" stopColor="#f87171" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <XAxis dataKey="month" tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} tickFormatter={(v: number) => `M${v}`} />
-                          <YAxis hide domain={[0, 'auto']} />
-                          <RechartsTooltip
-                            contentStyle={{ background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 10, padding: '4px 8px' }}
-                            labelFormatter={(v: number) => `Month ${v}`}
-                            formatter={(value: number, name: string) => [`$${value.toLocaleString()}`, name === 'original' ? 'Baseline' : 'Shocked']}
-                          />
-                          <Area type="monotone" dataKey="original" stroke="#34d399" strokeWidth={1.5} fill="url(#foresightOriginal)" dot={false} />
-                          <Area type="monotone" dataKey="shocked" stroke="#f87171" strokeWidth={1.5} fill="url(#foresightShocked)" dot={false} />
-                          <ReferenceLine y={0} stroke="#ffffff10" />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                );
-              }
-
-              // Variable Impact: dual-line (original vs projected) when both keys present
-              if (chartType === "depletion_node" && projection && projection.length > 0 && projection[0]?.projected !== undefined) {
-                const origRunway = result.originalRunway as number;
-                const newRunway = result.newRunway as number;
-                const diff = origRunway - newRunway;
-                const improved = diff < 0;
-                return (
-                  <div className="mt-2 space-y-2">
-                    <div className="flex items-center justify-between text-[10px]">
-                      <div className="flex items-center gap-1.5">
-                        {improved ? <TrendingUp size={12} className="text-emerald-400" /> : <TrendingDown size={12} className="text-amber-400" />}
-                        <span className={improved ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>
-                          {improved ? `+${Math.abs(diff)}mo` : `−${Math.abs(diff)}mo`}
-                        </span>
-                        <span className="text-muted-foreground">runway impact</span>
-                      </div>
-                      <div className="flex items-center gap-3 text-[9px] font-mono">
-                        <span className="flex items-center gap-1"><span className="w-2 h-0.5 bg-white/40 rounded-full inline-block" /> Current</span>
-                        <span className="flex items-center gap-1"><span className="w-2 h-0.5 bg-emerald-400 rounded-full inline-block" /> Projected</span>
-                      </div>
-                    </div>
-                    <div className="h-[100px] w-full">
-                      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={80}>
-                        <AreaChart data={projection} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-                          <defs>
-                            <linearGradient id="foresightOrigVI" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#94a3b8" stopOpacity={0.2} />
-                              <stop offset="100%" stopColor="#94a3b8" stopOpacity={0} />
-                            </linearGradient>
-                            <linearGradient id="foresightProjVI" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#34d399" stopOpacity={0.3} />
-                              <stop offset="100%" stopColor="#34d399" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <XAxis dataKey="month" tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} tickFormatter={(v: number) => `M${v}`} />
-                          <YAxis hide domain={[0, 'auto']} />
-                          <RechartsTooltip
-                            contentStyle={{ background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 10, padding: '4px 8px' }}
-                            labelFormatter={(v: number) => `Month ${v}`}
-                            formatter={(value: number, name: string) => [`$${value.toLocaleString()}`, name === 'original' ? 'Current' : 'Projected']}
-                          />
-                          <Area type="monotone" dataKey="original" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 2" fill="url(#foresightOrigVI)" dot={false} />
-                          <Area type="monotone" dataKey="projected" stroke="#34d399" strokeWidth={1.5} fill="url(#foresightProjVI)" dot={false} />
-                          <ReferenceLine y={0} stroke="#ffffff10" />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                );
-              }
-
-              // Runway Projection / Yield Forecast: single area chart
-              if ((chartType === "depletion_node" || chartType === "yield_curve") && projection && projection.length > 0) {
-                const isYield = chartType === "yield_curve";
-                const color = isYield ? "#34d399" : "#f59e0b";
-                const label = isYield ? "Balance" : "Runway";
-                const valueKey = projection[0]?.balance !== undefined ? "balance" : "value";
-                return (
-                  <div className="mt-2 space-y-2">
-                    <div className="flex items-center gap-1.5 text-[10px]">
-                      {isYield ? <TrendingUp size={12} className="text-emerald-400" /> : <TrendingDown size={12} className="text-amber-400" />}
-                      <span className={isYield ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>{label}</span>
-                      <span className="text-muted-foreground">projection</span>
-                    </div>
-                    <div className="h-[80px] w-full">
-                      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={64}>
-                        <AreaChart data={projection} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-                          <defs>
-                            <linearGradient id="foresightSingle" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor={color} stopOpacity={0.3} />
-                              <stop offset="100%" stopColor={color} stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <XAxis dataKey="month" tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} tickFormatter={(v: number) => `M${v}`} />
-                          <YAxis hide domain={[0, 'auto']} />
-                          <RechartsTooltip
-                            contentStyle={{ background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 10, padding: '4px 8px' }}
-                            labelFormatter={(v: number) => `Month ${v}`}
-                            formatter={(value: number) => [`$${value.toLocaleString()}`, label]}
-                          />
-                          <Area type="monotone" dataKey={valueKey} stroke={color} strokeWidth={1.5} fill="url(#foresightSingle)" dot={false} />
-                          <ReferenceLine y={0} stroke="#ffffff10" />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                );
-              }
-
-              // Fallback: summary stats grid
-              if (result.originalBalance || result.shockedBalance || result.projectedMonths || result.endingBalance) {
-                return (
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    {result.originalBalance != null && (
-                      <div className="text-center px-2 py-1.5 bg-white/5 rounded-lg">
-                        <div className="text-[9px] text-muted-foreground uppercase">Before</div>
-                        <div className="text-xs font-bold text-foreground">${Number(result.originalBalance).toLocaleString()}</div>
-                      </div>
-                    )}
-                    {result.shockedBalance != null && (
-                      <div className="text-center px-2 py-1.5 bg-red-500/10 rounded-lg">
-                        <div className="text-[9px] text-muted-foreground uppercase">After Shock</div>
-                        <div className="text-xs font-bold text-red-400">${Number(result.shockedBalance).toLocaleString()}</div>
-                      </div>
-                    )}
-                    {result.projectedMonths != null && (
-                      <div className="text-center px-2 py-1.5 bg-amber-500/10 rounded-lg">
-                        <div className="text-[9px] text-muted-foreground uppercase">Runway</div>
-                        <div className="text-xs font-bold text-amber-400">{result.projectedMonths}mo</div>
-                      </div>
-                    )}
-                    {result.endingBalance != null && (
-                      <div className="text-center px-2 py-1.5 bg-emerald-500/10 rounded-lg">
-                        <div className="text-[9px] text-muted-foreground uppercase">End Balance</div>
-                        <div className="text-xs font-bold text-emerald-400">${Number(result.endingBalance).toLocaleString()}</div>
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-
-
-              return null;
-            })()}
-            {/* ── Studio: Mini-App Launch Card ── */}
-            {toolName === "studio_init_miniapp" && success && (() => {
-                const appId = result.appId as string | undefined;
-                const path = appId ? `/app/studio?appId=${encodeURIComponent(appId)}` : "/app/studio";
-                return (
-                  <div className="mt-3 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-1.5 text-emerald-400">
-                          <Rocket size={14} />
-                          <span className="text-xs font-bold uppercase tracking-wider">App Generated</span>
-                        </div>
-                        <p className="text-[10px] text-emerald-500/80">
-                          {result.fileCount} files prepared in the {result.template} template. 
-                          {appId ? " Saved to your portfolio." : ""}
-                        </p>
-                      </div>
-                      <button 
-                        onClick={() => { setOpen(false); router.push(path); }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-emerald-950 text-[10px] font-bold uppercase rounded-lg transition-colors shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_20px_rgba(16,185,129,0.5)]"
-                      >
-                        Launch App <ArrowRight size={12} />
-                      </button>
-                    </div>
-                  </div>
-                );
-            })()}
-            {/* Swap: token logos + route */}
-            {(toolName === "swap" || toolName === "execute_swap") && success && (result.inputToken || result.outputToken) && (
-              <div className="flex items-center gap-2 flex-wrap mb-2">
-                {result.inputToken && (
-                  <span className="inline-flex items-center gap-1.5">
-                    {TOKEN_LOGOS[result.inputToken.toUpperCase()] ? (
-                      <img src={TOKEN_LOGOS[result.inputToken.toUpperCase()]} alt="" className="h-4 w-4 rounded-full object-cover" />
-                    ) : null}
-                    <span className="text-[11px] font-mono text-foreground/90">
-                      {result.inputAmount != null ? Number(result.inputAmount) : "?"} {result.inputToken}
-                    </span>
-                  </span>
-                )}
-                <span className="text-white/40 text-[10px]">→</span>
-                {result.outputToken && (
-                  <span className="inline-flex items-center gap-1.5">
-                    {result.outputAmountFormatted && (
-                      <span className="text-[11px] font-mono text-foreground/90">~{result.outputAmountFormatted}</span>
-                    )}
-                    {TOKEN_LOGOS[result.outputToken.toUpperCase()] ? (
-                      <img src={TOKEN_LOGOS[result.outputToken.toUpperCase()]} alt="" className="h-4 w-4 rounded-full object-cover" />
-                    ) : null}
-                  </span>
-                )}
-                <span className="ml-1 px-1.5 py-0.5 rounded bg-primary/15 text-[9px] font-bold text-primary uppercase">
-                  {(result.route as string) || "Jupiter"}
-                </span>
-              </div>
-            )}
-            {/* Pipeline: Planning → Simulation → Firewall → Approval → Execution (for swap/execute_swap) */}
-            {(toolName === "swap" || toolName === "execute_swap") && success && (
-              <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[9px] uppercase tracking-wide">
-                <span className="flex items-center gap-1 text-emerald-500/90">
-                  <Check size={10} /> Planning
-                </span>
-                <span className="text-white/30">→</span>
-                <span className="flex items-center gap-1 text-emerald-500/90">
-                  <Check size={10} /> Simulation
-                </span>
-                <span className="text-white/30">→</span>
-                <span className={`flex items-center gap-1 ${result.simulationPassed ? "text-emerald-500/90" : "text-red-400/90"}`}>
-                  {result.simulationPassed ? <Check size={10} /> : <AlertTriangle size={10} />}
-                  Firewall
-                </span>
-                <span className="text-white/30">→</span>
-                <span className={`flex items-center gap-1 ${result.requiresApproval && !(signingToolId === inv.toolCallId && signingStatus === "sent") ? "text-amber-400" : signingToolId === inv.toolCallId && signingStatus === "sent" ? "text-emerald-500/90" : "text-muted-foreground"}`}>
-                  {signingToolId === inv.toolCallId && signingStatus === "sent" ? <Check size={10} /> : result.requiresApproval ? "Approval" : "—"}
-                </span>
-                <span className="text-white/30">→</span>
-                <span className={`flex items-center gap-1 ${signingToolId === inv.toolCallId && signingStatus === "sent" ? "text-emerald-500/90" : "text-muted-foreground"}`}>
-                  {signingToolId === inv.toolCallId && signingStatus === "sent" ? <Check size={10} /> : "—"}
-                  Execution
-                </span>
-              </div>
-            )}
-            {/* Expected output (human-readable) */}
-            {(toolName === "swap" || toolName === "execute_swap") && success && result.outputAmountFormatted && (
-              <p className="mt-1 text-[10px] text-muted-foreground font-mono">
-                Expected output: ~{result.outputAmountFormatted}
-              </p>
-            )}
-            {/* Rich Details for Swap */}
-            {(toolName === "swap" || toolName === "execute_swap") && success && (
-              <div className="mt-2 grid grid-cols-3 gap-2">
-                {result.priceImpact && (
-                  <div className="text-center">
-                    <div className="text-[9px] text-muted-foreground uppercase">Impact</div>
-                    <div className={`text-xs font-bold ${parseFloat(result.priceImpact) < 0.5 ? "text-emerald-400" : parseFloat(result.priceImpact) < 2 ? "text-yellow-400" : "text-red-400"}`}>
-                      {parseFloat(result.priceImpact) < 0.01 ? "<0.01" : parseFloat(result.priceImpact).toFixed(2)}%
-                    </div>
-                  </div>
-                )}
-                {result.riskLevel && (
-                  <div className="text-center">
-                    <div className="text-[9px] text-muted-foreground uppercase">Risk</div>
-                    <div className={`text-xs font-bold ${result.riskLevel === "low" ? "text-emerald-400" : result.riskLevel === "medium" ? "text-yellow-400" : "text-red-400"}`}>
-                      {result.riskLevel}
-                    </div>
-                  </div>
-                )}
-                {result.simulationPassed !== undefined && (
-                  <div className="text-center">
-                    <div className="text-[9px] text-muted-foreground uppercase">Firewall</div>
-                    <div className={`text-xs font-bold ${result.simulationPassed ? "text-emerald-400" : "text-red-400"}`}>
-                      {result.simulationPassed ? "Pass" : "Fail"}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            {/* Signing Flow */}
-            {result.requiresApproval && (() => {
-              const txs: string[] = result.serializedTransactions || (result.serializedTransaction ? [result.serializedTransaction] : []);
-              const isThisSigning = signingToolId === inv.toolCallId;
-              const hasTxs = txs.length > 0;
-              const alreadySent = isThisSigning && signingStatus === "sent";
-              const isSigning = isThisSigning && signingStatus === "signing";
-
-              if (alreadySent) {
-                return (
-                  <div className="mt-2 space-y-1">
-                    <div className="flex items-center gap-2 py-1.5 px-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                      <Check size={12} className="text-emerald-400" />
-                      <span className="text-[10px] font-bold text-emerald-400 uppercase">Signed & Sent</span>
-                    </div>
-                    {txSignatures.map((sig, i) => (
-                      <a key={i} href={`https://solscan.io/tx/${sig}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[10px] text-primary/80 hover:text-primary font-mono">
-                        <ExternalLink size={10} /> {sig.slice(0, 20)}…
-                      </a>
-                    ))}
-                  </div>
-                );
-              }
-
-              return (
-                <div className="mt-2">
-                  {hasTxs && connected ? (
-                    <button
-                      onClick={() => handleSignTransactions(inv.toolCallId, txs, toolName)}
-                      disabled={isSigning}
-                      className="flex items-center gap-2 py-1.5 px-3 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-lg transition-colors disabled:opacity-50"
-                    >
-                      {isSigning ? (
-                        <><Loader2 size={12} className="animate-spin text-primary" /><span className="text-[10px] font-bold text-primary uppercase">Signing...</span></>
-                      ) : (
-                        <><Pen size={12} className="text-primary" /><span className="text-[10px] font-bold text-primary uppercase">Approve & Sign ({txs.length} tx{txs.length > 1 ? "s" : ""})</span></>
-                      )}
-                    </button>
-                  ) : !hasTxs && connected ? (
-                    <button
-                      onClick={() => {
-                        setSigningToolId(inv.toolCallId);
-                        setSigningStatus("signing");
-                        setTimeout(() => {
-                          setSigningStatus("sent");
-                          toast.success(`${meta.label} Queued`, { description: `Action queued for execution engine.` });
-                        }, 800);
-                      }}
-                      disabled={isSigning}
-                      className="flex items-center gap-2 py-1.5 px-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg transition-colors disabled:opacity-50"
-                    >
-                      {isSigning ? (
-                        <><Loader2 size={12} className="animate-spin text-amber-500" /><span className="text-[10px] font-bold text-amber-500 uppercase">Processing...</span></>
-                      ) : (
-                        <><Send size={12} className="text-amber-500" /><span className="text-[10px] font-bold text-amber-500 uppercase">Acknowledge & Queue</span></>
-                      )}
-                    </button>
-                  ) : (
-                    <div className="flex items-center gap-2 py-1.5 px-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                      <Shield size={12} className="text-amber-400" />
-                      <span className="text-[10px] font-bold text-amber-400 uppercase">
-                        Requires Wallet Signature
-                      </span>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-          </div>
-        )}
-      </div>
-    );
-  };
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
     <AnimatePresence mode="wait">
       {!open ? (
-        /* ─── Collapsed Floating Pill ─── */
+        /* ── Collapsed Floating Pill (Requirement 1.5) ── */
         <motion.div
           key="trigger"
           initial={{ y: 20, opacity: 0 }}
@@ -813,13 +464,17 @@ export function CommandBar() {
         >
           <button
             onClick={() => setOpen(true)}
+            aria-label="Open command bar (⌘K)"
             className="flex items-center gap-3 pl-4 pr-3 py-3 rounded-full bg-background/80 backdrop-blur-xl border border-border shadow-2xl hover:border-primary/50 hover:shadow-[0_0_20px_var(--dashboard-accent-muted)] transition-all group"
           >
             <Sparkles size={16} className="text-primary" />
             <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors mr-2">
               Ask Keystone...
               {IntentRegistry.getActive().length > 0 && (
-                <span className="inline-block w-1 h-1 rounded-full bg-primary animate-ping ml-1" title="Agents Active" />
+                <span
+                  className="inline-block w-1 h-1 rounded-full bg-primary animate-ping ml-1"
+                  title="Agents Active"
+                />
               )}
             </span>
             <div className="flex items-center gap-1 opacity-50 text-[10px] font-mono text-foreground/50 border-l border-border pl-3">
@@ -828,14 +483,18 @@ export function CommandBar() {
           </button>
         </motion.div>
       ) : (
-        /* ─── Expanded Modal ─── */
+        /* ── Expanded Modal (Requirement 1.6) ── */
         <motion.div
           key="overlay"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Keystone command bar"
         >
+          {/* Outside click closes (Requirement 1.8) */}
           <div className="absolute inset-0" onClick={handleClose} />
 
           <motion.div
@@ -844,139 +503,124 @@ export function CommandBar() {
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 20 }}
             transition={{ type: "spring", stiffness: 350, damping: 25 }}
-            className="relative w-full max-w-2xl bg-card border border-border rounded-2xl shadow-2xl overflow-hidden"
+            className="relative w-full max-w-[720px] bg-card border border-border rounded-2xl shadow-2xl overflow-hidden"
           >
-            {/* Neon Glow */}
+            {/* Neon glow */}
             <div className="absolute inset-0 z-0 pointer-events-none rounded-2xl ring-1 ring-primary/20" />
             <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-[#25a85c] rounded-2xl blur opacity-20" />
 
-            <div className="relative z-10 flex flex-col max-h-[80vh]">
-              {/* ─── Chat Messages ─── */}
-              {messages.length > 0 && (
+            <div className="relative z-10 flex flex-col max-h-[85vh]">
+              {/* ── Chat thread or empty state ── */}
+              {messages.length === 0 ? (
+                <EmptyState onChipClick={handleChipClick} />
+              ) : (
                 <div
                   ref={chatContainerRef}
-                  className="flex-1 flex flex-col gap-4 p-5 min-h-[200px] max-h-[60vh] overflow-y-auto overflow-x-hidden scrollbar-transparent"
+                  className="flex-1 flex flex-col gap-2 py-4 min-h-[200px] max-h-[calc(85vh-130px)] overflow-y-auto overflow-x-hidden scrollbar-transparent"
                 >
                   {messages.map((m) => (
-                    <div
+                    <ChatMessage
                       key={m.id}
-                      className={`flex flex-col gap-1 ${m.role === "user" ? "items-end" : "items-start"}`}
-                    >
-                      {/* Role Label */}
-                      <div className={`flex items-center gap-1.5 mb-0.5 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
-                        {m.role === "user" ? (
-                          <User size={12} className="text-primary" />
-                        ) : (
-                          <Bot size={12} className="text-emerald-400" />
-                        )}
-                        <span className="text-[10px] text-muted-foreground font-mono uppercase">
-                          {m.role === "user" ? "You" : "Keystone"}
-                        </span>
-                      </div>
-
-                      {/* Message Content */}
-                      {getTextContent(m) && (
-                        <div
-                          className={`px-4 py-2.5 rounded-2xl max-w-[85%] text-sm leading-relaxed ${
-                            m.role === "user"
-                              ? "bg-primary text-primary-foreground rounded-tr-sm"
-                              : "bg-muted/50 border border-white/5 text-foreground rounded-tl-sm"
-                          }`}
-                        >
-                          <div className="prose prose-sm dark:prose-invert prose-p:leading-snug prose-p:mb-1 space-y-1.5 max-w-none">
-                            <ReactMarkdown
-                              components={{
-                                p: ({ children }) => <p>{processChildrenWithTokenLogos(children, TOKEN_LOGOS)}</p>,
-                                li: ({ children }) => <li>{processChildrenWithTokenLogos(children, TOKEN_LOGOS)}</li>,
-                                strong: ({ children }) => <strong>{processChildrenWithTokenLogos(children, TOKEN_LOGOS)}</strong>,
-                                td: ({ children }) => <td>{processChildrenWithTokenLogos(children, TOKEN_LOGOS)}</td>,
-                                th: ({ children }) => <th>{processChildrenWithTokenLogos(children, TOKEN_LOGOS)}</th>,
-                              }}
-                            >
-                              {getTextContent(m)}
-                            </ReactMarkdown>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Tool Invocations */}
-                      {getToolParts(m).map((inv) => renderToolInvocation(inv))}
-                    </div>
+                      message={m}
+                      tokenLogos={TOKEN_LOGOS}
+                      onSign={handleSignTransactions}
+                    />
                   ))}
 
-                  {/* Streaming Indicator */}
-                  {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Bot size={12} className="text-emerald-400" />
-                      <div className="flex items-center gap-1.5 text-xs">
-                        <div className="w-1.5 h-1.5 bg-primary rounded-full animate-ping" />
-                        <span className="font-mono text-[10px] uppercase">Processing...</span>
+                  {/* Streaming indicator (Requirement 3.1) */}
+                  {agentBusy &&
+                    messages[messages.length - 1]?.role !== "assistant" && (
+                      <div className="flex items-center gap-2 px-2 text-muted-foreground">
+                        <div className="flex items-center gap-1.5 text-xs">
+                          <div className="w-1.5 h-1.5 bg-primary rounded-full animate-ping" />
+                          <span className="font-mono text-[10px] uppercase">
+                            Processing…
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
                   <div className="h-2" />
                 </div>
               )}
 
-              {/* ─── Input Bar ─── */}
+              {/* ── Input bar ── */}
               <form
                 onSubmit={handleFormSubmit}
-                className={`flex items-center px-5 py-4 border-t border-border bg-card ${messages.length === 0 ? "border-t-0" : ""}`}
+                className={`flex items-center px-5 py-4 border-t border-border bg-card ${
+                  messages.length === 0 ? "border-t-0" : ""
+                }`}
               >
                 <Sparkles
                   size={18}
-                  className={`text-primary mr-3 shrink-0 ${isStreaming ? "animate-spin" : ""}`}
+                  className={`text-primary mr-3 shrink-0 ${agentBusy ? "animate-spin" : ""}`}
                 />
                 <input
                   ref={inputRef}
-                  autoFocus
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  disabled={isStreaming}
+                  onChange={handleInputChange}
+                  disabled={agentBusy}
                   placeholder={
                     messages.length === 0
-                      ? 'Describe your intent (e.g., "Swap 500 SOL to USDC")...'
-                      : "Follow up or issue a new command..."
+                      ? 'Describe your intent (e.g., "Swap 500 SOL to USDC")…'
+                      : "Follow up or issue a new command…"
                   }
+                  aria-label="Command input"
                   className="flex-1 bg-transparent text-base font-medium text-foreground placeholder:text-muted-foreground/50 outline-none disabled:opacity-50"
                 />
+                {/* Submit button — disabled + pulsing while streaming (Requirement 3.7) */}
                 <button
                   type="submit"
                   disabled={isStreaming || !input.trim()}
-                  className="ml-3 p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  aria-label="Send command"
+                  className="ml-3 p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed relative"
                 >
+                  {isStreaming ? (
+                    <span className="absolute inset-0 rounded-lg bg-primary/20 animate-pulse" />
+                  ) : null}
                   <Send size={16} />
                 </button>
               </form>
 
-              {/* ─── Status Footer ─── */}
+              {/* ── Status footer ── */}
               <div className="px-5 py-2.5 bg-muted/30 border-t border-border flex items-center justify-between text-[10px] text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <div
                     className={`w-1.5 h-1.5 rounded-full ${
-                      isStreaming
+                      agentBusy
                         ? "bg-primary animate-ping"
                         : chatError
-                        ? "bg-red-400"
-                        : "bg-emerald-400 animate-pulse"
+                          ? "bg-red-400"
+                          : "bg-emerald-400 animate-pulse"
                     }`}
                   />
                   <span className="font-mono">
-                    {isStreaming
-                      ? "AGENT WORKING..."
+                    {agentBusy
+                      ? "AGENT WORKING…"
                       : chatError
-                      ? "ERROR"
-                      : messages.length > 0
-                      ? "READY"
-                      : "AI AGENT LISTENING"}
+                        ? "ERROR"
+                        : messages.length > 0
+                          ? "READY"
+                          : "AI AGENT LISTENING"}
                   </span>
-                  {messages.length > 0 && (
-                    <span className="text-foreground/30">
-                      • {messages.filter((m) => m.role === "assistant").length} response{messages.filter((m) => m.role === "assistant").length !== 1 ? "s" : ""}
+
+                  {/* PromptMode badge (Requirement 2.6) */}
+                  {promptMode !== "auto" && (
+                    <span
+                      className={`px-1.5 py-0.5 rounded font-bold uppercase tracking-wide ${
+                        promptMode === "build"
+                          ? "bg-emerald-500/15 text-emerald-400"
+                          : "bg-blue-500/15 text-blue-400"
+                      }`}
+                    >
+                      {promptMode}
                     </span>
                   )}
+
+                  {/* Wallet address (Requirement 13.4) */}
+                  <span className="text-foreground/30 font-mono">{walletDisplay}</span>
                 </div>
+
                 <div className="flex items-center gap-3">
                   {messages.length > 0 && (
                     <button
@@ -987,7 +631,9 @@ export function CommandBar() {
                     </button>
                   )}
                   <span>
-                    <strong className="text-foreground">Esc</strong> to close
+                    <kbd className="font-semibold text-foreground">Enter</kbd> to send
+                    {" · "}
+                    <kbd className="font-semibold text-foreground">Esc</kbd> to close
                   </span>
                 </div>
               </div>

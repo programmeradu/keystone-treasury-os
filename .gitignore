@@ -21,6 +21,11 @@ node_modules
 # production
 /build
 
+# IDE / local tooling
+.kiro/
+.cursor/
+.vscode/
+
 # misc
 .DS_Store
 *.pem
