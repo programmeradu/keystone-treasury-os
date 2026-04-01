@@ -131,6 +131,7 @@ export function CommandBar() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [promptMode, setPromptMode] = useState<PromptMode>("auto");
+  const [submitPulse, setSubmitPulse] = useState(false);
 
   const { setSigningToolId, setSigningStatus, setTxSignatures } =
     useCommandBarSigningStore();
@@ -414,10 +415,11 @@ export function CommandBar() {
   const handleFormSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!input.trim() || isStreaming) return;
+      if (!input.trim() || agentBusy) return;
       const text = input.trim();
       setInput("");
       setPromptMode("auto");
+      setSubmitPulse(true);
       try {
         await sendMessage(
           { text },
@@ -571,11 +573,11 @@ export function CommandBar() {
                 {/* Submit button — disabled + pulsing while streaming (Requirement 3.7) */}
                 <button
                   type="submit"
-                  disabled={isStreaming || !input.trim()}
+                  disabled={agentBusy || !input.trim()}
                   aria-label="Send command"
                   className="ml-3 p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed relative"
                 >
-                  {isStreaming ? (
+                  {agentBusy ? (
                     <span className="absolute inset-0 rounded-lg bg-primary/20 animate-pulse" />
                   ) : null}
                   <Send size={16} />
