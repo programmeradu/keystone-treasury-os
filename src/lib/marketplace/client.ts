@@ -41,7 +41,7 @@ export const PROTOCOL_FEE_BPS = 2000;
 async function anchorDiscriminator(name: string): Promise<Buffer> {
   const encoder = new TextEncoder();
   const data = encoder.encode(`global:${name}`);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data as unknown as ArrayBuffer);
   return Buffer.from(new Uint8Array(hashBuffer).slice(0, 8));
 }
 
