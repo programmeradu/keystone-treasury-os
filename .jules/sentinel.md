@@ -1,0 +1,4 @@
+## 2023-10-27 - [Remove Hardcoded JWT_SECRET Fallbacks]
+**Vulnerability:** The application used a hardcoded fallback string (`'keystone_sovereign_os_2026'`) for `JWT_SECRET` when the environment variable was missing. This allows an attacker who discovers the source code to forge JWT tokens and hijack user sessions or bypass authentication if the production server misconfigures its environment.
+**Learning:** Next.js static generation on CI environments like Netlify occurs without runtime variables. A direct `throw new Error` fails the CI build.
+**Prevention:** Remove the hardcoded secret fallback, but use a safe build-time bypass pattern (`process.env.npm_lifecycle_event === 'build' || process.env.NEXT_PHASE === 'phase-production-build'`) to supply a dummy value only during compilation, enforcing strict absence checks at actual runtime.
