@@ -52,7 +52,10 @@ async function compileLocal(
 
         // Write source files
         for (const [filename, content] of Object.entries(files)) {
-            const filePath = path.join(srcDir, filename);
+            const filePath = path.resolve(srcDir, filename);
+            if (!filePath.startsWith(path.resolve(srcDir) + path.sep)) {
+                throw new Error(`Invalid file path: ${filename}`);
+            }
             fs.mkdirSync(path.dirname(filePath), { recursive: true });
             fs.writeFileSync(filePath, content, "utf-8");
         }
@@ -227,11 +230,32 @@ export async function POST(req: NextRequest) {
         const body: CompileRequest = await req.json();
         const { files, programName = "keystone_app", useCloud = false } = body;
 
+        if (!/^[a-zA-Z0-9_-]+$/.test(programName)) {
+            return NextResponse.json(
+                { error: "Invalid program name" },
+                { status: 400 }
+            );
+        }
+
         if (!files || Object.keys(files).length === 0) {
             return NextResponse.json(
                 { error: "No source files provided" },
                 { status: 400 }
             );
+        }
+
+        for (const filename of Object.keys(files)) {
+            if (
+                filename.includes("..") ||
+                filename.includes("\0") ||
+                path.isAbsolute(filename) ||
+                !/^[a-zA-Z0-9_\-\.\/]+$/.test(filename)
+            ) {
+                return NextResponse.json(
+                    { error: `Invalid filename: ${filename}` },
+                    { status: 400 }
+                );
+            }
         }
 
         // Ensure at least one .rs file
