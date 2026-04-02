@@ -5,6 +5,25 @@ import { Connection, PublicKey } from "@solana/web3.js";
 // Based on node_modules discovery, we use direct names
 const { getTransactionPda, getProposalPda, getVaultPda } = squads;
 
+const RPC_RETRY_BASE_MS = 500;
+const RPC_RETRY_MAX_MS = 4000;
+const PARSED_TX_BREAKER_THRESHOLD = 4;
+const PARSED_TX_BREAKER_OPEN_MS = 30_000;
+
+const parsedTxBreaker = {
+    failures: 0,
+    openUntil: 0,
+};
+
+function sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRateLimitLike(error: unknown): boolean {
+    const msg = error instanceof Error ? error.message : String(error);
+    return /429|too many requests|rate.?limit|rate_limit|exceeded/i.test(msg);
+}
+
 /**
  * Keystone Squads Client
  * A wrapper around @sqds/multisig v2 SDK to interact with Squads Protocol.
@@ -17,6 +36,23 @@ export class SquadsClient {
     constructor(connection: Connection, wallet: any) {
         this.connection = connection;
         this.wallet = wallet;
+    }
+
+    private async withRpcRetry<T>(label: string, fn: () => Promise<T>, attempts: number = 3): Promise<T> {
+        let delay = RPC_RETRY_BASE_MS;
+        let lastErr: unknown = null;
+        for (let i = 0; i < attempts; i++) {
+            try {
+                return await fn();
+            } catch (error) {
+                lastErr = error;
+                if (!isRateLimitLike(error) || i === attempts - 1) throw error;
+                console.warn(`[Squads] ${label} rate-limited. retry ${i + 1}/${attempts} after ${delay}ms`);
+                await sleep(Math.min(delay, RPC_RETRY_MAX_MS));
+                delay *= 2;
+            }
+        }
+        throw lastErr;
     }
 
     /**
@@ -151,6 +187,23 @@ export class SquadsClient {
 
     async getTokenMetadata(mints: string[]): Promise<Record<string, { price: number; symbol?: string; name?: string; logo?: string; change24h?: number }>> {
         if (mints.length === 0) return {};
+
+        try {
+            const res = await fetch("/api/token-metadata", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mints }),
+                signal: AbortSignal.timeout(12000),
+            });
+            if (res.ok) {
+                const json = await res.json();
+                if (json?.metadata && typeof json.metadata === "object") {
+                    return json.metadata as Record<string, { price: number; symbol?: string; name?: string; logo?: string; change24h?: number }>;
+                }
+            }
+        } catch (proxyError) {
+            console.warn("[TokenMeta] /api/token-metadata failed, falling back to direct providers:", proxyError);
+        }
 
         const metadata: Record<string, { price: number; symbol?: string; name?: string; logo?: string; change24h?: number }> = {};
         const mintSet = new Set(mints);
@@ -423,19 +476,41 @@ export class SquadsClient {
                 const slice = transactions.slice(batch, batch + BATCH);
 
                 let parsedTxsResponse: any[] = [];
+                const breakerOpen = Date.now() < parsedTxBreaker.openUntil;
+                if (breakerOpen) {
+                    console.warn("[Squads] Parsed transaction breaker open, skipping deep parsing for this cycle.");
+                    continue;
+                }
                 try {
                     const signatures = slice.map(t => t.signature);
-                    parsedTxsResponse = await this.connection.getParsedTransactions(signatures, { maxSupportedTransactionVersion: 0 });
+                    parsedTxsResponse = await this.withRpcRetry(
+                        "getParsedTransactions",
+                        () => this.connection.getParsedTransactions(signatures, { maxSupportedTransactionVersion: 0 }),
+                        3,
+                    );
+                    parsedTxBreaker.failures = 0;
                 } catch (error) {
+                    if (isRateLimitLike(error)) {
+                        parsedTxBreaker.failures += 1;
+                        if (parsedTxBreaker.failures >= PARSED_TX_BREAKER_THRESHOLD) {
+                            parsedTxBreaker.openUntil = Date.now() + PARSED_TX_BREAKER_OPEN_MS;
+                            parsedTxBreaker.failures = 0;
+                            console.warn("[Squads] Parsed transaction breaker opened for 30s due to repeated 429s.");
+                        }
+                    }
                     console.error("[Squads] Failed to fetch parsed transactions batch, falling back to per-signature fetch:", error);
 
                     const signatures = slice.map(t => t.signature);
                     parsedTxsResponse = await Promise.all(
                         signatures.map(async (signature) => {
                             try {
-                                return await this.connection.getParsedTransaction(signature, {
-                                    maxSupportedTransactionVersion: 0,
-                                });
+                                return await this.withRpcRetry(
+                                    "getParsedTransaction",
+                                    () => this.connection.getParsedTransaction(signature, {
+                                        maxSupportedTransactionVersion: 0,
+                                    }),
+                                    2,
+                                );
                             } catch (singleError) {
                                 console.error(
                                     "[Squads] Failed to fetch parsed transaction for signature:",

@@ -249,19 +249,27 @@ export function CommandBar() {
         if (!output) continue;
 
         const pushIfAllowed = (path: string) => {
-          if (!isAllowedCommandBarRoute(path)) {
+          const raw = path.trim();
+          if (!isAllowedCommandBarRoute(raw)) {
             console.warn("[CommandBar] Blocked navigation to disallowed path:", path);
             return;
           }
           setOpen(false);
-          router.push(normalizeNavPath(path));
+          // Preserve ?appId= and other query params (normalizeNavPath strips them)
+          router.push(raw);
         };
 
-        if (typeof output.navigateTo === "string" && output.navigateTo.trim()) {
+        if (output.success !== false && typeof output.navigateTo === "string" && output.navigateTo.trim()) {
           pushIfAllowed(output.navigateTo);
         }
 
-        if (output.operation === "navigate" && typeof output.path === "string" && output.path.trim()) {
+        if (
+          output.operation === "navigate" &&
+          output.success !== false &&
+          output.validated === true &&
+          typeof output.path === "string" &&
+          output.path.trim()
+        ) {
           pushIfAllowed(output.path);
         }
 

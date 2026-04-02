@@ -11,6 +11,29 @@ import ReactMarkdown from "react-markdown";
 import type { UIMessage } from "ai";
 import { ToolCard } from "@/components/commandbar/ToolCard";
 
+class MarkdownErrorBoundary extends React.Component<
+  { fallback: React.ReactNode; children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { fallback: React.ReactNode; children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error("[CommandBar] Markdown render failed:", error);
+  }
+
+  render() {
+    if (this.state.hasError) return this.props.fallback;
+    return this.props.children;
+  }
+}
+
 // ─── Token Logo Map (13 tokens) ──────────────────────────────────────────────
 
 export const TOKEN_LOGOS: Record<string, string> = {
@@ -184,43 +207,51 @@ export function ChatMessage({ message, tokenLogos, onSign }: ChatMessageProps) {
       {/* Text content with markdown + token logo injection */}
       {textContent && (
         <div className="max-w-[90%] text-sm text-zinc-200 leading-relaxed prose prose-invert prose-sm max-w-none">
-          <ReactMarkdown
-            components={{
-              p: ({ children }: { children?: React.ReactNode }) => (
-                <p className="mb-1 last:mb-0">
-                  {processChildren(children, tokenLogos)}
-                </p>
-              ),
-              strong: ({ children }: { children?: React.ReactNode }) => (
-                <strong className="font-semibold text-zinc-100">
-                  {processChildren(children, tokenLogos)}
-                </strong>
-              ),
-              em: ({ children }: { children?: React.ReactNode }) => (
-                <em>{processChildren(children, tokenLogos)}</em>
-              ),
-              li: ({ children }: { children?: React.ReactNode }) => (
-                <li>{processChildren(children, tokenLogos)}</li>
-              ),
-              code: ({ children, className }: { children?: React.ReactNode; className?: string }) => {
-                const isBlock = className?.includes("language-");
-                if (isBlock) {
+          <MarkdownErrorBoundary
+            fallback={
+              <p className="whitespace-pre-wrap break-words text-zinc-200">
+                {textContent}
+              </p>
+            }
+          >
+            <ReactMarkdown
+              components={{
+                p: ({ children }: { children?: React.ReactNode }) => (
+                  <p className="mb-1 last:mb-0">
+                    {processChildren(children, tokenLogos)}
+                  </p>
+                ),
+                strong: ({ children }: { children?: React.ReactNode }) => (
+                  <strong className="font-semibold text-zinc-100">
+                    {processChildren(children, tokenLogos)}
+                  </strong>
+                ),
+                em: ({ children }: { children?: React.ReactNode }) => (
+                  <em>{processChildren(children, tokenLogos)}</em>
+                ),
+                li: ({ children }: { children?: React.ReactNode }) => (
+                  <li>{processChildren(children, tokenLogos)}</li>
+                ),
+                code: ({ children, className }: { children?: React.ReactNode; className?: string }) => {
+                  const isBlock = className?.includes("language-");
+                  if (isBlock) {
+                    return (
+                      <code className="block rounded bg-zinc-800 px-2 py-1 text-xs font-mono text-zinc-300 overflow-x-auto">
+                        {children}
+                      </code>
+                    );
+                  }
                   return (
-                    <code className="block rounded bg-zinc-800 px-2 py-1 text-xs font-mono text-zinc-300 overflow-x-auto">
+                    <code className="rounded bg-zinc-800 px-1 py-0.5 text-xs font-mono text-zinc-300">
                       {children}
                     </code>
                   );
-                }
-                return (
-                  <code className="rounded bg-zinc-800 px-1 py-0.5 text-xs font-mono text-zinc-300">
-                    {children}
-                  </code>
-                );
-              },
-            }}
-          >
-            {textContent}
-          </ReactMarkdown>
+                },
+              }}
+            >
+              {textContent}
+            </ReactMarkdown>
+          </MarkdownErrorBoundary>
         </div>
       )}
 

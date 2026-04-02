@@ -5,6 +5,7 @@
 // Covers Requirements 3.3, 3.4, 3.5, 18.6
 
 import React from "react";
+import Link from "next/link";
 import { TOOL_META } from "@/lib/commandbar/tool-meta";
 import { useCommandBarSigningStore } from "@/lib/stores/commandbar-signing-store";
 import { SigningCard } from "@/components/commandbar/SigningCard";
@@ -70,6 +71,19 @@ export function ToolCard({
 
   const operation = (output?.operation ?? toolName) as string;
 
+  const studioAppId =
+    isDone &&
+    success &&
+    (toolName === "studio_init_miniapp" || operation === "studio_init_miniapp") &&
+    typeof output?.appId === "string" &&
+    output.appId.length > 0
+      ? output.appId
+      : null;
+  const sourceTool =
+    isDone && typeof output?.sourceTool === "string" ? output.sourceTool : null;
+  const sourceField =
+    isDone && typeof output?.sourceField === "string" ? output.sourceField : null;
+
   return (
     <div className="my-1.5 rounded-xl border border-zinc-700/60 bg-zinc-900/70 px-3 py-2.5 text-sm">
       {/* Header */}
@@ -108,6 +122,26 @@ export function ToolCard({
         <p className="mt-1.5 text-xs text-red-400 leading-relaxed">
           {errorMessage}
         </p>
+      )}
+
+      {isDone && success === true && (sourceTool || sourceField) && (
+        <p className="mt-1 text-[10px] text-zinc-500">
+          Evidence: {sourceTool ? <span className="font-mono">{sourceTool}</span> : "tool"}{sourceField ? <> · field <span className="font-mono">{sourceField}</span></> : null}
+        </p>
+      )}
+
+      {studioAppId && (
+        <div className="mt-2">
+          <Link
+            href={`/app/studio?appId=${encodeURIComponent(studioAppId)}`}
+            className="inline-flex items-center justify-center rounded-lg bg-emerald-600/90 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors"
+          >
+            Open in Studio
+          </Link>
+          <p className="mt-1 text-[10px] text-zinc-500">
+            Loads this project via <span className="font-mono">appId</span>
+          </p>
+        </div>
       )}
 
       {/* Signing card */}

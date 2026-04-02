@@ -7,6 +7,8 @@ import { knowledgeBase } from "@/lib/knowledge";
 import { knowledgeMemory } from "@/lib/knowledge-memory";
 import { ExecutionCoordinator } from "@/lib/agents/coordinator";
 import { getJupiterQuote } from "@/lib/jupiter-executor";
+import { estimateCompatibilityBudget } from "@/lib/llm/model-compatibility";
+import { evaluateSandboxPlan } from "@/lib/dynamic-tools/sandbox-runner";
 
 const groq = createGroq({
   apiKey: process.env.GROQ_API_KEY,
@@ -102,12 +104,128 @@ function extractLatestUserText(messages: any[] | undefined, prompt?: string): st
 }
 
 type PromptMode = "auto" | "build" | "execute";
+type EvidenceClass = "conversational" | "tool_required" | "db_required" | "navigation_required";
+type GroundingGateResult = { allowed: boolean; blockedReason?: string };
 
 function parsePromptMode(userText: string): PromptMode {
   const t = userText.trim().toLowerCase();
   if (/^(mode\s*:\s*build|\/build\b|#build\b|\[build\]|build mode\b)/.test(t)) return "build";
   if (/^(mode\s*:\s*execute|\/execute\b|#execute\b|\[execute\]|execute mode\b)/.test(t)) return "execute";
   return "auto";
+}
+
+const NAVIGATION_ROUTE_ALLOWLIST = new Set([
+  "/app",
+  "/app/treasury",
+  "/app/analytics",
+  "/app/studio",
+  "/app/marketplace",
+  "/app/library",
+  "/app/team",
+  "/app/settings",
+  "/app/atlas",
+]);
+
+export function classifyEvidenceNeed(userText: string): EvidenceClass {
+  const t = userText.trim().toLowerCase();
+  if (!t || isSimpleConversation(t)) return "conversational";
+  if (/\b(navigate|open|go to|redirect)\b/.test(t)) return "navigation_required";
+  if (/\b(database|db|saved|stored|link|url|appid|project id)\b/.test(t)) return "db_required";
+  return "tool_required";
+}
+
+export function validateNavigationPath(path: string):
+  | { success: true; pathname: string; query: Record<string, string> }
+  | { success: false; code: "INVALID_ROUTE"; reason: string } {
+  if (!path || typeof path !== "string") {
+    return { success: false, code: "INVALID_ROUTE", reason: "Path must be a non-empty string." };
+  }
+  const raw = path.trim();
+  if (!raw.startsWith("/")) {
+    return { success: false, code: "INVALID_ROUTE", reason: "Path must be a relative path." };
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(raw, "https://keystone.local");
+  } catch {
+    return { success: false, code: "INVALID_ROUTE", reason: "Path is not a valid route." };
+  }
+  const pathname =
+    parsed.pathname.length > 1 && parsed.pathname.endsWith("/")
+      ? parsed.pathname.slice(0, -1)
+      : parsed.pathname;
+  if (!NAVIGATION_ROUTE_ALLOWLIST.has(pathname)) {
+    return { success: false, code: "INVALID_ROUTE", reason: `Route not allowed: ${pathname}` };
+  }
+  const query: Record<string, string> = {};
+  parsed.searchParams.forEach((value, key) => {
+    query[key] = value;
+  });
+  if (pathname !== "/app/studio" && Object.keys(query).length > 0) {
+    return { success: false, code: "INVALID_ROUTE", reason: "Query params only allowed on /app/studio." };
+  }
+  if (pathname === "/app/studio") {
+    const keys = Object.keys(query);
+    if (keys.some((k) => k !== "appId")) {
+      return { success: false, code: "INVALID_ROUTE", reason: "Only appId query is allowed on /app/studio." };
+    }
+    if ("appId" in query && !query.appId.trim()) {
+      return { success: false, code: "INVALID_ROUTE", reason: "appId cannot be empty." };
+    }
+  }
+  return { success: true, pathname, query };
+}
+
+function estimateMessageChars(messages: any[]): number {
+  try {
+    return JSON.stringify(messages).length;
+  } catch {
+    return 0;
+  }
+}
+
+function buildBudgetedMessages(formattedMessages: any[]): { messages: any[]; reduced: boolean } {
+  const MAX_CHARS = 32000;
+  return buildBudgetedMessagesWithCap(formattedMessages, MAX_CHARS);
+}
+
+export function buildBudgetedMessagesWithCap(formattedMessages: any[], maxChars: number): { messages: any[]; reduced: boolean } {
+  if (!Array.isArray(formattedMessages)) return { messages: [], reduced: true };
+  if (estimateMessageChars(formattedMessages) <= maxChars) {
+    return { messages: formattedMessages, reduced: false };
+  }
+  const summary = {
+    role: "system",
+    content:
+      "Conversation history condensed to fit model context limits. Prioritize latest user intent and recent verified tool outputs.",
+  };
+  const reduced = [summary, ...formattedMessages.slice(-10)];
+  return { messages: reduced, reduced: true };
+}
+
+function normalizeStudioProject(project: any) {
+  if (!project?.id) return null;
+  return {
+    appId: project.id,
+    name: project.name || "Untitled App",
+    studioPath: `/app/studio?appId=${encodeURIComponent(project.id)}`,
+    publicUrl: `/app/run/${encodeURIComponent(project.id)}`,
+    ownerWallet: project.creatorWallet || null,
+    updatedAt: project.updatedAt || null,
+  };
+}
+
+export function evaluateGroundingGate(
+  evidenceClass: EvidenceClass,
+  observed: { lookupSuccess: boolean; navigationSuccess: boolean },
+): GroundingGateResult {
+  if (evidenceClass === "db_required" && !observed.lookupSuccess) {
+    return { allowed: false, blockedReason: "DB-backed lookup evidence missing." };
+  }
+  if (evidenceClass === "navigation_required" && !observed.navigationSuccess) {
+    return { allowed: false, blockedReason: "Validated navigation evidence missing." };
+  }
+  return { allowed: true };
 }
 
 function isSimpleConversation(text: string): boolean {
@@ -121,6 +239,14 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { messages, prompt, walletAddress, walletState, vaultState } = body;
+    const strictGroundingGlobal = process.env.STRICT_GROUNDING === "1" || process.env.STRICT_GROUNDING === "true";
+    const strictGroundingWallets = (process.env.STRICT_GROUNDING_WALLETS || "")
+      .split(",")
+      .map((w) => w.trim())
+      .filter(Boolean);
+    const strictGrounding =
+      strictGroundingGlobal ||
+      (!!walletAddress && strictGroundingWallets.includes(walletAddress));
 
     const formattedMessages = await convertToModelMessages(messages || []);
 
@@ -155,10 +281,11 @@ CRITICAL RULES:
 25. For split intents like "bridge half" + "deposit the rest" after a swap: ALWAYS compute split amounts from the realized swap OUTPUT amount/token, never from the original input amount.
 26. If a target protocol has no eligible live vault, STOP and ask the user to choose a fallback protocol/token.
 27. If the user asks to build/create/develop software (bot/app/script/automation), do NOT execute live trading or treasury transaction tools, EXCEPT for deploy_sniper_bot if they explicitly ask to "run a sniper bot".
-28. For software-build intents... use studio_init_miniapp. DO NOT call navigate with path "/app/studio" afterwards; the UI presents a launch card. IMPORTANT: If the user provides specific logic or UI requirements, you MUST write the full React TSX code and pass it in the customAppTsxCode parameter of studio_init_miniapp! When writing customAppTsxCode, NEVER use mock/dummy data. ALWAYS use live state via 'const { tokens } = useVault();' from '@keystone-os/sdk'.
+28. For software-build intents... use studio_init_miniapp. The tool returns appId when the project is saved; the CommandBar shows an "Open in Studio" button. DO NOT call navigate to bare "/app/studio" — that loses the project context. If the user asks to open Studio or find the launch button after init, call navigate with path "/app/studio?appId=" + the appId from the studio_init_miniapp result (same session). IMPORTANT: If the user provides specific logic or UI requirements, you MUST write the full React TSX code and pass it in the customAppTsxCode parameter of studio_init_miniapp! When writing customAppTsxCode, NEVER use mock/dummy data. ALWAYS use live state via 'const { tokens } = useVault();' from '@keystone-os/sdk'.
 29. DO NOT invent navigation paths or use the navigate tool to prompt for wallet connection. The UI handles wallet connection automatically.
 30. Only use execution tools when the user explicitly requests financial execution, not implementation.
 31. Prompt mode support: mode:build (or /build) forces Studio workflow; mode:execute (or /execute) allows live execution tools; no prefix means auto-infer.
+32. Never make database/link/project claims without lookup tool evidence. For "open app", "paste app link", "show project url", call a studio lookup tool first, then navigate using verified appId.
 
 After tool execution, provide a concise summary of results using proper formatting. Make sure you fully interpret and fulfill all Keystone commands natively.
 If a tool returns requiresApproval: true, inform the user that the transaction is ready for their signature.
@@ -174,6 +301,9 @@ Wallet: ${walletAddress || "Not connected"}
 Vault State: ${JSON.stringify(vaultState || {})}
 Wallet State: ${JSON.stringify(walletState || {})}
 `;
+    const effectiveSystemPrompt = strictGrounding
+      ? `${systemPrompt}\n\nSTRICT GROUNDING MODE: For DB/link/navigation claims, you MUST call verification tools first. If verification fails, explicitly say you could not verify and ask for clarifying input.`
+      : systemPrompt;
 
     const rpcEndpoint =
       process.env.HELIUS_API_KEY
@@ -184,6 +314,11 @@ Wallet State: ${JSON.stringify(walletState || {})}
     const lowerUserRequest = userRequestText.toLowerCase();
     const promptMode = parsePromptMode(userRequestText);
     const simpleConversation = isSimpleConversation(userRequestText);
+    const evidenceClass = classifyEvidenceNeed(userRequestText);
+    const observedGrounding = {
+      lookupSuccess: false,
+      navigationSuccess: false,
+    };
     const hasHalfDirective = /\bhalf\b/.test(lowerUserRequest);
     const hasRestDirective = /\b(rest|remaining|remainder)\b/.test(lowerUserRequest);
     const hasSplitBridgeDepositFlow =
@@ -1830,15 +1965,269 @@ Wallet State: ${JSON.stringify(walletState || {})}
       },
 
       // ━━━━ UTILITY TOOLS ━━━━
-      navigate: {
-        description: "Navigate to a page within Keystone OS. Only use valid routes (e.g., /app/studio). Do NOT invent routes like /app/wallet.",
+      get_project_by_id: {
+        description: "Lookup a Studio project by appId from DB; returns canonical Studio/public links.",
         inputSchema: z.object({
-          path: z.string().describe("Path to navigate to"),
+          appId: z.string().describe("Studio app/project id, e.g. app_abc123"),
+        }),
+        execute: async ({ appId }: { appId: string }) => {
+          try {
+            const { getProject } = await import("@/actions/studio-actions");
+            const project = await getProject(appId);
+            const normalized = normalizeStudioProject(project);
+            if (!normalized) {
+              return { success: false, operation: "get_project_by_id", appId, message: `No project found for ${appId}.` };
+            }
+            observedGrounding.lookupSuccess = true;
+            return { success: true, operation: "get_project_by_id", ...normalized, message: `Found project ${normalized.name}.` };
+          } catch (error) {
+            return { success: false, operation: "get_project_by_id", appId, message: "Lookup failed." };
+          }
+        },
+      },
+      get_project_by_name: {
+        description: "Lookup the caller's recent Studio projects by name and return verified links.",
+        inputSchema: z.object({
+          name: z.string().describe("Project name or fragment"),
+          ownerWallet: z.string().optional().describe("Wallet address; defaults to current wallet"),
+        }),
+        execute: async ({ name, ownerWallet }: { name: string; ownerWallet?: string }) => {
+          const lookupWallet = ownerWallet || walletAddress;
+          if (!lookupWallet) {
+            return { success: false, operation: "get_project_by_name", message: "Wallet required to lookup by name." };
+          }
+          try {
+            const { getProjects } = await import("@/actions/studio-actions");
+            const projects = await getProjects(lookupWallet);
+            const q = name.trim().toLowerCase();
+            const matches = projects
+              .filter((p: any) => (p?.name || "").toLowerCase().includes(q))
+              .slice(0, 5)
+              .map((p: any) => normalizeStudioProject(p))
+              .filter(Boolean);
+            if (matches.length === 0) {
+              return { success: false, operation: "get_project_by_name", message: `No projects matching "${name}".` };
+            }
+            observedGrounding.lookupSuccess = true;
+            return { success: true, operation: "get_project_by_name", results: matches, message: `Found ${matches.length} matching project(s).` };
+          } catch {
+            return { success: false, operation: "get_project_by_name", message: "Lookup failed." };
+          }
+        },
+      },
+      list_recent_projects: {
+        description: "List the wallet owner's most recent Studio projects with verified links.",
+        inputSchema: z.object({
+          ownerWallet: z.string().optional().describe("Wallet address; defaults to current wallet"),
+          limit: z.number().int().min(1).max(20).optional().default(5),
+        }),
+        execute: async ({ ownerWallet, limit }: { ownerWallet?: string; limit: number }) => {
+          const lookupWallet = ownerWallet || walletAddress;
+          if (!lookupWallet) return { success: false, operation: "list_recent_projects", message: "Wallet required." };
+          try {
+            const { getProjects } = await import("@/actions/studio-actions");
+            const projects = await getProjects(lookupWallet);
+            const recent = projects.slice(0, limit).map((p: any) => normalizeStudioProject(p)).filter(Boolean);
+            observedGrounding.lookupSuccess = recent.length > 0;
+            return { success: true, operation: "list_recent_projects", results: recent, message: `Returned ${recent.length} project(s).` };
+          } catch {
+            return { success: false, operation: "list_recent_projects", message: "Failed to list projects." };
+          }
+        },
+      },
+      get_studio_project_link: {
+        description: "Resolve a canonical Studio deep link from appId.",
+        inputSchema: z.object({
+          appId: z.string().describe("Project appId"),
+        }),
+        execute: async ({ appId }: { appId: string }) => {
+          try {
+            const { getProject } = await import("@/actions/studio-actions");
+            const project = await getProject(appId);
+            const normalized = normalizeStudioProject(project);
+            if (!normalized) return { success: false, operation: "get_studio_project_link", appId, message: "Project not found." };
+            observedGrounding.lookupSuccess = true;
+            return { success: true, operation: "get_studio_project_link", ...normalized, message: `Resolved verified link for ${normalized.name}.` };
+          } catch {
+            return { success: false, operation: "get_studio_project_link", appId, message: "Link resolution failed." };
+          }
+        },
+      },
+      mcp_verify: {
+        description: "Verify external payloads through allowlisted endpoints and return normalized evidence.",
+        inputSchema: z.object({
+          endpoint: z.string().describe("Allowlisted HTTPS URL to verify against"),
+          payload: z.record(z.any()).optional().describe("Optional JSON payload"),
+        }),
+        execute: async ({ endpoint, payload }: { endpoint: string; payload?: Record<string, unknown> }) => {
+          let url: URL;
+          try {
+            url = new URL(endpoint);
+          } catch {
+            return { success: false, operation: "mcp_verify", message: "Invalid endpoint URL." };
+          }
+          const allowlist = new Set(["api.github.com", "api.jup.ag", "lite-api.jup.ag", "api.dexscreener.com"]);
+          if (!allowlist.has(url.hostname)) {
+            return { success: false, operation: "mcp_verify", message: `Endpoint not allowlisted: ${url.hostname}` };
+          }
+          try {
+            const res = await fetch(endpoint, {
+              method: payload ? "POST" : "GET",
+              headers: { "Content-Type": "application/json" },
+              body: payload ? JSON.stringify(payload).slice(0, 16_000) : undefined,
+              signal: AbortSignal.timeout(8000),
+            });
+            const text = await res.text();
+            return {
+              success: res.ok,
+              operation: "mcp_verify",
+              status: res.status,
+              endpoint,
+              evidence: text.slice(0, 4000),
+              message: res.ok ? "Verification complete." : `Verification failed (${res.status}).`,
+            };
+          } catch (error) {
+            return { success: false, operation: "mcp_verify", endpoint, message: "Verification request failed." };
+          }
+        },
+      },
+      propose_dynamic_tool: {
+        description: "Create a non-executable dynamic tool draft from a user goal.",
+        inputSchema: z.object({
+          name: z.string().describe("Draft tool name"),
+          objective: z.string().describe("What the draft tool should achieve"),
+          requiredTools: z.array(z.string()).optional().default([]).describe("Existing tools it would compose"),
+        }),
+        execute: async ({ name, objective, requiredTools }: { name: string; objective: string; requiredTools: string[] }) => {
+          const draftId = `draft_${Math.random().toString(36).slice(2, 10)}`;
+          return {
+            success: true,
+            operation: "propose_dynamic_tool",
+            draft: { draftId, name, objective, requiredTools, executable: false, status: "draft" },
+            message: `Draft ${name} created (non-executable).`,
+          };
+        },
+      },
+      run_composed_tool_plan: {
+        description: "Run a composed plan using existing allowlisted Keystone tools only.",
+        inputSchema: z.object({
+          steps: z.array(z.object({
+            tool: z.string(),
+            input: z.record(z.any()).optional().default({}),
+          })).describe("Ordered plan steps; no arbitrary code"),
+        }),
+        execute: async ({ steps }: { steps: Array<{ tool: string; input?: Record<string, unknown> }> }) => {
+          const allowed = new Set([
+            "get_project_by_id",
+            "get_project_by_name",
+            "list_recent_projects",
+            "get_studio_project_link",
+            "navigate",
+          ]);
+          const invalid = steps.filter((s) => !allowed.has(s.tool));
+          if (invalid.length > 0) {
+            return {
+              success: false,
+              operation: "run_composed_tool_plan",
+              message: `Plan blocked: tool(s) not allowed (${invalid.map((x) => x.tool).join(", ")}).`,
+            };
+          }
+          return {
+            success: true,
+            operation: "run_composed_tool_plan",
+            executed: steps.map((s, i) => ({ step: i + 1, tool: s.tool, status: "accepted_for_execution" })),
+            message: "Composed plan validated. Execute steps explicitly in follow-up calls.",
+          };
+        },
+      },
+      sandbox_execute_dynamic_tool: {
+        description: "Phase-2 sandbox contract for approved dynamic-tool execution plans (no arbitrary code).",
+        inputSchema: z.object({
+          draftId: z.string().describe("Dynamic tool draft id"),
+          name: z.string().describe("Draft name"),
+          objective: z.string().describe("Draft objective"),
+          approvalToken: z.string().optional().describe("Server approval token"),
+          steps: z.array(z.object({
+            tool: z.string(),
+            input: z.record(z.any()).optional().default({}),
+          })).describe("Composed plan steps"),
+        }),
+        execute: async ({
+          draftId,
+          name,
+          objective,
+          approvalToken,
+          steps,
+        }: {
+          draftId: string;
+          name: string;
+          objective: string;
+          approvalToken?: string;
+          steps: Array<{ tool: string; input?: Record<string, unknown> }>;
+        }) => {
+          const sandbox = evaluateSandboxPlan({
+            draftId,
+            name,
+            objective,
+            approvalToken,
+            steps,
+          });
+          if (!sandbox.accepted) {
+            return {
+              success: false,
+              operation: "sandbox_execute_dynamic_tool",
+              draftId,
+              approved: sandbox.approved,
+              riskLevel: sandbox.riskLevel,
+              policy: sandbox.policy,
+              message: `Sandbox blocked execution: ${sandbox.blockedReason}`,
+            };
+          }
+          return {
+            success: true,
+            operation: "sandbox_execute_dynamic_tool",
+            draftId,
+            approved: sandbox.approved,
+            riskLevel: sandbox.riskLevel,
+            policy: sandbox.policy,
+            executionPlan: sandbox.executionPlan,
+            message: "Sandbox execution plan accepted. Execute via explicit composed tool calls.",
+          };
+        },
+      },
+      navigate: {
+        description:
+          "Navigate to a page within Keystone OS. Use /app/studio?appId=<id> when sending the user to a project created by studio_init_miniapp (use the appId from that tool result). Bare /app/studio does not open a specific project. Do NOT invent routes like /app/wallet.",
+        inputSchema: z.object({
+          path: z.string().describe(
+            "Path including optional query, e.g. /app/treasury or /app/studio?appId=app_abc123",
+          ),
           reason: z.string().optional().describe("Why"),
         }),
         execute: async ({ path, reason }: any) => {
           console.log(`[Tool: navigate] → ${path}`);
-          return { success: true, operation: "navigate", path, reason, message: `Navigating to ${path}.` };
+          const validated = validateNavigationPath(path);
+          if (!validated.success) {
+            return {
+              success: false,
+              operation: "navigate",
+              status: validated.code,
+              path,
+              reason,
+              message: `Navigation blocked: ${validated.reason}`,
+            };
+          }
+          observedGrounding.navigationSuccess = true;
+          return {
+            success: true,
+            operation: "navigate",
+            path,
+            pathname: validated.pathname,
+            query: validated.query,
+            reason,
+            validated: true,
+            message: `Navigating to ${path}.`,
+          };
         },
       },
 
@@ -1925,21 +2314,69 @@ Wallet State: ${JSON.stringify(walletState || {})}
       },
     };
 
+    const budgeted = buildBudgetedMessages(formattedMessages);
+    const strictToolSubset =
+      strictGrounding && evidenceClass === "db_required"
+        ? {
+            get_project_by_id: keystoneTools.get_project_by_id,
+            get_project_by_name: keystoneTools.get_project_by_name,
+            list_recent_projects: keystoneTools.list_recent_projects,
+            get_studio_project_link: keystoneTools.get_studio_project_link,
+            navigate: keystoneTools.navigate,
+            mcp_verify: keystoneTools.mcp_verify,
+          }
+        : strictGrounding && evidenceClass === "navigation_required"
+          ? {
+              get_project_by_id: keystoneTools.get_project_by_id,
+              get_project_by_name: keystoneTools.get_project_by_name,
+              list_recent_projects: keystoneTools.list_recent_projects,
+              get_studio_project_link: keystoneTools.get_studio_project_link,
+              navigate: keystoneTools.navigate,
+            }
+          : keystoneTools;
+    if (budgeted.reduced) {
+      console.warn(
+        `[Command API] Prompt budget reduction applied (evidenceClass=${evidenceClass}, chars=${estimateMessageChars(formattedMessages)}).`,
+      );
+    }
+
     const streamOptions = {
-      system: systemPrompt,
-      messages: formattedMessages,
+      system: effectiveSystemPrompt,
+      messages: budgeted.messages,
       stopWhen: stepCountIs(10),
-      ...(simpleConversation ? {} : { tools: keystoneTools }),
+      ...(simpleConversation ? {} : { tools: strictToolSubset }),
+      ...(
+        strictGrounding &&
+        !simpleConversation &&
+        (evidenceClass === "db_required" || evidenceClass === "navigation_required")
+          ? { toolChoice: "required" as const }
+          : {}
+      ),
+      onFinish: async () => {
+        const gate = evaluateGroundingGate(evidenceClass, observedGrounding);
+        console.log(
+          `[Command API] grounding decision strict=${strictGrounding} class=${evidenceClass} allowed=${gate.allowed} reason=${gate.blockedReason || "none"} lookup=${observedGrounding.lookupSuccess} nav=${observedGrounding.navigationSuccess}`,
+        );
+      },
     };
 
     // Model chain: Groq first, then Cloudflare Workers AI fallbacks (after 1–2 tries we fall back)
-    const modelChain: { name: string; model: Parameters<typeof streamText>[0]["model"] }[] = [];
+    const modelChain: { name: string; model: Parameters<typeof streamText>[0]["model"]; maxChars: number }[] = [];
     if (process.env.GROQ_API_KEY) {
-      modelChain.push({ name: "groq/llama-3.3-70b-versatile", model: groq("llama-3.3-70b-versatile") });
+      modelChain.push({
+        name: "groq/llama-3.3-70b-versatile",
+        model: groq("llama-3.3-70b-versatile"),
+        maxChars: estimateCompatibilityBudget("groq/llama-3.3-70b-versatile"),
+      });
     }
     if (cloudflareProvider) {
       for (const modelId of CLOUDFLARE_FALLBACK_MODELS) {
-        modelChain.push({ name: `cloudflare/${modelId}`, model: cloudflareProvider.chatModel(modelId) });
+        const modelName = `cloudflare/${modelId}`;
+        modelChain.push({
+          name: modelName,
+          model: cloudflareProvider.chatModel(modelId),
+          maxChars: estimateCompatibilityBudget(modelName),
+        });
       }
     }
 
@@ -1975,9 +2412,14 @@ Wallet State: ${JSON.stringify(walletState || {})}
       return /tool call validation failed|was not in request\.tools|invalid_request_error/i.test(msg);
     }
 
+    function detectPromptLengthError(err: unknown): boolean {
+      const msg = err instanceof Error ? err.message : String(err);
+      return /reduce the length of the messages|context length|prompt is too long|maximum context|token limit/i.test(msg);
+    }
+
     let lastError: unknown = null;
     for (let i = 0; i < modelChain.length; i++) {
-      const { name, model } = modelChain[i];
+      const { name, model, maxChars } = modelChain[i];
       // Skip providers that are in rate-limit cooldown
       if (isRateLimited(name)) {
         console.log(`[Command API] Skipping ${name} (rate-limited, cooldown active)`);
@@ -1985,7 +2427,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
       }
       try {
         console.log(`[Command API] Trying model: ${name}`);
-        const result = streamText({ ...streamOptions, model, maxRetries: 0 });
+        const modelBudgeted = buildBudgetedMessagesWithCap(budgeted.messages, maxChars);
+        const result = streamText({ ...streamOptions, messages: modelBudgeted.messages, model, maxRetries: 0 });
 
         // The AI SDK throws provider errors (e.g. 429) asynchronously.
         // The error surfaces on result.text / result.response promises, NOT on reader.read().
@@ -2066,11 +2509,15 @@ Wallet State: ${JSON.stringify(walletState || {})}
         lastError = err;
         const msg = err instanceof Error ? err.message : String(err);
         const rl = detectRateLimit(err);
+        const lengthErr = detectPromptLengthError(err);
         if (rl) {
           setRateLimitCooldown(name, extractRetryAfter(msg));
         }
+        if (lengthErr) {
+          console.warn(`[Command API] ${name} rejected prompt length; trying fallback with tighter context.`);
+        }
         console.warn(
-          `[Command API] ${name} failed${rl ? " (rate limit)" : ""}: ${msg.slice(0, 300)}`,
+          `[Command API] ${name} failed${rl ? " (rate limit)" : lengthErr ? " (prompt length)" : ""}: ${msg.slice(0, 300)}`,
         );
         if (i < modelChain.length - 1) {
           console.log(`[Command API] Trying next model in fallback chain...`);
