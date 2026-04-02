@@ -118,7 +118,7 @@ anchor-spl = "0.30.1"
         );
 
         // Run anchor build
-        // SECURITY: Use execFile instead of exec to mitigate command injection
+        // SECURITY: Use execFile instead of exec to mitigate command injection risks
         const { stdout, stderr } = await execFileAsync("anchor", ["build"], {
             cwd: tmpDir,
             timeout: 120000, // 2 min timeout
