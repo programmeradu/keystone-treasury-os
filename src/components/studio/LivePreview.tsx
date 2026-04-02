@@ -388,7 +388,8 @@ export function LivePreview({
                 document.getElementById('root').innerHTML =
                     '<div style="color:#ef4444;padding:20px;font-family:monospace;font-size:13px;line-height:1.6">' +
                     '<strong style="color:#f87171">Runtime Error</strong><br/>' +
-                    '<span style="color:#fca5a5">' + (err.message || err) + '</span></div>';
+                    '<span id="runtime-error-msg" style="color:#fca5a5"></span></div>';
+                document.getElementById('runtime-error-msg').textContent = err.message || err;
                 keystoneBridge.notify('runtime.error', { message: err.message || String(err) });
             }
         })();

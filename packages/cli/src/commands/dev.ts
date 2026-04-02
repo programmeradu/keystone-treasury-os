@@ -186,7 +186,8 @@ function buildHTML(appCode: string): string {
       } catch (err) {
         document.getElementById('root').innerHTML = '<div style="color:#ef4444;padding:20px;font-family:monospace">' +
           '<strong style="color:#f87171">Runtime Error</strong><br/>' +
-          '<span style="color:#fca5a5">' + (err.message || err) + '</span></div>';
+          '<span id="runtime-error-msg" style="color:#fca5a5"></span></div>';
+        document.getElementById('runtime-error-msg').textContent = err.message || err;
         console.error(err);
       }
     })();
