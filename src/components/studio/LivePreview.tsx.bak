@@ -175,7 +175,12 @@ export function LivePreview({ files, tab = "preview", onLogsChange }: LivePrevie
 
             } catch (err) {
                 console.error("Runtime Boot Error:", err);
-                document.getElementById('root').innerHTML = \`<div style="color:#ef4444;padding:20px;font-family:monospace"><strong>Runtime Error:</strong><br/>\${err.message}</div>\`;
+                var rootEl = document.getElementById('root');
+                rootEl.innerHTML = '<div style="color:#ef4444;padding:20px;font-family:monospace"><strong>Runtime Error:</strong><br/><span id="runtime-error-msg"></span></div>';
+                var msgEl = document.getElementById('runtime-error-msg');
+                if (msgEl) {
+                    msgEl.textContent = err.message || err;
+                }
                 window.parent.postMessage({ type: 'error', message: err.message }, '*');
             }
         }

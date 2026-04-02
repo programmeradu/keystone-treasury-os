@@ -1,0 +1,4 @@
+## 2024-04-02 - Fix Multiple DOM XSS Vulnerabilities in UI Previews
+**Vulnerability:** Unsanitized user data and error messages injected via `innerHTML` into newly created DOM nodes and iframes (DOM-based XSS). Found in `src/components/dashboard/VaultAssetsCompact.tsx`, `src/components/foresight/ForesightPreview.tsx`, `src/components/studio/LivePreview.tsx`, and `src/components/studio/StudioToolbar.tsx`.
+**Learning:** React components dynamically rendering raw HTML to support previews or fallbacks incorrectly used `innerHTML` string interpolation with unescaped variables like `err.message` or `token.symbol`, exposing the application to script injection if the source data is controlled by an attacker.
+**Prevention:** Always define static DOM structure via `innerHTML` and safely inject dynamic or untrusted variables using the `textContent` property on targeted placeholder elements.

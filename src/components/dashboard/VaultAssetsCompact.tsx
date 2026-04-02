@@ -65,7 +65,14 @@ export function VaultAssetsCompact({ tokens }: { tokens: TokenAccount[] }) {
                                                     // Fallback if image fails to load
                                                     const target = e.target as HTMLImageElement;
                                                     target.style.display = 'none';
-                                                    target.parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-primary text-[10px] text-primary-foreground font-bold">' + (token.symbol ? token.symbol[0] : "T") + '</div>';
+                                                    const parent = target.parentElement;
+                                                    if (parent) {
+                                                        parent.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-primary text-[10px] text-primary-foreground font-bold"><span id="fallback-symbol"></span></div>';
+                                                        const symbolSpan = parent.querySelector('#fallback-symbol');
+                                                        if (symbolSpan) {
+                                                            symbolSpan.textContent = token.symbol ? token.symbol[0] : "T";
+                                                        }
+                                                    }
                                                 }}
                                             />
                                         </div>
