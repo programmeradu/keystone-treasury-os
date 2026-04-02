@@ -1,26 +1,76 @@
 "use client";
 
-import React, { useRef, useState, useLayoutEffect } from "react";
+import React, { useRef, useState, useLayoutEffect, useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getAvatarUrl } from "@/lib/avatars";
 import { Wallet, MoreHorizontal } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTheme } from "@/lib/contexts/ThemeContext";
 import { useRouter } from "next/navigation";
+import { useVault } from "@/lib/contexts/VaultContext";
 
-const STREAMS = [
-    { id: 1, name: "Alex Dev", rate: "2.5k", avatar: getAvatarUrl("Alex Dev") },
-    { id: 2, name: "Sarah Ops", rate: "1.2k", avatar: getAvatarUrl("Sarah Ops") },
-    { id: 3, name: "Design DAO", rate: "800", avatar: getAvatarUrl("Design DAO") },
-];
+type DerivedStream = {
+    id: string;
+    name: string;
+    rateLabel: string;
+    avatar: string;
+    monthlyUsd: number;
+};
 
 export function PayrollStreams() {
     const { theme } = useTheme();
     const router = useRouter();
+    const { recentTransactions, loading, activeVault } = useVault();
     const visualizerRef = useRef<HTMLDivElement>(null);
     const treasuryRef = useRef<HTMLDivElement>(null);
-    const payeeRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
-    const [paths, setPaths] = useState<{ [key: number]: string }>({});
+    const payeeRefs = useRef<Record<string, HTMLDivElement | null>>({});
+    const [paths, setPaths] = useState<Record<string, string>>({});
+
+    const streams = useMemo<DerivedStream[]>(() => {
+        const candidates = (recentTransactions || [])
+            .filter((tx: any) => {
+                if (!tx?.success) return false;
+                const amountText = String(tx?.amount || "");
+                const numeric = Number(amountText.replace(/[^0-9.-]/g, ""));
+                return Number.isFinite(numeric) && numeric < 0;
+            })
+            .slice(0, 20)
+            .map((tx: any) => {
+                const amountText = String(tx?.amount || "0");
+                const value = Math.abs(Number(amountText.replace(/[^0-9.-]/g, "")));
+                const token = (tx?.token || "USDC").toUpperCase();
+                const sig = String(tx?.signature || "");
+                const short = sig ? `${sig.slice(0, 4)}…${sig.slice(-4)}` : "Unknown";
+                const name = `Payee ${short}`;
+                return {
+                    id: sig || `${tx?.slot || Math.random()}`,
+                    name,
+                    monthlyUsd: value,
+                    rateLabel: `${value.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${token}`,
+                    avatar: getAvatarUrl(name),
+                };
+            });
+
+        // Aggregate by payee label and keep top 3
+        const merged = new Map<string, DerivedStream>();
+        for (const c of candidates) {
+            const existing = merged.get(c.name);
+            if (!existing) {
+                merged.set(c.name, c);
+                continue;
+            }
+            existing.monthlyUsd += c.monthlyUsd;
+            existing.rateLabel = `${existing.monthlyUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })} USDC`;
+        }
+        return [...merged.values()]
+            .sort((a, b) => b.monthlyUsd - a.monthlyUsd)
+            .slice(0, 3);
+    }, [recentTransactions]);
+
+    const totalMonthlyFlow = useMemo(
+        () => streams.reduce((sum, s) => sum + s.monthlyUsd, 0),
+        [streams],
+    );
 
     // The core fix: Calculate coordinates relative to the VISUALIZER container
     const updatePaths = () => {
@@ -35,7 +85,7 @@ export function PayrollStreams() {
 
         const newPaths: { [key: number]: string } = {};
 
-        STREAMS.forEach((stream) => {
+        streams.forEach((stream) => {
             const payeeEl = payeeRefs.current[stream.id];
             if (payeeEl) {
                 const payeeRect = payeeEl.getBoundingClientRect();
@@ -79,7 +129,7 @@ export function PayrollStreams() {
             window.removeEventListener("resize", updatePaths);
             clearTimeout(timer);
         };
-    }, []);
+    }, [streams]);
 
     return (
         <div className="bg-card backdrop-blur-[24px] border border-border rounded-[2rem] p-8 flex flex-col relative overflow-hidden h-[450px] shadow-lg">
@@ -87,7 +137,10 @@ export function PayrollStreams() {
             <div className="flex justify-between items-start mb-6 z-10">
                 <div>
                     <h2 className="text-muted-foreground uppercase tracking-widest text-xs font-semibold mb-1">Payroll Streams</h2>
-                    <p className="text-xl font-bold text-foreground">4,500 USDC <span className="text-muted-foreground text-sm font-normal">/ month flowing</span></p>
+                    <p className="text-xl font-bold text-foreground">
+                        {totalMonthlyFlow.toLocaleString(undefined, { maximumFractionDigits: 2 })} USDC{" "}
+                        <span className="text-muted-foreground text-sm font-normal">/ month flowing</span>
+                    </p>
                 </div>
                 <button
                     onClick={() => router.push("/app/treasury")}
@@ -122,7 +175,7 @@ export function PayrollStreams() {
                             </linearGradient>
                         </defs>
 
-                        {STREAMS.map((stream) => (
+                        {streams.map((stream) => (
                             <path
                                 key={`stream-line-final-${stream.id}`}
                                 className="animate-flow"
@@ -138,7 +191,12 @@ export function PayrollStreams() {
 
                 {/* 3. Payee Nodes */}
                 <div className="flex flex-col gap-10 z-20 mr-4">
-                    {STREAMS.map((stream, index) => (
+                    {streams.length === 0 && (
+                        <div className="w-52 rounded-xl border border-border bg-input/50 p-4 text-xs text-muted-foreground">
+                            {activeVault ? (loading ? "Loading payroll flow..." : "No outgoing payroll-like transfers detected yet.") : "Connect a vault to see payroll streams."}
+                        </div>
+                    )}
+                    {streams.map((stream) => (
                         <motion.div
                             key={stream.id}
                             drag
@@ -156,7 +214,7 @@ export function PayrollStreams() {
                                 <span className="text-xs font-bold text-foreground whitespace-nowrap group-hover:text-primary transition-colors">{stream.name}</span>
                                 <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-tighter">Streaming...</span>
                             </div>
-                            <span className="ml-auto text-sm text-primary font-mono font-black pointer-events-none select-none">{stream.rate}</span>
+                            <span className="ml-auto text-sm text-primary font-mono font-black pointer-events-none select-none">{stream.rateLabel}</span>
                         </motion.div>
                     ))}
                 </div>
