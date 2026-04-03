@@ -5,28 +5,23 @@ import { useOthers, useSelf } from "@/liveblocks.config";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getAvatarUrl } from "@/lib/avatars";
+import { useProfile } from "@/lib/hooks/useProfile";
 
 export const CollaborativeHeader = () => {
     const others = useOthers();
     const self = useSelf();
 
-    // Read from the same profile store used by Settings > Identity Profile & sidebar UserAccount
+    // Read from DB-backed profile API (replaces localStorage)
+    const { profile } = useProfile();
     const { displayName, avatarUrl } = useMemo(() => {
-        let name = self?.info?.name || "User";
-        let seed = name;
-        try {
-            const raw = localStorage.getItem("keystone_user_profile");
-            if (raw) {
-                const profile = JSON.parse(raw);
-                name = profile.displayName || name;
-                seed = profile.avatarSeed || name;
-            }
-        } catch {}
+        const fallback = self?.info?.name || "User";
+        const name = profile?.displayName || fallback;
+        const seed = profile?.avatarSeed || fallback;
         return {
             displayName: name,
             avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}`,
         };
-    }, [self]);
+    }, [self, profile]);
 
     return (
         <div className="flex items-center -space-x-2 overflow-hidden px-4">

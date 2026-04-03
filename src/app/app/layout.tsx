@@ -21,6 +21,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { useKeystoneAuth } from "@/hooks/useKeystoneAuth";
 import { authClient } from "@/lib/auth/client";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useProfile } from "@/lib/hooks/useProfile";
 
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
     const { theme } = useTheme();
@@ -191,6 +192,7 @@ function UserAccount() {
     const { signOut: siwsSignOut } = useKeystoneAuth();
     const { disconnect } = useWallet();
     const router = useRouter();
+    const { profile } = useProfile();
 
     const handleLogout = async () => {
         try {
@@ -207,17 +209,9 @@ function UserAccount() {
 
     const fallbackName = self?.info?.name || "User";
 
-    // Read from the same profile store used by Settings > Identity Profile
-    let displayName = fallbackName;
-    let avatarSeed = fallbackName;
-    try {
-        const raw = localStorage.getItem("keystone_user_profile");
-        if (raw) {
-            const profile = JSON.parse(raw);
-            displayName = profile.displayName || fallbackName;
-            avatarSeed = profile.avatarSeed || fallbackName;
-        }
-    } catch {}
+    // Read from DB-backed profile API (replaces localStorage)
+    const displayName = profile?.displayName || fallbackName;
+    const avatarSeed = profile?.avatarSeed || fallbackName;
 
     return (
         <HoverCard openDelay={0} closeDelay={200}>

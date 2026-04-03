@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const mintsRaw = Array.isArray(body?.mints) ? body.mints : [];
-    const mints = [...new Set(mintsRaw.filter((m: unknown): m is string => typeof m === "string" && m.length > 20))].slice(0, 200);
+    const mints: string[] = [...new Set<string>(mintsRaw.filter((m: unknown): m is string => typeof m === "string" && m.length > 20))].slice(0, 200);
     if (mints.length === 0) {
       return NextResponse.json({ metadata: {} });
     }

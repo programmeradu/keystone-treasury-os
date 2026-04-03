@@ -35,15 +35,15 @@ function getJwtSecret() {
     );
 }
 
-async function hasSiwsSession(request: NextRequest): Promise<boolean> {
+async function getSiwsPayload(request: NextRequest): Promise<Record<string, unknown> | null> {
     const token = request.cookies.get(SIWS_COOKIE)?.value;
-    if (!token) return false;
+    if (!token) return null;
 
     try {
-        await jwtVerify(token, getJwtSecret(), { issuer: 'keystone-treasury-os' });
-        return true;
+        const { payload } = await jwtVerify(token, getJwtSecret(), { issuer: 'keystone-treasury-os' });
+        return payload as Record<string, unknown>;
     } catch {
-        return false;
+        return null;
     }
 }
 
@@ -88,11 +88,12 @@ export async function middleware(request: NextRequest) {
     }
 
     // ─── Check both auth systems in parallel ────────────────────────
-    const [hasSiws, hasNeon] = await Promise.all([
-        hasSiwsSession(request),
+    const [siwsPayload, hasNeon] = await Promise.all([
+        getSiwsPayload(request),
         Promise.resolve(hasNeonAuthSession(request)),
     ]);
 
+    const hasSiws = !!siwsPayload;
     const isAuthenticated = hasSiws || hasNeon;
 
     // ─── Public API routes (no auth required) ───────────────────────
@@ -131,6 +132,20 @@ export async function middleware(request: NextRequest) {
 
         const url = request.nextUrl.clone();
         url.pathname = '/auth';
+        return NextResponse.redirect(url);
+    }
+
+    // ─── Onboarding redirect for authenticated but un-onboarded users ──
+    if (
+        isAuthenticated &&
+        pathname.startsWith('/app') &&
+        !pathname.startsWith('/app/onboarding') &&
+        !pathname.startsWith('/api/') &&
+        siwsPayload &&
+        siwsPayload.onboarded === false
+    ) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/app/onboarding';
         return NextResponse.redirect(url);
     }
 
