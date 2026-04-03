@@ -83,7 +83,7 @@ export function PayrollStreams() {
         const startX = treasuryRect.right - containerRect.left;
         const startY = (treasuryRect.top + treasuryRect.height / 2) - containerRect.top;
 
-        const newPaths: { [key: number]: string } = {};
+        const newPaths: { [key: string]: string } = {};
 
         streams.forEach((stream) => {
             const payeeEl = payeeRefs.current[stream.id];

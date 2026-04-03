@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
     const metadata: Record<string, TokenMeta> = {};
     const unresolved: string[] = [];
 
-    for (const mint of mints) {
+    for (const mint of mints as string[]) {
       const cached = cache.get(mint);
       if (cached && cached.expiresAt > Date.now()) {
         metadata[mint] = cached.data;
@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const missingSymbols = mints.filter((m) => !metadata[m]?.symbol || metadata[m]?.symbol === "SPL");
+    const missingSymbols = (mints as string[]).filter((m) => !metadata[m]?.symbol || metadata[m]?.symbol === "SPL");
     await Promise.allSettled(missingSymbols.map(async (mint) => {
       const res = await fetch(`https://tokens.jup.ag/token/${mint}`, { signal: AbortSignal.timeout(5000) });
       if (!res.ok) return;
@@ -172,7 +172,7 @@ export async function POST(req: NextRequest) {
       };
     }));
 
-    const noPrice = mints.filter((m) => !metadata[m]?.price || metadata[m].price === 0);
+    const noPrice = (mints as string[]).filter((m) => !metadata[m]?.price || metadata[m].price === 0);
     if (noPrice.length > 0) {
       try {
         const json = await fetchJsonWithRetry(`https://lite-api.jup.ag/price/v2?ids=${noPrice.join(",")}`, 2);
@@ -187,7 +187,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    for (const mint of mints) {
+    for (const mint of mints as string[]) {
       const wk = WELL_KNOWN[mint];
       if (!metadata[mint]) metadata[mint] = { price: wk?.price ?? 0 };
       if (!metadata[mint].logo && wk?.logo) metadata[mint].logo = wk.logo;
