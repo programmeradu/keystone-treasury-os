@@ -35,7 +35,6 @@ async function runProbe(modelName: string, model: any, profile: ProbeProfile): P
     const out = await generateText({
       model,
       prompt,
-      maxTokens: 16,
       temperature: 0,
     });
     return {
