@@ -8,17 +8,20 @@ export type GroundingGateResult = {
 const NAVIGATION_ROUTE_ALLOWLIST = new Set([
   "/app",
   "/app/treasury",
-  "/app/transactions",
-  "/app/dca",
+  "/app/analytics",
   "/app/studio",
-  "/app/yield",
+  "/app/marketplace",
+  "/app/library",
+  "/app/team",
   "/app/settings",
   "/app/atlas",
 ]);
 
 export function isSimpleConversation(text: string): boolean {
   const t = text.trim().toLowerCase();
-  return /^(hi|hello|hey|greetings|gm|gn|thanks|thank you|ok|okay|cool|awesome|bye|goodbye)$/i.test(t);
+  if (!t) return false;
+  if (t.length > 80) return false;
+  return /^(hi|hello|hey|yo|sup|gm|gn|good\s+morning|good\s+afternoon|good\s+evening|thanks|thank\s+you|ok|okay|cool|nice)\b[!.?\s]*$/.test(t);
 }
 
 export function classifyEvidenceNeed(userText: string): EvidenceClass {
