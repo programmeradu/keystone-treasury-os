@@ -52,7 +52,11 @@ async function compileLocal(
 
         // Write source files
         for (const [filename, content] of Object.entries(files)) {
-            const filePath = path.join(srcDir, filename);
+            // 🛡️ Sentinel: Security Enhancement - prevent path traversal during file writes
+            const filePath = path.resolve(srcDir, filename);
+            if (!filePath.startsWith(srcDir + path.sep)) {
+                throw new Error(`Invalid file path detected: ${filename}`);
+            }
             fs.mkdirSync(path.dirname(filePath), { recursive: true });
             fs.writeFileSync(filePath, content, "utf-8");
         }
@@ -226,6 +230,24 @@ export async function POST(req: NextRequest) {
     try {
         const body: CompileRequest = await req.json();
         const { files, programName = "keystone_app", useCloud = false } = body;
+
+        // 🛡️ Sentinel: Security Enhancement - validate programName to prevent directory traversal or injection
+        if (!/^[a-zA-Z0-9_-]+$/.test(programName)) {
+            return NextResponse.json(
+                { error: "Invalid program name" },
+                { status: 400 }
+            );
+        }
+
+        // 🛡️ Sentinel: Security Enhancement - basic check for path traversal in incoming file names
+        for (const filename of Object.keys(files)) {
+            if (filename.includes("..") || filename.startsWith("/") || filename.startsWith("\\")) {
+                return NextResponse.json(
+                    { error: `Invalid filename detected: ${filename}` },
+                    { status: 400 }
+                );
+            }
+        }
 
         if (!files || Object.keys(files).length === 0) {
             return NextResponse.json(
