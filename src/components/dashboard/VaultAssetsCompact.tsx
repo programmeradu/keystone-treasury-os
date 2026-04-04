@@ -65,7 +65,15 @@ export function VaultAssetsCompact({ tokens }: { tokens: TokenAccount[] }) {
                                                     // Fallback if image fails to load
                                                     const target = e.target as HTMLImageElement;
                                                     target.style.display = 'none';
-                                                    target.parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-primary text-[10px] text-primary-foreground font-bold">' + (token.symbol ? token.symbol[0] : "T") + '</div>';
+                                                    const parent = target.parentElement;
+                                                    if (parent) {
+                                                        // 🛡️ Sentinel: Fix DOM XSS by avoiding string concatenation with innerHTML
+                                                        parent.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-primary text-[10px] text-primary-foreground font-bold fallback-text"></div>';
+                                                        const textNode = parent.querySelector('.fallback-text');
+                                                        if (textNode) {
+                                                            textNode.textContent = token.symbol ? token.symbol[0] : "T";
+                                                        }
+                                                    }
                                                 }}
                                             />
                                         </div>
