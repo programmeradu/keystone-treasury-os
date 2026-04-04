@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { dcaBots, dcaExecutions } from "@/db/schema";
-import { eq, and, lte, gte } from "drizzle-orm";
-import { executeSwapWithSigning, getJupiterQuote, validateDelegation } from "@/lib/jupiter-executor";
+import { dcaBots, dcaExecutions, userSettings } from "@/db/schema";
+import { eq, and, lte, gte, sql } from "drizzle-orm";
+import { executeSwapWithSigning, getJupiterQuote, validateDelegation, checkBalance } from "@/lib/jupiter-executor";
+import { sendNotificationEmail } from "@/lib/email-service";
 import bs58 from "bs58";
 import { Keypair } from "@solana/web3.js";
 
@@ -94,6 +95,117 @@ export async function GET(req: Request) {
 }
 
 /**
+ * Helper to fetch a user's email if they have alerts enabled
+ */
+async function getUserEmailForAlerts(userId: string): Promise<string | null> {
+  if (!db) return null;
+
+  try {
+    // 1. Check user settings if email alerts are enabled
+    const settings = await db
+      .select({ emailAlerts: userSettings.emailAlerts })
+      .from(userSettings)
+      .where(eq(userSettings.userId, userId))
+      .limit(1);
+
+    if (settings.length === 0 || !settings[0].emailAlerts) {
+      return null;
+    }
+
+    // 2. Fetch email from Auth schemas (Neon / Supabase)
+    const result = await db.execute(
+      sql`
+        SELECT email FROM (
+          SELECT email FROM auth.users WHERE id = ${userId}
+          UNION ALL
+          SELECT email FROM neon_auth.users WHERE id = ${userId}
+        ) sub
+        LIMIT 1
+      `
+    );
+
+    const row = result.rows[0] as { email: string } | undefined;
+    return row?.email || null;
+  } catch (error) {
+    console.error(`Failed to get email for user ${userId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Send a notification for a successful execution
+ */
+async function sendExecutionNotification(bot: any, executionResult: any) {
+  const email = await getUserEmailForAlerts(bot.userId);
+  if (!email) return;
+
+  const title = `DCA Bot Execution Successful: ${bot.name}`;
+  const message = `Your DCA bot "${bot.name}" successfully executed a trade.
+Received: ${executionResult.outAmount / Math.pow(10, 9)} ${bot.buyTokenSymbol}.
+Transaction: ${executionResult.txSignature}`;
+
+  await sendNotificationEmail({
+    to: email,
+    title,
+    message,
+    actionLabel: "View Dashboard",
+    actionUrl: "https://keystone.stauniverse.tech/atlas",
+  });
+}
+
+/**
+ * Send a notification for a failed execution or pause
+ */
+async function sendFailureNotification(bot: any, errorReason: string, isPaused: boolean = false) {
+  const email = await getUserEmailForAlerts(bot.userId);
+  if (!email) return;
+
+  const title = isPaused ? `DCA Bot Paused: ${bot.name}` : `DCA Bot Execution Failed: ${bot.name}`;
+  const message = isPaused
+    ? `Your DCA bot "${bot.name}" has been paused due to repeated failures or insufficient balance. Reason: ${errorReason}`
+    : `Your DCA bot "${bot.name}" failed to execute its latest trade. Reason: ${errorReason}`;
+
+  await sendNotificationEmail({
+    to: email,
+    title,
+    message,
+    actionLabel: "Manage Bots",
+    actionUrl: "https://keystone.stauniverse.tech/atlas",
+  });
+}
+
+/**
+ * Pauses a bot due to a critical error (like insufficient balance)
+ */
+async function pauseBot(botId: string, reason: string) {
+  if (!db) return;
+
+  try {
+    await db
+      .update(dcaBots)
+      .set({
+        status: "paused",
+        pauseReason: reason,
+        updatedAt: new Date(),
+      })
+      .where(eq(dcaBots.id, botId));
+
+    // Fetch bot to get userId and name for notification
+    const botResult = await db
+      .select()
+      .from(dcaBots)
+      .where(eq(dcaBots.id, botId))
+      .limit(1);
+
+    if (botResult.length > 0) {
+      await sendFailureNotification(botResult[0], reason, true);
+    }
+  } catch (error) {
+    console.error(`[Bot ${botId}] Failed to pause bot:`, error);
+  }
+}
+
+/**
  * Execute a single bot's trade
  */
 async function executeBot(bot: any): Promise<{ success: boolean; error?: string }> {
@@ -107,11 +219,11 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
     }
 
     // Phase 2 TODO: Validate wallet balance
-    // const balance = await checkBalance(bot.walletAddress, bot.paymentTokenMint);
-    // if (balance < bot.amountUsd) {
-    //   await pauseBot(bot.id, "Insufficient balance");
-    //   return { success: false, error: "Insufficient balance" };
-    // }
+    const balance = await checkBalance(bot.walletAddress, bot.paymentTokenMint);
+    if (balance < bot.amountUsd) {
+      await pauseBot(bot.id, "Insufficient balance");
+      return { success: false, error: "Insufficient balance" };
+    }
 
     // Get Jupiter quote
     const USDC_DECIMALS = 6;
@@ -212,7 +324,7 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
     console.log(`[Bot ${bot.id}] Execution successful in ${duration}ms`);
 
     // Phase 2 TODO: Send notification email
-    // await sendExecutionNotification(bot, executionResult);
+    await sendExecutionNotification(bot, executionResult);
 
     return { success: true };
 
@@ -261,6 +373,9 @@ async function recordFailedExecution(bot: any, errorMessage: string) {
     if (shouldPause) {
       console.warn(`[Bot ${bot.id}] Paused after ${newFailedAttempts} failures`);
       // Phase 2 TODO: Send notification email
+      await sendFailureNotification(bot, errorMessage, true);
+    } else {
+      await sendFailureNotification(bot, errorMessage, false);
     }
   } catch (error) {
     console.error(`[Bot ${bot.id}] Failed to record execution failure:`, error);
