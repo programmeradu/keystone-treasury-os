@@ -75,6 +75,7 @@ export async function middleware(request: NextRequest) {
         '/favicon',
         '/images',
         '/fonts',
+        '/manifest',
     ];
 
     const publicPages = ['/', '/marketplace', '/pricing', '/docs', '/about', '/auth'];

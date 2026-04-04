@@ -77,7 +77,7 @@ export default function OnboardingPage() {
     const handleComplete = useCallback(async () => {
         setCompleting(true);
         try {
-            // Save all profile data
+            // Save all profile data with onboardingCompleted=true
             await updateProfile({
                 displayName: data.displayName || undefined,
                 avatarSeed: data.avatarSeed || undefined,
@@ -85,7 +85,10 @@ export default function OnboardingPage() {
                 onboardingCompleted: true,
             } as any);
 
-            // Hard-navigate to re-trigger auth which will generate a new JWT with onboarded=true
+            // Refresh the JWT cookie so middleware sees onboarded=true
+            await fetch("/api/auth/refresh-session", { method: "POST" });
+
+            // Navigate to dashboard — JWT now has onboarded=true
             window.location.href = "/app";
         } catch (err) {
             console.error("[Onboarding] Failed to complete:", err);

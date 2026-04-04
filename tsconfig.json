@@ -38,6 +38,8 @@
   "exclude": [
     "node_modules",
     "drizzle.config.ts",
-    "scripts"
+    "scripts",
+    "**/*.test.ts",
+    "**/*.test.tsx"
   ]
 }
