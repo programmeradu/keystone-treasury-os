@@ -30,9 +30,14 @@ function hasNeonAuthSession(request: NextRequest): boolean {
 }
 
 function getJwtSecret() {
-    return new TextEncoder().encode(
-        process.env.JWT_SECRET || 'keystone_sovereign_os_2026'
-    );
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        if (process.env.NODE_ENV === 'test' || (typeof window === 'undefined' && process.env.CI)) {
+            return new TextEncoder().encode('dummy_secret_for_testing.XYZ');
+        }
+        throw new Error('JWT_SECRET is not set');
+    }
+    return new TextEncoder().encode(secret);
 }
 
 async function getSiwsPayload(request: NextRequest): Promise<Record<string, unknown> | null> {
