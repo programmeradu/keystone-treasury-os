@@ -17,10 +17,10 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        // Query Lemon Squeezy for subscriptions filtered by custom user_id
+        // Query Lemon Squeezy for subscriptions, increasing page size to ensure we find the user's record
         const storeId = process.env.LEMON_SQUEEZY_STORE_ID;
         const res = await fetch(
-            `https://api.lemonsqueezy.com/v1/subscriptions?filter[store_id]=${storeId}`,
+            `https://api.lemonsqueezy.com/v1/subscriptions?filter[store_id]=${storeId}&page[size]=50&sort=-created_at`,
             {
                 headers: {
                     "Authorization": `Bearer ${apiKey}`,
@@ -30,11 +30,15 @@ export async function GET(req: NextRequest) {
         );
 
         if (!res.ok) {
+            const errText = await res.text();
+            console.error("[Lemon Squeezy] API Failure:", errText);
             return NextResponse.json({ error: "Failed to query subscriptions" }, { status: 502 });
         }
 
         const data = await res.json();
         const subscriptions = data.data || [];
+
+        console.log(`[Lemon Squeezy] Checking ${subscriptions.length} subscriptions for user: ${user.id}`);
 
         // Find matching subscription for this user via custom_data
         const match = subscriptions.find((sub: any) => {
@@ -42,7 +46,11 @@ export async function GET(req: NextRequest) {
             const itemCustomData = sub.attributes?.first_subscription_item?.custom_data;
             
             // Check both root and nested locations (LS API version variance)
-            return (rootCustomData?.user_id === user.id) || (itemCustomData?.user_id === user.id);
+            const isMatch = (rootCustomData?.user_id === user.id) || (itemCustomData?.user_id === user.id);
+            if (isMatch) {
+                console.log(`[Lemon Squeezy] MATCH FOUND for ${user.id}: sub_id=${sub.id}`);
+            }
+            return isMatch;
         });
 
         if (!match) {

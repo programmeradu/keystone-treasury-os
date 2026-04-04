@@ -28,6 +28,10 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: `No variant configured for tier: ${tier}` }, { status: 400 });
         }
 
+        // Determine the base URL dynamically for subdomains, falling back to keystone.stauniverse.tech
+        const origin = req.headers.get("origin") || "https://keystone.stauniverse.tech";
+        const redirectBase = process.env.NEXT_PUBLIC_APP_URL || origin;
+
         // Generate checkout via Lemon Squeezy API
         const res = await fetch("https://api.lemonsqueezy.com/v1/checkouts", {
             method: "POST",
@@ -46,7 +50,7 @@ export async function POST(req: NextRequest) {
                             },
                         },
                         product_options: {
-                            redirect_url: `${process.env.NEXT_PUBLIC_APP_URL || "https://stauniverse.tech"}/app/billing?success=true`,
+                            redirect_url: `${redirectBase}/app/billing?success=true`,
                         },
                     },
                     relationships: {
