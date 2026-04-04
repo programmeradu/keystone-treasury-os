@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { teams, teamMembers, teamActivityLog } from '@/db/schema';
+import { teams, teamMembers, teamActivityLog, users } from '@/db/schema';
 import { getAuthUser } from '@/lib/auth-utils';
+import { eq } from 'drizzle-orm';
 
 /**
  * POST /api/team/create
@@ -20,6 +21,21 @@ export async function POST(request: NextRequest) {
     }
 
     const vaultAddress = body.vaultAddress ? String(body.vaultAddress).trim() : null;
+
+    // --- Subscription Tier Enforcement ---
+    const [dbUser] = await db.select({ tier: users.tier }).from(users).where(eq(users.id, user.id)).limit(1);
+    const tier = dbUser?.tier || 'free';
+
+    const existingTeams = await db.select().from(teams).where(eq(teams.createdBy, user.id));
+    const currentVaultCount = existingTeams.length;
+
+    if (tier === 'free' && currentVaultCount >= 1) {
+      return NextResponse.json({ error: 'Free tier limits you to 1 Multisig Vault.' }, { status: 403 });
+    }
+    if (tier === 'mini' && currentVaultCount >= 5) {
+      return NextResponse.json({ error: 'Mini tier limits you to 5 Multisig Vaults.' }, { status: 403 });
+    }
+    // ------------------------------------
 
     // Create team
     const [team] = await db.insert(teams).values({

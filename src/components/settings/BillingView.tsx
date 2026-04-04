@@ -40,12 +40,51 @@ async function loadStatsFromDb(wallet: string): Promise<AppStats> {
 
 export const BillingView = () => {
     const [stats, setStats] = useState<AppStats>({ appsCreated: 0, appsListed: 0, appsPurchased: 0, totalSpentSol: 0, totalEarnedSol: 0 });
+    const [tier, setTier] = useState<string>("free");
+    const [status, setStatus] = useState<string>("");
+    const [loading, setLoading] = useState(true);
+    const [verifying, setVerifying] = useState(false);
+    
     const { notifications } = useNotificationStore();
     const { publicKey } = useWallet();
+
+    const fetchStatus = async () => {
+        try {
+            const res = await fetch('/api/lemon-squeezy/status');
+            const data = await res.json();
+            if (data.tier) setTier(data.tier);
+            if (data.status) setStatus(data.status);
+        } catch (e) {
+            console.error("Failed to fetch billing status");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleVerify = async () => {
+        setVerifying(true);
+        try {
+            const res = await fetch('/api/lemon-squeezy/status');
+            const data = await res.json();
+            if (data.reconciled) {
+                toast.success(`Subscription reconciled. Your tier is now: ${data.tier.toUpperCase()}`);
+                setTier(data.tier);
+            } else if (data.tier === 'free') {
+                toast.info("No active subscription found.");
+            } else {
+                toast.success(`Subscription confirmed: ${data.tier.toUpperCase()} (${data.status})`);
+            }
+        } catch (e) {
+            toast.error("Failed to verify subscription status.");
+        } finally {
+            setVerifying(false);
+        }
+    };
 
     useEffect(() => {
         const wallet = publicKey?.toBase58() || "";
         loadStatsFromDb(wallet).then(setStats);
+        fetchStatus();
     }, [publicKey]);
 
     // Derive purchase history from notifications
@@ -78,20 +117,41 @@ export const BillingView = () => {
                             <div>
                                 <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1">Current Plan</h3>
                                 <h2 className="text-3xl font-black text-foreground tracking-tight flex items-center gap-2 uppercase">
-                                    Keystone OS <span className="text-primary">Pro</span>
+                                    Keystone OS <span className="text-primary">{tier === 'free' ? 'Base' : tier}</span>
                                 </h2>
                             </div>
-                            <div className="px-3 py-1 rounded-full bg-primary/20 text-primary text-[10px] font-black border border-primary/20 flex items-center gap-2 uppercase shadow-sm">
-                                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_8px_var(--dashboard-accent-muted)]" /> Active
+                            <div className="flex flex-col items-end gap-2">
+                                <div className={`px-3 py-1 rounded-full ${tier !== 'free' ? 'bg-primary/20 text-primary border-primary/20' : 'bg-muted text-muted-foreground border-border'} text-[10px] font-black border flex items-center gap-2 uppercase shadow-sm`}>
+                                    <div className={`w-1.5 h-1.5 rounded-full ${tier !== 'free' ? 'bg-primary animate-pulse shadow-[0_0_8px_var(--dashboard-accent-muted)]' : 'bg-muted-foreground'}`} /> 
+                                    {tier !== 'free' ? 'Active' : 'Free Tier'}
+                                </div>
+                                <button 
+                                    onClick={handleVerify}
+                                    disabled={verifying}
+                                    className="text-[9px] uppercase font-bold text-muted-foreground hover:text-primary transition-colors underline underline-offset-4"
+                                >
+                                    {verifying ? "Syncing..." : "Verify Status"}
+                                </button>
                             </div>
                         </div>
 
                         <div className="space-y-3 mb-8">
-                            <FeatureItem text="Unlimited Agent Personas" />
+                            <FeatureItem text={tier === 'max' ? "Unlimited Agent Personas" : "Up to 5 Agent Personas"} />
                             <FeatureItem text="Marketplace Publishing" />
                             <FeatureItem text="On-Chain Payments (Solana)" />
                             <FeatureItem text="Persistent Notification History" />
                         </div>
+
+                        {tier !== 'max' && (
+                            <div className="mb-8">
+                                <button 
+                                    onClick={() => window.location.href = '/app/billing'}
+                                    className="w-full md:w-auto px-6 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-black uppercase shadow-[0_0_15px_var(--dashboard-accent-muted)] hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Zap size={14} /> Upgrade Platform Tier
+                                </button>
+                            </div>
+                        )}
 
                         {/* Real stats */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

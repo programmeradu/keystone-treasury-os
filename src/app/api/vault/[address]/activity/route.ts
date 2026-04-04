@@ -1,0 +1,40 @@
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db/index";
+import { teamActivityLog, users } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
+
+export async function GET(req: NextRequest, { params }: { params: { address: string } }) {
+    try {
+        const { address } = params;
+
+        if (!address || address === "undefined") {
+            return NextResponse.json([]);
+        }
+
+        const logs = await db
+            .select({
+                id: teamActivityLog.id,
+                action: teamActivityLog.action,
+                description: teamActivityLog.description,
+                metadata: teamActivityLog.metadata,
+                createdAt: teamActivityLog.createdAt,
+                targetType: teamActivityLog.targetType,
+                targetId: teamActivityLog.targetId,
+                user: {
+                    id: users.id,
+                    name: users.displayName,
+                    wallet: users.walletAddress,
+                }
+            })
+            .from(teamActivityLog)
+            .leftJoin(users, eq(teamActivityLog.userId, users.id))
+            .where(eq(teamActivityLog.vaultAddress, address))
+            .orderBy(desc(teamActivityLog.createdAt))
+            .limit(50);
+
+        return NextResponse.json(logs);
+    } catch (error) {
+        console.error("Failed to fetch vault activity:", error);
+        return NextResponse.json({ error: "Failed to load log stream" }, { status: 500 });
+    }
+}

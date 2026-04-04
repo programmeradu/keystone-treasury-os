@@ -1,4 +1,4 @@
-import { createClient } from "@liveblocks/client";
+import { createClient, LiveList } from "@liveblocks/client";
 import { createRoomContext } from "@liveblocks/react";
 
 const client = createClient({
@@ -13,13 +13,12 @@ type Presence = {
 
 // Storage: shared data that's persisted even after all users leave
 type Storage = {
-    // Add shared state here (e.g., shared chat, collaborative notes)
     teamNotes: string;
-    chatMessages: {
+    chatMessages: LiveList<{
         text: string;
         sender: string;
         timestamp: number;
-    }[];
+    }>;
 };
 
 // UserMeta: static data for users (like name, avatar)

@@ -17,9 +17,17 @@ export function useSquadsMultisig(vaultAddress: string) {
         if (!vaultAddress) return;
         setLoading(true);
         try {
-            const client = new SquadsClient(connection, wallet);
-            const data = await client.getProposals(vaultAddress);
-            setProposals(data);
+            // Use backend proxy to avoid client-side RPC 429 errors
+            const res = await fetch(`/api/squads/proposals?vault=${encodeURIComponent(vaultAddress)}`);
+            if (res.ok) {
+                const data = await res.json();
+                setProposals(data);
+            } else {
+                // Fallback to direct client call if proxy is unavailable
+                const client = new SquadsClient(connection, wallet);
+                const data = await client.getProposals(vaultAddress);
+                setProposals(data);
+            }
         } catch (error) {
             console.error("Failed to fetch proposals", error);
         } finally {
@@ -65,6 +73,29 @@ export function useSquadsMultisig(vaultAddress: string) {
         }
     };
 
+    const executeProposal = async (proposalId: number) => {
+        if (!wallet.publicKey) return;
+
+        try {
+            const client = new SquadsClient(connection, wallet);
+            const sig = await client.executeProposal(vaultAddress, proposalId);
+
+            broadcast({
+                type: "PROPOSAL_SIGNED",
+                payload: { proposalId, signer: wallet.publicKey.toBase58().substring(0, 4) + "..." }
+            });
+
+            AppEventBus.emit("UI_NOTIFICATION", {
+                message: " Proposal executed successfully. Awaiting finality...",
+            });
+
+            await fetchProposals();
+            return sig;
+        } catch (error) {
+            console.error("Execution failed", error);
+        }
+    };
+
     useEffect(() => {
         fetchProposals();
     }, [vaultAddress]);
@@ -73,6 +104,7 @@ export function useSquadsMultisig(vaultAddress: string) {
         proposals,
         loading,
         refresh: fetchProposals,
-        signProposal
+        signProposal,
+        executeProposal,
     };
 }

@@ -15,11 +15,12 @@ function getJwtSecret() {
 export interface AuthUser {
   id: string;
   walletAddress: string;
+  tier: string;
 }
 
 /**
  * Extracts the authenticated user from the SIWS JWT session cookie.
- * Returns the user's id and walletAddress from the DB, or null if unauthenticated.
+ * Returns the user's id, walletAddress, and tier from the DB, or null if unauthenticated.
  */
 export async function getAuthUser(request: NextRequest): Promise<AuthUser | null> {
   const token = request.cookies.get(SIWS_COOKIE)?.value;
@@ -33,7 +34,11 @@ export async function getAuthUser(request: NextRequest): Promise<AuthUser | null
     if (!wallet || !db) return null;
 
     const [user] = await db
-      .select({ id: users.id, walletAddress: users.walletAddress })
+      .select({ 
+        id: users.id, 
+        walletAddress: users.walletAddress,
+        tier: users.tier
+      })
       .from(users)
       .where(eq(users.walletAddress, wallet))
       .limit(1);

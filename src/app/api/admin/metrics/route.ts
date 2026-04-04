@@ -19,8 +19,15 @@ function getAdminToken(req: NextRequest) {
     if (authHeader && authHeader.startsWith("Bearer ")) {
         return authHeader.substring(7);
     }
-    const cookieToken = req.cookies.get("keystone_session")?.value;
-    if (cookieToken) return cookieToken;
+    const siwsCookie = req.cookies.get("keystone-siws-session")?.value;
+    if (siwsCookie) return siwsCookie;
+    
+    // Fallback for Better Auth / Neon Auth users
+    const neonCookie = req.cookies.get("better-auth.session_token")?.value 
+                    || req.cookies.get("__Secure-neon-auth.session_token")?.value
+                    || req.cookies.get("neon-auth.session_token")?.value;
+    if (neonCookie) return neonCookie;
+
     return null;
 }
 

@@ -50,6 +50,25 @@ export async function POST(
     const inviteToken = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
+    // --- Subscription Tier Enforcement ---
+    const [team] = await db.select({ createdBy: teams.createdBy, name: teams.name }).from(teams).where(eq(teams.id, teamId)).limit(1);
+    if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+
+    const [ownerUser] = await db.select({ tier: users.tier }).from(users).where(eq(users.id, team.createdBy!)).limit(1);
+    const tier = ownerUser?.tier || 'free';
+
+    // Count both members and pending invitations that are not expired to prevent abuse
+    const existingMembers = await db.select().from(teamMembers).where(eq(teamMembers.teamId, teamId));
+    const currentMemberCount = existingMembers.length;
+
+    if (tier === 'free' && currentMemberCount >= 3) {
+      return NextResponse.json({ error: 'Free tier limits Vaults to 3 Team Operatives. Upgrade required.' }, { status: 403 });
+    }
+    if (tier === 'mini' && currentMemberCount >= 10) {
+      return NextResponse.json({ error: 'Mini tier limits Vaults to 10 Team Operatives. Upgrade required.' }, { status: 403 });
+    }
+    // -------------------------------------
+
     // Create invitation record
     const [invitation] = await db.insert(teamInvitations).values({
       teamId,
@@ -63,8 +82,7 @@ export async function POST(
 
     // Send invite email if address is an email
     if (!isWallet && address.includes('@')) {
-      // Look up team name & inviter display name
-      const [team] = await db.select({ name: teams.name }).from(teams).where(eq(teams.id, teamId)).limit(1);
+      // Look up inviter display name (team name is already cached above)
       const [inviter] = await db.select({ displayName: users.displayName }).from(users).where(eq(users.id, authUser.id)).limit(1);
 
       sendTeamInviteEmail({

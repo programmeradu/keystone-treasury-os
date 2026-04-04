@@ -1,0 +1,20 @@
+{
+  "rules": [
+    {
+      "pathPattern": "/approve/**",
+      "apiPath": "/api/actions/approve"
+    },
+    {
+      "pathPattern": "/execute/**",
+      "apiPath": "/api/actions/execute"
+    },
+    {
+      "pathPattern": "/create-squad/**",
+      "apiPath": "/api/actions/create-squad"
+    },
+    {
+      "pathPattern": "/join-team/**",
+      "apiPath": "/api/actions/join-team"
+    }
+  ]
+}
