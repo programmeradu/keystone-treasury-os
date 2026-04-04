@@ -19,8 +19,12 @@ export async function GET(req: NextRequest) {
     try {
         // Query Lemon Squeezy for subscriptions, increasing page size to ensure we find the user's record
         const storeId = process.env.LEMON_SQUEEZY_STORE_ID;
+        const lsUrl = `https://api.lemonsqueezy.com/v1/subscriptions?filter[store_id]=${storeId}&page[size]=50&sort=-created_at`;
+        
+        console.log(`[Lemon Squeezy] Status Check Request: ${lsUrl}`);
+        
         const res = await fetch(
-            `https://api.lemonsqueezy.com/v1/subscriptions?filter[store_id]=${storeId}&page[size]=50&sort=-created_at`,
+            lsUrl,
             {
                 headers: {
                     "Authorization": `Bearer ${apiKey}`,
@@ -31,27 +35,23 @@ export async function GET(req: NextRequest) {
 
         if (!res.ok) {
             const errText = await res.text();
-            console.error("[Lemon Squeezy] API Failure:", errText);
-            return NextResponse.json({ error: "Failed to query subscriptions" }, { status: 502 });
+            console.error(`[Lemon Squeezy] API Failure (${res.status}):`, errText);
+            
+            // Provide more descriptive error to client to help user debug their store config
+            return NextResponse.json({ 
+                error: "Lemon Squeezy API rejected the request", 
+                details: errText,
+                status: res.status 
+            }, { status: 502 });
         }
 
         const data = await res.json();
         const subscriptions = data.data || [];
 
-        console.log(`[Lemon Squeezy] Checking ${subscriptions.length} subscriptions for user: ${user.id}`);
-
-        // Find matching subscription for this user via custom_data
-        const match = subscriptions.find((sub: any) => {
-            const rootCustomData = sub.attributes?.custom_data;
-            const itemCustomData = sub.attributes?.first_subscription_item?.custom_data;
-            
-            // Check both root and nested locations (LS API version variance)
-            const isMatch = (rootCustomData?.user_id === user.id) || (itemCustomData?.user_id === user.id);
-            if (isMatch) {
-                console.log(`[Lemon Squeezy] MATCH FOUND for ${user.id}: sub_id=${sub.id}`);
-            }
-            return isMatch;
-        });
+        // Simple match for diagnostic
+        const match = subscriptions.find((sub: any) => 
+            sub.attributes?.custom_data?.user_id === user.id
+        );
 
         if (!match) {
             return NextResponse.json({ tier: "free", status: "no_subscription" });
