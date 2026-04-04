@@ -39,7 +39,14 @@ export async function GET(req: NextRequest) {
             const secret = new TextEncoder().encode(process.env.JWT_SECRET || process.env.SUPABASE_JWT_SECRET || "default_secret");
             const result = await jwtVerify(token, secret);
             decoded = result.payload;
-            if (decoded.role !== "admin") {
+            
+            // Check Live DB Role (JWT might be stale)
+            const wallet = decoded.wallet || decoded.sub;
+            const liveUser = await db.query.users.findFirst({
+                where: (u, { eq }) => eq(u.walletAddress, wallet as string)
+            });
+            
+            if (!liveUser || liveUser.role !== "admin") {
                 return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
             }
         } catch {

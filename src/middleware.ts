@@ -138,9 +138,9 @@ export async function middleware(request: NextRequest) {
 
     // ─── Admin Role Gate ────────────────────────────────────────────
     if (pathname.startsWith('/app/admin')) {
-        if (!siwsPayload || siwsPayload.role !== 'admin') {
+        if (!isAuthenticated) {
             const url = request.nextUrl.clone();
-            url.pathname = '/app';
+            url.pathname = '/auth';
             return NextResponse.redirect(url);
         }
     }
