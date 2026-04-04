@@ -45,7 +45,8 @@ export async function GET(request: NextRequest) {
       .select({
         id: users.id,
         displayName: users.displayName,
-        avatarUrl: users.avatarUrl,
+        email: users.email,
+        avatarSeed: users.avatarSeed,
         walletAddress: users.walletAddress,
         role: users.role,
         tier: users.tier,
@@ -62,18 +63,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Derive avatarSeed from avatarUrl for the client
-    let avatarSeed = user.displayName || wallet.slice(0, 8);
-    if (user.avatarUrl) {
-      const seedMatch = user.avatarUrl.match(/seed=([^&]+)/);
-      if (seedMatch) avatarSeed = decodeURIComponent(seedMatch[1]);
-    }
+    const seed = user.avatarSeed || user.displayName || wallet.slice(0, 8);
 
     return NextResponse.json({
       id: user.id,
       displayName: user.displayName || `${wallet.slice(0, 4)}...${wallet.slice(-4)}`,
-      avatarUrl: user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(avatarSeed)}`,
-      avatarSeed,
+      email: user.email,
+      avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}`,
+      avatarSeed: seed,
       walletAddress: user.walletAddress,
       role: user.role,
       tier: user.tier,
@@ -116,10 +113,15 @@ export async function PUT(request: NextRequest) {
       updates.displayName = name;
     }
 
-    // Avatar seed → stored as DiceBear URL
+    // Avatar seed
     if (body.avatarSeed !== undefined) {
-      const seed = String(body.avatarSeed);
-      updates.avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}`;
+      updates.avatarSeed = String(body.avatarSeed);
+    }
+
+    // Email
+    if (body.email !== undefined) {
+      const emailVal = String(body.email).trim();
+      updates.email = emailVal || null;
     }
 
     // Organization name
@@ -143,7 +145,8 @@ export async function PUT(request: NextRequest) {
       .returning({
         id: users.id,
         displayName: users.displayName,
-        avatarUrl: users.avatarUrl,
+        email: users.email,
+        avatarSeed: users.avatarSeed,
         walletAddress: users.walletAddress,
         role: users.role,
         tier: users.tier,
@@ -153,20 +156,16 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Derive avatarSeed for the response
-    let avatarSeed = updated.displayName || wallet.slice(0, 8);
-    if (updated.avatarUrl) {
-      const seedMatch = updated.avatarUrl.match(/seed=([^&]+)/);
-      if (seedMatch) avatarSeed = decodeURIComponent(seedMatch[1]);
-    }
+    const seed = updated.avatarSeed || updated.displayName || wallet.slice(0, 8);
 
     return NextResponse.json({
       success: true,
       user: {
         id: updated.id,
         displayName: updated.displayName,
-        avatarUrl: updated.avatarUrl,
-        avatarSeed,
+        email: updated.email,
+        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}`,
+        avatarSeed: seed,
         walletAddress: updated.walletAddress,
         role: updated.role,
         tier: updated.tier,

@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 export interface UserProfile {
   id: string;
   displayName: string;
+  email: string | null;
   avatarUrl: string;
   avatarSeed: string;
   walletAddress: string;
@@ -20,7 +21,7 @@ interface UseProfileReturn {
   profile: UserProfile | null;
   isLoading: boolean;
   error: string | null;
-  updateProfile: (updates: { displayName?: string; avatarSeed?: string }) => Promise<boolean>;
+  updateProfile: (updates: Partial<Pick<UserProfile, 'displayName' | 'email' | 'avatarSeed' | 'organizationName'>>) => Promise<boolean>;
   refresh: () => void;
 }
 
@@ -67,7 +68,7 @@ export function useProfile(): UseProfileReturn {
   }, [fetchProfile]);
 
   const updateProfile = useCallback(
-    async (updates: { displayName?: string; avatarSeed?: string }): Promise<boolean> => {
+    async (updates: Partial<Pick<UserProfile, 'displayName' | 'email' | 'avatarSeed' | 'organizationName'>>): Promise<boolean> => {
       try {
         setError(null);
         const res = await fetch("/api/user/profile", {

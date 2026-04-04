@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { User, Shield, Key, Fingerprint, Award, Wallet, Package, Store, Pencil, Check, RefreshCw, Loader2 } from "lucide-react";
+import { User, Shield, Key, Fingerprint, Award, Wallet, Package, Store, Pencil, Check, RefreshCw, Loader2, Mail, X } from "lucide-react";
 import { Logo } from "@/components/icons";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
@@ -29,6 +29,8 @@ export const ProfileView = ({ onNavigate }: { onNavigate?: (view: string) => voi
     const { profile, isLoading, error, updateProfile } = useProfile();
     const [editing, setEditing] = useState(false);
     const [editName, setEditName] = useState("");
+    const [editingEmail, setEditingEmail] = useState(false);
+    const [editEmail, setEditEmail] = useState("");
     const [stats, setStats] = useState({ appsCreated: 0, appsListed: 0 });
     const [saving, setSaving] = useState(false);
 
@@ -54,6 +56,23 @@ export const ProfileView = ({ onNavigate }: { onNavigate?: (view: string) => voi
             toast.success("Display name updated");
         } else {
             toast.error("Failed to save display name");
+        }
+    };
+
+    const handleSaveEmail = async () => {
+        const email = editEmail.trim();
+        if (email && !email.includes("@")) {
+            toast.error("Enter a valid email address");
+            return;
+        }
+        setSaving(true);
+        const success = await updateProfile({ email: email || null } as any);
+        setSaving(false);
+        if (success) {
+            setEditingEmail(false);
+            toast.success(email ? "Email updated" : "Email removed");
+        } else {
+            toast.error("Failed to update email");
         }
     };
 
@@ -191,6 +210,37 @@ export const ProfileView = ({ onNavigate }: { onNavigate?: (view: string) => voi
                                 toast.success("Wallet disconnected");
                             } else {
                                 openWalletModal(true);
+                            }
+                        }}
+                    />
+                    <CredentialItem
+                        icon={Mail}
+                        label="Email"
+                        value={editingEmail ? (
+                            <div className="flex items-center gap-2" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                                <Input
+                                    type="email"
+                                    value={editEmail}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditEmail(e.target.value)}
+                                    onKeyDown={(e: React.KeyboardEvent) => e.key === "Enter" && handleSaveEmail()}
+                                    className="h-7 text-xs w-48 bg-background"
+                                    placeholder="you@example.com"
+                                    autoFocus
+                                />
+                                <button onClick={handleSaveEmail} disabled={saving} className="p-1 rounded hover:bg-muted">
+                                    {saving ? <Loader2 size={12} className="animate-spin text-primary" /> : <Check size={12} className="text-primary" />}
+                                </button>
+                                <button onClick={() => setEditingEmail(false)} className="p-1 rounded hover:bg-muted">
+                                    <X size={12} className="text-muted-foreground" />
+                                </button>
+                            </div>
+                        ) : (profile?.email || "Not set — add for notifications")}
+                        status={editingEmail ? "" : (profile?.email ? "Edit" : "Add")}
+                        color={profile?.email ? "text-primary" : "text-amber-400"}
+                        onClick={() => {
+                            if (!editingEmail) {
+                                setEditEmail(profile?.email || "");
+                                setEditingEmail(true);
                             }
                         }}
                     />

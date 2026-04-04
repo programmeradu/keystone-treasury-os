@@ -31,7 +31,7 @@ export async function GET(
         acceptedAt: teamMembers.acceptedAt,
         invitedAt: teamMembers.invitedAt,
         displayName: users.displayName,
-        avatarUrl: users.avatarUrl,
+        avatarUrl: users.avatarSeed,
       })
       .from(teamMembers)
       .innerJoin(users, eq(teamMembers.userId, users.id))

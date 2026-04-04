@@ -54,7 +54,7 @@ export async function GET(
         createdAt: teamActivityLog.createdAt,
         userId: teamActivityLog.userId,
         userName: users.displayName,
-        userAvatar: users.avatarUrl,
+        userAvatar: users.avatarSeed,
         userWallet: users.walletAddress,
       })
       .from(teamActivityLog)

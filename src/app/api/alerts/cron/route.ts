@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { alerts } from '@/db/schema';
 import { eq, and, lt, or, isNull } from 'drizzle-orm';
-import { Resend } from 'resend';
+import { sendGasAlertEmail } from '@/lib/email-service';
 
 export async function POST(request: NextRequest) {
   let checked = 0;
@@ -22,22 +22,16 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Check required environment variables
-    const resendApiKey = process.env.RESEND_API_KEY;
-    const emailFrom = process.env.EMAIL_FROM;
-
-    if (!resendApiKey || !emailFrom) {
-      console.error('Missing required environment variables: RESEND_API_KEY or EMAIL_FROM');
+    if (!process.env.RESEND_API_KEY) {
+      console.error('Missing RESEND_API_KEY — emails disabled');
       return NextResponse.json({
         ok: false,
-        error: 'Email service configuration error',
+        error: 'Email service not configured',
         checked: 0,
         notified: 0,
         errors: 1
       }, { status: 500 });
     }
-
-    const resend = new Resend(resendApiKey);
 
     // Construct absolute URLs for internal API calls
     const protocol = request.headers.get('x-forwarded-proto') || 'http';
@@ -119,32 +113,13 @@ export async function POST(request: NextRequest) {
 
         if (shouldNotify) {
           try {
-            // Send notification email
-            await resend.emails.send({
-              from: emailFrom,
+            await sendGasAlertEmail({
               to: alert.email,
-              subject: ' Gas Alert: Low prices detected!',
-              html: `
-                <h2> Gas prices are low!</h2>
-                <p>Great news! Gas prices have dropped below your threshold.</p>
-                
-                <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                  <h3>Current Gas Information:</h3>
-                  <ul>
-                    <li><strong>Gas Price (Fast):</strong> ${gweiPerGas.toFixed(2)} gwei</li>
-                    <li><strong>ETH Price:</strong> $${ethUsd.toFixed(2)}</li>
-                    <li><strong>Cost for ${alert.minGasUnits.toLocaleString()} gas units:</strong> $${Number(usdCost).toFixed(4)}</li>
-                    <li><strong>Your threshold:</strong> $${Number(alert.thresholdUsd).toFixed(4)}</li>
-                  </ul>
-                </div>
-                
-                <p>This is a great time to execute your transactions!</p>
-                
-                <p style="font-size: 12px; color: #666; margin-top: 30px;">
-                  You're receiving this because you signed up for gas alerts. 
-                  To unsubscribe or modify your alerts, please contact support.
-                </p>
-              `,
+              gasPrice: gweiPerGas,
+              ethPrice: ethUsd,
+              costUsd: Number(usdCost),
+              gasUnits: alert.minGasUnits,
+              thresholdUsd: Number(alert.thresholdUsd),
             });
 
             // Update last_notified_at timestamp

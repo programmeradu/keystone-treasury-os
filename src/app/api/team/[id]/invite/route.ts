@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { teamMembers, teamInvitations, teamActivityLog, users } from '@/db/schema';
+import { teamMembers, teamInvitations, teamActivityLog, users, teams } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getAuthUser } from '@/lib/auth-utils';
 import { hasMinRole, isValidRole } from '@/lib/rbac';
+import { sendTeamInviteEmail } from '@/lib/email-service';
 import crypto from 'crypto';
 
 /**
@@ -59,6 +60,21 @@ export async function POST(
       token: inviteToken,
       expiresAt,
     }).returning();
+
+    // Send invite email if address is an email
+    if (!isWallet && address.includes('@')) {
+      // Look up team name & inviter display name
+      const [team] = await db.select({ name: teams.name }).from(teams).where(eq(teams.id, teamId)).limit(1);
+      const [inviter] = await db.select({ displayName: users.displayName }).from(users).where(eq(users.id, authUser.id)).limit(1);
+
+      sendTeamInviteEmail({
+        to: address,
+        teamName: team?.name || 'Keystone Team',
+        inviterName: inviter?.displayName || authUser.id.slice(0, 8),
+        role,
+        inviteToken,
+      }).catch((err) => console.error('[Team API] Email send failed:', err));
+    }
 
     // If wallet matches existing user, auto-create pending team member
     if (isWallet) {

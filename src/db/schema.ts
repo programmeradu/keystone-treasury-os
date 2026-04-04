@@ -15,8 +15,9 @@ import {
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   walletAddress: text('wallet_address').notNull().unique(),
+  email: text('email'),                          // optional, collected during onboarding/settings
   displayName: text('display_name'),
-  avatarUrl: text('avatar_url'),
+  avatarSeed: text('avatar_seed'),
   role: text('role').notNull().default('user'), // user | creator | admin
   tier: text('tier').notNull().default('free'), // free | mini | max
   tierExpiresAt: timestamp('tier_expires_at'), // null = never expires (free tier or lifetime)

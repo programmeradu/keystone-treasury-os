@@ -23,6 +23,7 @@ const STEPS = [
 
 export interface OnboardingData {
     displayName: string;
+    email: string;
     avatarSeed: string;
     organizationName: string;
     riskProfile: "conservative" | "moderate" | "aggressive";
@@ -35,6 +36,7 @@ export default function OnboardingPage() {
     const [currentStep, setCurrentStep] = useState(0);
     const [data, setData] = useState<OnboardingData>({
         displayName: "",
+        email: "",
         avatarSeed: `user_${Date.now()}`,
         organizationName: "",
         riskProfile: "moderate",
@@ -80,6 +82,7 @@ export default function OnboardingPage() {
             // Save all profile data with onboardingCompleted=true
             await updateProfile({
                 displayName: data.displayName || undefined,
+                email: data.email || undefined,
                 avatarSeed: data.avatarSeed || undefined,
                 organizationName: data.organizationName || undefined,
                 onboardingCompleted: true,
@@ -87,6 +90,19 @@ export default function OnboardingPage() {
 
             // Refresh the JWT cookie so middleware sees onboarded=true
             await fetch("/api/auth/refresh-session", { method: "POST" });
+
+            // Fire-and-forget: welcome email + team invites
+            if (data.email || data.teamEmails.length > 0) {
+                fetch("/api/onboarding/complete-emails", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        email: data.email || undefined,
+                        displayName: data.displayName || undefined,
+                        teamEmails: data.teamEmails,
+                    }),
+                }).catch(() => {}); // fire and forget
+            }
 
             // Navigate to dashboard — JWT now has onboarded=true
             window.location.href = "/app";

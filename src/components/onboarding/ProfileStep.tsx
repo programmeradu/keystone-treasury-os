@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { User, RefreshCw, Building2 } from "lucide-react";
+import { User, RefreshCw, Building2, Mail } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import type { OnboardingData } from "@/app/app/onboarding/page";
 
@@ -57,6 +57,20 @@ export const ProfileStep = ({ data, updateData }: StepProps) => {
                             placeholder="Your name"
                             className="bg-background"
                         />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                            <Mail size={12} /> Email Address
+                        </label>
+                        <Input
+                            type="email"
+                            value={data.email || ""}
+                            onChange={(e) => updateData({ email: e.target.value })}
+                            placeholder="you@example.com"
+                            className="bg-background"
+                        />
+                        <p className="text-[9px] text-muted-foreground">Optional — for team invites, alerts, and notifications</p>
                     </div>
 
                     <div className="space-y-2">
