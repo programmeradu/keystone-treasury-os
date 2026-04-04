@@ -136,6 +136,15 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(url);
     }
 
+    // ─── Admin Role Gate ────────────────────────────────────────────
+    if (pathname.startsWith('/app/admin')) {
+        if (!siwsPayload || siwsPayload.role !== 'admin') {
+            const url = request.nextUrl.clone();
+            url.pathname = '/app';
+            return NextResponse.redirect(url);
+        }
+    }
+
     // ─── Onboarding redirect for authenticated but un-onboarded users ──
     if (
         isAuthenticated &&

@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
         // ─── Step 3: Upsert user in Neon DB ────────────────────────────
         let userId: string | undefined;
         let onboardingCompleted = false;
+        let userRole = 'user';
 
         if (db) {
             const existing = await db
@@ -84,9 +85,11 @@ export async function POST(request: NextRequest) {
                 }).returning({ id: users.id });
                 userId = inserted?.id;
                 onboardingCompleted = false;
+                userRole = 'user';
             } else {
                 userId = existing[0].id;
                 onboardingCompleted = existing[0].onboardingCompleted;
+                userRole = existing[0].role;
                 await db
                     .update(users)
                     .set({ lastLoginAt: new Date() })
@@ -100,6 +103,7 @@ export async function POST(request: NextRequest) {
             wallet: walletAddress,
             method: 'siws',
             onboarded: onboardingCompleted,
+            role: userRole,
         })
             .setProtectedHeader({ alg: 'HS256' })
             .setIssuedAt()
