@@ -3,15 +3,15 @@ import { db } from "@/db/index";
 import { teamActivityLog, users } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 
-export async function GET(req: NextRequest, { params }: { params: { address: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ address: string }> }) {
     try {
-        const { address } = params;
+        const { address } = await params;
 
         if (!address || address === "undefined") {
             return NextResponse.json([]);
         }
 
-        const logs = await db
+        const logs = await db!
             .select({
                 id: teamActivityLog.id,
                 action: teamActivityLog.action,

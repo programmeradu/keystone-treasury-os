@@ -49,7 +49,7 @@ export const POST = async (req: Request) => {
     if (!db) throw new Error("Database unavailable");
 
     // 1. Find invitation
-    const [invitation] = await db
+    const [invitation] = await db!
       .select()
       .from(teamInvitations)
       .where(eq(teamInvitations.token, token))
@@ -67,20 +67,25 @@ export const POST = async (req: Request) => {
     // In a real prod environment, you might want to verify the signature first, but for an invite flow this is the UX people expect
     
     // Check if user exists in Keystone by wallet
-    let [existingUser] = await db.select().from(users).where(eq(users.walletAddress, account.toBase58())).limit(1);
+    const userResults = await db!.select().from(users).where(eq(users.walletAddress, account.toBase58())).limit(1);
+    let existingUser = userResults[0];
     
-    // If user doesn't exist, we'll create a placeholder user or error? 
-    // For now, let's assume they exists or we create them.
+    // If user doesn't exist, we'll create a placeholder user
     if (!existingUser) {
         // Create a basic user entry
-        [existingUser] = await db.insert(users).values({
+        const results = await db!.insert(users).values({
             walletAddress: account.toBase58(),
             role: 'user'
         }).returning();
+        existingUser = results[0];
+    }
+
+    if (!existingUser) {
+        throw new Error("Failed to resolve or create user record");
     }
 
     // Add to teamMembers
-    await db.insert(teamMembers).values({
+    await db!.insert(teamMembers).values({
         teamId: invitation.teamId,
         userId: existingUser.id,
         walletAddress: account.toBase58(),
@@ -91,7 +96,7 @@ export const POST = async (req: Request) => {
     });
 
     // Mark invitation as accepted
-    await db.update(teamInvitations).set({ acceptedAt: new Date() }).where(eq(teamInvitations.id, invitation.id));
+    await db!.update(teamInvitations).set({ acceptedAt: new Date() }).where(eq(teamInvitations.id, invitation.id));
 
     // 3. Return a "Confirmation" Transaction
     // We'll use a simple Memo transaction (requires the Spl Memo Program)
@@ -111,6 +116,7 @@ export const POST = async (req: Request) => {
 
     const response: ActionPostResponse = await createPostResponse({
       fields: {
+        type: "transaction",
         transaction,
         message: "Welcome to the team! Your membership is now active.",
       },

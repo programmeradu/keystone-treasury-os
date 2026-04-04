@@ -34,10 +34,12 @@ export const GET = async (req: Request) => {
         {
           label: "Approve",
           href: `/api/actions/approve?vault=${vault}&tx=${txIndex}&action=Approve`,
+          type: "transaction"
         },
         {
           label: "Reject",
           href: `/api/actions/approve?vault=${vault}&tx=${txIndex}&action=Reject`,
+          type: "transaction"
         }
       ]
     }
@@ -70,6 +72,7 @@ export const POST = async (req: Request) => {
 
     const response: ActionPostResponse = await createPostResponse({
       fields: {
+        type: "transaction",
         transaction,
         message: `Voted ${voteAction} on proposal #${txIndex}`,
       },

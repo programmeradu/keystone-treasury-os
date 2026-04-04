@@ -70,6 +70,7 @@ export const POST = async (req: Request) => {
 
     const response: ActionPostResponse = await createPostResponse({
       fields: {
+        type: "transaction",
         transaction,
         message: `Executing proposal #${txIndex}`,
       },

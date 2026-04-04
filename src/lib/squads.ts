@@ -711,7 +711,7 @@ export class SquadsClient {
                         // Find the largest token balance change for this vault
                         let bestDelta = 0;
                         let bestMint = "";
-                        const allMints = new Set([...preMap.keys(), ...postMap.keys()]);
+                        const allMints = Array.from(new Set([...Array.from(preMap.keys()), ...Array.from(postMap.keys())]));
                         for (const mint of allMints) {
                             const pre = preMap.get(mint) || 0;
                             const post = postMap.get(mint) || 0;

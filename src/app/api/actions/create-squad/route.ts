@@ -27,6 +27,7 @@ export const GET = async (req: Request) => {
         {
           label: "Create Squad",
           href: "/api/actions/create-squad",
+          type: "transaction",
           parameters: [
             {
               name: "members",
@@ -68,11 +69,11 @@ export const POST = async (req: Request) => {
 
     const memberPubkeys = membersStr.split(",").map((p: string) => new PublicKey(p.trim()));
     // Always include the creator as a member if not already there
-    if (!memberPubkeys.some(m => m.equals(account))) {
+    if (!memberPubkeys.some((m: PublicKey) => m.equals(account))) {
       memberPubkeys.push(account);
     }
 
-    const memberObjects = memberPubkeys.map(key => ({
+    const memberObjects = memberPubkeys.map((key: PublicKey) => ({
       key,
       permissions: { mask: 7 }, // Full permissions for everyone added via Blink
     }));
@@ -98,6 +99,7 @@ export const POST = async (req: Request) => {
 
     const response: ActionPostResponse = await createPostResponse({
       fields: {
+        type: "transaction",
         transaction,
         message: `Deploying your new ${threshold}-of-${memberObjects.length} multisig!`,
       },

@@ -6,6 +6,7 @@ import { Logo } from "@/components/icons";
 import { useNotificationStore } from "@/lib/notifications";
 import { formatDistanceToNow } from "date-fns";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { toast } from "@/lib/toast-notifications";
 
 interface AppStats {
     appsCreated: number;

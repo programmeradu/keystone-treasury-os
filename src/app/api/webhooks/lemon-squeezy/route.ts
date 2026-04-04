@@ -9,6 +9,7 @@ import { eq } from "drizzle-orm";
  * Enforces tier upgrades/downgrades on user accounts via MoR.
  */
 export async function POST(req: NextRequest) {
+    if (!db) return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
     try {
         const secret = process.env.LEMON_SQUEEZY_WEBHOOK_SECRET || "default_secret_for_dev";
         const rawBody = await req.text();
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
                 tierUpdate = "free";
             }
 
-            await db.update(users)
+            await db!.update(users)
                 .set({ tier: tierUpdate })
                 .where(eq(users.id, userId));
 
