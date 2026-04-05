@@ -146,16 +146,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Rate limit: DCA bots
-    const rateLimit = await checkRouteLimit(req, 'dca_bots');
-    if (!rateLimit.allowed) {
-      return NextResponse.json({
-        error: 'Rate limit exceeded',
-        tier: rateLimit.tier,
-        resetAt: rateLimit.resetAt.toISOString(),
-      }, { status: 429 });
-    }
-
     const body = await req.json();
     const action = body.action;
 
@@ -170,6 +160,16 @@ export async function POST(req: NextRequest) {
 
     // CREATE BOT
     if (action === "create") {
+      // Rate limit: Enforce maximum allowed DCA bots based on tier
+      const rateLimit = await checkRouteLimit(req, 'dca_bots');
+      if (!rateLimit.allowed) {
+        return NextResponse.json({
+          error: 'Rate limit exceeded',
+          tier: rateLimit.tier,
+          resetAt: rateLimit.resetAt.toISOString(),
+        }, { status: 429 });
+      }
+
       const {
         name,
         buyTokenMint,
