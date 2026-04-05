@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { dcaBots, dcaExecutions } from "@/db/schema";
-import { eq, and, lte, gte } from "drizzle-orm";
-import { executeSwapWithSigning, getJupiterQuote, validateDelegation } from "@/lib/jupiter-executor";
+import { dcaBots, dcaExecutions, userSettings } from "@/db/schema";
+import { eq, and, lte, gte, sql } from "drizzle-orm";
+import { sendDcaExecutionEmail } from "@/lib/email-service";
+import { executeSwapWithSigning, getJupiterQuote, validateDelegation, checkBalance } from "@/lib/jupiter-executor";
 import bs58 from "bs58";
 import { Keypair } from "@solana/web3.js";
 
@@ -93,6 +94,47 @@ export async function GET(req: Request) {
   }
 }
 
+async function getUserEmail(userId: string): Promise<string | null> {
+  if (!db) return null;
+
+  try {
+    const authResult = await db.execute(sql`SELECT email FROM auth.users WHERE id = ${userId} LIMIT 1`);
+    const authRows = authResult?.rows || authResult;
+    if (Array.isArray(authRows) && authRows.length > 0 && authRows[0]?.email) {
+      return String(authRows[0].email);
+    }
+  } catch (err) {
+    // silently fail and try neon
+  }
+
+  try {
+    const neonAuthResult = await db.execute(sql`SELECT email FROM neon_auth.users WHERE id = ${userId} LIMIT 1`);
+    const neonRows = neonAuthResult?.rows || neonAuthResult;
+    if (Array.isArray(neonRows) && neonRows.length > 0 && neonRows[0]?.email) {
+      return String(neonRows[0].email);
+    }
+  } catch (err) {
+    console.error(`Failed to get email for userId: ${userId}`, err);
+  }
+
+  return null;
+}
+
+async function notifyUser(userId: string, emailPayload: any) {
+  if (!db) return;
+  try {
+    const settings = await db.select().from(userSettings).where(eq(userSettings.userId, userId)).limit(1);
+    if (settings && settings.length > 0 && settings[0].emailAlerts) {
+      const email = await getUserEmail(userId);
+      if (email) {
+        await sendDcaExecutionEmail({ ...emailPayload, to: email });
+      }
+    }
+  } catch (err) {
+    console.error(`Failed to send email to userId ${userId}`, err);
+  }
+}
+
 /**
  * Execute a single bot's trade
  */
@@ -106,12 +148,28 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
       throw new Error("Database not available");
     }
 
-    // Phase 2 TODO: Validate wallet balance
-    // const balance = await checkBalance(bot.walletAddress, bot.paymentTokenMint);
-    // if (balance < bot.amountUsd) {
-    //   await pauseBot(bot.id, "Insufficient balance");
-    //   return { success: false, error: "Insufficient balance" };
-    // }
+    // Phase 2: Validate wallet balance
+    const balance = await checkBalance(bot.walletAddress, bot.paymentTokenMint);
+    if (balance < Number(bot.amountUsd)) {
+      console.warn(`[Bot ${bot.id}] Pausing due to insufficient balance: ${balance} < ${bot.amountUsd}`);
+      await db
+        .update(dcaBots)
+        .set({
+          status: "paused",
+          pauseReason: "Insufficient balance",
+          updatedAt: new Date(),
+        })
+        .where(eq(dcaBots.id, bot.id));
+
+      await notifyUser(bot.userId, {
+        botName: bot.name,
+        status: "paused",
+        amountUsd: bot.amountUsd,
+        buyTokenSymbol: bot.buyTokenSymbol,
+        errorMessage: "Insufficient balance",
+      });
+      return { success: false, error: "Insufficient balance" };
+    }
 
     // Get Jupiter quote
     const USDC_DECIMALS = 6;
@@ -211,8 +269,16 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
     const duration = Date.now() - startTime;
     console.log(`[Bot ${bot.id}] Execution successful in ${duration}ms`);
 
-    // Phase 2 TODO: Send notification email
-    // await sendExecutionNotification(bot, executionResult);
+    // A more precise decimals calculation requires `getTokenInfo` but we will fallback gracefully here
+    const decimals = bot.buyTokenMint === 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' ? 6 : 9;
+
+    await notifyUser(bot.userId, {
+      botName: bot.name,
+      status: "success",
+      amountUsd: bot.amountUsd,
+      buyTokenSymbol: bot.buyTokenSymbol,
+      receivedAmount: executionResult.outAmount / Math.pow(10, decimals),
+    });
 
     return { success: true };
 
@@ -260,7 +326,13 @@ async function recordFailedExecution(bot: any, errorMessage: string) {
 
     if (shouldPause) {
       console.warn(`[Bot ${bot.id}] Paused after ${newFailedAttempts} failures`);
-      // Phase 2 TODO: Send notification email
+      await notifyUser(bot.userId, {
+        botName: bot.name,
+        status: "paused",
+        amountUsd: bot.amountUsd,
+        buyTokenSymbol: bot.buyTokenSymbol,
+        errorMessage: `Failed ${newFailedAttempts} times: ${errorMessage}`,
+      });
     }
   } catch (error) {
     console.error(`[Bot ${bot.id}] Failed to record execution failure:`, error);

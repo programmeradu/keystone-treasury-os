@@ -320,7 +320,90 @@ export function TierExpiryEmail({
   );
 }
 
-// ─── 5. Gas Alert Email (replacing inline HTML) ──────────────────────
+// ─── 5. Dca Execution Email ──────────────────────────────────────────
+export function DcaExecutionEmail({
+  botName,
+  status,
+  amountUsd,
+  buyTokenSymbol,
+  receivedAmount,
+  errorMessage,
+}: {
+  botName: string;
+  status: 'success' | 'paused';
+  amountUsd: string | number;
+  buyTokenSymbol: string;
+  receivedAmount?: string | number;
+  errorMessage?: string;
+}) {
+  const isSuccess = status === 'success';
+  const previewText = isSuccess
+    ? `DCA Execution Successful: Bought ${receivedAmount} ${buyTokenSymbol}`
+    : `DCA Bot Paused: ${botName}`;
+
+  return (
+    <KeystoneLayout preview={previewText}>
+      <EmailHeading>{isSuccess ? 'DCA Execution Successful' : 'DCA Bot Paused'}</EmailHeading>
+      <EmailSubtext>
+        {isSuccess
+          ? `Your DCA bot "${botName}" has successfully executed a trade.`
+          : `Your DCA bot "${botName}" has been paused due to an error.`}
+      </EmailSubtext>
+
+      <Section
+        style={{
+          backgroundColor: isSuccess ? brand.accentMuted : 'rgba(239, 68, 68, 0.1)',
+          border: isSuccess ? 'none' : '1px solid rgba(239, 68, 68, 0.2)',
+          borderRadius: '12px',
+          padding: '20px 24px',
+          margin: '0 0 20px 0',
+        }}
+      >
+        {isSuccess ? (
+          <table style={{ width: '100%', fontSize: '13px', color: brand.text }}>
+            <tbody>
+              <tr>
+                <td style={{ padding: '4px 0', color: brand.textMuted }}>Bot Name</td>
+                <td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 700 }}>{botName}</td>
+              </tr>
+              <tr>
+                <td style={{ padding: '4px 0', color: brand.textMuted }}>Amount Invested</td>
+                <td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 700 }}>${Number(amountUsd).toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td style={{ padding: '4px 0', color: brand.textMuted }}>Received</td>
+                <td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 700, color: brand.accent }}>
+                  {Number(receivedAmount).toLocaleString()} {buyTokenSymbol}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        ) : (
+          <table style={{ width: '100%', fontSize: '13px', color: brand.text }}>
+            <tbody>
+              <tr>
+                <td style={{ padding: '4px 0', color: brand.textMuted }}>Bot Name</td>
+                <td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 700 }}>{botName}</td>
+              </tr>
+              <tr>
+                <td style={{ padding: '4px 0', color: brand.textMuted }}>Reason</td>
+                <td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 700, color: '#fca5a5' }}>
+                  {errorMessage || 'Unknown error'}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        )}
+      </Section>
+
+      <PrimaryButton href="https://stauniverse.tech/app">
+        Manage Bots in Keystone →
+      </PrimaryButton>
+    </KeystoneLayout>
+  );
+}
+
+// ─── 6. Gas Alert Email (replacing inline HTML) ──────────────────────
 export function GasAlertEmail({
   gasPrice,
   ethPrice,
