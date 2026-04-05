@@ -11,6 +11,7 @@ export const TOOL_META: Record<string, { label: string; color: string; icon: str
   yield_withdraw: { label: "Withdraw", color: "text-orange-400", icon: "📤" },
   rebalance: { label: "Rebalance", color: "text-indigo-400", icon: "⚖️" },
   mass_dispatch: { label: "Payroll", color: "text-pink-400", icon: "💸" },
+  create_multisig: { label: "Create Squad", color: "text-emerald-400", icon: "🛡️" },
   multisig_proposal: { label: "Proposal", color: "text-amber-400", icon: "🏛️" },
   execute_dca: { label: "DCA", color: "text-teal-400", icon: "📊" },
   foresight_simulation: { label: "Foresight", color: "text-violet-400", icon: "🔮" },

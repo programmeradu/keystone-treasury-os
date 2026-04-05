@@ -406,9 +406,23 @@ Wallet State: ${JSON.stringify(walletState || {})}
       };
     };
 
-    // Tools as plain objects (avoids tool() wrapper overload issues with complex return types)
     const keystoneTools: any = {
       // ━━━━ PILLAR 1: Treasury Execution ━━━━
+      create_multisig: {
+        description: "Deploys a new Squads V4 Multisig Treasury for the user on the Solana blockchain. Use this exclusively when the user asks to create a multisig, create a squad, or launch a new treasury.",
+        inputSchema: z.object({}),
+        execute: async () => {
+          return {
+            success: true,
+            operation: "navigate",
+            path: "/app/treasury",
+            validated: true,
+            message: "To deploy your new Squads V4 Multisig natively, please use the 'Launch new treasury / Create Squad' button in your Vault Selector panel on the dashboard.",
+            requiresApproval: false
+          };
+        }
+      },
+
       swap: {
         description: "Execute a token swap on Solana via Jupiter.",
         inputSchema: z.object({

@@ -54,7 +54,10 @@ export async function GET(req: NextRequest) {
         );
 
         if (!match) {
-            return NextResponse.json({ tier: "free", status: "no_subscription" });
+            // Keep the user's DB tier so test mode webhooks show correctly in the UI. 
+            // In a strict production environment without test mode, we could consider reverting to free,
+            // but preserving the DB state prevents Live API keys from hiding Test Mode checkouts.
+            return NextResponse.json({ tier: user.tier || "free", status: "no_live_subscription_found" });
         }
 
         const status = match.attributes.status; // active, past_due, cancelled, expired, etc.

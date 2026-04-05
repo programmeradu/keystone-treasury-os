@@ -5,15 +5,62 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Shield, Eye, ChevronDown, Unplug, ExternalLink, Copy, Check } from "lucide-react";
 import { useVault } from "@/lib/contexts/VaultContext";
 import { toast } from "@/lib/toast-notifications";
+import { SquadsClient } from "@/lib/squads";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { PublicKey } from "@solana/web3.js";
 
 export function VaultSelector() {
     const { activeVault, setActiveVault, disconnectVault, isMultisig, vaultConfig } = useVault();
+    const { connection } = useConnection();
+    const wallet = useWallet();
     const [isOpen, setIsOpen] = useState(false);
     const [inputMode, setInputMode] = useState(false);
+    const [createMode, setCreateMode] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
     const [address, setAddress] = useState("");
     const [copied, setCopied] = useState(false);
 
     const shortAddr = activeVault ? `${activeVault.slice(0, 6)}...${activeVault.slice(-4)}` : "";
+
+    const handleCreateMultisig = async () => {
+        if (!wallet.publicKey || !wallet.connected) {
+            toast.error("Wallet disconnected", { description: "Connect your wallet first." });
+            return;
+        }
+
+        try {
+            setIsCreating(true);
+            toast.loading("Deploying Squads V4 Vault...", { id: "create-multisig" });
+            
+            const client = new SquadsClient(connection, wallet);
+            const { multisigPda } = await client.createMultisig({
+                members: [{
+                    key: wallet.publicKey,
+                    // 3 = mask for all permissions (Initiate, Vote, Execute)
+                    permissions: { mask: 3 }
+                }],
+                threshold: 1, // Start as 1/1, user can add members via Team page
+            });
+
+            toast.success("Squads Multisig Deployed!", { 
+                id: "create-multisig",
+                description: `Created successfully: ${multisigPda.slice(0, 8)}...`
+            });
+            
+            // Connect to the new vault automatically
+            setActiveVault(multisigPda);
+            setCreateMode(false);
+            
+        } catch (error: any) {
+            console.error(error);
+            toast.error("Deployment failed", { 
+                id: "create-multisig",
+                description: error?.message || "Could not deploy multisig"
+            });
+        } finally {
+            setIsCreating(false);
+        }
+    };
 
     const handleConnect = () => {
         const trimmed = address.trim();
@@ -38,21 +85,52 @@ export function VaultSelector() {
     if (!activeVault) {
         return (
             <div className="relative mb-8">
-                {!inputMode ? (
-                    <button
-                        onClick={() => setInputMode(true)}
-                        className="w-full text-left p-4 rounded-2xl bg-muted/30 border border-dashed border-border hover:border-primary/30 hover:bg-muted/50 transition-all group"
-                    >
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-muted border border-border flex items-center justify-center text-muted-foreground">
-                                <Eye size={20} />
-                            </div>
-                            <div className="flex-1 flex flex-col min-w-0">
-                                <span className="text-[10px] font-medium text-muted-foreground mb-0.5">No address connected</span>
-                                <span className="text-xs font-semibold text-foreground">Connect an address</span>
-                            </div>
+                {createMode ? (
+                    <div className="p-4 rounded-2xl bg-card border border-primary/30 shadow-[0_0_15px_rgba(37,168,92,0.15)] flex flex-col items-center justify-center text-center">
+                        <Shield className="w-10 h-10 text-primary mb-3" />
+                        <h3 className="text-sm font-semibold text-foreground mb-1">Create a New Squads Vault</h3>
+                        <p className="text-[11px] text-muted-foreground mb-4">Deploy a native Squads V4 multisig to the Solana blockchain. You will be set as the initial admin (1/1 threshold).</p>
+                        <div className="flex gap-2 w-full">
+                            <button
+                                onClick={handleCreateMultisig}
+                                disabled={isCreating}
+                                className="flex-1 h-9 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:opacity-90 transition-all disabled:opacity-50 relative"
+                            >
+                                {isCreating ? "Deploying..." : "Sign & Deploy"}
+                            </button>
+                            <button
+                                onClick={() => setCreateMode(false)}
+                                disabled={isCreating}
+                                className="h-9 px-4 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:bg-muted transition-all disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
                         </div>
-                    </button>
+                    </div>
+                ) : !inputMode ? (
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            onClick={() => setCreateMode(true)}
+                            className="text-left p-4 rounded-2xl bg-primary/10 border border-primary/20 hover:border-primary/50 hover:bg-primary/15 transition-all group"
+                        >
+                            <div className="w-8 h-8 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary mb-3">
+                                <Shield size={16} />
+                            </div>
+                            <span className="text-[10px] font-medium text-primary mb-0.5 block">Launch new treasury</span>
+                            <span className="text-xs font-semibold text-foreground block">Create Squad</span>
+                        </button>
+
+                        <button
+                            onClick={() => setInputMode(true)}
+                            className="text-left p-4 rounded-2xl bg-muted/30 border border-dashed border-border hover:border-foreground/30 hover:bg-muted/50 transition-all group"
+                        >
+                            <div className="w-8 h-8 rounded-xl bg-muted border border-border flex items-center justify-center text-muted-foreground mb-3">
+                                <Eye size={16} />
+                            </div>
+                            <span className="text-[10px] font-medium text-muted-foreground mb-0.5 block">Existing multisig</span>
+                            <span className="text-xs font-semibold text-foreground block">Connect Addr</span>
+                        </button>
+                    </div>
                 ) : (
                     <div className="p-4 rounded-2xl bg-card border border-border shadow-lg">
                         <span className="text-[10px] font-medium text-muted-foreground mb-2 block">Paste a Solana address</span>
