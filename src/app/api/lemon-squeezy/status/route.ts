@@ -37,12 +37,12 @@ export async function GET(req: NextRequest) {
             const errText = await res.text();
             console.error(`[Lemon Squeezy] API Failure (${res.status}):`, errText);
             
-            // Provide more descriptive error to client to help user debug their store config
+            // Gracefully fallback to the user's DB-recorded tier if the API request fails (e.g., 401 Unauthorized)
+            // This prevents the frontend from crashing or erroring if the owner rotates keys or has invalid credentials.
             return NextResponse.json({ 
-                error: "Lemon Squeezy API rejected the request", 
-                details: errText,
-                status: res.status 
-            }, { status: 502 });
+                tier: user.tier || "free",
+                status: "verification_failed",
+            });
         }
 
         const data = await res.json();

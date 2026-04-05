@@ -232,7 +232,7 @@ const pctChange = (arr: number[]) => {
 
 export function AtlasClient() {
   const { connection } = useConnection();
-  const { publicKey, sendTransaction, disconnect } = useWallet();
+  const { publicKey, sendTransaction, signTransaction, disconnect } = useWallet();
   const router = useRouter();
   const searchParams = useSearchParams();
   const isClay = searchParams?.get("style") === "clay";
@@ -1290,7 +1290,8 @@ export function AtlasClient() {
 
       // skipPreflight avoids simulation errors from address lookup tables or stale blockhash;
       // Jupiter already validates the route server-side.
-      const signature = await sendTransaction!(vtx, connection, { skipPreflight: true });
+      const signedTx = await signTransaction!(vtx);
+      const signature = await connection.sendRawTransaction(signedTx.serialize(), { skipPreflight: true });
       toast.success("Transaction sent", {
         description: "Opening explorer…"
       });
@@ -1372,7 +1373,8 @@ export function AtlasClient() {
       const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
       const vtx = VersionedTransaction.deserialize(bytes);
 
-      const sig = await sendTransaction!(vtx, connection, { skipPreflight: true });
+      const signedTx = await signTransaction!(vtx);
+      const sig = await connection.sendRawTransaction(signedTx.serialize(), { skipPreflight: true });
       toast.success(`Staked via ${lst.name}`, { description: `SOL → ${lst.symbol} sent` });
       const url = `https://solscan.io/tx/${sig}`;
       toast.message("View on Solscan", {
@@ -1447,7 +1449,8 @@ export function AtlasClient() {
       const b64 = swapData.swapTransaction as string;
       const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
       const vtx = VersionedTransaction.deserialize(bytes);
-      const sig = await sendTransaction!(vtx, connection, { skipPreflight: true });
+      const signedTx = await signTransaction!(vtx);
+      const sig = await connection.sendRawTransaction(signedTx.serialize(), { skipPreflight: true });
 
       const txUrl = `https://solscan.io/tx/${sig}`;
       toast.success(`Swapped ${halfSol.toFixed(3)} SOL → USDC for LP pair`, {
