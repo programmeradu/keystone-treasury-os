@@ -1017,3 +1017,241 @@ useEffect(() => {
 **Total: 41 person-hours** (was 32)
 **Launch timeline: 5-6 days with 2 engineers** (was 3-4 days)
 
+
+---
+
+### Finding #12: WALLET MANAGER - UNVALIDATED WEBAUTHN CREDENTIALS
+**File:** `src/components/studio/WalletManager.tsx`
+**Lines:** 50-100 (credential handling)
+**Severity:** HIGH - Weak Credential Validation
+
+#### Description
+The WalletManager component receives WebAuthn attestation data and sends it to `/api/turnkey/register` without validating the credential structure or verifying the attestation is legitimate. An attacker could craft fake credentials.
+
+#### Code Evidence
+```typescript
+// Lines 50-100: No validation of WebAuthn response
+const response = credential.response as AuthenticatorAttestationResponse;
+
+// Directly encode and send to server without validation
+const credentialId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+
+const clientDataJson = btoa(String.fromCharCode(...new Uint8Array(response.clientDataJSON)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+
+const attestationObject = btoa(String.fromCharCode(...new Uint8Array(response.attestationObject)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+
+// Send to server WITHOUT ANY VALIDATION
+const registerResponse = await fetch("/api/turnkey/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+        subOrgName: `Keystone Studio Vault ${Date.now()}`,
+        challenge,
+        attestation: {
+            credentialId,
+            clientDataJson,
+            attestationObject,
+            transports: turnkeyTransports,
+        },
+    }),
+});
+```
+
+#### Attack Scenario
+```typescript
+// Attacker crafts fake WebAuthn response
+const fakeResponse = {
+    id: btoa('fake-credential-id'),
+    rawId: new Uint8Array([1,2,3,4,5]),
+    response: {
+        clientDataJSON: new Uint8Array([0,0,0,0]),
+        attestationObject: new Uint8Array([0,0,0,0]),
+        getTransports: () => ['internal']
+    },
+    type: 'public-key'
+};
+
+// Browser navigator.credentials.create() could return fake data in compromised browser
+// Even if legitimate, server doesn't validate attestation properly
+```
+
+#### Impact
+- **Weak credential verification** - Server doesn't validate attestation format
+- **Fake wallet creation** - Attacker could create wallets with false credentials
+- **Reduced security** - WebAuthn defeated if server doesn't validate properly
+
+#### Root Cause
+- No client-side validation of credential structure
+- No server-side attestation verification
+- Blindly trusting WebAuthn response
+
+#### Recommended Fix
+```typescript
+// Client-side validation
+function validateWebAuthnResponse(credential: PublicKeyCredential): boolean {
+  // Validate raw ID length
+  if (credential.rawId.byteLength < 16 || credential.rawId.byteLength > 1024) {
+    throw new Error('Invalid credential ID length');
+  }
+  
+  const response = credential.response as AuthenticatorAttestationResponse;
+  
+  // Validate attestation object contains required fields
+  try {
+    const attestation = new Uint8Array(response.attestationObject);
+    // Should start with CBOR encoding 0xa3 (3-entry map) or 0xa4 (4-entry map)
+    if (attestation[0] < 0xa3 || attestation[0] > 0xa5) {
+      throw new Error('Invalid attestation object format');
+    }
+  } catch (e) {
+    throw new Error('Attestation format invalid');
+  }
+  
+  // Validate clientDataJSON
+  try {
+    const clientData = JSON.parse(
+      new TextDecoder().decode(response.clientDataJSON)
+    );
+    if (clientData.type !== 'webauthn.create') {
+      throw new Error('Invalid clientDataJSON type');
+    }
+    if (!clientData.challenge) {
+      throw new Error('Missing challenge in clientDataJSON');
+    }
+  } catch (e) {
+    throw new Error('ClientDataJSON validation failed');
+  }
+  
+  return true;
+}
+
+// In component
+const credential = await navigator.credentials.create({
+    publicKey: publicKeyCredentialCreationOptions,
+}) as PublicKeyCredential;
+
+if (!credential) throw new Error('Failed to create credential');
+
+// Validate before sending to server
+try {
+  validateWebAuthnResponse(credential);
+} catch (e) {
+  throw new Error(`Credential validation failed: ${e.message}`);
+}
+
+// Then send to server
+```
+
+**Server-side validation:**
+```typescript
+// In /api/turnkey/register
+import { verifyAttestationResponse } from '@simplewebauthn/server';
+
+const verification = await verifyAttestationResponse({
+  response: {
+    id: credential.id,
+    rawId: credential.rawId,
+    response: {
+      clientDataJSON: credential.response.clientDataJSON,
+      attestationObject: credential.response.attestationObject,
+      transports: credential.response.getTransports?.(),
+    },
+    type: 'public-key',
+  },
+  expectedChallenge: expectedChallenge,  // From session/DB
+  expectedOrigin: request.headers.get('origin'),
+  expectedRPID: new URL(request.url).hostname,
+});
+
+if (!verification.verified) {
+  return NextResponse.json(
+    { error: 'Attestation verification failed' },
+    { status: 400 }
+  );
+}
+
+// Only proceed if attestation is verified
+```
+
+#### Effort to Fix
+- 4 hours (add client + server validation, use @simplewebauthn library)
+
+#### Business Impact
+- **Security weakness** - Credential verification undermined
+- **Fake wallet risk** - Could create unauthorized wallets
+
+---
+
+## FINAL COMPREHENSIVE SUMMARY
+
+**Total Issues Found: 12** (was 11 before WalletManager audit)
+
+| # | Issue | File | Severity | Effort |
+|---|-------|------|----------|--------|
+| 1 | RCE in Studio Compilation | compile-contract/route.ts | **CRITICAL** | 8h |
+| 2 | Liveblocks Vault Rooms No Auth | liveblocks-auth/route.ts | **CRITICAL** | 6h |
+| 3 | Turnkey Silent Failure | turnkey/register/route.ts | **CRITICAL** | 1h |
+| 11 | LivePreview Code Injection | LivePreview.tsx | **CRITICAL** | 6h |
+| 10 | PromptChat API Injection | PromptChat.tsx | **HIGH** | 3h |
+| 12 | WalletManager Weak Credentials | WalletManager.tsx | **HIGH** | 4h |
+| 4 | Analytics Cache No User Isolation | analytics/history/route.ts | **HIGH** | 2h |
+| 8 | RPC Proxy No Rate Limiting | solana/rpc/route.ts | **HIGH** | 4h |
+| 5 | Dashboard Missing Real-time | page.tsx | **HIGH** | 5h |
+| 9 | Yield Scanner SSRF | tools/yield-scanner/route.ts | **MEDIUM** | 2h |
+| 6 | Settings Delete No Confirmation | settings/page.tsx | **MEDIUM** | 1h |
+| 7 | Email Service No Rate Limiting | email-service.ts | **MEDIUM** | 3h |
+
+**Updated Timeline:**
+- **CRITICAL (4 issues):** 21 hours
+- **HIGH (5 issues):** 18 hours
+- **MEDIUM (3 issues):** 6 hours
+- **TOTAL: 45 person-hours**
+
+**Launch Timeline: 6-7 days with 2 engineers**
+
+### Critical Path (must fix before launch)
+1. RCE in Studio (#1) - 8h
+2. Liveblocks Access Control (#2) - 6h
+3. Turnkey Silent Failure (#3) - 1h
+4. LivePreview Code Injection (#11) - 6h
+**Minimum for safe launch: 21 hours = 2-3 days**
+
+### Production-Ready Timeline
+Add HIGH-severity issues:
+5. PromptChat API Injection (#10) - 3h
+6. WalletManager Credentials (#12) - 4h
+7. Analytics Isolation (#4) - 2h
+8. RPC Rate Limiting (#8) - 4h
+9. Dashboard Real-time (#5) - 5h
+**Full production: 39 hours = 5-6 days with 2 engineers**
+
+---
+
+## CRITICAL VULNERABILITIES SUMMARY
+
+This audit identified **4 CRITICAL vulnerabilities** that MUST be fixed before any production deployment:
+
+1. **RCE via Studio Compilation** - Attacker executes arbitrary code on server, steals all keys
+2. **Real-time Eavesdropping** - Users can spy on other teams' Liveblocks collaboration
+3. **Silent Wallet Failures** - Users think wallets created when they weren't
+4. **Code Injection in iframe** - User code injected unsafely, could escape sandbox
+
+**Any of these 4 could cause complete business failure if exploited.**
+
+---
+
+Prepared by: Madoc (🦊)
+**Audit Complete: 2026-04-05 15:30 UTC**
+**Total audit time: 2.5 hours**
+**Files analyzed: 100+**
+**Critical vulnerabilities: 4**
+**All issues documented with code examples, fix strategies, and effort estimates.**
