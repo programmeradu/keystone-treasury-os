@@ -6,6 +6,7 @@ import {
   NotificationEmail,
   TierExpiryEmail,
   GasAlertEmail,
+  DcaExecutionEmail,
 } from './emails/templates';
 
 // ─── Singleton Resend client ─────────────────────────────────────────
@@ -125,6 +126,42 @@ export async function sendTierExpiryEmail(to: string, tier: string, daysLeft: nu
     to,
     subject: `Your Keystone ${tier} plan expires in ${daysLeft} days`,
     react: TierExpiryEmail({ tier, daysLeft }),
+  });
+}
+
+export async function sendDcaExecutionEmail({
+  to,
+  botName,
+  status,
+  amountUsd,
+  buyTokenSymbol,
+  receivedAmount,
+  errorMessage,
+}: {
+  to: string;
+  botName: string;
+  status: 'success' | 'paused';
+  amountUsd: string | number;
+  buyTokenSymbol: string;
+  receivedAmount?: string | number;
+  errorMessage?: string;
+}) {
+  const isSuccess = status === 'success';
+  const subject = isSuccess
+    ? `✅ DCA Execution Successful: ${botName}`
+    : `⚠️ DCA Bot Paused: ${botName}`;
+
+  return sendEmail({
+    to,
+    subject,
+    react: DcaExecutionEmail({
+      botName,
+      status,
+      amountUsd,
+      buyTokenSymbol,
+      receivedAmount,
+      errorMessage,
+    }),
   });
 }
 
