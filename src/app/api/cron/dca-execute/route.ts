@@ -121,6 +121,7 @@ async function getUserEmail(userId: string): Promise<string | null> {
 }
 
 async function notifyUser(userId: string, emailPayload: any) {
+  if (!db) return;
   try {
     const settings = await db.select().from(userSettings).where(eq(userSettings.userId, userId)).limit(1);
     if (settings && settings.length > 0 && settings[0].emailAlerts) {
