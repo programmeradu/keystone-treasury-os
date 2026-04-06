@@ -143,10 +143,12 @@ export function ForesightPreview({
                 keystoneBridge.notify('runtime.ready', { timestamp: Date.now() });
             } catch (err) {
                 console.error('Foresight Boot Error:', err);
-                document.getElementById('root').innerHTML =
+                var rootEl = document.getElementById('root');
+                rootEl.innerHTML =
                     '<div style="color:#ef4444;padding:20px;font-family:monospace;font-size:13px;line-height:1.6">' +
                     '<strong style="color:#f87171">Foresight Error</strong><br/>' +
-                    '<span style="color:#fca5a5">' + (err.message || err) + '</span></div>';
+                    '<span class="err-placeholder" style="color:#fca5a5"></span></div>';
+                rootEl.querySelector('.err-placeholder').textContent = err.message || String(err);
                 keystoneBridge.notify('runtime.error', { message: err.message || String(err) });
             }
         })();
