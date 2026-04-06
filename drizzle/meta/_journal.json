@@ -15,6 +15,13 @@
       "when": 1775484302847,
       "tag": "0001_audit-schema-sync",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775484600000,
+      "tag": "0002_dca-per-bot-keypair",
+      "breakpoints": true
     }
   ]
 }

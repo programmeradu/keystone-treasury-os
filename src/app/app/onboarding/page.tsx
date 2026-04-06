@@ -26,6 +26,7 @@ export interface OnboardingData {
     email: string;
     avatarSeed: string;
     organizationName: string;
+    walletAddress: string;
     riskProfile: "conservative" | "moderate" | "aggressive";
     teamEmails: string[];
 }
@@ -39,6 +40,7 @@ export default function OnboardingPage() {
         email: "",
         avatarSeed: `user_${Date.now()}`,
         organizationName: "",
+        walletAddress: "",
         riskProfile: "moderate",
         teamEmails: [],
     });
@@ -87,6 +89,23 @@ export default function OnboardingPage() {
                 organizationName: data.organizationName || undefined,
                 onboardingCompleted: true,
             } as any);
+
+            // Create default vault if wallet was connected during onboarding
+            if (data.walletAddress) {
+                try {
+                    await fetch("/api/vault", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            address: data.walletAddress,
+                            label: "My Vault",
+                        }),
+                    });
+                } catch (vaultErr) {
+                    // Non-blocking: user can create vault later from dashboard
+                    console.warn("[Onboarding] Vault creation failed:", vaultErr);
+                }
+            }
 
             // Refresh the JWT cookie so middleware sees onboarded=true
             await fetch("/api/auth/refresh-session", { method: "POST" });

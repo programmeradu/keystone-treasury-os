@@ -13,11 +13,15 @@ import { AgentDashboard } from "@/components/AgentDashboard";
 type RunStep = {
   index: number;
   title: string;
-  status: "success" | "confirmed" | "pending" | string;
+  status: "success" | "confirmed" | "pending" | "failed" | string;
 };
 
 type RunResponse = {
   ok: boolean;
+  executionId?: string;
+  strategy?: string;
+  status?: string;
+  result?: any;
   run?: {
     id: string;
     status: string;
@@ -25,7 +29,7 @@ type RunResponse = {
     summary: string;
     steps: RunStep[];
   };
-  error?: string;
+  error?: string | { code: string; message: string };
 };
 
 export const KeystoneApp: React.FC = () => {
@@ -47,7 +51,8 @@ export const KeystoneApp: React.FC = () => {
       });
       const data: RunResponse = await res.json();
       if (!data.ok) {
-        throw new Error(data.error || "Execution failed");
+        const errMsg = typeof data.error === "string" ? data.error : data.error?.message || "Execution failed";
+        throw new Error(errMsg);
       }
       setRun(data.run || null);
     } catch (err: any) {
@@ -71,6 +76,8 @@ export const KeystoneApp: React.FC = () => {
         return "bg-blue-600 text-white";
       case "pending":
         return "bg-amber-500 text-black";
+      case "failed":
+        return "bg-red-600 text-white";
       default:
         return "bg-muted text-muted-foreground";
     }

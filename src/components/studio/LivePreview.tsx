@@ -556,8 +556,9 @@ export function LivePreview({
         });
         bridge.on(BridgeMethods.JUPITER_QUOTE, async (p) => {
             const params = p as { inputMint: string; outputMint: string; amount: string; slippageBps?: number };
-            setLogs(prev => [...prev.slice(-500), `[jupiter] quote ${params.amount} ${params.inputMint} → ${params.outputMint}`]);
-            return stubJupiterQuote(params);
+            const isLive = !!walletAddress;
+            setLogs(prev => [...prev.slice(-500), `[jupiter] quote ${params.amount} ${params.inputMint} → ${params.outputMint}${isLive ? " (LIVE)" : " (mock)"}`]);
+            return stubJupiterQuote(params, isLive);
         });
         bridge.on(BridgeMethods.YIELD_OPTIMIZE, async (p) => {
             const params = p as { asset: string };

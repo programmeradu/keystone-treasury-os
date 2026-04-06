@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { dcaBots, dcaExecutions } from "@/db/schema";
 import { eq, and, lte, gte } from "drizzle-orm";
 import { executeSwapWithSigning, getJupiterQuote, validateDelegation } from "@/lib/jupiter-executor";
+import { decryptKeypair } from "@/lib/keypair-envelope";
 import bs58 from "bs58";
 import { Keypair } from "@solana/web3.js";
 
@@ -152,25 +153,34 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
     // Execute the actual swap
     console.log(`[Bot ${bot.id}] Executing swap...`);
 
-    // SECURITY WARNING: All DCA bots share a single delegate keypair.
-    // If this key is compromised, ALL active bots are affected.
-    // TODO: Implement per-bot keypairs stored encrypted in the database
-    // with key rotation support. See AUDIT-FIXES-PLAN.md Phase 3.3.
-    const delegatePrivateKeyBase58 = process.env.DELEGATE_WALLET_PRIVATE_KEY;
-    if (!delegatePrivateKeyBase58) {
-      console.error(`[Bot ${bot.id}] Delegate wallet private key not configured`);
-      await recordFailedExecution(bot, "Server configuration error");
-      return { success: false, error: "Configuration error" };
-    }
-
-    // Validate key format before attempting decode
+    // Resolve signer keypair: prefer per-bot encrypted keypair, fall back to shared delegate
     let signerKeypair: Keypair;
-    try {
-      signerKeypair = Keypair.fromSecretKey(bs58.decode(delegatePrivateKeyBase58));
-    } catch (keyErr) {
-      console.error(`[Bot ${bot.id}] Invalid delegate keypair format`);
-      await recordFailedExecution(bot, "Invalid delegate keypair");
-      return { success: false, error: "Configuration error" };
+    if (bot.encryptedKeypair) {
+      try {
+        const secretKeyBase58 = decryptKeypair(bot.encryptedKeypair);
+        signerKeypair = Keypair.fromSecretKey(bs58.decode(secretKeyBase58));
+        console.log(`[Bot ${bot.id}] Using per-bot keypair`);
+      } catch (decryptErr: any) {
+        console.error(`[Bot ${bot.id}] Failed to decrypt per-bot keypair: ${decryptErr.message}`);
+        await recordFailedExecution(bot, "Failed to decrypt bot keypair");
+        return { success: false, error: "Keypair decryption failed" };
+      }
+    } else {
+      // Legacy fallback: shared delegate keypair
+      const delegatePrivateKeyBase58 = process.env.DELEGATE_WALLET_PRIVATE_KEY;
+      if (!delegatePrivateKeyBase58) {
+        console.error(`[Bot ${bot.id}] No per-bot keypair and DELEGATE_WALLET_PRIVATE_KEY not configured`);
+        await recordFailedExecution(bot, "Server configuration error");
+        return { success: false, error: "Configuration error" };
+      }
+      try {
+        signerKeypair = Keypair.fromSecretKey(bs58.decode(delegatePrivateKeyBase58));
+        console.log(`[Bot ${bot.id}] Using shared delegate keypair (legacy)`);
+      } catch (keyErr) {
+        console.error(`[Bot ${bot.id}] Invalid delegate keypair format`);
+        await recordFailedExecution(bot, "Invalid delegate keypair");
+        return { success: false, error: "Configuration error" };
+      }
     }
 
     const executionResult = await executeSwapWithSigning({

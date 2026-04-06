@@ -139,6 +139,7 @@ export const dcaBots = pgTable('dca_bots', {
   lastExecutionAttempt: timestamp('last_execution_attempt'),
   failedAttempts: integer('failed_attempts').notNull().default(0),
   pauseReason: text('pause_reason'),
+  encryptedKeypair: text('encrypted_keypair'), // AES-256-GCM encrypted delegate keypair (per-bot)
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({

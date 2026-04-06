@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { Wallet, ExternalLink, CheckCircle } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
@@ -13,9 +13,18 @@ interface StepProps {
     onBack: () => void;
 }
 
-export const VaultStep = ({}: StepProps) => {
+export const VaultStep = ({ updateData }: StepProps) => {
     const { publicKey, connected } = useWallet();
     const { setVisible: openWalletModal } = useWalletModal();
+
+    // Sync wallet address to onboarding data when connected
+    useEffect(() => {
+        if (connected && publicKey) {
+            updateData({ walletAddress: publicKey.toBase58() });
+        } else {
+            updateData({ walletAddress: "" });
+        }
+    }, [connected, publicKey, updateData]);
 
     const shortWallet = publicKey ? `${publicKey.toBase58().slice(0, 6)}...${publicKey.toBase58().slice(-4)}` : null;
 

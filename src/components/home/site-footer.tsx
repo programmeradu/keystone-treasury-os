@@ -24,11 +24,17 @@ const companyLinks = [
   { label: "Contact", href: "#contact" },
 ];
 
+const legalLinks = [
+  { label: "Privacy Policy", href: "/legal/privacy" },
+  { label: "Terms of Service", href: "/legal/terms" },
+  { label: "Cookie Policy", href: "/legal/cookies" },
+];
+
 export function SiteFooter() {
   return (
     <footer className="border-t border-white/[0.04]">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 md:py-16">
-        <div className="grid gap-8 md:grid-cols-4">
+        <div className="grid gap-8 md:grid-cols-5">
           {/* Brand */}
           <div className="md:col-span-1">
             <a href="#content" className="flex items-center gap-2 mb-4">
@@ -86,6 +92,25 @@ export function SiteFooter() {
             </h4>
             <ul className="space-y-2.5">
               {companyLinks.map((link) => (
+                <li key={link.label}>
+                  <a
+                    href={link.href}
+                    className="text-sm text-white/40 hover:text-white/70 transition-colors"
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Legal */}
+          <div>
+            <h4 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-4">
+              Legal
+            </h4>
+            <ul className="space-y-2.5">
+              {legalLinks.map((link) => (
                 <li key={link.label}>
                   <a
                     href={link.href}

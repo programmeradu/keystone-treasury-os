@@ -71,7 +71,24 @@ export function stubMCPCall(params: { serverUrl: string; tool: string; params?: 
 
 // ─── Jupiter Swap ───────────────────────────────────────────────────
 
-export function stubJupiterQuote(params: { inputMint: string; outputMint: string; amount: string; slippageBps?: number }) {
+export async function stubJupiterQuote(params: { inputMint: string; outputMint: string; amount: string; slippageBps?: number }, liveMode = false) {
+    // When liveMode is true, fetch a real quote from Jupiter
+    if (liveMode) {
+        try {
+            const slippage = params.slippageBps ?? 50;
+            const url = `https://lite-api.jup.ag/swap/v1/quote?inputMint=${params.inputMint}&outputMint=${params.outputMint}&amount=${params.amount}&slippageBps=${slippage}`;
+            const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+            if (res.ok) {
+                const quote = await res.json();
+                return quote;
+            }
+            // Fall through to mock on non-OK response
+        } catch {
+            // Fall through to mock on network error
+        }
+    }
+
+    // Mock fallback
     const inAmount = params.amount || "1000000";
     const mockRate = 23.42; // SOL/USDC approximate
     const outAmount = String(Math.floor(parseFloat(inAmount) * mockRate));

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { dcaBots, dcaExecutions, users } from "@/db/schema";
 import { eq, and, lte, desc } from "drizzle-orm";
+import { Keypair } from "@solana/web3.js";
+import bs58 from "bs58";
+import { encryptKeypair } from "@/lib/keypair-envelope";
 
 async function getUserId(walletAddress: string): Promise<string | null> {
   if (!walletAddress || walletAddress.length < 32 || walletAddress.length > 44) {
@@ -210,6 +213,12 @@ export async function POST(req: NextRequest) {
       const startDate = now;
       const nextExecution = new Date(calculateNextExecution(Date.now(), frequency as any));
 
+      // Generate per-bot keypair and encrypt it
+      const botKeypair = Keypair.generate();
+      const botSecretKeyBase58 = bs58.encode(botKeypair.secretKey);
+      const encryptedKeypair = encryptKeypair(botSecretKeyBase58);
+      const delegateAddress = botKeypair.publicKey.toBase58();
+
       // Insert into database
       await db.insert(dcaBots).values({
         id: botId,
@@ -230,6 +239,7 @@ export async function POST(req: NextRequest) {
         executionCount: 0,
         totalInvested: '0',
         totalReceived: '0',
+        encryptedKeypair,
       });
 
       return NextResponse.json({
@@ -239,6 +249,7 @@ export async function POST(req: NextRequest) {
           name,
           status: "active",
           nextExecution,
+          delegateAddress,
         },
       }, { status: 200 });
     }
