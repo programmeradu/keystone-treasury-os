@@ -52,7 +52,11 @@ async function compileLocal(
 
         // Write source files
         for (const [filename, content] of Object.entries(files)) {
-            const filePath = path.join(srcDir, filename);
+            const filePath = path.resolve(srcDir, filename);
+            // Ensure path sandboxing to prevent directory traversal
+            if (!filePath.startsWith(srcDir + path.sep)) {
+                throw new Error(`Invalid file path detected: ${filename}`);
+            }
             fs.mkdirSync(path.dirname(filePath), { recursive: true });
             fs.writeFileSync(filePath, content, "utf-8");
         }
@@ -226,6 +230,14 @@ export async function POST(req: NextRequest) {
     try {
         const body: CompileRequest = await req.json();
         const { files, programName = "keystone_app", useCloud = false } = body;
+
+        // Validate program name to prevent path traversal
+        if (!/^[a-zA-Z0-9_-]+$/.test(programName)) {
+            return NextResponse.json(
+                { error: "Invalid program name. Only alphanumeric characters, dashes, and underscores are allowed." },
+                { status: 400 }
+            );
+        }
 
         if (!files || Object.keys(files).length === 0) {
             return NextResponse.json(
