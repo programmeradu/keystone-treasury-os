@@ -115,11 +115,16 @@ export function LivePreview({
     const appCode = files["App.tsx"]?.content || "";
 
     // ─── Serialize user code safely for injection ────────────
+    // SECURITY: JSON.stringify alone doesn't escape HTML special chars like </script>
+    // which could break out of the <script> tag context. After JSON-serializing,
+    // replace < and > with Unicode escapes so HTML parsing can't be hijacked.
     const userCodeJson = useMemo(() => {
         const normalized = appCode
             .replace(/from\s+['"]\.\/keystone['"]/g, 'from "@keystone-os/sdk"')
             .replace(/from\s+['"]keystone-api['"]/g, 'from "@keystone-os/sdk"');
-        return JSON.stringify(normalized);
+        return JSON.stringify(normalized)
+            .replace(/</g, '\\u003c')
+            .replace(/>/g, '\\u003e');
     }, [appCode]);
 
     // ─── Build iframe HTML ──────────────────────────────────

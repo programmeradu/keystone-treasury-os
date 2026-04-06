@@ -10,7 +10,10 @@ const OAUTH_STATE_COOKIE = 'keystone-oauth-state';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 function getJwtSecret() {
-    const secret = process.env.JWT_SECRET || 'keystone_sovereign_os_2026';
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error('JWT_SECRET must be configured');
+    }
     return new TextEncoder().encode(secret);
 }
 

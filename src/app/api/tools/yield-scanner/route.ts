@@ -7,21 +7,56 @@ import { NextRequest } from "next/server";
 // - https://yields.llama.fi/pools?chain=ethereum&project=aave-v2
 const YIELDS_BASE = "https://yields.llama.fi";
 
+// SECURITY: Whitelist of allowed endpoint paths to prevent SSRF attacks
+const ALLOWED_ENDPOINTS = new Set([
+  "pools",
+  "pools/",
+  "chart",
+  "chart/",
+  "pools/ethereum",
+  "pools/solana",
+  "pools/polygon",
+  "pools/arbitrum",
+  "pools/optimism",
+  "pools/bsc",
+  "pools/avalanche",
+]);
+
+function isAllowedEndpoint(endpoint: string): boolean {
+  // Normalize the endpoint
+  const normalized = endpoint.replace(/^\/+/, "").split("?")[0];
+  return ALLOWED_ENDPOINTS.has(normalized) || normalized.match(/^chart\/[a-z0-9-]+$/i) !== null;
+}
+
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams, pathname } = new URL(req.url);
+    const { searchParams } = new URL(req.url);
 
     // Support custom endpoint path via ?endpoint=
     // Examples:
     // - endpoint=pools
     // - endpoint=chart/ethereum-aave-v2-DAI
-    const endpoint = searchParams.get("endpoint") || "pools";
+    let endpoint = searchParams.get("endpoint") || "pools";
 
-    // Rebuild query params excluding "endpoint"
+    // SECURITY: Validate endpoint is in whitelist to prevent SSRF
+    if (!isAllowedEndpoint(endpoint)) {
+      return new Response(
+        JSON.stringify({
+          error: "Invalid endpoint",
+          message: `Endpoint "${endpoint}" is not allowed. Allowed endpoints: ${Array.from(ALLOWED_ENDPOINTS).join(", ")}`,
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Rebuild query params excluding "endpoint" and only allow safe params
     const qp = new URLSearchParams();
+    const SAFE_PARAMS = new Set(["chain", "project", "pool", "limit", "offset", "minApy", "maxApy"]);
     for (const [k, v] of searchParams.entries()) {
       if (k === "endpoint") continue;
-      qp.set(k, v);
+      if (SAFE_PARAMS.has(k) && typeof v === "string") {
+        qp.set(k, v);
+      }
     }
 
     const url = `${YIELDS_BASE}/${endpoint}${qp.size ? `?${qp.toString()}` : ""}`;

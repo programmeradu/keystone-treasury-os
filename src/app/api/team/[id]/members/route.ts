@@ -9,6 +9,7 @@ import type { TeamRole } from '@/lib/rbac';
 /**
  * GET /api/team/[id]/members
  * Returns all members of a team with their profiles.
+ * SECURITY: Only team members can access the member list.
  */
 export async function GET(
   request: NextRequest,
@@ -19,6 +20,21 @@ export async function GET(
   if (!db) return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
 
   const { id: teamId } = await params;
+
+  // SECURITY: Verify the authenticated user is a member of this team
+  const [membership] = await db
+    .select({ role: teamMembers.role })
+    .from(teamMembers)
+    .where(and(
+      eq(teamMembers.teamId, teamId),
+      eq(teamMembers.userId, user.id),
+      eq(teamMembers.status, 'active')
+    ))
+    .limit(1);
+
+  if (!membership) {
+    return NextResponse.json({ error: 'Forbidden - you are not a member of this team' }, { status: 403 });
+  }
 
   try {
     const members = await db

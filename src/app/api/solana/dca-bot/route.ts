@@ -3,21 +3,16 @@ import { db } from "@/db";
 import { dcaBots, dcaExecutions, users } from "@/db/schema";
 import { eq, and, lte, desc } from "drizzle-orm";
 
-async function getOrCreateUserId(walletAddress: string) {
+async function getUserId(walletAddress: string): Promise<string | null> {
   if (!walletAddress || walletAddress.length < 32 || walletAddress.length > 44) {
-    throw new Error("Valid wallet address is required to access DCABots");
+    return null;
   }
   if (!db) throw new Error("Database not available");
 
+  // SECURITY: Do NOT auto-create users - require existing user for DCA access
   const userResult = await db.select().from(users).where(eq(users.walletAddress, walletAddress)).limit(1);
   if (userResult.length === 0) {
-    const newUser = await db.insert(users).values({
-      walletAddress,
-      displayName: "Anonymous User",
-      role: "user",
-      tier: "free",
-    }).returning({ id: users.id });
-    return newUser[0].id;
+    return null; // Return null instead of auto-creating
   }
   return userResult[0].id;
 }
@@ -156,7 +151,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Wallet not connected" }, { status: 401 });
     }
 
-    const userId = await getOrCreateUserId(wallet);
+    const userId = await getUserId(wallet);
+    if (!userId) {
+      return NextResponse.json(
+        { error: "User not found. Please register or connect your wallet first." },
+        { status: 403 }
+      );
+    }
 
     // CREATE BOT
     if (action === "create") {

@@ -22,9 +22,11 @@ function getLiveblocks() {
 }
 
 function getJwtSecret() {
-    return new TextEncoder().encode(
-        process.env.JWT_SECRET || "keystone_sovereign_os_2026"
-    );
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error('JWT_SECRET must be configured');
+    }
+    return new TextEncoder().encode(secret);
 }
 
 /**
@@ -102,8 +104,6 @@ export async function POST(request: NextRequest) {
 
     // ─── Validate room access ───────────────────────────────────────
     // User-scoped rooms: "user:{userId}" — only the owner can access
-    // Vault-scoped rooms: "vault:{vaultAddress}" — checked later when
-    //   team/vault membership is added
     if (room.startsWith("user:")) {
         const roomOwner = room.slice("user:".length);
         if (roomOwner !== userId) {
@@ -112,6 +112,19 @@ export async function POST(request: NextRequest) {
                 { status: 403 }
             );
         }
+    }
+
+    // Vault-scoped rooms: "vault:{vaultAddress}" — verify user is member of the team
+    if (room.startsWith("vault:")) {
+        const vaultAddress = room.slice("vault:".length);
+
+        // TODO: Implement vault-to-team membership check
+        // For now, reject all vault room access until membership is properly implemented
+        // This prevents the real-time eavesdropping vulnerability
+        return NextResponse.json(
+            { error: "Vault collaboration rooms are temporarily disabled for security review" },
+            { status: 403 }
+        );
     }
 
     // ─── Prepare identity and authorize ─────────────────────────────

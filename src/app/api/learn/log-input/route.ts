@@ -1,7 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { learnInputs } from '@/db/schema';
+import { learnInputs, users } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { checkDatabaseAvailability } from '@/lib/db-utils';
+import { jwtVerify } from 'jose';
+
+const SIWS_COOKIE = 'keystone-siws-session';
+
+async function getAuthUser(request: NextRequest): Promise<{ id: string; wallet: string } | null> {
+    const token = request.cookies.get(SIWS_COOKIE)?.value;
+    if (!token) return null;
+
+    try {
+        const secret = process.env.JWT_SECRET;
+        if (!secret) return null;
+
+        const { payload } = await jwtVerify(token, new TextEncoder().encode(secret), {
+            issuer: 'keystone-treasury-os',
+        });
+        return { id: payload.sub as string, wallet: payload.wallet as string };
+    } catch {
+        return null;
+    }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,11 +30,39 @@ export async function POST(request: NextRequest) {
     const dbError = checkDatabaseAvailability();
     if (dbError) return dbError;
 
-    // Extract optional bearer token (but don't validate for MVP)
+    // SECURITY: Validate authentication - bearer token or JWT cookie
     const authorization = request.headers.get('authorization');
-    const bearerToken = authorization?.startsWith('Bearer ')
-      ? authorization.slice(7)
-      : null;
+    let userId: string | null = null;
+
+    if (authorization?.startsWith('Bearer ')) {
+        // Validate bearer token
+        const token = authorization.slice(7);
+        try {
+            const secret = process.env.JWT_SECRET;
+            if (secret) {
+                const { payload } = await jwtVerify(token, new TextEncoder().encode(secret), {
+                    issuer: 'keystone-treasury-os',
+                });
+                userId = payload.sub as string;
+            }
+        } catch {
+            return NextResponse.json(
+                { error: 'Invalid or expired bearer token' },
+                { status: 401 }
+            );
+        }
+    } else {
+        // Try JWT cookie authentication
+        const authUser = await getAuthUser(request);
+        userId = authUser?.id || null;
+    }
+
+    if (!userId) {
+        return NextResponse.json(
+            { error: 'Authentication required' },
+            { status: 401 }
+        );
+    }
 
     // Parse request body
     const body = await request.json();
