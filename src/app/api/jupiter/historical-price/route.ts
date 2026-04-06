@@ -25,7 +25,7 @@ export async function GET(req: Request) {
     const historicalDate = new Date(historicalTimestamp);
 
     // Mock mode for testing
-    const mockMode = String(process.env.MOCK_MODE || "").toLowerCase() === "true";
+    const mockMode = process.env.NODE_ENV !== "production" && String(process.env.MOCK_MODE || "").toLowerCase() === "true";
     if (mockMode) {
       // Return deterministic mock data
       const seed = (daysAgo * 12345) % 1000000;

@@ -53,12 +53,27 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     const [hydrated, setHydrated] = useState(false);
 
     // Hydrate once on mount (client-only)
+    // Try localStorage first for instant load, then validate against server
     useEffect(() => {
         try {
             const stored = localStorage.getItem(VAULT_STORAGE_KEY);
             if (stored) setActiveVaultRaw(stored);
         } catch { }
         setHydrated(true);
+
+        // Fetch persisted vaults from server to ensure localStorage is in sync
+        fetch("/api/vault")
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+                if (!data?.vaults?.length) return;
+                // If no vault in localStorage, use the first saved one
+                const stored = localStorage.getItem(VAULT_STORAGE_KEY);
+                if (!stored && data.vaults[0]?.address) {
+                    setActiveVaultRaw(data.vaults[0].address);
+                    try { localStorage.setItem(VAULT_STORAGE_KEY, data.vaults[0].address); } catch {}
+                }
+            })
+            .catch(() => {}); // Silently fail — localStorage is the primary source
     }, []);
 
     // Persist-aware setter

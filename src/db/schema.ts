@@ -657,3 +657,17 @@ export const orgVaults = pgTable('org_vaults', {
   orgIdx: index('org_vaults_org_idx').on(table.orgId),
   vaultIdx: index('org_vaults_vault_idx').on(table.vaultAddress),
 }));
+
+// ─── Vaults (User-level vault registry with tier enforcement) ─────────
+export const vaults = pgTable('vaults', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  teamId: uuid('team_id').references(() => teams.id, { onDelete: 'set null' }),
+  address: text('address').notNull().unique(),
+  label: text('label').notNull().default('My Vault'),
+  isMultisig: boolean('is_multisig').notNull().default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('vaults_user_idx').on(table.userId),
+  addressIdx: index('vaults_address_idx').on(table.address),
+}));

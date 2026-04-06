@@ -152,6 +152,10 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
     // Execute the actual swap
     console.log(`[Bot ${bot.id}] Executing swap...`);
 
+    // SECURITY WARNING: All DCA bots share a single delegate keypair.
+    // If this key is compromised, ALL active bots are affected.
+    // TODO: Implement per-bot keypairs stored encrypted in the database
+    // with key rotation support. See AUDIT-FIXES-PLAN.md Phase 3.3.
     const delegatePrivateKeyBase58 = process.env.DELEGATE_WALLET_PRIVATE_KEY;
     if (!delegatePrivateKeyBase58) {
       console.error(`[Bot ${bot.id}] Delegate wallet private key not configured`);
@@ -159,7 +163,15 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
       return { success: false, error: "Configuration error" };
     }
 
-    const signerKeypair = Keypair.fromSecretKey(bs58.decode(delegatePrivateKeyBase58));
+    // Validate key format before attempting decode
+    let signerKeypair: Keypair;
+    try {
+      signerKeypair = Keypair.fromSecretKey(bs58.decode(delegatePrivateKeyBase58));
+    } catch (keyErr) {
+      console.error(`[Bot ${bot.id}] Invalid delegate keypair format`);
+      await recordFailedExecution(bot, "Invalid delegate keypair");
+      return { success: false, error: "Configuration error" };
+    }
 
     const executionResult = await executeSwapWithSigning({
       inputMint: bot.paymentTokenMint,

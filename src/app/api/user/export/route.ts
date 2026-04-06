@@ -74,7 +74,6 @@ export async function GET(request: NextRequest) {
         role: user.role,
         tier: user.tier,
         createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
         lastLoginAt: user.lastLoginAt,
       },
       vaults: vaultsData || [],

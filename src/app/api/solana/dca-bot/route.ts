@@ -40,7 +40,13 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Wallet not connected" }, { status: 401 });
     }
 
-    const userId = await getOrCreateUserId(wallet);
+    const userId = await getUserId(wallet);
+    if (!userId) {
+      return NextResponse.json(
+        { error: "User not found. Please register or connect your wallet first." },
+        { status: 403 }
+      );
+    }
 
     if (action === "list") {
       // Fetch all bots for user

@@ -23,52 +23,63 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // SECURITY: Verify transaction on-chain before recording purchase
-    // This prevents attackers from faking purchases to trigger payouts
-    if (HELIUS_API_KEY && txSignature && txSignature !== "demo" && !txSignature.startsWith("mock_")) {
-      try {
-        const txRes = await fetch(`https://api.helius.xyz/v0/transactions?api-key=${HELIUS_API_KEY}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            transactions: [txSignature],
-            decodeTransactions: true,
-            showMetadata: true,
-          }),
-        });
+    // SECURITY: Verify transaction on-chain before recording purchase.
+    // This prevents attackers from faking purchases to trigger payouts.
+    if (!HELIUS_API_KEY) {
+      console.error("[marketplace/purchase] HELIUS_API_KEY not set — cannot verify transactions");
+      return NextResponse.json(
+        { error: "Transaction verification service unavailable" },
+        { status: 503 }
+      );
+    }
 
-        if (!txRes.ok) {
-          console.error("[marketplace/purchase] Failed to verify transaction:", await txRes.text());
-          // Proceed without verification in case of RPC issues (fail open for now)
-        } else {
-          const txData = await txRes.json();
-          const tx = txData?.transactions?.[0];
+    try {
+      const txRes = await fetch(`https://api.helius.xyz/v0/transactions?api-key=${HELIUS_API_KEY}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transactions: [txSignature],
+          decodeTransactions: true,
+          showMetadata: true,
+        }),
+      });
 
-          if (!tx) {
-            return NextResponse.json({ error: "Transaction not found on-chain" }, { status: 400 });
-          }
-
-          // Verify the transaction signature matches
-          const sigMatch = tx.signature === txSignature || tx.transactionId === txSignature;
-          if (!sigMatch) {
-            return NextResponse.json({ error: "Transaction signature mismatch" }, { status: 400 });
-          }
-
-          // Check transaction is not too old (max 24 hours)
-          const txTime = tx.timestamp;
-          if (txTime) {
-            const txAge = Date.now() - txTime * 1000;
-            if (txAge > 24 * 60 * 60 * 1000) {
-              return NextResponse.json({ error: "Transaction too old" }, { status: 400 });
-            }
-          }
-        }
-      } catch (verifyErr) {
-        console.error("[marketplace/purchase] Transaction verification error:", verifyErr);
-        // Proceed without verification on error (fail open)
+      if (!txRes.ok) {
+        const errText = await txRes.text();
+        console.error("[marketplace/purchase] Failed to verify transaction:", errText);
+        return NextResponse.json(
+          { error: "Unable to verify transaction on-chain. Please try again." },
+          { status: 502 }
+        );
       }
-    } else if (!HELIUS_API_KEY) {
-      console.warn("[marketplace/purchase] HELIUS_API_KEY not set - skipping on-chain verification");
+
+      const txData = await txRes.json();
+      const tx = txData?.transactions?.[0];
+
+      if (!tx) {
+        return NextResponse.json({ error: "Transaction not found on-chain" }, { status: 400 });
+      }
+
+      // Verify the transaction signature matches
+      const sigMatch = tx.signature === txSignature || tx.transactionId === txSignature;
+      if (!sigMatch) {
+        return NextResponse.json({ error: "Transaction signature mismatch" }, { status: 400 });
+      }
+
+      // Check transaction is not too old (max 24 hours)
+      const txTime = tx.timestamp;
+      if (txTime) {
+        const txAge = Date.now() - txTime * 1000;
+        if (txAge > 24 * 60 * 60 * 1000) {
+          return NextResponse.json({ error: "Transaction too old" }, { status: 400 });
+        }
+      }
+    } catch (verifyErr) {
+      console.error("[marketplace/purchase] Transaction verification error:", verifyErr);
+      return NextResponse.json(
+        { error: "Transaction verification failed. Please try again." },
+        { status: 502 }
+      );
     }
 
     const id = `purch_${crypto.randomUUID().slice(0, 8)}`;

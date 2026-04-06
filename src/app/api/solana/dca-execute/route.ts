@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     }
 
     // Mock mode for testing
-    const mockMode = String(process.env.MOCK_MODE || "").toLowerCase() === "true";
+    const mockMode = process.env.NODE_ENV !== "production" && String(process.env.MOCK_MODE || "").toLowerCase() === "true";
     if (mockMode) {
       return NextResponse.json({
         success: true,
@@ -85,7 +85,7 @@ export async function GET(req: Request) {
     }
 
     // Mock mode
-    const mockMode = String(process.env.MOCK_MODE || "").toLowerCase() === "true";
+    const mockMode = process.env.NODE_ENV !== "production" && String(process.env.MOCK_MODE || "").toLowerCase() === "true";
     if (mockMode) {
       return NextResponse.json({
         botId,

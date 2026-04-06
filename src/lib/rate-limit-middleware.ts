@@ -49,9 +49,12 @@ async function extractIdentity(req: NextRequest): Promise<string | null> {
     // Try Supabase auth session (Keystone)
     try {
         const cookieStore = await cookies();
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        if (!supabaseUrl || !supabaseKey) throw new Error('Supabase not configured');
         const supabase = createServerClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xyzcompany.supabase.co',
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'public-anon-key',
+            supabaseUrl,
+            supabaseKey,
             {
                 cookies: {
                     getAll() {

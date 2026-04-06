@@ -16,7 +16,7 @@ export async function GET(req: Request) {
     }
 
     // Mock mode: return deterministic prices to avoid external dependency in CI
-    const mockMode = String(process.env.MOCK_MODE || "").toLowerCase() === "true";
+    const mockMode = process.env.NODE_ENV !== "production" && String(process.env.MOCK_MODE || "").toLowerCase() === "true";
     if (mockMode) {
       const symbols = (ids || "").split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
       const priceMap: Record<string, number> = { SOL: 150.12, MSOL: 162.34, USDC: 1.0, BONK: 0.000021, JUP: 1.25, WIF: 3.2, JTO: 3.85 };

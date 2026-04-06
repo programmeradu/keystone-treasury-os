@@ -7,9 +7,9 @@ import { jwtVerify } from 'jose';
 const SIWS_COOKIE = 'keystone-siws-session';
 
 function getJwtSecret() {
-  return new TextEncoder().encode(
-    process.env.JWT_SECRET || 'keystone_sovereign_os_2026'
-  );
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET must be configured');
+  return new TextEncoder().encode(secret);
 }
 
 /** Extract wallet address from the SIWS JWT cookie. Returns null if invalid/missing. */

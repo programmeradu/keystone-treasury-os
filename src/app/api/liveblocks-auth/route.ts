@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Liveblocks } from "@liveblocks/node";
 import { jwtVerify } from "jose";
+import { db } from "@/db";
+import { vaults, teamMembers } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 
 const SIWS_COOKIE = "keystone-siws-session";
 const NEON_AUTH_COOKIE_NAMES = [
@@ -114,17 +117,48 @@ export async function POST(request: NextRequest) {
         }
     }
 
-    // Vault-scoped rooms: "vault:{vaultAddress}" — verify user is member of the team
+    // Vault-scoped rooms: "vault:{vaultAddress}" — verify user owns or is team member
     if (room.startsWith("vault:")) {
         const vaultAddress = room.slice("vault:".length);
 
-        // TODO: Implement vault-to-team membership check
-        // For now, reject all vault room access until membership is properly implemented
-        // This prevents the real-time eavesdropping vulnerability
-        return NextResponse.json(
-            { error: "Vault collaboration rooms are temporarily disabled for security review" },
-            { status: 403 }
-        );
+        if (!db) {
+            return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
+        }
+
+        // Look up the vault
+        const [vault] = await db
+            .select()
+            .from(vaults)
+            .where(eq(vaults.address, vaultAddress))
+            .limit(1);
+
+        if (!vault) {
+            return NextResponse.json({ error: "Vault not found" }, { status: 404 });
+        }
+
+        // Allow vault owner
+        const isOwner = vault.userId === userId;
+
+        if (!isOwner) {
+            // Check team membership if vault has a team
+            if (vault.teamId) {
+                const [membership] = await db
+                    .select()
+                    .from(teamMembers)
+                    .where(and(
+                        eq(teamMembers.teamId, vault.teamId),
+                        eq(teamMembers.userId, userId),
+                        eq(teamMembers.status, "active")
+                    ))
+                    .limit(1);
+
+                if (!membership) {
+                    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+                }
+            } else {
+                return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+            }
+        }
     }
 
     // ─── Prepare identity and authorize ─────────────────────────────

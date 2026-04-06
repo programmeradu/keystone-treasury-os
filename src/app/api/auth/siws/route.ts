@@ -90,18 +90,11 @@ export async function POST(request: NextRequest) {
             usedNonces.add(nonce);
             setTimeout(() => usedNonces.delete(nonce), NONCE_EXPIRY_MS);
         } else {
-            // If no nonce provided, check timestamp only (backwards compatibility)
-            if (timestampMatch) {
-                const messageTime = new Date(timestampMatch[1]).getTime();
-                const now = Date.now();
-                const FIVE_MINUTES = 5 * 60 * 1000;
-                if (Math.abs(now - messageTime) > FIVE_MINUTES) {
-                    return NextResponse.json(
-                        { error: 'Message expired. Please try again.' },
-                        { status: 401 }
-                    );
-                }
-            }
+            // Reject messages without a nonce — all SIWS messages must include one
+            return NextResponse.json(
+                { error: 'Missing nonce. Please generate a new sign-in request.' },
+                { status: 401 }
+            );
         }
 
         // ─── Step 3: Upsert user in Neon DB ────────────────────────────

@@ -53,22 +53,23 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "Valid address required" }, { status: 400 });
         }
 
-        // SECURITY: Get authenticated user for cache isolation
-        // Cache must be keyed by userId to prevent cross-user data leaks
+        // SECURITY: Require authentication and key cache by userId
         const siwsToken = req.cookies.get("keystone-siws-session")?.value;
-        let userId = "anonymous";
-        if (siwsToken) {
-            try {
-                const secret = process.env.JWT_SECRET;
-                if (secret) {
-                    const { payload } = await jwtVerify(siwsToken, new TextEncoder().encode(secret), {
-                        issuer: "keystone-treasury-os",
-                    });
-                    userId = payload.sub as string || "anonymous";
-                }
-            } catch {
-                // Use anonymous cache if auth fails
-            }
+        if (!siwsToken) {
+            return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+        }
+
+        let userId: string;
+        try {
+            const secret = process.env.JWT_SECRET;
+            if (!secret) throw new Error("JWT_SECRET not configured");
+            const { payload } = await jwtVerify(siwsToken, new TextEncoder().encode(secret), {
+                issuer: "keystone-treasury-os",
+            });
+            userId = payload.sub as string;
+            if (!userId) throw new Error("Missing sub claim");
+        } catch {
+            return NextResponse.json({ error: "Invalid or expired session" }, { status: 401 });
         }
 
         // SECURITY: Include userId in cache key to prevent cross-user information disclosure

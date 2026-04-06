@@ -6,16 +6,29 @@ import { Connection, Transaction, VersionedTransaction } from "@solana/web3.js";
 const TURNKEY_ORG_ID = process.env.NEXT_PUBLIC_TURNKEY_ORG_ID;
 const TURNKEY_API_BASE_URL = "https://api.turnkey.com";
 
-if (!TURNKEY_ORG_ID) {
-    console.warn("NEXT_PUBLIC_TURNKEY_ORG_ID is not set. Turnkey features will be disabled.");
+// Initialize Turnkey Browser SDK lazily — only when actually called
+// This handles the Passkey prompts and iframe communication
+let _turnkey: Turnkey | null = null;
+
+export function getTurnkey(): Turnkey {
+    if (!TURNKEY_ORG_ID) {
+        throw new Error("NEXT_PUBLIC_TURNKEY_ORG_ID is not configured. Turnkey wallet features are unavailable.");
+    }
+    if (!_turnkey) {
+        _turnkey = new Turnkey({
+            apiBaseUrl: TURNKEY_API_BASE_URL,
+            defaultOrganizationId: TURNKEY_ORG_ID,
+            rpId: typeof window !== "undefined" ? window.location.hostname : "localhost",
+        });
+    }
+    return _turnkey;
 }
 
-// Initialize Turnkey Browser SDK
-// This handles the Passkey prompts and iframe communication
-export const turnkey = new Turnkey({
-    apiBaseUrl: TURNKEY_API_BASE_URL,
-    defaultOrganizationId: TURNKEY_ORG_ID || "",
-    rpId: typeof window !== "undefined" ? window.location.hostname : "localhost", // Relying party ID
+// Backwards-compatible export (throws if not configured)
+export const turnkey = new Proxy({} as Turnkey, {
+    get(_target, prop) {
+        return (getTurnkey() as any)[prop];
+    },
 });
 
 // Create a new wallet

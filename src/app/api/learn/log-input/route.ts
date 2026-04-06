@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
       id: newUserInput[0].id,
       textLength: sanitizedText.length,
       hasIntent: !!sanitizedIntent,
-      hasBearerToken: !!bearerToken
+      hasUserId: !!userId
     });
 
     return NextResponse.json({ ok: true }, { status: 201 });

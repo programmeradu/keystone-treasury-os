@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     const publicRpc = process.env.NEXT_PUBLIC_SOLANA_RPC;
     const heliusKey = process.env.HELIUS_API_KEY;
     const endpoint = publicRpc || (heliusKey ? `https://mainnet.helius-rpc.com/?api-key=${encodeURIComponent(heliusKey)}` : "https://api.mainnet-beta.solana.com");
-    const mockMode = String(process.env.MOCK_MODE || "").toLowerCase() === "true";
+    const mockMode = process.env.NODE_ENV !== "production" && String(process.env.MOCK_MODE || "").toLowerCase() === "true";
 
     const raw = await req.text();
 

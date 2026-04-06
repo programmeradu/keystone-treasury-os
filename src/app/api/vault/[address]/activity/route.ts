@@ -35,7 +35,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ addr
             return NextResponse.json({ error: "Authentication required" }, { status: 401 });
         }
 
-        // Find vault and verify user is a member of the team that owns it
+        // Find vault and verify user has access (owner or team member)
         const vault = await db!
             .select()
             .from(vaults)
@@ -46,17 +46,24 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ addr
             return NextResponse.json({ error: "Vault not found" }, { status: 404 });
         }
 
-        // Check if user is a member of the team that owns this vault
-        const membership = await db!
-            .select()
-            .from(teamMembers)
-            .where(and(
-                eq(teamMembers.teamId, vault[0].teamId),
-                eq(teamMembers.userId, userId)
-            ))
-            .limit(1);
+        // Allow vault owner direct access
+        const isOwner = vault[0].userId === userId;
 
-        if (!membership[0]) {
+        if (!isOwner && vault[0].teamId) {
+            // Check team membership for shared vaults
+            const membership = await db!
+                .select()
+                .from(teamMembers)
+                .where(and(
+                    eq(teamMembers.teamId, vault[0].teamId),
+                    eq(teamMembers.userId, userId)
+                ))
+                .limit(1);
+
+            if (!membership[0]) {
+                return NextResponse.json({ error: "Forbidden - you don't have access to this vault" }, { status: 403 });
+            }
+        } else if (!isOwner) {
             return NextResponse.json({ error: "Forbidden - you don't have access to this vault" }, { status: 403 });
         }
 

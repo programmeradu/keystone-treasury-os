@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 // Docs: https://docs.helius.dev/compression-and-das-api/digital-asset-standard-das-api/get-assets-by-owner
 export async function GET(req: NextRequest) {
   const apiKey = process.env.HELIUS_API_KEY;
-  const mockMode = String(process.env.MOCK_MODE || "").toLowerCase() === "true";
+  const mockMode = process.env.NODE_ENV !== "production" && String(process.env.MOCK_MODE || "").toLowerCase() === "true";
 
   const { searchParams } = new URL(req.url);
   const address = searchParams.get("address");
@@ -18,9 +18,8 @@ export async function GET(req: NextRequest) {
     return new Response(JSON.stringify({ error: "address is required" }), { status: 400 });
   }
 
-  // Mock mode: return deterministic token holdings for testing
-  const mockParam = String(searchParams.get("mock") || "").toLowerCase() === "true";
-  if ((mockMode || mockParam) && !apiKey) {
+  // Mock mode: return deterministic token holdings for testing (server-side env only)
+  if (mockMode && !apiKey) {
     const mockHoldings = [
       {
         mint: "So11111111111111111111111111111111111111112",

@@ -42,11 +42,32 @@ export function VaultSelector() {
                 threshold: 1, // Start as 1/1, user can add members via Team page
             });
 
-            toast.success("Squads Multisig Deployed!", { 
+            toast.success("Squads Multisig Deployed!", {
                 id: "create-multisig",
                 description: `Created successfully: ${multisigPda.slice(0, 8)}...`
             });
-            
+
+            // Persist vault to database with tier enforcement
+            try {
+                const res = await fetch("/api/vault", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ address: multisigPda, isMultisig: true }),
+                });
+                if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    if (res.status === 403 && (data.limit || data.error?.code === "VAULT_LIMIT_REACHED")) {
+                        toast.error("Vault limit reached", {
+                            description: data.error?.message || data.message || "Upgrade your plan to create more vaults.",
+                        });
+                        return;
+                    }
+                    console.warn("[VaultSelector] Failed to persist vault:", data);
+                }
+            } catch (persistErr) {
+                console.warn("[VaultSelector] Could not persist vault to database:", persistErr);
+            }
+
             // Connect to the new vault automatically
             setActiveVault(multisigPda);
             setCreateMode(false);
@@ -62,12 +83,37 @@ export function VaultSelector() {
         }
     };
 
-    const handleConnect = () => {
+    const handleConnect = async () => {
         const trimmed = address.trim();
         if (trimmed.length < 32) {
             toast.error("Invalid address", { description: "Please enter a valid Solana address." });
             return;
         }
+
+        // Persist to database (best-effort — don't block if it fails)
+        try {
+            const res = await fetch("/api/vault", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ address: trimmed, isMultisig: false }),
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                if (res.status === 403 && data.limit) {
+                    toast.error("Vault limit reached", {
+                        description: data.message || "Upgrade your plan to add more vaults.",
+                    });
+                    return;
+                }
+                // 409 = already registered, that's fine — proceed
+                if (res.status !== 409) {
+                    console.warn("[VaultSelector] Failed to persist vault:", data);
+                }
+            }
+        } catch (err) {
+            console.warn("[VaultSelector] Could not persist vault:", err);
+        }
+
         setActiveVault(trimmed);
         setAddress("");
         setInputMode(false);
