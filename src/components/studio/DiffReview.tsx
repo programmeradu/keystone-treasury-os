@@ -10,7 +10,8 @@
  */
 
 import React, { useRef, useEffect } from "react";
-import { Check, X, RotateCcw } from "lucide-react";
+import { Check, X } from "lucide-react";
+import { loader } from "@monaco-editor/react";
 
 interface DiffReviewProps {
     fileName: string;
@@ -39,7 +40,7 @@ export function DiffReview({
 
         let disposed = false;
 
-        import("monaco-editor").then((monaco) => {
+        loader.init().then((monaco) => {
             if (disposed || !containerRef.current) return;
 
             const originalModel = monaco.editor.createModel(originalCode, language === "typescript" ? "typescript" : language);
