@@ -1,0 +1,4 @@
+## 2024-04-06 - [CRITICAL] Fix Path Traversal in Contract Compilation
+**Vulnerability:** Path traversal in `src/app/api/studio/compile-contract/route.ts` where user-provided `programName` and file names in the `files` object were used in `path.join()` without validation, potentially allowing arbitrary file writes outside the intended temporary build directory.
+**Learning:** `path.join` does not protect against directory traversal (`../`). When handling dynamic file paths based on user input, we must assume the input can contain malicious relative paths.
+**Prevention:** Strictly validate inputs with regex constraints (e.g., `/^[a-zA-Z0-9_-]+$/` for `programName`) and utilize `path.resolve()` alongside a `startsWith(baseDir + path.sep)` boundary check to guarantee file sandboxing before writing files.
