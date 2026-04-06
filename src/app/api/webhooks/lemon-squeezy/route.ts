@@ -11,19 +11,20 @@ import { eq } from "drizzle-orm";
 export async function POST(req: NextRequest) {
     if (!db) return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
     try {
-        const secret = process.env.LEMON_SQUEEZY_WEBHOOK_SECRET || "default_secret_for_dev";
+        const secret = process.env.LEMON_SQUEEZY_WEBHOOK_SECRET;
+        if (!secret) {
+            return NextResponse.json({ error: "Missing secret" }, { status: 500 });
+        }
         const rawBody = await req.text();
         const signature = req.headers.get("x-signature") || "";
 
-        // Verify the webhook payload securely if secret is explicitly defined in prod
-        if (process.env.LEMON_SQUEEZY_WEBHOOK_SECRET) {
-            const hmac = crypto.createHmac("sha256", secret);
-            const digest = Buffer.from(hmac.update(rawBody).digest("hex"), "utf8");
-            const signatureBuffer = Buffer.from(signature, "utf8");
+        // Verify the webhook payload securely
+        const hmac = crypto.createHmac("sha256", secret);
+        const digest = Buffer.from(hmac.update(rawBody).digest("hex"), "utf8");
+        const signatureBuffer = Buffer.from(signature, "utf8");
 
-            if (digest.length !== signatureBuffer.length || !crypto.timingSafeEqual(digest, signatureBuffer)) {
-                return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-            }
+        if (digest.length !== signatureBuffer.length || !crypto.timingSafeEqual(digest, signatureBuffer)) {
+            return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
         }
 
         const payload = JSON.parse(rawBody);

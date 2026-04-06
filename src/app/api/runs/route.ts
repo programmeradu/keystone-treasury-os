@@ -5,6 +5,7 @@ import { eq, desc } from 'drizzle-orm';
 import { randomBytes } from 'crypto';
 import { checkDatabaseAvailability } from '@/lib/db-utils';
 import { checkRouteLimit } from '@/lib/rate-limit-middleware';
+import { getAuthUser } from '@/lib/auth-utils';
 
 function generateShortId(): string {
   const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
@@ -31,8 +32,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 50);
 
+    const user = await getAuthUser(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const results = await db!.select()
       .from(runs)
+      .where(eq(runs.userId, user.id))
       .orderBy(desc(runs.createdAt))
       .limit(limit);
 
