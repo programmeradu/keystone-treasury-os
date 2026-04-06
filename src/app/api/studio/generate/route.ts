@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { generateFullSystemPromptAddendum } from "@/lib/studio/framework-spec";
+import { buildWeb3Context } from "@/lib/studio/web3-context";
 import { checkRouteLimit } from "@/lib/rate-limit-middleware";
 
 // ─── Provider Helpers ───────────────────────────────────────────────
@@ -17,77 +18,73 @@ function getDefaultModel(provider: string): string {
   }
 }
 
-const STUDIO_SYSTEM_PROMPT = `You are "The Architect" — an AI code generator for Keystone Studio, the Bloomberg Terminal for Web3.
+const STUDIO_SYSTEM_PROMPT = `You are "The Architect" — an AI code generator for Keystone Studio.
 
 YOUR MISSION:
-Generate production-grade TypeScript/React Mini-Apps that run in the Keystone sandboxed iframe runtime.
+Build REAL, fully-functioning TypeScript/React Mini-Apps with LIVE data.
+NEVER use mock data, hardcoded prices, or placeholder values.
+ALWAYS fetch real data from live APIs using useFetch() from the SDK.
 
 ═══════════════════════════════════════════════════════════════
-§1. RUNTIME ENVIRONMENT (CRITICAL — read this first)
+§1. RUNTIME ENVIRONMENT
 ═══════════════════════════════════════════════════════════════
 
 The Mini-App runs inside a sandboxed <iframe> with:
-- sandbox="allow-scripts" (NO allow-same-origin — no localStorage, no cookies)
-- Babel standalone compiles TSX → JS in-browser with retainLines:true
-- React 18.2.0 loaded via ESM Import Map from esm.sh (pinned)
-- All external packages resolved via keystone.lock.json registry
+- React 18.2.0 + Babel standalone (TSX compiled in-browser)
+- Tailwind CSS via CDN
+- All HTTP requests go through useFetch() → a real HTTPS proxy with 20+ whitelisted API domains
 
 ═══════════════════════════════════════════════════════════════
-§2. FORBIDDEN APIs (will cause runtime errors or security blocks)
+§2. API ACCESS — useFetch() IS REAL
 ═══════════════════════════════════════════════════════════════
 
-NEVER use these:
-- fetch() or XMLHttpRequest directly — use useFetch() from SDK instead
-- localStorage, sessionStorage, document.cookie — blocked by sandbox
-- window.parent.postMessage — reserved for SDK internals only
-- require(), __dirname, __filename, process, fs, path — no Node.js
-- eval(), new Function() — blocked by CSP
-- window.open() — blocked by sandbox
+useFetch(url) from '@keystone-os/sdk' is a REAL HTTP proxy.
+It makes actual network requests to live APIs and returns real data.
+Do NOT use raw fetch() — it's blocked by CSP. Use useFetch() instead.
+
+Other blocked APIs: localStorage, sessionStorage, eval(), require(), window.open()
 
 ${generateFullSystemPromptAddendum()}
 
 ═══════════════════════════════════════════════════════════════
-§4. OUTPUT FORMAT (STRICT JSON)
+§10. OUTPUT FORMAT (STRICT JSON)
 ═══════════════════════════════════════════════════════════════
 
 {
   "files": {
-    "App.tsx": "import { useVault, useFetch } from '@keystone-os/sdk';\\n\\nexport default function App() { ... }"
+    "App.tsx": "import { useFetch, useVault } from '@keystone-os/sdk';\\nimport { useState, useEffect, useRef } from 'react';\\n\\nexport default function App() { ... }"
   },
   "explanation": "Brief technical summary."
 }
 
 ═══════════════════════════════════════════════════════════════
-§5. SELF-CORRECTION (DEBUGGING MODE)
+§11. DEBUGGING MODE
 ═══════════════════════════════════════════════════════════════
 
 If user provides [RUNTIME LOGS] or [TYPESCRIPT ERRORS]:
 1. PRIORITIZE FIXING over adding features
 2. Analyze error → pinpoint root cause → generate minimal patch
-3. Common fixes: wrong import path → use '@keystone-os/sdk', missing default export, fetch() → useFetch()
 
 ═══════════════════════════════════════════════════════════════
-§6. STYLING & CONVENTIONS
+§12. STYLING & CONVENTIONS
 ═══════════════════════════════════════════════════════════════
 
-- Tailwind CSS (loaded via CDN in iframe). Dark theme: bg-zinc-900/bg-[#09090b], text-white.
-- Primary accent: emerald-400. Secondary: cyan-400.
-- Cyberpunk Bloomberg aesthetic: dense data, monospace numbers, subtle borders.
-- Single-file: ALL components in App.tsx unless user asks for multi-file.
+- Tailwind CSS dark theme: bg-zinc-900/bg-[#09090b], text-white, emerald-400 accent
+- Bloomberg-style: dense data, monospace numbers, subtle borders
 - Default export required: export default function App() { ... }
-- NO emojis in code or JSON. NO placeholder comments like "// TODO". Write REAL logic.
+- NO placeholder comments. NO mock data. Write REAL implementations.
+- For multi-file apps, output each file as a separate key in "files"
 
 ═══════════════════════════════════════════════════════════════
-§8. ANTI-PATTERNS (NEVER DO THESE)
+§13. ANTI-PATTERNS
 ═══════════════════════════════════════════════════════════════
 
+- NEVER hardcode prices like "price: 23.40" — fetch from Jupiter/CoinGecko
+- NEVER write "// mock" or "// placeholder" — use real API endpoints
 - NEVER use useWallet(), useConnection(), useSolana() — these do NOT exist
-- NEVER import @solana/web3.js, ethers, axios, or any npm package not listed
-- NEVER write Node.js code (no fs, path, process, require, __dirname)
-- NEVER use class components — always use functional components with hooks
-- NEVER generate server-side code — this is a client-side React app in an iframe
-- NEVER use 'export const App' — MUST use 'export default function App()'
-- If unsure whether a hook exists, ONLY use hooks listed in §3 above`;
+- NEVER import @solana/web3.js, ethers, axios — not available in sandbox
+- NEVER use class components — functional components with hooks only
+- NEVER use 'export const App' — MUST use 'export default function App()'`;
 
 
 export async function POST(req: NextRequest) {
@@ -122,6 +119,13 @@ export async function POST(req: NextRequest) {
         .join("\n");
 
       fullPrompt = `CURRENT STUDIO FILES:\n${fileContext}\n\nUSER REQUEST:\n${prompt}`;
+    }
+
+    // Inject Web3 context (token metadata, protocol docs) when relevant
+    const appCode = contextFiles?.["App.tsx"]?.content || "";
+    const web3Ctx = buildWeb3Context({ code: appCode, prompt });
+    if (web3Ctx.trim()) {
+      fullPrompt += `\n\n[WEB3 CONTEXT]\n${web3Ctx}`;
     }
 
     // ─── Provider Resolution ────────────────────────────────────────
@@ -215,7 +219,7 @@ export async function POST(req: NextRequest) {
             { role: "user", content: fullPrompt },
           ],
           temperature: 0.7,
-          max_tokens: 4000,
+          max_tokens: 16384,
           ...(isOpenAI && { response_format: { type: "json_object" as const } }),
         });
         return completion.choices[0]?.message?.content || "{}";
@@ -252,7 +256,7 @@ export async function POST(req: NextRequest) {
           },
           body: JSON.stringify({
             model,
-            max_tokens: 4000,
+            max_tokens: 16384,
             system: STUDIO_SYSTEM_PROMPT + "\n\nIMPORTANT: Return ONLY raw JSON. Do not wrap in markdown code blocks.",
             messages: [{ role: "user", content: fullPrompt }],
           }),
@@ -281,7 +285,7 @@ export async function POST(req: NextRequest) {
             { role: "user", content: fullPrompt },
           ],
           temperature: 0.7,
-          max_tokens: 4000,
+          max_tokens: 16384,
         });
         return completion.choices[0]?.message?.content || "{}";
 

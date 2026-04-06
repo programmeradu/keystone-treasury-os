@@ -63,6 +63,34 @@ export function LivePreview({
 
     const [livePrices, setLivePrices] = React.useState<Record<string, number>>({});
     const [tokenLogos, setTokenLogos] = React.useState<Record<string, string>>({});
+    const [liveHoldings, setLiveHoldings] = React.useState<{ symbol: string; name: string; balance: number; mint: string; decimals: number }[] | null>(null);
+
+    // Fetch real wallet holdings when wallet is connected
+    useEffect(() => {
+        if (!walletAddress) {
+            setLiveHoldings(null);
+            return;
+        }
+        let cancelled = false;
+        fetch(`/api/helius/das/wallet-holdings?address=${walletAddress}`, { signal: AbortSignal.timeout(10000) })
+            .then(r => r.json())
+            .then(json => {
+                if (cancelled) return;
+                const holdings = json?.holdings || [];
+                const mintToSym: Record<string, string> = {};
+                for (const [sym, mint] of Object.entries(MINTS)) mintToSym[mint] = sym;
+                const mapped = holdings.map((h: any) => ({
+                    symbol: mintToSym[h.mint] || h.symbol || 'UNKNOWN',
+                    name: h.name || h.symbol || 'Unknown',
+                    balance: Number(h.balance) / Math.pow(10, h.decimals || 0),
+                    mint: h.mint,
+                    decimals: h.decimals || 0,
+                }));
+                setLiveHoldings(mapped);
+            })
+            .catch(() => { if (!cancelled) setLiveHoldings(null); });
+        return () => { cancelled = true; };
+    }, [walletAddress, MINTS]);
 
     useEffect(() => {
         // Fetch prices
@@ -176,17 +204,35 @@ export function LivePreview({
             // Prices + logos injected from parent (iframe sandbox blocks external fetch/images)
             var _injectedPrices = ${JSON.stringify(livePrices)};
             var _injectedLogos = ${JSON.stringify(tokenLogos)};
+            var _liveHoldings = ${JSON.stringify(liveHoldings)};
+            var _walletConnected = ${JSON.stringify(!!walletAddress)};
 
             var useVault = function() {
-                var tokens = [
-                    { symbol: 'SOL',  name: 'Solana',   balance: 124.5,    price: _injectedPrices.SOL  || 0, mint: 'So11111111111111111111111111111111111111112',  logoURI: _injectedLogos.SOL  || '' },
-                    { symbol: 'USDC', name: 'USD Coin', balance: 5400.2,   price: _injectedPrices.USDC || 1.00, mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', logoURI: _injectedLogos.USDC || '' },
-                    { symbol: 'BONK', name: 'Bonk',     balance: 15000000, price: _injectedPrices.BONK || 0, mint: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263', logoURI: _injectedLogos.BONK || '' },
-                    { symbol: 'JUP',  name: 'Jupiter',  balance: 850,      price: _injectedPrices.JUP  || 0, mint: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',  logoURI: _injectedLogos.JUP  || '' },
-                ];
+                var tokens;
+                if (_walletConnected && _liveHoldings && _liveHoldings.length > 0) {
+                    // Real wallet data — use live holdings with live prices
+                    tokens = _liveHoldings.map(function(h) {
+                        return {
+                            symbol: h.symbol,
+                            name: h.name,
+                            balance: h.balance,
+                            price: _injectedPrices[h.symbol] || 0,
+                            mint: h.mint,
+                            logoURI: _injectedLogos[h.symbol] || '',
+                        };
+                    });
+                } else {
+                    // Demo mode — show example balances with live prices
+                    tokens = [
+                        { symbol: 'SOL',  name: 'Solana',   balance: 124.5,    price: _injectedPrices.SOL  || 0, mint: 'So11111111111111111111111111111111111111112',  logoURI: _injectedLogos.SOL  || '' },
+                        { symbol: 'USDC', name: 'USD Coin', balance: 5400.2,   price: _injectedPrices.USDC || 1.00, mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', logoURI: _injectedLogos.USDC || '' },
+                        { symbol: 'BONK', name: 'Bonk',     balance: 15000000, price: _injectedPrices.BONK || 0, mint: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263', logoURI: _injectedLogos.BONK || '' },
+                        { symbol: 'JUP',  name: 'Jupiter',  balance: 850,      price: _injectedPrices.JUP  || 0, mint: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',  logoURI: _injectedLogos.JUP  || '' },
+                    ];
+                }
                 var balances = {};
                 tokens.forEach(function(t) { balances[t.symbol] = t.balance; });
-                return { activeVault: 'Main Portfolio', balances: balances, tokens: tokens };
+                return { activeVault: _walletConnected ? 'Connected Wallet' : 'Demo Portfolio', balances: balances, tokens: tokens };
             };
 
             var useTurnkey = function() {
@@ -359,6 +405,49 @@ export function LivePreview({
 <body>
     <div id="root"></div>
     <script>
+        // ─── Error Boundary ──────────────────────────────────
+        (function() {
+            var _React = window.React;
+            class KeystoneErrorBoundary extends _React.Component {
+                constructor(props) {
+                    super(props);
+                    this.state = { hasError: false, error: null };
+                }
+                static getDerivedStateFromError(error) {
+                    return { hasError: true, error: error };
+                }
+                componentDidCatch(error, info) {
+                    var msg = (error && error.message) || String(error);
+                    console.error('[ErrorBoundary]', msg);
+                    keystoneBridge.notify('runtime.error', {
+                        message: msg,
+                        componentStack: info && info.componentStack ? info.componentStack.slice(0, 500) : undefined
+                    });
+                }
+                render() {
+                    if (this.state.hasError) {
+                        var msg = this.state.error ? (this.state.error.message || String(this.state.error)) : 'Unknown error';
+                        return _React.createElement('div', {
+                            style: { color: '#ef4444', padding: '20px', fontFamily: 'monospace', fontSize: '13px', lineHeight: '1.6' }
+                        },
+                            _React.createElement('strong', { style: { color: '#f87171' } }, 'Component Error'),
+                            _React.createElement('br'),
+                            _React.createElement('span', { style: { color: '#fca5a5' } }, msg),
+                            _React.createElement('br'),
+                            _React.createElement('br'),
+                            _React.createElement('button', {
+                                onClick: function() { location.reload(); },
+                                style: { color: '#a3a3a3', background: '#27272a', border: '1px solid #3f3f46', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px' }
+                            }, 'Reload Preview')
+                        );
+                    }
+                    return this.props.children;
+                }
+            }
+            window.__KeystoneErrorBoundary = KeystoneErrorBoundary;
+        })();
+    </script>
+    <script>
         // ─── Boot ────────────────────────────────────────────
         (function() {
             try {
@@ -383,9 +472,13 @@ export function LivePreview({
                     throw new Error('App.tsx must export a default React component (got ' + typeof App + ')');
                 }
 
-                // 4. Mount
+                // 4. Mount with Error Boundary
                 var root = ReactDOM.createRoot(document.getElementById('root'));
-                root.render(React.createElement(App));
+                root.render(
+                    React.createElement(window.__KeystoneErrorBoundary, null,
+                        React.createElement(App)
+                    )
+                );
 
                 keystoneBridge.notify('runtime.ready', { timestamp: Date.now() });
             } catch (err) {
@@ -400,7 +493,7 @@ export function LivePreview({
     </script>
 </body>
 </html>`;
-    }, [userCodeJson, livePrices, tokenLogos]);
+    }, [userCodeJson, livePrices, tokenLogos, liveHoldings, walletAddress]);
 
     // ─── Setup Bridge Controller ────────────────────────────
     const setupBridge = useCallback(() => {
@@ -562,8 +655,9 @@ export function LivePreview({
         });
         bridge.on(BridgeMethods.YIELD_OPTIMIZE, async (p) => {
             const params = p as { asset: string };
-            setLogs(prev => [...prev.slice(-500), `[yield] optimize for ${params.asset}`]);
-            return stubYieldOptimize(params);
+            const isLive = !!walletAddress;
+            setLogs(prev => [...prev.slice(-500), `[yield] optimize for ${params.asset}${isLive ? " (LIVE)" : " (mock)"}`]);
+            return stubYieldOptimize(params, isLive);
         });
         bridge.on(BridgeMethods.GASLESS_SUBMIT, async (p) => {
             const params = p as { transaction: unknown; description?: string };
@@ -597,32 +691,95 @@ export function LivePreview({
         };
     }, [finalIframeContent, setupBridge]);
 
+    // ─── Console State ────────────────────────────────────
+    const [consoleFilter, setConsoleFilter] = React.useState<"all" | "info" | "warn" | "error" | "event">("all");
+
     // ─── Render: Console Tab ────────────────────────────────
     if (tab === "code") {
+        const filteredLogs = consoleFilter === "all"
+            ? logs
+            : logs.filter((log) => {
+                if (consoleFilter === "info") return log.startsWith("[info]");
+                if (consoleFilter === "warn") return log.startsWith("[warn]");
+                if (consoleFilter === "error") return log.startsWith("[error]");
+                if (consoleFilter === "event") return log.startsWith("[event]") || log.startsWith("[lit]") || log.startsWith("[mcp]") || log.startsWith("[jupiter]") || log.startsWith("[siws]");
+                return true;
+            });
+
+        const errorCount = logs.filter((l) => l.startsWith("[error]")).length;
+        const warnCount = logs.filter((l) => l.startsWith("[warn]")).length;
+
         return (
-            <div className="h-full w-full bg-[#011627] p-4 overflow-auto font-mono text-xs">
-                <div className="text-emerald-400 mb-4 uppercase tracking-widest text-[10px] font-bold border-b border-zinc-800 pb-2">
-                    Console Output
-                </div>
-                {logs.length === 0 ? (
-                    <div className="text-zinc-600 italic">No logs yet...</div>
-                ) : (
-                    logs.map((log, i) => (
-                        <div
-                            key={i}
-                            className={`py-1 border-b border-zinc-900/50 ${log.startsWith("[error]")
-                                    ? "text-red-400"
-                                    : log.startsWith("[warn]")
-                                        ? "text-yellow-400"
-                                        : log.startsWith("[event]")
-                                            ? "text-cyan-400"
-                                            : "text-zinc-300"
+            <div className="h-full w-full bg-[#011627] flex flex-col font-mono text-xs">
+                {/* Console Toolbar */}
+                <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800 shrink-0">
+                    <div className="flex items-center gap-1">
+                        {(["all", "info", "warn", "error", "event"] as const).map((f) => (
+                            <button
+                                key={f}
+                                onClick={() => setConsoleFilter(f)}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                                    consoleFilter === f
+                                        ? f === "error" ? "bg-red-500/20 text-red-400"
+                                        : f === "warn" ? "bg-yellow-500/20 text-yellow-400"
+                                        : f === "event" ? "bg-cyan-500/20 text-cyan-400"
+                                        : "bg-emerald-500/20 text-emerald-400"
+                                        : "text-zinc-600 hover:text-zinc-400"
                                 }`}
-                        >
-                            {log}
+                            >
+                                {f}
+                                {f === "error" && errorCount > 0 && (
+                                    <span className="ml-1 text-[9px]">({errorCount})</span>
+                                )}
+                                {f === "warn" && warnCount > 0 && (
+                                    <span className="ml-1 text-[9px]">({warnCount})</span>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                    <button
+                        onClick={() => setLogs([])}
+                        className="text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors uppercase tracking-wider"
+                    >
+                        Clear
+                    </button>
+                </div>
+
+                {/* Log entries */}
+                <div className="flex-1 overflow-auto p-3">
+                    {filteredLogs.length === 0 ? (
+                        <div className="text-zinc-600 italic pt-4 text-center">
+                            {logs.length === 0 ? "No logs yet \u2014 interact with your Mini-App" : `No ${consoleFilter} logs`}
                         </div>
-                    ))
-                )}
+                    ) : (
+                        filteredLogs.map((log, i) => {
+                            const isError = log.startsWith("[error]");
+                            const isWarn = log.startsWith("[warn]");
+                            const isEvent = log.startsWith("[event]") || log.startsWith("[lit]") || log.startsWith("[mcp]") || log.startsWith("[jupiter]");
+
+                            return (
+                                <div
+                                    key={i}
+                                    className={`py-1 border-b border-zinc-900/30 flex items-start gap-2 ${
+                                        isError ? "text-red-400 bg-red-500/5"
+                                        : isWarn ? "text-yellow-400"
+                                        : isEvent ? "text-cyan-400"
+                                        : "text-zinc-300"
+                                    }`}
+                                >
+                                    <span className="text-zinc-700 shrink-0 select-none w-6 text-right">{i + 1}</span>
+                                    <span className="break-all">{log}</span>
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+
+                {/* Status bar */}
+                <div className="px-3 py-1 border-t border-zinc-800 text-[10px] text-zinc-600 flex items-center justify-between shrink-0">
+                    <span>{logs.length} log entries</span>
+                    <span>{errorCount > 0 ? `${errorCount} errors` : "No errors"}</span>
+                </div>
             </div>
         );
     }

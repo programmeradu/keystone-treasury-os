@@ -558,30 +558,41 @@ async function uploadToArweave(bundlePath, privateKey, cluster) {
 }
 async function registerOnChain(opts) {
   try {
-    const { Connection, Keypair, Transaction, TransactionInstruction, PublicKey } = await import("@solana/web3.js");
+    const { Connection, Keypair, Transaction, TransactionInstruction, PublicKey, SystemProgram } = await import("@solana/web3.js");
     const bs58 = (await import("bs58")).default;
+    const cryptoModule = await import("crypto");
+    const PROGRAM_ID = new PublicKey("F8kN2gs4kqHtz2bkJZLbtNm6j8e7EUSarYDQcXff8iQY");
     const connection = new Connection(getClusterUrl(opts.cluster), "confirmed");
     const keypair = Keypair.fromSecretKey(bs58.decode(opts.privateKey));
-    const MEMO_PROGRAM_ID = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
-    const memoData = JSON.stringify({
-      protocol: "keystone-os",
-      version: "1.0",
-      action: "register_app",
-      app_id: opts.appId,
-      name: opts.name,
-      description: opts.description.slice(0, 200),
-      code_hash: opts.codeHash,
-      arweave_cid: opts.arweaveTxId || null,
-      creator: opts.creatorWallet,
-      price_usdc: opts.priceUsdc || 0,
-      timestamp: Date.now()
+    const discHash = cryptoModule.createHash("sha256").update("global:initialize_app").digest();
+    const disc = discHash.subarray(0, 8);
+    const appIdBytes = Buffer.alloc(32);
+    Buffer.from(opts.appId, "utf-8").copy(appIdBytes, 0, 0, Math.min(opts.appId.length, 32));
+    const [appRegistryPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("app_registry"), appIdBytes],
+      PROGRAM_ID
+    );
+    const priceUsdc = BigInt(Math.round((opts.priceUsdc || 0) * 1e6));
+    const developerFeeBps = 8e3;
+    const ipfsCid = Buffer.alloc(64);
+    const cidContent = opts.arweaveTxId || opts.codeHash || "";
+    Buffer.from(cidContent, "utf-8").copy(ipfsCid, 0, 0, Math.min(cidContent.length, 64));
+    const data = Buffer.alloc(8 + 32 + 8 + 2 + 64);
+    disc.copy(data, 0);
+    appIdBytes.copy(data, 8);
+    data.writeBigUInt64LE(priceUsdc, 40);
+    data.writeUInt16LE(developerFeeBps, 48);
+    ipfsCid.copy(data, 50);
+    const instruction = new TransactionInstruction({
+      keys: [
+        { pubkey: appRegistryPda, isSigner: false, isWritable: true },
+        { pubkey: keypair.publicKey, isSigner: true, isWritable: true },
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }
+      ],
+      programId: PROGRAM_ID,
+      data
     });
-    const memoInstruction = new TransactionInstruction({
-      keys: [{ pubkey: keypair.publicKey, isSigner: true, isWritable: true }],
-      programId: MEMO_PROGRAM_ID,
-      data: Buffer.from(memoData, "utf-8")
-    });
-    const tx = new Transaction().add(memoInstruction);
+    const tx = new Transaction().add(instruction);
     tx.feePayer = keypair.publicKey;
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
     tx.recentBlockhash = blockhash;
@@ -684,7 +695,7 @@ ${gatekeeper.errors.map((e) => `  ${e.file}:${e.line} \u2014 ${e.message}`).join
   let solanaTxId;
   let explorerUrl;
   if (options.privateKey) {
-    console.log("  [4/4] Registering on Solana...");
+    console.log("  [4/4] Registering on Solana (Keystone Marketplace program)...");
     const onChain = await registerOnChain({
       privateKey: options.privateKey,
       cluster,

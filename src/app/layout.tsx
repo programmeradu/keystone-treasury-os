@@ -38,7 +38,7 @@ export default function RootLayout({
           data-message-type="ROUTE_CHANGE"
           data-include-search-params="true"
           data-only-in-iframe="true"
-          data-debug="true"
+          data-debug={process.env.NODE_ENV === "development" ? "true" : "false"}
           data-custom-data='{"appName": "YourApp", "version": "1.0.0", "greeting": "hi"}'
         />
         {/* Jupiter Plugin script - load after hydration inside body to prevent head SSR/CSR mismatch */}

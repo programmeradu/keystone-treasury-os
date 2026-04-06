@@ -18,15 +18,16 @@ export const SOLANA_TOKEN_REGISTRY: Record<string, {
     mint: string;
     decimals: number;
     coingeckoId?: string;
+    priceUrl?: string;
 }> = {
-    SOL: { symbol: "SOL", name: "Solana", mint: "So11111111111111111111111111111111111111112", decimals: 9, coingeckoId: "solana" },
-    USDC: { symbol: "USDC", name: "USD Coin", mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", decimals: 6, coingeckoId: "usd-coin" },
-    USDT: { symbol: "USDT", name: "Tether", mint: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", decimals: 6, coingeckoId: "tether" },
-    BONK: { symbol: "BONK", name: "Bonk", mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", decimals: 5, coingeckoId: "bonk" },
-    JUP: { symbol: "JUP", name: "Jupiter", mint: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN", decimals: 6, coingeckoId: "jupiter-exchange-solana" },
-    RAY: { symbol: "RAY", name: "Raydium", mint: "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R", decimals: 6, coingeckoId: "raydium" },
-    ORCA: { symbol: "ORCA", name: "Orca", mint: "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE", decimals: 6, coingeckoId: "orca" },
-    MNDE: { symbol: "MNDE", name: "Marinade", mint: "MNDEFzGvMt87ueuHvVU9VcTqsAP5b3fTGPsHuuPA5ey", decimals: 9, coingeckoId: "marinade" },
+    SOL: { symbol: "SOL", name: "Solana", mint: "So11111111111111111111111111111111111111112", decimals: 9, coingeckoId: "solana", priceUrl: "https://lite-api.jup.ag/price/v2?ids=So11111111111111111111111111111111111111112" },
+    USDC: { symbol: "USDC", name: "USD Coin", mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", decimals: 6, coingeckoId: "usd-coin", priceUrl: "https://lite-api.jup.ag/price/v2?ids=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" },
+    USDT: { symbol: "USDT", name: "Tether", mint: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", decimals: 6, coingeckoId: "tether", priceUrl: "https://lite-api.jup.ag/price/v2?ids=Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB" },
+    BONK: { symbol: "BONK", name: "Bonk", mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", decimals: 5, coingeckoId: "bonk", priceUrl: "https://lite-api.jup.ag/price/v2?ids=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" },
+    JUP: { symbol: "JUP", name: "Jupiter", mint: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN", decimals: 6, coingeckoId: "jupiter-exchange-solana", priceUrl: "https://lite-api.jup.ag/price/v2?ids=JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN" },
+    RAY: { symbol: "RAY", name: "Raydium", mint: "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R", decimals: 6, coingeckoId: "raydium", priceUrl: "https://lite-api.jup.ag/price/v2?ids=4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R" },
+    ORCA: { symbol: "ORCA", name: "Orca", mint: "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE", decimals: 6, coingeckoId: "orca", priceUrl: "https://lite-api.jup.ag/price/v2?ids=orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE" },
+    MNDE: { symbol: "MNDE", name: "Marinade", mint: "MNDEFzGvMt87ueuHvVU9VcTqsAP5b3fTGPsHuuPA5ey", decimals: 9, coingeckoId: "marinade", priceUrl: "https://lite-api.jup.ag/price/v2?ids=MNDEFzGvMt87ueuHvVU9VcTqsAP5b3fTGPsHuuPA5ey" },
 };
 
 // ─── SDK Hook Documentation ─────────────────────────────────────────
@@ -152,6 +153,51 @@ export const DEFI_PROTOCOL_DOCS: Record<string, {
         tips: [
             "Concentrated liquidity pools (CLMM) offer higher capital efficiency",
             "Standard AMM pools follow constant product curve (x*y=k)",
+            "API: useFetch('https://api-v3.raydium.io/pools/info/list') for pool data",
+        ],
+    },
+    coingecko: {
+        name: "CoinGecko",
+        description: "Comprehensive crypto market data API — prices, market cap, volume, 24h changes",
+        website: "https://www.coingecko.com",
+        category: "Data",
+        tips: [
+            "useFetch('https://api.coingecko.com/api/v3/simple/price?ids=solana,bonk&vs_currencies=usd&include_24hr_change=true')",
+            "Use coingeckoId from token registry for correct IDs",
+            "Free tier: 10-30 calls/min, sufficient for polling every 30s",
+        ],
+    },
+    dexscreener: {
+        name: "DexScreener",
+        description: "Real-time DEX pair data — price, volume, liquidity, price changes across timeframes",
+        website: "https://dexscreener.com",
+        category: "Data",
+        tips: [
+            "useFetch('https://api.dexscreener.com/latest/dex/tokens/MINT_ADDRESS') for token pairs",
+            "useFetch('https://api.dexscreener.com/latest/dex/search?q=SYMBOL') for search",
+            "Response includes h1, h6, h24 price changes and volume",
+        ],
+    },
+    defillama: {
+        name: "DeFi Llama",
+        description: "DeFi analytics — TVL, yield pools, protocol rankings across all chains",
+        website: "https://defillama.com",
+        category: "Data",
+        tips: [
+            "useFetch('https://yields.llama.fi/pools') — filter by chain === 'Solana'",
+            "useFetch('https://api.llama.fi/protocols') — protocol TVL rankings",
+            "Best source for yield/APY data across Solana DeFi protocols",
+        ],
+    },
+    pyth: {
+        name: "Pyth Network",
+        description: "High-fidelity oracle price feeds used by DeFi protocols on Solana",
+        website: "https://pyth.network",
+        category: "Oracle",
+        tips: [
+            "SOL/USD feed ID: 0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d",
+            "useFetch('https://hermes.pyth.network/v2/updates/price/latest?ids[]=FEED_ID')",
+            "Sub-second price updates, ideal for real-time trading dashboards",
         ],
     },
 };
@@ -191,10 +237,12 @@ export function buildWeb3Context(opts: {
         );
         if (mentionedTokens.length > 0) {
             sections.push("## Token Metadata\n");
+            const mints = mentionedTokens.map(sym => SOLANA_TOKEN_REGISTRY[sym].mint);
             for (const sym of mentionedTokens) {
                 const t = SOLANA_TOKEN_REGISTRY[sym];
-                sections.push(`- **${t.symbol}** (${t.name}): mint=\`${t.mint}\`, decimals=${t.decimals}`);
+                sections.push(`- **${t.symbol}** (${t.name}): mint=\`${t.mint}\`, decimals=${t.decimals}, coingeckoId=\`${t.coingeckoId}\``);
             }
+            sections.push(`\nQuick price URL: \`useFetch('https://lite-api.jup.ag/price/v2?ids=${mints.join(",")}')\``);
             sections.push("");
         }
     }
