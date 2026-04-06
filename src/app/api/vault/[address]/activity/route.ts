@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/index";
-import { teamActivityLog, users } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { teamActivityLog, users, teamMembers, teams } from "@/db/schema";
+import { eq, desc, and } from "drizzle-orm";
+import { getAuthUser } from "@/lib/auth-utils";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ address: string }> }) {
     try {
@@ -9,6 +10,21 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ addr
 
         if (!address || address === "undefined") {
             return NextResponse.json([]);
+        }
+
+        const user = await getAuthUser(req);
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const access = await db!.select()
+            .from(teamMembers)
+            .innerJoin(teams, eq(teamMembers.teamId, teams.id))
+            .where(and(eq(teams.vaultAddress, address), eq(teamMembers.userId, user.id)))
+            .limit(1);
+
+        if (access.length === 0) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
         }
 
         const logs = await db!

@@ -10,9 +10,14 @@ const COOKIE_NAME = 'keystone-siws-session';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 function getJwtSecret() {
-    const secret = process.env.JWT_SECRET || 'keystone_sovereign_os_2026';
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error('JWT_SECRET must be configured');
+    }
     return new TextEncoder().encode(secret);
 }
+
+const usedNonces = (globalThis as any).usedNonces || ((globalThis as any).usedNonces = new Set<string>());
 
 /**
  * POST /api/auth/siws
@@ -52,6 +57,23 @@ export async function POST(request: NextRequest) {
         }
 
         // ─── Step 2: Verify nonce freshness ────────────────────────────
+        const nonceMatch = message.match(/Nonce:\s*(.+)/);
+        const nonce = nonceMatch ? nonceMatch[1].trim() : null;
+        if (!nonce) {
+            return NextResponse.json(
+                { error: 'Missing nonce' },
+                { status: 400 }
+            );
+        }
+
+        if (usedNonces.has(nonce)) {
+            return NextResponse.json(
+                { error: 'Nonce already used. Possible replay attack.' },
+                { status: 401 }
+            );
+        }
+        usedNonces.add(nonce);
+
         const timestampMatch = message.match(/Timestamp:\s*(.+)/);
         if (timestampMatch) {
             const messageTime = new Date(timestampMatch[1]).getTime();
