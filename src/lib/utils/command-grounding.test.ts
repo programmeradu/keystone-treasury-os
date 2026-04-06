@@ -4,7 +4,7 @@ import {
   classifyEvidenceNeed,
   evaluateGroundingGate,
   validateNavigationPath,
-} from "./route";
+} from "./command-grounding";
 
 describe("command grounding helpers", () => {
   it("classifies db and navigation prompts", () => {
