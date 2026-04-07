@@ -1,0 +1,4 @@
+## 2024-05-24 - [DOM XSS via innerHTML in error handlers]
+**Vulnerability:** Found a DOM-based XSS vulnerability in `VaultAssetsCompact.tsx` where an image `onError` handler injected unsanitized token symbol data directly into the DOM using `innerHTML` concatenation.
+**Learning:** React elements naturally escape content, but native DOM events (like `onError` accessing `e.target`) bypass React's protection when using `innerHTML`. Additionally, when overwriting `innerHTML` on a parent element, the child elements are removed from the DOM. Thus, caching the parent reference first is crucial to safely update the newly injected markup.
+**Prevention:** Always use `textContent` to inject user-controlled or dynamic data into the DOM. Define the static DOM structure via `innerHTML` and target placeholders using class selectors to safely set text values. Avoid using IDs in loops to prevent duplicate DOM IDs.
