@@ -26,8 +26,10 @@ export async function GET(req: NextRequest) {
 
         let userDcaBots: any[] = [];
         let userPurchases: any[] = [];
+
+        userDcaBots = await db.select().from(dcaBots).where(eq(dcaBots.userId, userId));
+
         if (walletAddress) {
-            userDcaBots = await db.select().from(dcaBots).where(eq(dcaBots.userWallet, walletAddress));
             userPurchases = await db.select().from(purchases).where(eq(purchases.buyerWallet, walletAddress));
         }
 

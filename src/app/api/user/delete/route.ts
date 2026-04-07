@@ -24,11 +24,13 @@ export async function DELETE(req: NextRequest) {
         await db.delete(vaults).where(eq(vaults.userId, userId));
         await db.delete(teamMembers).where(eq(teamMembers.userId, userId));
 
-        // Delete purchases and DCA bots where wallet matches
+        // Delete purchases where wallet matches
         if (walletAddress) {
-            await db.delete(dcaBots).where(eq(dcaBots.userWallet, walletAddress));
             await db.delete(purchases).where(eq(purchases.buyerWallet, walletAddress));
         }
+
+        // Delete DCA bots where userId matches
+        await db.delete(dcaBots).where(eq(dcaBots.userId, userId));
 
         // Finally delete the user
         await db.delete(users).where(eq(users.id, userId));
