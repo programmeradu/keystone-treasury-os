@@ -113,6 +113,39 @@ export const SDK_HOOK_DOCS: Record<string, {
         usage: `const { handoffTo } = useAgentHandoff("my-agent");\nawait handoffTo("other-agent", { key: "value" });`,
         returns: "UseAgentHandoffResult { handoffTo }",
     },
+    // Extended SDK — v1.1
+    usePortfolio: {
+        name: "usePortfolio",
+        description: "Portfolio summary with USD values and allocation percentages — wraps useVault with price enrichment",
+        usage: `const { tokens, totalValue, loading } = usePortfolio();`,
+        returns: "UsePortfolioResult { tokens: { symbol, balance, usdValue, percentage }[], totalValue: number, loading: boolean }",
+    },
+    useTheme: {
+        name: "useTheme",
+        description: "Theme state for dark/light mode support",
+        usage: `const { theme, setTheme, isDark } = useTheme();`,
+        returns: "UseThemeResult { theme: 'dark'|'light', setTheme: (t) => void, isDark: boolean }",
+    },
+    useTokenPrice: {
+        name: "useTokenPrice",
+        description: "Live token price for a single mint via Jupiter Price API",
+        usage: `const { price, loading, error } = useTokenPrice('So11111111111111111111111111111111111111112');`,
+        params: "mint: string",
+        returns: "UseTokenPriceResult { price: number|null, loading: boolean, error: string|null }",
+    },
+    useNotification: {
+        name: "useNotification",
+        description: "In-app notification system for alerts and messages",
+        usage: `const { send, notifications, dismiss, unreadCount } = useNotification();\nsend("Swap completed!", "success");`,
+        returns: "UseNotificationResult { notifications, send, dismiss, clearAll, unreadCount }",
+    },
+    useStorage: {
+        name: "useStorage",
+        description: "Persistent key-value storage scoped to the mini-app namespace",
+        usage: `const storage = useStorage("my-app");\nstorage.set("key", value);\nconst val = storage.get("key");`,
+        params: "namespace?: string",
+        returns: "UseStorageResult { get, set, remove, keys, clear }",
+    },
 };
 
 // ─── DeFi Protocol Knowledge ────────────────────────────────────────

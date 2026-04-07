@@ -170,11 +170,12 @@ export class BridgeController {
 
   /**
    * Send a JSON-RPC response back to the iframe.
+   * Scoped to current origin to prevent cross-origin leakage.
    */
   private sendResponse(response: JsonRpcResponse): void {
     const iframe = this.iframeRef.current;
     if (!iframe?.contentWindow) return;
-    iframe.contentWindow.postMessage(response, "*");
+    iframe.contentWindow.postMessage(response, window.location.origin);
   }
 
   /**

@@ -114,6 +114,37 @@ export const SDK_EXPORTS: Record<string, {
         returns: "{ submit: (tx: any, description?: string) => Promise<{ signature: string }>, loading: boolean, error: string|null }",
         description: "Submit transactions without SOL for gas (fee payer relay)",
     },
+    // Extended SDK — v1.1
+    usePortfolio: {
+        type: "hook",
+        signature: "usePortfolio()",
+        returns: "{ tokens: { symbol: string, balance: number, usdValue: number, percentage: number }[], totalValue: number, loading: boolean }",
+        description: "Portfolio summary with USD values and allocation percentages",
+    },
+    useTheme: {
+        type: "hook",
+        signature: "useTheme()",
+        returns: "{ theme: 'dark'|'light', setTheme: (t: string) => void, isDark: boolean }",
+        description: "Theme state for dark/light mode support",
+    },
+    useTokenPrice: {
+        type: "hook",
+        signature: "useTokenPrice(mint: string)",
+        returns: "{ price: number|null, loading: boolean, error: string|null }",
+        description: "Live token price via Jupiter Price API for a given mint address",
+    },
+    useNotification: {
+        type: "hook",
+        signature: "useNotification()",
+        returns: "{ notifications: { id: string, message: string, type: string, time: Date }[], send: (msg: string, type?: string) => void, dismiss: (id: string) => void, clearAll: () => void, unreadCount: number }",
+        description: "In-app notification system for alerts and messages",
+    },
+    useStorage: {
+        type: "hook",
+        signature: "useStorage(namespace?: string)",
+        returns: "{ get: (key: string) => any, set: (key: string, value: any) => void, remove: (key: string) => void, keys: () => string[], clear: () => void }",
+        description: "Persistent key-value storage scoped to the mini-app",
+    },
 };
 
 // Convenience: set of all valid SDK export names

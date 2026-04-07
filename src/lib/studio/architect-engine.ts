@@ -54,9 +54,21 @@ export class ArchitectEngine {
   private abortController: AbortController | null = null;
   private activeModel: string = "auto";
   private activeProvider: string = "auto";
+  private aiConfig: { provider: string; apiKey: string; model: string } | null = null;
 
   constructor(callbacks: ArchitectCallbacks) {
     this.callbacks = callbacks;
+  }
+
+  /**
+   * Update callbacks without replacing the engine instance.
+   */
+  updateCallbacks(cb: Partial<ArchitectCallbacks>): void {
+    if (cb.onStateChange) this.callbacks.onStateChange = cb.onStateChange;
+    if (cb.onFilesGenerated) this.callbacks.onFilesGenerated = cb.onFilesGenerated;
+    if (cb.onExplanation) this.callbacks.onExplanation = cb.onExplanation;
+    if (cb.onError) this.callbacks.onError = cb.onError;
+    if (cb.onStreamChunk) this.callbacks.onStreamChunk = cb.onStreamChunk;
   }
 
   /**
@@ -95,6 +107,7 @@ export class ArchitectEngine {
     aiConfig?: { provider: string; apiKey: string; model: string } | null
   ): Promise<void> {
     this.reset();
+    this.aiConfig = aiConfig || null;
     this.startedAt = Date.now();
     this.transition("STREAMING");
 
@@ -368,7 +381,7 @@ export class ArchitectEngine {
     const response = await fetch("/api/studio/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt, contextFiles }),
+      body: JSON.stringify({ prompt, contextFiles, aiConfig: this.aiConfig || undefined }),
       signal: this.abortController?.signal,
     });
 

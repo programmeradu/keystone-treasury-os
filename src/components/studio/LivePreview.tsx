@@ -52,6 +52,7 @@ export function LivePreview({
     const [error, setError] = React.useState<string | null>(null);
     const [isLoading, setIsLoading] = React.useState(true);
     const [logs, setLogs] = React.useState<string[]>([]);
+    const [retryKey, setRetryKey] = React.useState(0);
 
     // ─── Fetch real prices + logos in parent (iframe sandbox blocks external fetch) ──
     const MINTS: Record<string, string> = React.useMemo(() => ({
@@ -363,6 +364,68 @@ export function LivePreview({
                 return { submit: function(tx, desc) { return keystoneBridge.call('gasless.submit', { transaction: tx, description: desc }); }, loading: false, error: null };
             };
 
+            // ─── Extended SDK v1.1 ───────────────────────────────
+
+            var usePortfolio = function() {
+                var vault = useVault();
+                var totalValue = 0;
+                var enriched = vault.tokens.map(function(t) {
+                    var usdValue = t.balance * (t.price || 0);
+                    totalValue += usdValue;
+                    return { symbol: t.symbol, name: t.name, balance: t.balance, price: t.price, usdValue: usdValue, mint: t.mint, logoURI: t.logoURI, percentage: 0 };
+                });
+                enriched.forEach(function(t) { t.percentage = totalValue > 0 ? Math.round((t.usdValue / totalValue) * 10000) / 100 : 0; });
+                return { tokens: enriched, totalValue: totalValue, loading: false };
+            };
+
+            var useTheme = function() {
+                var _s = useState('dark'), theme = _s[0], setTheme = _s[1];
+                return { theme: theme, setTheme: setTheme, isDark: theme === 'dark' };
+            };
+
+            var useTokenPrice = function(mint) {
+                var _s = useState(null), price = _s[0], setPrice = _s[1];
+                var _l = useState(true), loading = _l[0], setLoading = _l[1];
+                var _e = useState(null), error = _e[0], setError = _e[1];
+                useEffect(function() {
+                    if (!mint) return;
+                    setLoading(true);
+                    keystoneBridge.call('proxy.fetch', { url: 'https://lite-api.jup.ag/price/v2?ids=' + mint, method: 'GET', headers: {} })
+                        .then(function(data) { var p = data && data.data && data.data[mint]; setPrice(p ? parseFloat(p.price) : null); })
+                        .catch(function(err) { setError(err.message); })
+                        .finally(function() { setLoading(false); });
+                }, [mint]);
+                return { price: price, loading: loading, error: error };
+            };
+
+            var useNotification = function() {
+                var _s = useState([]), notifications = _s[0], setNotifications = _s[1];
+                var send = function(message, type) {
+                    var n = { id: 'n_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), message: message, type: type || 'info', time: new Date() };
+                    setNotifications(function(prev) { return prev.concat([n]); });
+                };
+                var dismiss = function(id) { setNotifications(function(prev) { return prev.filter(function(n) { return n.id !== id; }); }); };
+                var clearAll = function() { setNotifications([]); };
+                var unreadCount = notifications.length;
+                return { notifications: notifications, send: send, dismiss: dismiss, clearAll: clearAll, unreadCount: unreadCount };
+            };
+
+            var useStorage = function(namespace) {
+                var ns = namespace || '__ks_storage';
+                var refStore = useRef({});
+                useEffect(function() {
+                    try { var saved = window.__ksStorageData && window.__ksStorageData[ns]; if (saved) refStore.current = saved; } catch(e) {}
+                }, []);
+                var persist = function() { if (!window.__ksStorageData) window.__ksStorageData = {}; window.__ksStorageData[ns] = refStore.current; };
+                return {
+                    get: function(key) { return refStore.current[key] !== undefined ? refStore.current[key] : null; },
+                    set: function(key, value) { refStore.current[key] = value; persist(); },
+                    remove: function(key) { delete refStore.current[key]; persist(); },
+                    keys: function() { return Object.keys(refStore.current); },
+                    clear: function() { refStore.current = {}; persist(); },
+                };
+            };
+
             // Register as requireable module
             var exportsObj = {
                 useVault: useVault,
@@ -379,7 +442,12 @@ export function LivePreview({
                 useImpactReport: useImpactReport,
                 useTaxForensics: useTaxForensics,
                 useYieldOptimizer: useYieldOptimizer,
-                useGaslessTx: useGaslessTx
+                useGaslessTx: useGaslessTx,
+                usePortfolio: usePortfolio,
+                useTheme: useTheme,
+                useTokenPrice: useTokenPrice,
+                useNotification: useNotification,
+                useStorage: useStorage
             };
 
             window.__keystoneSDK = Object.assign({}, exportsObj, { default: exportsObj });
@@ -493,7 +561,7 @@ export function LivePreview({
     </script>
 </body>
 </html>`;
-    }, [userCodeJson, livePrices, tokenLogos, liveHoldings, walletAddress]);
+    }, [userCodeJson, livePrices, tokenLogos, liveHoldings, walletAddress, retryKey]);
 
     // ─── Setup Bridge Controller ────────────────────────────
     const setupBridge = useCallback(() => {
@@ -803,7 +871,7 @@ export function LivePreview({
                         <p className="text-sm text-zinc-300 font-mono break-words leading-relaxed">{error}</p>
                     </div>
                     <button
-                        onClick={() => { setError(null); setIsLoading(true); }}
+                        onClick={() => { setError(null); setIsLoading(true); setRetryKey(k => k + 1); }}
                         className="mt-6 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-xs font-bold rounded uppercase tracking-wider transition-colors"
                     >
                         Retry Render

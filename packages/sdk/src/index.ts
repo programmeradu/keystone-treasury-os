@@ -22,6 +22,12 @@ export {
   useTaxForensics,
   useYieldOptimizer,
   useGaslessTx,
+  // Extended SDK — v1.1
+  usePortfolio,
+  useTheme,
+  useTokenPrice,
+  useNotification,
+  useStorage,
 } from "./hooks";
 export { setBridge } from "./bridge-context";
 export { BridgeMethods, type KeystoneBridge } from "./bridge";

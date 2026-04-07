@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
-import OpenAI from "openai";
-import { generateFullSystemPromptAddendum } from "@/lib/studio/framework-spec";
+import { buildProviderChain, streamProvider, parseLLMResponse } from "@/lib/studio/ai-provider";
+import { STUDIO_SYSTEM_PROMPT } from "@/lib/studio/system-prompt";
 import { buildWeb3Context } from "@/lib/studio/web3-context";
 import { checkRouteLimit } from "@/lib/rate-limit-middleware";
 
@@ -16,203 +16,6 @@ import { checkRouteLimit } from "@/lib/rate-limit-middleware";
  *   data: {"type":"done","files":{...},"explanation":"..."} — final parsed result
  *   data: {"type":"error","message":"..."} — error
  */
-
-function getDefaultModel(provider: string): string {
-  switch (provider) {
-    case "openai": return "gpt-4o";
-    case "groq": return "llama-3.3-70b-versatile";
-    case "google": return "gemini-2.0-flash";
-    case "anthropic": return "claude-sonnet-4-20250514";
-    case "cloudflare": return "@cf/qwen/qwen3-30b-a3b-fp8";
-    case "ollama": return "qwen2.5-coder:7b";
-    default: return "gpt-4o";
-  }
-}
-
-const STUDIO_SYSTEM_PROMPT = `You are "The Architect" — an AI code generator for Keystone Studio.
-
-YOUR MISSION:
-Build REAL, fully-functioning TypeScript/React Mini-Apps with LIVE data.
-NEVER use mock data, hardcoded prices, or placeholder values.
-ALWAYS fetch real data from live APIs using useFetch() from the SDK.
-
-RUNTIME: sandboxed <iframe>, React 18.2.0 via UMD, Babel standalone, Tailwind via CDN.
-useFetch() is a REAL HTTP proxy to 20+ live API domains — use it for all data fetching.
-Blocked: raw fetch(), localStorage, eval(), require(), window.open().
-
-${generateFullSystemPromptAddendum()}
-
-OUTPUT FORMAT (STRICT JSON — no markdown code blocks):
-{
-  "files": {
-    "App.tsx": "import { useFetch, useVault } from '@keystone-os/sdk';\\nimport { useState, useEffect, useRef } from 'react';\\n\\nexport default function App() { ... }"
-  },
-  "explanation": "Brief technical summary."
-}
-
-For MULTI-FILE apps, output each file as a separate key.
-Default export required: export default function App() { ... }
-Tailwind dark theme: bg-zinc-900, text-white, emerald-400 accent.
-NEVER hardcode prices. NEVER write mock data. Use real API endpoints.
-NEVER invent hooks not listed above. NEVER import unlisted packages.`;
-
-type ProviderType = "openai" | "groq" | "google" | "anthropic" | "cloudflare" | "ollama";
-
-interface ProviderEntry {
-  provider: ProviderType;
-  key: string;
-  model: string;
-}
-
-function buildProviderChain(aiConfig?: { provider?: string; apiKey?: string; model?: string } | null): ProviderEntry[] {
-  const chain: ProviderEntry[] = [];
-
-  if (aiConfig?.apiKey && aiConfig?.provider) {
-    chain.push({
-      provider: aiConfig.provider as ProviderType,
-      key: aiConfig.apiKey,
-      model: aiConfig.model || getDefaultModel(aiConfig.provider),
-    });
-  }
-
-  if (process.env.GROQ_API_KEY) {
-    chain.push({ provider: "groq", key: process.env.GROQ_API_KEY, model: "llama-3.3-70b-versatile" });
-  }
-  if (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_AI_TOKEN) {
-    chain.push({ provider: "cloudflare", key: process.env.CLOUDFLARE_AI_TOKEN, model: process.env.CLOUDFLARE_AI_MODEL || "@cf/qwen/qwen3-30b-a3b-fp8" });
-  }
-  if (process.env.OLLAMA_HOST || process.env.OLLAMA_ENABLED === "true") {
-    chain.push({ provider: "ollama", key: "ollama", model: process.env.OLLAMA_MODEL || "qwen2.5-coder:7b" });
-  }
-
-  return chain;
-}
-
-async function* streamProvider(
-  provider: ProviderType,
-  key: string,
-  model: string,
-  prompt: string
-): AsyncGenerator<string> {
-  if (provider === "openai" || provider === "groq" || provider === "cloudflare" || provider === "ollama") {
-    let baseURL: string | undefined;
-    let apiKey = key;
-
-    if (provider === "groq") baseURL = "https://api.groq.com/openai/v1";
-    else if (provider === "cloudflare") {
-      const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || key.split(":")[0];
-      const cfToken = key.includes(":") ? key.split(":")[1] : key;
-      apiKey = cfToken;
-      baseURL = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1`;
-    } else if (provider === "ollama") {
-      const host = process.env.OLLAMA_HOST || "http://localhost:11434";
-      apiKey = "ollama";
-      baseURL = `${host}/v1`;
-    }
-
-    const client = new OpenAI({ apiKey, ...(baseURL && { baseURL }) });
-
-    const stream = await client.chat.completions.create({
-      model,
-      messages: [
-        { role: "system", content: STUDIO_SYSTEM_PROMPT },
-        { role: "user", content: prompt },
-      ],
-      temperature: 0.7,
-      max_tokens: 16384,
-      stream: true,
-      ...(provider === "openai" && { response_format: { type: "json_object" as const } }),
-    });
-
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content;
-      if (content) yield content;
-    }
-  } else if (provider === "anthropic") {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": key,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: 16384,
-        stream: true,
-        system: STUDIO_SYSTEM_PROMPT + "\n\nReturn ONLY raw JSON.",
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
-
-    if (!res.ok) throw new Error(`Anthropic API error ${res.status}`);
-    if (!res.body) throw new Error("No response body");
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          const data = line.slice(6).trim();
-          if (data === "[DONE]") continue;
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.type === "content_block_delta" && parsed.delta?.text) {
-              yield parsed.delta.text;
-            }
-          } catch { /* skip unparseable lines */ }
-        }
-      }
-    }
-  } else if (provider === "google") {
-    // Google Gemini streaming via SSE
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${key}`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: STUDIO_SYSTEM_PROMPT }] },
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 16384 },
-      }),
-    });
-
-    if (!res.ok) throw new Error(`Google API error ${res.status}`);
-    if (!res.body) throw new Error("No response body");
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          try {
-            const parsed = JSON.parse(line.slice(6));
-            const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (text) yield text;
-          } catch { /* skip */ }
-        }
-      }
-    }
-  }
-}
 
 export async function POST(req: NextRequest) {
   // Rate limit
@@ -249,7 +52,7 @@ export async function POST(req: NextRequest) {
     fullPrompt = `PROJECT MANIFEST:\n${manifest}\n\nCURRENT FILES:\n${fileContext}\n\nUSER REQUEST:\n${prompt}`;
   }
 
-  // Inject Web3 context (token metadata, protocol docs) when relevant
+  // Inject Web3 context
   const appCode = contextFiles?.["App.tsx"]?.content || "";
   const web3Ctx = buildWeb3Context({ code: appCode, prompt });
   if (web3Ctx.trim()) {
@@ -281,7 +84,7 @@ export async function POST(req: NextRequest) {
           send({ type: "meta", provider: entry.provider, model: entry.model });
 
           fullResponse = "";
-          for await (const token of streamProvider(entry.provider, entry.key, entry.model, fullPrompt)) {
+          for await (const token of streamProvider(entry.provider, entry.key, entry.model, STUDIO_SYSTEM_PROMPT, fullPrompt)) {
             fullResponse += token;
             send({ type: "token", content: token });
           }
@@ -301,22 +104,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Parse the accumulated response
-      let clean = fullResponse.trim();
-      if (clean.startsWith("```")) {
-        clean = clean.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
-      }
-
-      let parsed: any = {};
-      try {
-        parsed = JSON.parse(clean);
-      } catch {
-        const match = clean.match(/\{[\s\S]*\}/);
-        if (match) {
-          try { parsed = JSON.parse(match[0]); } catch { parsed = { files: {}, explanation: clean }; }
-        } else {
-          parsed = { files: {}, explanation: clean };
-        }
-      }
+      const parsed = parseLLMResponse(fullResponse) || { files: {}, explanation: fullResponse };
 
       // Detect patch arrays
       let isPatches = false;

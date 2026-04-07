@@ -109,6 +109,7 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
     const [selectedModel, setSelectedModel] = useState("llama-3.3-70b-versatile");
     const [showModelDropdown, setShowModelDropdown] = useState(false);
     const [byokConfig, setByokConfig] = useState<AIKeyConfig | null>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
     // Load BYOK config on mount
     useEffect(() => {
@@ -117,6 +118,18 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
             setByokConfig(config);
         } catch { /* no config */ }
     }, []);
+
+    // Close model dropdown on outside click
+    useEffect(() => {
+        if (!showModelDropdown) return;
+        const handleClick = (e: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+                setShowModelDropdown(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClick);
+        return () => document.removeEventListener("mousedown", handleClick);
+    }, [showModelDropdown]);
 
     // Build dynamic model list: BYOK models first (if configured), then free models
     const availableModels = useMemo(() => {
@@ -228,73 +241,69 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
             // ─── Run Architect Engine ───────────────────────
             const engine = getEngine();
 
-            // Subscribe to state changes for message updates
-            const originalOnState = engine["callbacks"].onStateChange;
-            engine["callbacks"].onStateChange = (status: ArchitectStatus) => {
-                originalOnState(status);
+            // Update engine callbacks for this generation run
+            engine.updateCallbacks({
+                onStateChange: (status: ArchitectStatus) => {
+                    setArchitectStatus({ ...status });
+                    const stateMsg = getStateMessage(status);
+                    setMessages((prev) =>
+                        prev.map((m) =>
+                            m.id === thinkingId
+                                ? { ...m, content: stateMsg, state: status.state }
+                                : m
+                        )
+                    );
+                },
+                onExplanation: (explanation: string) => {
+                    setMessages((prev) =>
+                        prev.map((m) =>
+                            m.id === thinkingId
+                                ? {
+                                    ...m,
+                                    content: `Generation complete.\n\n${explanation}`,
+                                    codeGenerated: true,
+                                    state: "CLEAN",
+                                }
+                                : m
+                        )
+                    );
+                },
+                onFilesGenerated: (files: Record<string, string>) => {
+                    const status = engine.getStatus();
+                    const fileCount = Object.keys(files).length;
+                    const wasClean = status.state === "CLEAN";
 
-                // Update thinking message based on state
-                const stateMsg = getStateMessage(status);
-                setMessages((prev) =>
-                    prev.map((m) =>
-                        m.id === thinkingId
-                            ? { ...m, content: stateMsg, state: status.state }
-                            : m
-                    )
-                );
-            };
+                    setMessages((prev) =>
+                        prev.map((m) =>
+                            m.id === thinkingId
+                                ? {
+                                    ...m,
+                                    content: wasClean
+                                        ? `${fileCount} module(s) synthesized. Clean build.${status.attempt > 0 ? ` (${status.attempt} correction(s) applied)` : ""}`
+                                        : `${fileCount} module(s) generated with ${status.errors.length} remaining issue(s) after ${status.attempt} correction attempt(s).`,
+                                    codeGenerated: true,
+                                    state: status.state,
+                                }
+                                : m
+                        )
+                    );
 
-            engine["callbacks"].onExplanation = (explanation: string) => {
-                setMessages((prev) =>
-                    prev.map((m) =>
-                        m.id === thinkingId
-                            ? {
-                                ...m,
-                                content: `Generation complete.\n\n${explanation}`,
-                                codeGenerated: true,
-                                state: "CLEAN",
-                            }
-                            : m
-                    )
-                );
-            };
-
-            engine["callbacks"].onFilesGenerated = (files: Record<string, string>) => {
-                const status = engine.getStatus();
-                const fileCount = Object.keys(files).length;
-                const wasClean = status.state === "CLEAN";
-
-                setMessages((prev) =>
-                    prev.map((m) =>
-                        m.id === thinkingId
-                            ? {
-                                ...m,
-                                content: wasClean
-                                    ? `${fileCount} module(s) synthesized. Clean build.${status.attempt > 0 ? ` (${status.attempt} correction(s) applied)` : ""}`
-                                    : `${fileCount} module(s) generated with ${status.errors.length} remaining issue(s) after ${status.attempt} correction attempt(s).`,
-                                codeGenerated: true,
-                                state: status.state,
-                            }
-                            : m
-                    )
-                );
-
-                onGenerate(files);
-            };
-
-            engine["callbacks"].onError = (error: string) => {
-                setMessages((prev) =>
-                    prev.map((m) =>
-                        m.id === thinkingId
-                            ? {
-                                ...m,
-                                content: `Generation issue:\n${error}`,
-                                state: "FAILED",
-                            }
-                            : m
-                    )
-                );
-            };
+                    onGenerate(files);
+                },
+                onError: (error: string) => {
+                    setMessages((prev) =>
+                        prev.map((m) =>
+                            m.id === thinkingId
+                                ? {
+                                    ...m,
+                                    content: `Generation issue:\n${error}`,
+                                    state: "FAILED",
+                                }
+                                : m
+                        )
+                    );
+                },
+            });
 
             const selectedModelInfo = availableModels.find(m => m.id === selectedModel);
             const isByok = selectedModelInfo?.byok && byokConfig?.apiKey;
@@ -427,7 +436,7 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
                     </Button>
 
                     {/* Model selector — inside textbox, bottom-left */}
-                    <div className="absolute bottom-2 left-2 z-10">
+                    <div className="absolute bottom-2 left-2 z-10" ref={dropdownRef}>
                         <div className="relative">
                             <button
                                 onClick={() => setShowModelDropdown(!showModelDropdown)}

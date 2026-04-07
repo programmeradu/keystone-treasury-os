@@ -9,7 +9,7 @@
  * [P2] — Diff View for AI Changes
  */
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useCallback } from "react";
 import { Check, X } from "lucide-react";
 import { loader } from "@monaco-editor/react";
 
@@ -78,13 +78,32 @@ export function DiffReview({
         };
     }, [isOpen, originalCode, modifiedCode, language]);
 
-    if (!isOpen) return null;
-
-    const handleAccept = () => {
-        // Get the modified content (user may have edited it)
+    const handleAccept = useCallback(() => {
         const modifiedContent = editorRef.current?.modifiedModel?.getValue() || modifiedCode;
         onAccept(modifiedContent);
-    };
+    }, [modifiedCode, onAccept]);
+
+    // Keyboard shortcuts: Enter = accept, Esc = reject
+    useEffect(() => {
+        if (!isOpen) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Don't intercept when typing in the editor
+            const target = e.target as HTMLElement;
+            if (target.closest(".monaco-editor") && !e.metaKey && !e.ctrlKey) return;
+
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                handleAccept();
+            } else if (e.key === "Escape") {
+                e.preventDefault();
+                onReject();
+            }
+        };
+        document.addEventListener("keydown", handleKeyDown);
+        return () => document.removeEventListener("keydown", handleKeyDown);
+    }, [isOpen, handleAccept, onReject]);
+
+    if (!isOpen) return null;
 
     return (
         <div className="absolute inset-0 z-40 bg-[#1e1e1e] flex flex-col">
@@ -120,7 +139,7 @@ export function DiffReview({
             {/* Footer */}
             <div className="px-4 py-1.5 bg-zinc-950 border-t border-zinc-800 text-[10px] text-zinc-600 flex items-center justify-between">
                 <span>
-                    <kbd className="px-1 py-0.5 bg-zinc-800 rounded text-zinc-500 font-mono">Enter</kbd> Accept
+                    <kbd className="px-1 py-0.5 bg-zinc-800 rounded text-zinc-500 font-mono">Cmd+Enter</kbd> Accept
                     {" \u00b7 "}
                     <kbd className="px-1 py-0.5 bg-zinc-800 rounded text-zinc-500 font-mono">Esc</kbd> Reject
                     {" \u00b7 "}
