@@ -82,15 +82,23 @@ export function resolveChain(input?: string | null): ChainInfo | undefined {
   return ALIAS_MAP[key];
 }
 
+// ⚡ Bolt: Performance Improvement
+// Pre-compute sorted aliases and regular expressions for performance.
+// Expected impact: Eliminates O(N log N) sorting and regex compilation on every call, drastically improving string parsing speed.
+const SORTED_ALIASES_REGEXES = (() => {
+  const all = Object.keys(ALIAS_MAP).sort((a, b) => b.length - a.length);
+  return all.map(alias => {
+    const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`(?:^|[^a-z0-9_])(${escaped})(?:$|[^a-z0-9_])`, "i");
+    return { alias, re };
+  });
+})();
+
 // Tries to find a chain mention anywhere in a free-text sentence
 export function resolveChainFromText(text?: string | null): ChainInfo | undefined {
   if (!text) return undefined;
   const lower = text.toLowerCase();
-  // Prioritize longer aliases first to avoid mis-matches (e.g., "op" in words)
-  const all = Object.keys(ALIAS_MAP).sort((a, b) => b.length - a.length);
-  for (const alias of all) {
-    const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(`(?:^|[^a-z0-9_])(${escaped})(?:$|[^a-z0-9_])`, "i");
+  for (const { alias, re } of SORTED_ALIASES_REGEXES) {
     if (re.test(lower)) return ALIAS_MAP[alias];
   }
   return undefined;
