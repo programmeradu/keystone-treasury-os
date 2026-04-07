@@ -1,115 +1,70 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { users, vaults, dcaBots, teamMembers, purchases, runs } from "@/db/schema";
+import { users, vaults, teamMembers, runs, dcaBots, purchases } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth-utils";
 
-/**
- * GET /api/user/export
- * GDPR-compliant user data export.
- * Returns all personal data associated with the authenticated user in JSON format.
- */
-export async function GET(request: NextRequest) {
-  try {
-    const authUser = await getAuthUser(request);
-    if (!authUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function GET(req: NextRequest) {
+    try {
+        const authUser = await getAuthUser(req);
+        const userId = authUser?.id;
+        const walletAddress = authUser?.walletAddress;
+
+        if (!userId) {
+            return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+        }
+
+        if (!db) {
+            return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
+        }
+
+        // Export all user data
+        const userData = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+        const userVaults = await db.select().from(vaults).where(eq(vaults.userId, userId));
+        const userTeamMemberships = await db.select().from(teamMembers).where(eq(teamMembers.userId, userId));
+        const userRuns = await db.select().from(runs).where(eq(runs.userId, userId));
+
+        let userDcaBots: any[] = [];
+        let userPurchases: any[] = [];
+        if (walletAddress) {
+            userDcaBots = await db.select().from(dcaBots).where(eq(dcaBots.userWallet, walletAddress));
+            userPurchases = await db.select().from(purchases).where(eq(purchases.buyerWallet, walletAddress));
+        }
+
+        const safeUser = userData[0] ? {
+            id: userData[0].id,
+            walletAddress: userData[0].walletAddress,
+            email: userData[0].email,
+            displayName: userData[0].displayName,
+            role: userData[0].role,
+            tier: userData[0].tier,
+            onboardingCompleted: userData[0].onboardingCompleted,
+            createdAt: userData[0].createdAt
+        } : null;
+
+        const exportData = {
+            message: "User data export complete",
+            user: safeUser,
+            vaults: userVaults,
+            teamMemberships: userTeamMemberships,
+            runs: userRuns,
+            dcaBots: userDcaBots,
+            purchases: userPurchases,
+            exportMetadata: {
+                exportedAt: new Date().toISOString(),
+                version: "1.0.0"
+            }
+        };
+
+        return new NextResponse(JSON.stringify(exportData, null, 2), {
+            status: 200,
+            headers: {
+                "Content-Type": "application/json",
+                "Content-Disposition": `attachment; filename="keystone_export_${userId}.json"`
+            }
+        });
+    } catch (error) {
+        console.error("GDPR Export error:", error);
+        return NextResponse.json({ error: "Failed to export user data" }, { status: 500 });
     }
-
-    if (!db) {
-      return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
-    }
-
-    const userId = authUser.id;
-    console.log(`[GDPR Export] User ${userId} requested data export`);
-
-    // Fetch all user data
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Fetch related data
-    const vaultsData = await db
-      .select()
-      .from(vaults)
-      .where(eq(vaults.userId, userId));
-
-    const dcaBotsData = await db
-      .select()
-      .from(dcaBots)
-      .where(eq(dcaBots.userId, userId));
-
-    const teamMemberships = await db
-      .select()
-      .from(teamMembers)
-      .where(eq(teamMembers.userId, userId));
-
-    const purchasesData = await db
-      .select()
-      .from(purchases)
-      .where(eq(purchases.buyerWallet, authUser.walletAddress));
-
-    const runsData = await db
-      .select()
-      .from(runs)
-      .where(eq(runs.userId, userId));
-
-    const exportData = {
-      exportMetadata: {
-        exportedAt: new Date().toISOString(),
-        userId: userId,
-        requestSource: "GDPR data portability request",
-      },
-      user: {
-        id: user.id,
-        walletAddress: user.walletAddress,
-        displayName: user.displayName,
-        email: user.email,
-        role: user.role,
-        tier: user.tier,
-        createdAt: user.createdAt,
-        lastLoginAt: user.lastLoginAt,
-      },
-      vaults: vaultsData || [],
-      dcaBots: dcaBotsData,
-      teamMemberships: teamMemberships.map((m) => ({
-        teamId: m.teamId,
-        role: m.role,
-        status: m.status,
-        joinedAt: m.invitedAt,
-      })),
-      purchases: purchasesData.map((p) => ({
-        appId: p.appId,
-        amountUsdc: p.amountUsdc,
-        purchasedAt: p.createdAt,
-      })),
-      aiRuns: runsData.map((r) => ({
-        shortId: r.shortId,
-        prompt: r.prompt,
-        createdAt: r.createdAt,
-      })),
-    };
-
-    console.log(`[GDPR Export] Successfully exported data for user ${userId}`);
-
-    return NextResponse.json(exportData, {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Content-Disposition": `attachment; filename="keystone-data-export-${userId}.json"`,
-      },
-    });
-  } catch (error) {
-    console.error("[GDPR Export] Error:", error);
-    return NextResponse.json(
-      { error: "Failed to export user data" },
-      { status: 500 }
-    );
-  }
 }

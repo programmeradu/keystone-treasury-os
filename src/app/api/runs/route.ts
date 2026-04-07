@@ -5,7 +5,7 @@ import { eq, desc } from 'drizzle-orm';
 import { randomBytes } from 'crypto';
 import { checkDatabaseAvailability } from '@/lib/db-utils';
 import { checkRouteLimit } from '@/lib/rate-limit-middleware';
-import { jwtVerify } from 'jose';
+import { getAuthUser } from '@/lib/auth-utils';
 
 function generateShortId(): string {
   const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
@@ -23,23 +23,6 @@ function validateJsonSize(obj: any, maxSizeBytes: number): boolean {
   return sizeBytes <= maxSizeBytes;
 }
 
-async function getAuthUserId(request: NextRequest): Promise<string | null> {
-  const token = request.cookies.get('keystone-siws-session')?.value;
-  if (!token) return null;
-
-  try {
-    const secret = process.env.JWT_SECRET;
-    if (!secret) return null;
-
-    const { payload } = await jwtVerify(token, new TextEncoder().encode(secret), {
-      issuer: 'keystone-treasury-os',
-    });
-    return payload.sub as string;
-  } catch {
-    return null;
-  }
-}
-
 export async function GET(request: NextRequest) {
   try {
     // Check if database is available
@@ -47,7 +30,8 @@ export async function GET(request: NextRequest) {
     if (dbError) return dbError;
 
     // SECURITY: Get authenticated user for runs isolation
-    const userId = await getAuthUserId(request);
+    const authUser = await getAuthUser(request);
+    const userId = authUser?.id;
     if (!userId) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
@@ -230,8 +214,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // SECURITY: Get authenticated user for runs insertion
+    const authUser = await getAuthUser(request);
+    const userId = authUser?.id;
+    if (!userId) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
     const newRun = await db!.insert(runs)
       .values({
+        userId: userId,
         shortId: shortId!,
         prompt: sanitizedPrompt,
         planResult: planResult,
