@@ -4,6 +4,8 @@ import { users, vaults, teamMembers, runs, dcaBots, purchases } from "@/db/schem
 import { eq } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth-utils";
 
+export const runtime = "edge";
+
 export async function DELETE(req: NextRequest) {
     try {
         if (!db) {

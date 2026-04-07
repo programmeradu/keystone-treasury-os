@@ -4,6 +4,8 @@ import { users, vaults, teamMembers, runs, dcaBots, purchases } from "@/db/schem
 import { eq } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth-utils";
 
+export const runtime = "edge";
+
 export async function GET(req: NextRequest) {
     try {
         const authUser = await getAuthUser(req);
