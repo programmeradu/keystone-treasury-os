@@ -1,0 +1,4 @@
+## 2025-02-14 - Fix DOM-based XSS in VaultAssetsCompact
+**Vulnerability:** DOM-based XSS via unsafe string concatenation into `innerHTML`.
+**Learning:** `token.symbol` was unsafely concatenated into `innerHTML`. If `token.symbol` was unexpectedly an array (e.g. from JSON injection), `token.symbol[0]` could contain a full XSS payload. When modifying DOM, clearing out the parent then trying to access its children fails because the target is removed.
+**Prevention:** Use static HTML string assignments for `innerHTML` and then inject dynamic data safely via `textContent`. Ensure you store a reference to the parent element before modifying its `innerHTML`.
