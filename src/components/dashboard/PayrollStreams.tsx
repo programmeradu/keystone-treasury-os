@@ -99,7 +99,7 @@ export function PayrollStreams() {
                 const cp1x = startX + deltaX * 0.4;
                 const cp2x = startX + deltaX * 0.6;
 
-                newPaths[stream.id] = `M ${startX} ${startY} C ${cp1x} ${startY}, ${cp2x} ${endY}, ${endX} ${endY}`;
+                newPaths[stream.id as string] = `M ${startX} ${startY} C ${cp1x} ${startY}, ${cp2x} ${endY}, ${endX} ${endY}`;
             }
         });
 
