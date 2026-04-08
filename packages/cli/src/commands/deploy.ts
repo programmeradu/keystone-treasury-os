@@ -9,10 +9,10 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { exec } from "node:child_process";
+import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
-const execAsync = promisify(exec);
+const execAsync = promisify(execFile);
 
 export interface DeployOptions {
     dir?: string;
@@ -41,7 +41,7 @@ export async function runDeploy(options: DeployOptions): Promise<DeployResult> {
 
     // Verify solana CLI is available
     try {
-        await execAsync("solana --version");
+        await execAsync("solana", ["--version"]);
     } catch {
         return {
             ok: false,
@@ -67,14 +67,14 @@ export async function runDeploy(options: DeployOptions): Promise<DeployResult> {
 
     // Set cluster
     try {
-        await execAsync(`solana config set --url ${getClusterUrl(cluster)}`);
+        await execAsync("solana", ["config", "set", "--url", getClusterUrl(cluster)]);
     } catch (err: any) {
         return { ok: false, error: `Failed to set cluster: ${err.message}` };
     }
 
     // Check deployer balance
     try {
-        const { stdout } = await execAsync("solana balance");
+        const { stdout } = await execAsync("solana", ["balance"]);
         const balance = parseFloat(stdout.trim().split(" ")[0]);
         if (balance < 0.5 && cluster !== "localnet") {
             console.warn(
@@ -88,20 +88,20 @@ export async function runDeploy(options: DeployOptions): Promise<DeployResult> {
 
     // Deploy program
     try {
-        let deployCmd = `solana program deploy "${soPath}"`;
+        let deployArgs = ["program", "deploy", soPath];
 
         // Use custom program keypair if provided (deterministic address)
         if (options.programKeypair) {
-            deployCmd += ` --program-id "${options.programKeypair}"`;
+            deployArgs.push("--program-id", options.programKeypair);
         }
 
         // Use custom deployer keypair
         if (options.keypair) {
-            deployCmd += ` --keypair "${options.keypair}"`;
+            deployArgs.push("--keypair", options.keypair);
         }
 
         console.log(`Deploying to ${cluster}...`);
-        const { stdout, stderr } = await execAsync(deployCmd, {
+        const { stdout, stderr } = await execAsync("solana", deployArgs, {
             cwd: targetDir,
             timeout: 180000, // 3 min timeout
         });
@@ -129,7 +129,7 @@ export async function runDeploy(options: DeployOptions): Promise<DeployResult> {
             if (fs.existsSync(idlPath)) {
                 try {
                     await execAsync(
-                        `anchor idl init --filepath "${idlPath}" ${programId}`,
+                        "anchor", ["idl", "init", "--filepath", idlPath, programId],
                         { cwd: targetDir, timeout: 60000 }
                     );
                     idlUploaded = true;
