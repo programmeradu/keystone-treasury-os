@@ -19,7 +19,7 @@ async function getUserId(walletAddress: string): Promise<string | null> {
   }
   return userResult[0].id;
 }
-import { getTokenPrice, calculateNextExecution } from "@/lib/jupiter-executor";
+import { getTokenPrice, getBatchTokenPrices, calculateNextExecution } from "@/lib/jupiter-executor";
 import { checkRouteLimit } from "@/lib/rate-limit-middleware";
 
 export const dynamic = "force-dynamic";
@@ -61,15 +61,10 @@ export async function GET(req: Request) {
 
       // ⚡ Bolt Optimization: Batch fetch token prices for unique mints
       // Reduces redundant Jupiter API calls for identical tokens across multiple bots
+      // Replaced Promise.all O(N) quotes with O(1) batched Jupiter Price V2 API call
       const uniqueMints = Array.from(new Set(bots.map(bot => bot.buyTokenMint as string)));
-      const priceMap = new Map<string, number>();
-
-      await Promise.all(
-        uniqueMints.map(async (mint) => {
-          const price = await getTokenPrice(mint as string);
-          priceMap.set(mint as string, price ?? 0);
-        })
-      );
+      const prices = await getBatchTokenPrices(uniqueMints);
+      const priceMap = new Map<string, number>(Object.entries(prices));
 
       // Calculate current stats for each bot
       const botsWithStats = bots.map((bot) => {
