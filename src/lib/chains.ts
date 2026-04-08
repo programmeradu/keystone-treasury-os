@@ -76,6 +76,17 @@ const ALIAS_MAP: Record<string, ChainInfo> = (() => {
   return map;
 })();
 
+// ⚡ Bolt: Performance Improvement
+// Precompute the sorted alias array and regular expressions to avoid
+// O(N log N) sorting and regex compilation on every call to `resolveChainFromText`.
+// Expected impact: Reduces CPU overhead significantly on repeated text lookups.
+const ALL_ALIASES_SORTED = Object.keys(ALIAS_MAP).sort((a, b) => b.length - a.length);
+const REGEX_MAP = new Map<string, RegExp>();
+for (const alias of ALL_ALIASES_SORTED) {
+  const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  REGEX_MAP.set(alias, new RegExp(`(?:^|[^a-z0-9_])(${escaped})(?:$|[^a-z0-9_])`, "i"));
+}
+
 export function resolveChain(input?: string | null): ChainInfo | undefined {
   if (!input) return undefined;
   const key = input.trim().toLowerCase();
@@ -86,12 +97,8 @@ export function resolveChain(input?: string | null): ChainInfo | undefined {
 export function resolveChainFromText(text?: string | null): ChainInfo | undefined {
   if (!text) return undefined;
   const lower = text.toLowerCase();
-  // Prioritize longer aliases first to avoid mis-matches (e.g., "op" in words)
-  const all = Object.keys(ALIAS_MAP).sort((a, b) => b.length - a.length);
-  for (const alias of all) {
-    const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(`(?:^|[^a-z0-9_])(${escaped})(?:$|[^a-z0-9_])`, "i");
-    if (re.test(lower)) return ALIAS_MAP[alias];
+  for (const alias of ALL_ALIASES_SORTED) {
+    if (REGEX_MAP.get(alias)!.test(lower)) return ALIAS_MAP[alias];
   }
   return undefined;
 }
