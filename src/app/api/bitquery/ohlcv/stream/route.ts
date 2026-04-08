@@ -22,11 +22,9 @@ export async function GET(req: NextRequest) {
 
   const stream = new ReadableStream({
     async start(controller) {
-      const encoder = new TextEncoder();
-
       function send(data: any) {
         const payload = `data: ${JSON.stringify(data)}\n\n`;
-        controller.enqueue(encoder.encode(payload));
+        controller.enqueue(payload);
       }
 
       // Emit hello
