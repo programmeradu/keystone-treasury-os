@@ -12,10 +12,10 @@ import { NextRequest, NextResponse } from "next/server";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as crypto from "node:crypto";
-import { exec } from "node:child_process";
+import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 interface CompileRequest {
     files: Record<string, string>; // filename -> Rust source code
@@ -43,16 +43,25 @@ async function compileLocal(
     files: Record<string, string>,
     programName: string
 ): Promise<CompileResult> {
+    // Validate programName to prevent directory traversal and injection
+    if (!/^[a-zA-Z0-9_-]+$/.test(programName)) {
+        throw new Error("Invalid program name format");
+    }
+
     // Create a temporary Anchor project
-    const tmpDir = path.join(process.cwd(), ".keystone", "contracts", `build_${Date.now()}`);
-    const srcDir = path.join(tmpDir, "programs", programName, "src");
+    const tmpDir = path.resolve(process.cwd(), ".keystone", "contracts", `build_${Date.now()}`);
+    const srcDir = path.resolve(tmpDir, "programs", programName, "src");
 
     try {
         fs.mkdirSync(srcDir, { recursive: true });
 
         // Write source files
         for (const [filename, content] of Object.entries(files)) {
-            const filePath = path.join(srcDir, filename);
+            const filePath = path.resolve(srcDir, filename);
+            // Prevent directory traversal attacks
+            if (!filePath.startsWith(srcDir)) {
+                throw new Error(`Invalid file path: ${filename}`);
+            }
             fs.mkdirSync(path.dirname(filePath), { recursive: true });
             fs.writeFileSync(filePath, content, "utf-8");
         }
@@ -112,8 +121,8 @@ anchor-spl = "0.30.1"
             "utf-8"
         );
 
-        // Run anchor build
-        const { stdout, stderr } = await execAsync("anchor build", {
+        // Run anchor build securely using execFile
+        const { stdout, stderr } = await execFileAsync("anchor", ["build"], {
             cwd: tmpDir,
             timeout: 120000, // 2 min timeout
         });

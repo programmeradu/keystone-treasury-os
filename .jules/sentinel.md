@@ -1,0 +1,4 @@
+## 2024-05-24 - [CRITICAL] Fix command injection and path traversal in compile-contract
+**Vulnerability:** The API endpoint for compiling contracts (`/api/studio/compile-contract`) used `exec` allowing for command injection through user-supplied inputs and could allow directory traversal via `programName` allowing arbitrary file writes.
+**Learning:** Hardcoding a shell command using `exec` and allowing variable arguments (or using unsanitized variables to build file paths) exposes the server to shell interpolation, command injection and directory traversal.
+**Prevention:** Always use `execFile` over `exec` to enforce clear separation of commands from their arguments. Strictly validate inputs like `programName` with regex constraints, and utilize `path.resolve()` with `startsWith()` to guarantee files are correctly sandboxed within expected directory limits.
