@@ -12,7 +12,6 @@ import { useSelf } from "@/liveblocks.config";
 import { cn } from "@/lib/utils";
 import { ArchitectEngine, type ArchitectStatus, type ArchitectState } from "@/lib/studio/architect-engine";
 import { loadAIConfig, type AIKeyConfig } from "@/components/studio/APIKeySettings";
-import { toast } from "sonner";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -173,11 +172,6 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
     // ─── Submit Handler ─────────────────────────────────────
     const handleSubmit = async () => {
         if (!input.trim() || isGenerating) return;
-
-        if (input.trim().length > 100000) {
-            toast.error("Prompt is too long (max 100000 characters).");
-            return;
-        }
 
         const userMessage: Message = {
             id: Date.now().toString(),
