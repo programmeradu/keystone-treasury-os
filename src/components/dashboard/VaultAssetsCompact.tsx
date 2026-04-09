@@ -64,8 +64,15 @@ export function VaultAssetsCompact({ tokens }: { tokens: TokenAccount[] }) {
                                                 onError={(e) => {
                                                     // Fallback if image fails to load
                                                     const target = e.target as HTMLImageElement;
+                                                    const parent = target.parentElement!;
                                                     target.style.display = 'none';
-                                                    target.parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-primary text-[10px] text-primary-foreground font-bold">' + (token.symbol ? token.symbol[0] : "T") + '</div>';
+
+                                                    // Use textContent for dynamic user input to prevent XSS
+                                                    parent.innerHTML = '<div class="fallback-placeholder w-full h-full flex items-center justify-center bg-primary text-[10px] text-primary-foreground font-bold"></div>';
+                                                    const placeholder = parent.querySelector('.fallback-placeholder');
+                                                    if (placeholder) {
+                                                        placeholder.textContent = token.symbol ? token.symbol[0] : "T";
+                                                    }
                                                 }}
                                             />
                                         </div>
