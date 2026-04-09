@@ -1,0 +1,4 @@
+## 2024-04-09 - DOM-based XSS via innerHTML concatenation in VaultAssetsCompact
+**Vulnerability:** Found a High-priority DOM-based XSS vulnerability in `src/components/dashboard/VaultAssetsCompact.tsx`. The code concatenated dynamic user-supplied data (`token.symbol`) directly into a string assigned to `innerHTML` when an image fallback triggered.
+**Learning:** React elements using `onError` handlers that manually manipulate the DOM can bypass React's built-in XSS protections if `innerHTML` is used with untrusted variables.
+**Prevention:** Avoid `innerHTML` entirely if possible. If a static structure is needed, cache the parent element, inject the static structure via `innerHTML` with placeholder elements (using class names, not IDs), and set dynamic content using `.textContent` on those targeted placeholders.
