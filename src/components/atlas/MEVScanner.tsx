@@ -267,8 +267,8 @@ export function MEVScanner() {
       if (!bundleRes.ok || !bundleData.success) {
         // Jito unavailable → fallback: send legs sequentially via RPC
         toast.message("Jito unavailable — submitting direct…");
-        const buySig = await sendTransaction!(signed[0], connection, { skipPreflight: true });
-        const sellSig = await sendTransaction!(signed[1], connection, { skipPreflight: true });
+        const buySig = await connection.sendRawTransaction(signed[0].serialize(), { skipPreflight: true });
+        const sellSig = await connection.sendRawTransaction(signed[1].serialize(), { skipPreflight: true });
         toast.success(`Arb executed: ${opp.token}`, {
           description: `Buy → Sell confirmed`,
         });

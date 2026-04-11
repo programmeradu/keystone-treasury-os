@@ -114,6 +114,37 @@ export const SDK_EXPORTS: Record<string, {
         returns: "{ submit: (tx: any, description?: string) => Promise<{ signature: string }>, loading: boolean, error: string|null }",
         description: "Submit transactions without SOL for gas (fee payer relay)",
     },
+    // Extended SDK — v1.1
+    usePortfolio: {
+        type: "hook",
+        signature: "usePortfolio()",
+        returns: "{ tokens: { symbol: string, balance: number, usdValue: number, percentage: number }[], totalValue: number, loading: boolean }",
+        description: "Portfolio summary with USD values and allocation percentages",
+    },
+    useTheme: {
+        type: "hook",
+        signature: "useTheme()",
+        returns: "{ theme: 'dark'|'light', setTheme: (t: string) => void, isDark: boolean }",
+        description: "Theme state for dark/light mode support",
+    },
+    useTokenPrice: {
+        type: "hook",
+        signature: "useTokenPrice(mint: string)",
+        returns: "{ price: number|null, loading: boolean, error: string|null }",
+        description: "Live token price via Jupiter Price API for a given mint address",
+    },
+    useNotification: {
+        type: "hook",
+        signature: "useNotification()",
+        returns: "{ notifications: { id: string, message: string, type: string, time: Date }[], send: (msg: string, type?: string) => void, dismiss: (id: string) => void, clearAll: () => void, unreadCount: number }",
+        description: "In-app notification system for alerts and messages",
+    },
+    useStorage: {
+        type: "hook",
+        signature: "useStorage(namespace?: string)",
+        returns: "{ get: (key: string) => any, set: (key: string, value: any) => void, remove: (key: string) => void, keys: () => string[], clear: () => void }",
+        description: "Persistent key-value storage scoped to the mini-app",
+    },
 };
 
 // Convenience: set of all valid SDK export names
@@ -240,10 +271,130 @@ export function generateImportRulesSection(): string {
 }
 
 /**
+ * Generates the live API catalog + real-time patterns section.
+ * This teaches the AI what real endpoints are available via useFetch().
+ */
+export function generateLiveAPISection(): string {
+    return `═══════════════════════════════════════════════════════════════
+§8. LIVE API CATALOG (available via useFetch — REAL DATA, NOT MOCKS)
+═══════════════════════════════════════════════════════════════
+
+useFetch(url) routes through a real HTTPS proxy to live APIs.
+ALWAYS use these real endpoints. NEVER hardcode prices or mock data.
+
+TOKEN MINTS (use these in API calls):
+  SOL  = So11111111111111111111111111111111111111112
+  USDC = EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
+  BONK = DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263
+  JUP  = JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN
+  RAY  = 4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R
+  USDT = Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB
+
+─── PRICES ───────────────────────────────────────────────────
+
+Jupiter Price API (fast, multi-token):
+  const { data } = useFetch('https://lite-api.jup.ag/price/v2?ids=So11111111111111111111111111111111111111112,EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
+  // Response: { data: { "So111...112": { id, mintSymbol, vsToken, vsTokenSymbol, price: "178.45" } } }
+  // Access: const solPrice = Number(data?.data?.['So11111111111111111111111111111111111111112']?.price);
+
+CoinGecko (market data + 24h change):
+  const { data } = useFetch('https://api.coingecko.com/api/v3/simple/price?ids=solana,bonk,jupiter-exchange-solana&vs_currencies=usd&include_24hr_change=true');
+  // Response: { solana: { usd: 178.45, usd_24h_change: 2.5 }, bonk: { usd: 0.000024, usd_24h_change: -1.2 } }
+
+─── DEX / TRADING DATA ───────────────────────────────────────
+
+DexScreener (pairs, volume, liquidity):
+  const { data } = useFetch('https://api.dexscreener.com/latest/dex/tokens/So11111111111111111111111111111111111111112');
+  // Response: { pairs: [{ baseToken, quoteToken, priceUsd, volume: { h24 }, liquidity: { usd }, priceChange: { h24 } }] }
+
+DexScreener search:
+  const { data } = useFetch('https://api.dexscreener.com/latest/dex/search?q=SOL');
+
+─── SWAP QUOTES ──────────────────────────────────────────────
+
+Jupiter Quote (real route + price impact):
+  const { data } = useFetch('https://lite-api.jup.ag/swap/v1/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=1000000000&slippageBps=50');
+  // amount is in smallest unit (lamports for SOL = amount * 10^9)
+  // Response: { inputMint, outputMint, inAmount, outAmount, priceImpactPct, routePlan: [...] }
+
+─── TOKEN METADATA ───────────────────────────────────────────
+
+Jupiter Token List:
+  const { data } = useFetch('https://token.jup.ag/strict');
+  // Response: [{ address, symbol, name, decimals, logoURI, tags }]
+
+─── YIELD / DEFI DATA ───────────────────────────────────────
+
+DeFi Llama Yields:
+  const { data } = useFetch('https://yields.llama.fi/pools');
+  // Response: { data: [{ chain, project, symbol, tvlUsd, apy, apyBase, apyReward }] }
+  // Filter: data?.data?.filter(p => p.chain === 'Solana' && p.symbol?.includes('SOL'))
+
+DeFi Llama Protocol TVL:
+  const { data } = useFetch('https://api.llama.fi/protocols');
+  // Response: [{ name, tvl, chain, category }]
+
+─── ANALYTICS ────────────────────────────────────────────────
+
+Birdeye Token Analytics:
+  const { data } = useFetch('https://public-api.birdeye.so/defi/price?address=So11111111111111111111111111111111111111112');
+
+Pyth Price Feeds:
+  const { data } = useFetch('https://hermes.pyth.network/v2/updates/price/latest?ids[]=0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d');
+  // SOL/USD price feed ID: 0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d
+
+RugCheck:
+  const { data } = useFetch('https://api.rugcheck.xyz/v1/tokens/TOKEN_MINT/report/summary');
+
+═══════════════════════════════════════════════════════════════
+§9. REAL-TIME PATTERNS (use these for live dashboards)
+═══════════════════════════════════════════════════════════════
+
+Auto-refresh with polling:
+  const { data, refetch } = useFetch(url);
+  useEffect(() => {
+    const id = setInterval(refetch, 10000); // refresh every 10s
+    return () => clearInterval(id);
+  }, [refetch]);
+
+Price alert with threshold:
+  const [alerts, setAlerts] = useState([]);
+  const prevPrices = useRef({});
+  useEffect(() => {
+    if (!data) return;
+    for (const [mint, info] of Object.entries(data.data || {})) {
+      const price = Number(info.price);
+      const prev = prevPrices.current[mint];
+      if (prev) {
+        const changePct = ((price - prev) / prev) * 100;
+        if (Math.abs(changePct) > alertThreshold) {
+          setAlerts(a => [...a.slice(-20), { mint, price, changePct, time: new Date() }]);
+        }
+      }
+      prevPrices.current[mint] = price;
+    }
+  }, [data]);
+
+Multiple data sources combined:
+  const prices = useFetch('https://lite-api.jup.ag/price/v2?ids=...');
+  const dex = useFetch('https://api.dexscreener.com/latest/dex/tokens/...');
+  // Use both: prices for current price, dex for volume/liquidity
+
+CRITICAL RULES:
+- ALWAYS use real API URLs from the catalog above
+- NEVER return hardcoded prices like "price: 23.40" or mock data
+- NEVER write "// mock data" or "// placeholder" — use real endpoints
+- For any token price, use Jupiter Price API or CoinGecko
+- For swap quotes, use Jupiter Quote API
+- For market data, use DexScreener
+- Include polling (setInterval + refetch) for any "live" or "real-time" request`;
+}
+
+/**
  * Returns the full enhanced system prompt with all guardrail sections.
  */
 export function generateFullSystemPromptAddendum(): string {
-    return [generateSDKPromptSection(), "", generateImportRulesSection()].join("\n");
+    return [generateSDKPromptSection(), "", generateImportRulesSection(), "", generateLiveAPISection()].join("\n");
 }
 
 // ─── Post-Generation Validator ──────────────────────────────────────

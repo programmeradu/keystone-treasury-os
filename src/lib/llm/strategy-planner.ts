@@ -576,7 +576,10 @@ export async function validateStrategy(
   reason?: string;
 }> {
   const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) return { valid: true }; // Skip validation if no key
+  if (!apiKey) {
+    console.error("[strategy-planner] GROQ_API_KEY not configured — rejecting plan validation");
+    return { valid: false, reason: "Strategy validation service unavailable (API key not configured)" };
+  }
 
   const systemPrompt = `You are a security validator. Check if a planned operation is reasonable.
 Return JSON only: { "valid": true/false, "reason": "explanation if invalid" }`;

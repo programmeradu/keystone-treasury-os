@@ -9,8 +9,15 @@ import { SignJWT, jwtVerify } from 'jose';
 const COOKIE_NAME = 'keystone-siws-session';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
+// In-memory nonce tracking to prevent replay attacks
+const usedNonces = new Set<string>();
+const NONCE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
+
 function getJwtSecret() {
-    const secret = process.env.JWT_SECRET || 'keystone_sovereign_os_2026';
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error('JWT_SECRET must be configured');
+    }
     return new TextEncoder().encode(secret);
 }
 
@@ -51,22 +58,49 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // ─── Step 2: Verify nonce freshness ────────────────────────────
+        // ─── Step 2: Verify nonce freshness and prevent replay ───────────
+        const nonceMatch = message.match(/Nonce:\s*(.+)/);
         const timestampMatch = message.match(/Timestamp:\s*(.+)/);
-        if (timestampMatch) {
-            const messageTime = new Date(timestampMatch[1]).getTime();
-            const now = Date.now();
-            const FIVE_MINUTES = 5 * 60 * 1000;
-            if (Math.abs(now - messageTime) > FIVE_MINUTES) {
+
+        if (nonceMatch) {
+            const nonce = nonceMatch[1].trim();
+
+            // Check if nonce was already used (replay attack prevention)
+            if (usedNonces.has(nonce)) {
                 return NextResponse.json(
-                    { error: 'Message expired. Please try again.' },
+                    { error: 'Nonce already used. Please generate a new sign-in request.' },
                     { status: 401 }
                 );
             }
+
+            // Check timestamp freshness
+            if (timestampMatch) {
+                const messageTime = new Date(timestampMatch[1]).getTime();
+                const now = Date.now();
+                const FIVE_MINUTES = 5 * 60 * 1000;
+                if (Math.abs(now - messageTime) > FIVE_MINUTES) {
+                    return NextResponse.json(
+                        { error: 'Message expired. Please try again.' },
+                        { status: 401 }
+                    );
+                }
+            }
+
+            // Mark nonce as used and schedule cleanup
+            usedNonces.add(nonce);
+            setTimeout(() => usedNonces.delete(nonce), NONCE_EXPIRY_MS);
+        } else {
+            // Reject messages without a nonce — all SIWS messages must include one
+            return NextResponse.json(
+                { error: 'Missing nonce. Please generate a new sign-in request.' },
+                { status: 401 }
+            );
         }
 
         // ─── Step 3: Upsert user in Neon DB ────────────────────────────
         let userId: string | undefined;
+        let onboardingCompleted = false;
+        let userRole = 'user';
 
         if (db) {
             const existing = await db
@@ -82,8 +116,12 @@ export async function POST(request: NextRequest) {
                     displayName: `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}`,
                 }).returning({ id: users.id });
                 userId = inserted?.id;
+                onboardingCompleted = false;
+                userRole = 'user';
             } else {
                 userId = existing[0].id;
+                onboardingCompleted = existing[0].onboardingCompleted;
+                userRole = existing[0].role;
                 await db
                     .update(users)
                     .set({ lastLoginAt: new Date() })
@@ -96,6 +134,8 @@ export async function POST(request: NextRequest) {
             sub: userId || walletAddress,
             wallet: walletAddress,
             method: 'siws',
+            onboarded: onboardingCompleted,
+            role: userRole,
         })
             .setProtectedHeader({ alg: 'HS256' })
             .setIssuedAt()

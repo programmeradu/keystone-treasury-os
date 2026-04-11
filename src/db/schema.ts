@@ -15,11 +15,14 @@ import {
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   walletAddress: text('wallet_address').notNull().unique(),
+  email: text('email'),                          // optional, collected during onboarding/settings
   displayName: text('display_name'),
-  avatarUrl: text('avatar_url'),
+  avatarSeed: text('avatar_seed'),
   role: text('role').notNull().default('user'), // user | creator | admin
   tier: text('tier').notNull().default('free'), // free | mini | max
   tierExpiresAt: timestamp('tier_expires_at'), // null = never expires (free tier or lifetime)
+  onboardingCompleted: boolean('onboarding_completed').notNull().default(false),
+  organizationName: text('organization_name'),
   supabaseUserId: text('supabase_user_id').unique(), // Supabase Auth uid
   createdAt: timestamp('created_at').defaultNow().notNull(),
   lastLoginAt: timestamp('last_login_at').defaultNow().notNull(),
@@ -136,6 +139,7 @@ export const dcaBots = pgTable('dca_bots', {
   lastExecutionAttempt: timestamp('last_execution_attempt'),
   failedAttempts: integer('failed_attempts').notNull().default(0),
   pauseReason: text('pause_reason'),
+  encryptedKeypair: text('encrypted_keypair'), // AES-256-GCM encrypted delegate keypair (per-bot)
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
@@ -465,18 +469,21 @@ export const notifications = pgTable('notifications', {
 // ─── Team Activity Log ───────────────────────────────────────────────
 export const teamActivityLog = pgTable('team_activity_log', {
   id: serial('id').primaryKey(),
+  teamId: uuid('team_id').references(() => teams.id, { onDelete: 'cascade' }),
   userId: uuid('user_id').references(() => users.id),
-  walletAddress: text('wallet_address').notNull(),
-  vaultAddress: text('vault_address').notNull(),
-  action: text('action').notNull(), // proposal_created | proposal_voted | proposal_executed | member_added | member_removed | settings_changed | funds_transferred
+  walletAddress: text('wallet_address'),
+  vaultAddress: text('vault_address'),
+  action: text('action').notNull(), // proposal_created | proposal_voted | proposal_executed | member_added | member_removed | settings_changed | funds_transferred | team_created | member_invited | role_changed
   targetType: text('target_type'), // proposal | member | vault | transaction
   targetId: text('target_id'),
-  description: text('description').notNull(),
+  description: text('description'),
   details: jsonb('details'), // { proposalIndex, vote, amount, txSignature, ... }
+  metadata: jsonb('metadata'), // additional context (e.g., old/new role, target user)
   txSignature: text('tx_signature'),
   ipAddress: text('ip_address'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
+  teamIdx: index('team_activity_team_idx').on(table.teamId),
   vaultIdx: index('team_activity_vault_idx').on(table.vaultAddress),
   userIdx: index('team_activity_user_idx').on(table.userId),
   actionIdx: index('team_activity_action_idx').on(table.action),
@@ -550,4 +557,118 @@ export const developerTokens = pgTable('developer_tokens', {
 }, (table) => ({
   tokenIdx: index('developer_tokens_token_idx').on(table.token),
   walletIdx: index('developer_tokens_wallet_idx').on(table.walletAddress),
+}));
+
+// ─── Teams ────────────────────────────────────────────────────────────
+export const teams = pgTable('teams', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  vaultAddress: text('vault_address'),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  createdByIdx: index('teams_created_by_idx').on(table.createdBy),
+}));
+
+// ─── Team Members ─────────────────────────────────────────────────────
+export const teamMembers = pgTable('team_members', {
+  id: serial('id').primaryKey(),
+  teamId: uuid('team_id').references(() => teams.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  walletAddress: text('wallet_address').notNull(),
+  role: text('role').notNull().default('viewer'), // owner | admin | signer | viewer
+  invitedBy: uuid('invited_by').references(() => users.id),
+  invitedAt: timestamp('invited_at').defaultNow(),
+  acceptedAt: timestamp('accepted_at'),
+  status: text('status').notNull().default('pending'), // pending | active | removed
+}, (table) => ({
+  teamIdx: index('team_members_team_idx').on(table.teamId),
+  userIdx: index('team_members_user_idx').on(table.userId),
+  statusIdx: index('team_members_status_idx').on(table.status),
+}));
+
+// ─── Team Invitations ─────────────────────────────────────────────────
+export const teamInvitations = pgTable('team_invitations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  teamId: uuid('team_id').references(() => teams.id, { onDelete: 'cascade' }).notNull(),
+  invitedBy: uuid('invited_by').references(() => users.id).notNull(),
+  email: text('email'),
+  walletAddress: text('wallet_address'),
+  role: text('role').notNull().default('viewer'),
+  token: text('token').notNull().unique(),
+  expiresAt: timestamp('expires_at').notNull(),
+  acceptedAt: timestamp('accepted_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  teamIdx: index('team_invitations_team_idx').on(table.teamId),
+  tokenIdx: index('team_invitations_token_idx').on(table.token),
+}));
+
+
+// ─── Notification Preferences ─────────────────────────────────────────
+export const notificationPreferences = pgTable('notification_preferences', {
+  id: serial('id').primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull().unique(),
+  emailEnabled: boolean('email_enabled').notNull().default(true),
+  teamInvites: boolean('team_invites').notNull().default(true),
+  roleChanges: boolean('role_changes').notNull().default(true),
+  txApprovals: boolean('tx_approvals').notNull().default(true),
+  systemAlerts: boolean('system_alerts').notNull().default(true),
+  tierExpiry: boolean('tier_expiry').notNull().default(true),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('notification_prefs_user_idx').on(table.userId),
+}));
+
+// ─── Organizations (Workspaces) ───────────────────────────────────────
+export const organizations = pgTable('organizations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(), // URL-friendly identifier
+  avatarUrl: text('avatar_url'),
+  tier: text('tier').notNull().default('free'),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  slugIdx: index('organizations_slug_idx').on(table.slug),
+  createdByIdx: index('organizations_created_by_idx').on(table.createdBy),
+}));
+
+// ─── Organization Members ─────────────────────────────────────────────
+export const orgMembers = pgTable('org_members', {
+  id: serial('id').primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  role: text('role').notNull().default('member'), // owner | admin | member
+  joinedAt: timestamp('joined_at').defaultNow().notNull(),
+}, (table) => ({
+  orgIdx: index('org_members_org_idx').on(table.orgId),
+  userIdx: index('org_members_user_idx').on(table.userId),
+}));
+
+// ─── Organization Vaults ──────────────────────────────────────────────
+export const orgVaults = pgTable('org_vaults', {
+  id: serial('id').primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  vaultAddress: text('vault_address').notNull(),
+  label: text('label').notNull().default('Default Vault'),
+  isDefault: boolean('is_default').notNull().default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  orgIdx: index('org_vaults_org_idx').on(table.orgId),
+  vaultIdx: index('org_vaults_vault_idx').on(table.vaultAddress),
+}));
+
+// ─── Vaults (User-level vault registry with tier enforcement) ─────────
+export const vaults = pgTable('vaults', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  teamId: uuid('team_id').references(() => teams.id, { onDelete: 'set null' }),
+  address: text('address').notNull().unique(),
+  label: text('label').notNull().default('My Vault'),
+  isMultisig: boolean('is_multisig').notNull().default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('vaults_user_idx').on(table.userId),
+  addressIdx: index('vaults_address_idx').on(table.address),
 }));

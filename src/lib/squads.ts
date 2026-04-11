@@ -1,9 +1,30 @@
 import * as squads from "@sqds/multisig";
-import { Connection, PublicKey } from "@solana/web3.js";
+import { Connection, PublicKey, Keypair, Transaction, VersionedTransaction, TransactionMessage } from "@solana/web3.js";
 
 // @sqds/multisig v2.x (Squads v4) exports helpers at the top level or under namespaces
-// Based on node_modules discovery, we use direct names
-const { getTransactionPda, getProposalPda, getVaultPda } = squads;
+const { getTransactionPda, getProposalPda, getVaultPda, getMultisigPda } = squads;
+
+// Use the SDK's canonical program ID — SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf
+const SQUADS_V4_PROGRAM_ID = squads.PROGRAM_ADDRESS;
+
+const RPC_RETRY_BASE_MS = 500;
+const RPC_RETRY_MAX_MS = 4000;
+const PARSED_TX_BREAKER_THRESHOLD = 4;
+const PARSED_TX_BREAKER_OPEN_MS = 30_000;
+
+const parsedTxBreaker = {
+    failures: 0,
+    openUntil: 0,
+};
+
+function sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRateLimitLike(error: unknown): boolean {
+    const msg = error instanceof Error ? error.message : String(error);
+    return /429|too many requests|rate.?limit|rate_limit|exceeded/i.test(msg);
+}
 
 /**
  * Keystone Squads Client
@@ -19,13 +40,129 @@ export class SquadsClient {
         this.wallet = wallet;
     }
 
+    private async withRpcRetry<T>(label: string, fn: () => Promise<T>, attempts: number = 3): Promise<T> {
+        let delay = RPC_RETRY_BASE_MS;
+        let lastErr: unknown = null;
+        for (let i = 0; i < attempts; i++) {
+            try {
+                return await fn();
+            } catch (error) {
+                lastErr = error;
+                if (!isRateLimitLike(error) || i === attempts - 1) throw error;
+                console.warn(`[Squads] ${label} rate-limited. retry ${i + 1}/${attempts} after ${delay}ms`);
+                await sleep(Math.min(delay, RPC_RETRY_MAX_MS));
+                delay *= 2;
+            }
+        }
+        throw lastErr;
+    }
+    /**
+     * Helper to create a multisig create instruction.
+     */
+    async getCreateMultisigInstruction({
+        members,
+        threshold,
+        createKey,
+        creator,
+        timeLock = 0,
+    }: {
+        members: { key: PublicKey; permissions: { mask: number } }[];
+        threshold: number;
+        createKey: PublicKey;
+        creator: PublicKey;
+        timeLock?: number;
+    }) {
+        // Derive the multisig PDA from the createKey
+        const [multisigPda] = getMultisigPda({ createKey: createKey });
+
+        // Get the program config treasury (fees flow here)
+        const [programConfigPda] = squads.getProgramConfigPda({});
+
+        // Fetch the treasury from the program config
+        let treasury: PublicKey;
+        try {
+            const programConfig = await squads.accounts.ProgramConfig.fromAccountAddress(
+                this.connection,
+                programConfigPda
+            );
+            treasury = programConfig.treasury;
+        } catch {
+            // Fallback: use the creator as treasury if config isn't found (devnet edge case)
+            treasury = creator;
+        }
+
+        return squads.instructions.multisigCreateV2({
+            treasury,
+            creator,
+            multisigPda,
+            configAuthority: null, // Multisig controls its own config
+            threshold,
+            members,
+            timeLock,
+            createKey: createKey,
+            rentCollector: null,
+        });
+    }
+
+    /**
+     * Creates a new Squads V4 multisig directly in-app.
+     * Uses multisigCreateV2 for the latest features (time locks, spending limits, roles).
+     * Returns { signature, multisigPda, vaultPda } for database persistence.
+     */
+    async createMultisig({
+        members,
+        threshold,
+        timeLock = 0,
+    }: {
+        members: { key: PublicKey; permissions: { mask: number } }[];
+        threshold: number;
+        timeLock?: number;
+    }): Promise<{ signature: string; multisigPda: string; vaultPda: string }> {
+        if (!this.wallet || !this.wallet.publicKey) throw new Error("Wallet not connected");
+
+        const creator = this.wallet.publicKey as PublicKey;
+
+        // Generate a random createKey — each multisig PDA is derived from this
+        const createKey = Keypair.generate();
+
+        // Derive the multisig PDA from the createKey
+        const [multisigPda] = getMultisigPda({ createKey: createKey.publicKey });
+
+        // Derive the default vault (index 0) for deposits
+        const [vaultPda] = getVaultPda({ multisigPda, index: 0 });
+
+        const ix = await this.getCreateMultisigInstruction({
+            members,
+            threshold,
+            createKey: createKey.publicKey,
+            creator,
+            timeLock,
+        });
+
+        const tx = new Transaction().add(ix);
+        tx.feePayer = creator;
+        tx.recentBlockhash = (await this.connection.getLatestBlockhash()).blockhash;
+
+        // The createKey must also sign the transaction
+        tx.partialSign(createKey);
+
+        const signedTx = await this.wallet.signTransaction(tx);
+        const sig = await this.connection.sendRawTransaction(signedTx.serialize());
+        await this.connection.confirmTransaction(sig);
+
+        return {
+            signature: sig,
+            multisigPda: multisigPda.toBase58(),
+            vaultPda: vaultPda.toBase58(),
+        };
+    }
+
     /**
      * Fetches the multisig account (Vault) details.
      */
     async getVault(vaultAddress: string) {
         try {
             const multisigKey = new PublicKey(vaultAddress);
-            const SQUADS_V4_PROGRAM_ID = "SQDS4169MvYvC6v3HnQjHeYd3sU0n3MUPfw79vjrE8G";
 
             // Check ownership first to avoid assertion errors on non-multisig accounts
             const info = await this.connection.getAccountInfo(multisigKey);
@@ -57,8 +194,6 @@ export class SquadsClient {
             const info = await this.connection.getAccountInfo(pubkey);
 
             // Squads V4 Program ID
-            const SQUADS_V4_PROGRAM_ID = "SQDS4169MvYvC6v3HnQjHeYd3sU0n3MUPfw79vjrE8G";
-
             if (info && info.owner.toBase58() === SQUADS_V4_PROGRAM_ID) {
                 // It is a Squads multisig, derive the Vault PDA
                 const [vaultPda] = getVaultPda({
@@ -151,6 +286,23 @@ export class SquadsClient {
 
     async getTokenMetadata(mints: string[]): Promise<Record<string, { price: number; symbol?: string; name?: string; logo?: string; change24h?: number }>> {
         if (mints.length === 0) return {};
+
+        try {
+            const res = await fetch("/api/token-metadata", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mints }),
+                signal: AbortSignal.timeout(12000),
+            });
+            if (res.ok) {
+                const json = await res.json();
+                if (json?.metadata && typeof json.metadata === "object") {
+                    return json.metadata as Record<string, { price: number; symbol?: string; name?: string; logo?: string; change24h?: number }>;
+                }
+            }
+        } catch (proxyError) {
+            console.warn("[TokenMeta] /api/token-metadata failed, falling back to direct providers:", proxyError);
+        }
 
         const metadata: Record<string, { price: number; symbol?: string; name?: string; logo?: string; change24h?: number }> = {};
         const mintSet = new Set(mints);
@@ -330,8 +482,6 @@ export class SquadsClient {
         try {
             const multisigKey = new PublicKey(vaultAddress);
             const info = await this.connection.getAccountInfo(multisigKey);
-            const SQUADS_V4_PROGRAM_ID = "SQDS4169MvYvC6v3HnQjHeYd3sU0n3MUPfw79vjrE8G";
-
             if (!info || info.owner.toBase58() !== SQUADS_V4_PROGRAM_ID) {
                 return [];
             }
@@ -423,19 +573,41 @@ export class SquadsClient {
                 const slice = transactions.slice(batch, batch + BATCH);
 
                 let parsedTxsResponse: any[] = [];
+                const breakerOpen = Date.now() < parsedTxBreaker.openUntil;
+                if (breakerOpen) {
+                    console.warn("[Squads] Parsed transaction breaker open, skipping deep parsing for this cycle.");
+                    continue;
+                }
                 try {
                     const signatures = slice.map(t => t.signature);
-                    parsedTxsResponse = await this.connection.getParsedTransactions(signatures, { maxSupportedTransactionVersion: 0 });
+                    parsedTxsResponse = await this.withRpcRetry(
+                        "getParsedTransactions",
+                        () => this.connection.getParsedTransactions(signatures, { maxSupportedTransactionVersion: 0 }),
+                        3,
+                    );
+                    parsedTxBreaker.failures = 0;
                 } catch (error) {
+                    if (isRateLimitLike(error)) {
+                        parsedTxBreaker.failures += 1;
+                        if (parsedTxBreaker.failures >= PARSED_TX_BREAKER_THRESHOLD) {
+                            parsedTxBreaker.openUntil = Date.now() + PARSED_TX_BREAKER_OPEN_MS;
+                            parsedTxBreaker.failures = 0;
+                            console.warn("[Squads] Parsed transaction breaker opened for 30s due to repeated 429s.");
+                        }
+                    }
                     console.error("[Squads] Failed to fetch parsed transactions batch, falling back to per-signature fetch:", error);
 
                     const signatures = slice.map(t => t.signature);
                     parsedTxsResponse = await Promise.all(
                         signatures.map(async (signature) => {
                             try {
-                                return await this.connection.getParsedTransaction(signature, {
-                                    maxSupportedTransactionVersion: 0,
-                                });
+                                return await this.withRpcRetry(
+                                    "getParsedTransaction",
+                                    () => this.connection.getParsedTransaction(signature, {
+                                        maxSupportedTransactionVersion: 0,
+                                    }),
+                                    2,
+                                );
                             } catch (singleError) {
                                 console.error(
                                     "[Squads] Failed to fetch parsed transaction for signature:",
@@ -539,7 +711,7 @@ export class SquadsClient {
                         // Find the largest token balance change for this vault
                         let bestDelta = 0;
                         let bestMint = "";
-                        const allMints = new Set([...preMap.keys(), ...postMap.keys()]);
+                        const allMints = Array.from(new Set([...Array.from(preMap.keys()), ...Array.from(postMap.keys())]));
                         for (const mint of allMints) {
                             const pre = preMap.get(mint) || 0;
                             const post = postMap.get(mint) || 0;
@@ -579,19 +751,253 @@ export class SquadsClient {
     }
 
     /**
+     * Helper to create a vote instruction (Approve, Reject, or Cancel).
+     */
+    getVoteInstruction(vaultAddress: string, transactionIndex: number, action: "Approve" | "Reject" | "Cancel", member: PublicKey) {
+        const multisigKey = new PublicKey(vaultAddress);
+        if (action === "Approve") {
+            return squads.instructions.proposalApprove({
+                multisigPda: multisigKey,
+                transactionIndex: BigInt(transactionIndex),
+                member,
+            });
+        } else if (action === "Reject") {
+            return squads.instructions.proposalReject({
+                multisigPda: multisigKey,
+                transactionIndex: BigInt(transactionIndex),
+                member,
+            });
+        } else {
+            return squads.instructions.proposalCancel({
+                multisigPda: multisigKey,
+                transactionIndex: BigInt(transactionIndex),
+                member,
+            });
+        }
+    }
+
+    /**
      * Casts a vote on a specific proposal (CLI: proposal-vote).
      * @param action Approve | Reject | Cancel
      */
     async voteOnProposal(vaultAddress: string, transactionIndex: number, action: "Approve" | "Reject" | "Cancel"): Promise<string> {
-        // In real app: squads.instructions.proposalApprove / proposalReject / proposalCancel
-        return `vote_${action.toLowerCase()}_sig_pda_index_${transactionIndex}`;
+        if (!this.wallet || !this.wallet.publicKey) throw new Error("Wallet not connected");
+
+        try {
+            const member = this.wallet.publicKey as PublicKey;
+            const ix = this.getVoteInstruction(vaultAddress, transactionIndex, action, member);
+
+            const tx = new Transaction().add(ix);
+            tx.feePayer = member;
+            tx.recentBlockhash = (await this.connection.getLatestBlockhash()).blockhash;
+
+            const signedTx = await this.wallet.signTransaction(tx);
+            const sig = await this.connection.sendRawTransaction(signedTx.serialize());
+            await this.connection.confirmTransaction(sig);
+            return sig;
+        } catch (error) {
+            console.error(`Failed to ${action} proposal:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Helper to create a vault transaction execute instruction.
+     */
+    async getExecuteInstruction(vaultAddress: string, transactionIndex: number, member: PublicKey) {
+        const multisigKey = new PublicKey(vaultAddress);
+        return squads.instructions.vaultTransactionExecute({
+            connection: this.connection,
+            multisigPda: multisigKey,
+            transactionIndex: BigInt(transactionIndex),
+            member,
+        });
     }
 
     /**
      * Executes a proposal that has reached the signature threshold.
      */
     async executeProposal(vaultAddress: string, transactionIndex: number): Promise<string> {
-        // In real app: squads.instructions.vaultTransactionExecute or configTransactionExecute
-        return `execution_sig_pda_index_${transactionIndex}`;
+        if (!this.wallet || !this.wallet.publicKey) throw new Error("Wallet not connected");
+
+        try {
+            const member = this.wallet.publicKey as PublicKey;
+            const executeRes = await this.getExecuteInstruction(vaultAddress, transactionIndex, member);
+            
+            const latestBlockhash = await this.connection.getLatestBlockhash();
+            const messageV0 = new TransactionMessage({
+                payerKey: member,
+                recentBlockhash: latestBlockhash.blockhash,
+                instructions: [executeRes.instruction],
+            }).compileToV0Message(executeRes.lookupTableAccounts ?? []);
+
+            const tx = new VersionedTransaction(messageV0);
+            const signedTx = await this.wallet.signTransaction(tx);
+            const sig = await this.connection.sendRawTransaction(signedTx.serialize());
+            await this.connection.confirmTransaction(sig);
+            return sig;
+        } catch (error) {
+            console.error("Failed to execute proposal:", error);
+            throw error;
+        }
+    }
+    /**
+     * Creates a config transaction proposal to add a new member to the Squads multisig.
+     * Follows the correct Squads V4 flow: configTransactionCreate → proposalCreate → proposalActivate
+     */
+    async createAddMemberProposal(
+        vaultAddress: string,
+        newMemberPubkey: PublicKey
+    ): Promise<string> {
+        if (!this.wallet || !this.wallet.publicKey) throw new Error("Wallet not connected");
+
+        try {
+            const multisigKey = new PublicKey(vaultAddress);
+            const multisigAccount = await squads.accounts.Multisig.fromAccountAddress(
+                this.connection,
+                multisigKey
+            );
+
+            const transactionIndex = BigInt(Number(multisigAccount.transactionIndex) + 1);
+            const creator = this.wallet.publicKey as PublicKey;
+
+            // Step 1: Create the config transaction with AddMember action
+            const configIx = squads.instructions.configTransactionCreate({
+                multisigPda: multisigKey,
+                transactionIndex,
+                creator,
+                actions: [{
+                    __kind: "AddMember",
+                    newMember: {
+                        key: newMemberPubkey,
+                        permissions: { mask: 7 }, // Initiate(1) + Vote(2) + Execute(4)
+                    },
+                }],
+            });
+
+            // Step 2: Create the proposal for this config transaction
+            const proposalIx = squads.instructions.proposalCreate({
+                multisigPda: multisigKey,
+                transactionIndex,
+                creator,
+                isDraft: false,
+            });
+
+            // Step 3: Activate the proposal so members can vote on it
+            const activateIx = squads.instructions.proposalActivate({
+                multisigPda: multisigKey,
+                transactionIndex,
+                member: creator,
+            });
+
+            // Bundle all into a single transaction for best UX
+            const tx = new Transaction().add(configIx, proposalIx, activateIx);
+            tx.feePayer = creator;
+            tx.recentBlockhash = (await this.connection.getLatestBlockhash()).blockhash;
+
+            const signedTx = await this.wallet.signTransaction(tx);
+            const sig = await this.connection.sendRawTransaction(signedTx.serialize());
+            await this.connection.confirmTransaction(sig);
+
+            return sig;
+        } catch (error) {
+            console.error("Failed to create add member proposal:", error);
+            throw error;
+        }
+    }
+
+    /**
+     * Creates a config transaction proposal to remove a member from the Squads multisig.
+     * Follows the correct Squads V4 flow: configTransactionCreate → proposalCreate → proposalActivate
+     */
+    async createRemoveMemberProposal(
+        vaultAddress: string,
+        memberPubkey: PublicKey
+    ): Promise<string> {
+        if (!this.wallet || !this.wallet.publicKey) throw new Error("Wallet not connected");
+
+        try {
+            const multisigKey = new PublicKey(vaultAddress);
+            const multisigAccount = await squads.accounts.Multisig.fromAccountAddress(
+                this.connection,
+                multisigKey
+            );
+
+            const transactionIndex = BigInt(Number(multisigAccount.transactionIndex) + 1);
+            const creator = this.wallet.publicKey as PublicKey;
+
+            const configIx = squads.instructions.configTransactionCreate({
+                multisigPda: multisigKey,
+                transactionIndex,
+                creator,
+                actions: [{
+                    __kind: "RemoveMember",
+                    oldMember: memberPubkey,
+                }],
+            });
+
+            const proposalIx = squads.instructions.proposalCreate({
+                multisigPda: multisigKey,
+                transactionIndex,
+                creator,
+                isDraft: false,
+            });
+
+            const activateIx = squads.instructions.proposalActivate({
+                multisigPda: multisigKey,
+                transactionIndex,
+                member: creator,
+            });
+
+            const tx = new Transaction().add(configIx, proposalIx, activateIx);
+            tx.feePayer = creator;
+            tx.recentBlockhash = (await this.connection.getLatestBlockhash()).blockhash;
+
+            const signedTx = await this.wallet.signTransaction(tx);
+            const sig = await this.connection.sendRawTransaction(signedTx.serialize());
+            await this.connection.confirmTransaction(sig);
+
+            return sig;
+        } catch (error) {
+            console.error("Failed to create remove member proposal:", error);
+            throw error;
+        }
+    }
+
+    /**
+     * Helper to create a config transaction execute instruction.
+     */
+    getConfigExecuteInstruction(vaultAddress: string, transactionIndex: number, member: PublicKey) {
+        const multisigKey = new PublicKey(vaultAddress);
+        return squads.instructions.configTransactionExecute({
+            multisigPda: multisigKey,
+            transactionIndex: BigInt(transactionIndex),
+            member,
+        });
+    }
+
+    /**
+     * Executes a config transaction proposal (e.g. AddMember, RemoveMember, ChangeThreshold).
+     * Config proposals use configTransactionExecute, NOT vaultTransactionExecute.
+     */
+    async executeConfigProposal(vaultAddress: string, transactionIndex: number): Promise<string> {
+        if (!this.wallet || !this.wallet.publicKey) throw new Error("Wallet not connected");
+
+        try {
+            const member = this.wallet.publicKey as PublicKey;
+            const ix = this.getConfigExecuteInstruction(vaultAddress, transactionIndex, member);
+
+            const tx = new Transaction().add(ix);
+            tx.feePayer = member;
+            tx.recentBlockhash = (await this.connection.getLatestBlockhash()).blockhash;
+
+            const signedTx = await this.wallet.signTransaction(tx);
+            const sig = await this.connection.sendRawTransaction(signedTx.serialize());
+            await this.connection.confirmTransaction(sig);
+            return sig;
+        } catch (error) {
+            console.error("Failed to execute config proposal:", error);
+            throw error;
+        }
     }
 }

@@ -117,8 +117,8 @@ export async function POST(req: NextRequest) {
         } catch (err: any) {
             checks.push({
                 name: "AI Quality Check",
-                passed: true, // Non-fatal: skip AI check on error
-                details: `AI check skipped: ${err.message}`,
+                passed: false,
+                details: `AI quality check failed: ${err.message}. Manual review required.`,
             });
         }
 

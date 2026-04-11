@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { jwtVerify } from "jose";
 
 /**
  * /api/analytics/history — Reconstruct real historical portfolio value timeline
@@ -52,8 +53,27 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "Valid address required" }, { status: 400 });
         }
 
-        // Check cache
-        const cacheKey = `history:${address}:${months}`;
+        // SECURITY: Require authentication and key cache by userId
+        const siwsToken = req.cookies.get("keystone-siws-session")?.value;
+        if (!siwsToken) {
+            return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+        }
+
+        let userId: string;
+        try {
+            const secret = process.env.JWT_SECRET;
+            if (!secret) throw new Error("JWT_SECRET not configured");
+            const { payload } = await jwtVerify(siwsToken, new TextEncoder().encode(secret), {
+                issuer: "keystone-treasury-os",
+            });
+            userId = payload.sub as string;
+            if (!userId) throw new Error("Missing sub claim");
+        } catch {
+            return NextResponse.json({ error: "Invalid or expired session" }, { status: 401 });
+        }
+
+        // SECURITY: Include userId in cache key to prevent cross-user information disclosure
+        const cacheKey = `history:${userId}:${address}:${months}`;
         const cached = cache.get(cacheKey);
         if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
             return NextResponse.json(cached.data);

@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     }
 
     // MOCK_MODE: Return deterministic synthetic eligibility for CI/temp testing
-    const mockMode = String(process.env.MOCK_MODE || "").toLowerCase() === "true";
+    const mockMode = process.env.NODE_ENV !== "production" && String(process.env.MOCK_MODE || "").toLowerCase() === "true";
     if (mockMode) {
       const seed = [...address].reduce((a, c) => a + c.charCodeAt(0), 0);
       const hasMSOL = seed % 2 === 0;

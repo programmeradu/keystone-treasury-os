@@ -245,11 +245,10 @@ export async function POST(req: NextRequest) {
 
         let result: CompileResult;
 
-        if (useCloud) {
-            result = await compileCloud(files, programName);
-        } else {
-            result = await compileLocal(files, programName);
-        }
+        // SECURITY: Always use cloud compilation to prevent RCE via local anchor build.
+        // Local compilation writes user-supplied Rust code to disk and executes it
+        // via `anchor build` with zero sandboxing — trivial to exploit for RCE.
+        result = await compileCloud(files, programName);
 
         return NextResponse.json(result, { status: result.ok ? 200 : 422 });
     } catch (err) {

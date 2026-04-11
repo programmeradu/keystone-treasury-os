@@ -54,6 +54,13 @@ const GLOBAL_ALLOWLIST = new Set([
 
   // Tensor (NFT)
   "api.tensor.so",
+
+  // Jupiter lite API (primary swap/price endpoint)
+  "lite-api.jup.ag",
+
+  // DeFi Llama (yield + TVL data)
+  "yields.llama.fi",
+  "api.llama.fi",
 ]);
 
 // ─── API Key Injection (server-side, never exposed to client) ───────

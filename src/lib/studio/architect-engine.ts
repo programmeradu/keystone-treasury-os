@@ -54,9 +54,21 @@ export class ArchitectEngine {
   private abortController: AbortController | null = null;
   private activeModel: string = "auto";
   private activeProvider: string = "auto";
+  private aiConfig: { provider: string; apiKey: string; model: string } | null = null;
 
   constructor(callbacks: ArchitectCallbacks) {
     this.callbacks = callbacks;
+  }
+
+  /**
+   * Update callbacks without replacing the engine instance.
+   */
+  updateCallbacks(cb: Partial<ArchitectCallbacks>): void {
+    if (cb.onStateChange) this.callbacks.onStateChange = cb.onStateChange;
+    if (cb.onFilesGenerated) this.callbacks.onFilesGenerated = cb.onFilesGenerated;
+    if (cb.onExplanation) this.callbacks.onExplanation = cb.onExplanation;
+    if (cb.onError) this.callbacks.onError = cb.onError;
+    if (cb.onStreamChunk) this.callbacks.onStreamChunk = cb.onStreamChunk;
   }
 
   /**
@@ -95,6 +107,7 @@ export class ArchitectEngine {
     aiConfig?: { provider: string; apiKey: string; model: string } | null
   ): Promise<void> {
     this.reset();
+    this.aiConfig = aiConfig || null;
     this.startedAt = Date.now();
     this.transition("STREAMING");
 
@@ -125,8 +138,10 @@ export class ArchitectEngine {
         return;
       }
 
-      // ─── Phase 3: Self-Correction Loop ────────────────
+      // ─── Phase 3: Self-Correction Loop with Rollback ──
       let currentFiles = files;
+      let bestFiles = files;
+      let bestErrorCount = analysisErrors.length;
       this.errors = analysisErrors;
 
       while (this.attempt < this.maxAttempts && this.errors.length > 0) {
@@ -152,9 +167,19 @@ export class ArchitectEngine {
           this.callbacks.onFilesGenerated(currentFiles);
           return;
         }
+
+        // Rollback check: if correction made things worse, revert to best known state
+        if (this.errors.length < bestErrorCount) {
+          bestFiles = { ...currentFiles };
+          bestErrorCount = this.errors.length;
+        } else if (this.errors.length > bestErrorCount) {
+          // Correction regressed — rollback to best state
+          currentFiles = { ...bestFiles };
+          this.errors = this.analyzeCode(currentFiles);
+        }
       }
 
-      // Exhausted attempts — ship what we have
+      // Exhausted attempts — ship the best version we achieved
       if (this.errors.length > 0) {
         this.transition("FAILED");
         this.callbacks.onError(
@@ -162,8 +187,7 @@ export class ArchitectEngine {
         );
       }
 
-      // Still deliver the files even if there are remaining errors
-      this.callbacks.onFilesGenerated(currentFiles);
+      this.callbacks.onFilesGenerated(bestErrorCount <= this.errors.length ? bestFiles : currentFiles);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       if (message.includes("aborted")) {
@@ -195,7 +219,8 @@ export class ArchitectEngine {
   }
 
   /**
-   * Call the /api/studio/generate endpoint.
+   * Call the /api/studio/generate-stream SSE endpoint.
+   * Falls back to /api/studio/generate if streaming fails.
    */
   private async callGenerateAPI(
     prompt: string,
@@ -219,6 +244,99 @@ export class ArchitectEngine {
       }
     }
 
+    // Try streaming first, fall back to non-streaming
+    try {
+      return await this.callStreamingAPI(fullPrompt, contextFiles, aiConfig);
+    } catch (streamErr) {
+      console.warn("[Architect] Streaming failed, falling back to non-streaming:", streamErr);
+      return await this.callNonStreamingAPI(fullPrompt, contextFiles, aiConfig);
+    }
+  }
+
+  /**
+   * SSE streaming call to /api/studio/generate-stream.
+   */
+  private async callStreamingAPI(
+    fullPrompt: string,
+    contextFiles: Record<string, { content: string }>,
+    aiConfig?: { provider: string; apiKey: string; model: string } | null
+  ): Promise<Record<string, string> | null> {
+    const response = await fetch("/api/studio/generate-stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: fullPrompt,
+        contextFiles,
+        aiConfig: aiConfig || undefined,
+      }),
+      signal: this.abortController?.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Stream request failed: ${response.status}`);
+    }
+
+    if (!response.body) {
+      throw new Error("No response body for streaming");
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let result: Record<string, string> | null = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const raw = line.slice(6).trim();
+        if (!raw) continue;
+
+        try {
+          const event = JSON.parse(raw);
+
+          if (event.type === "meta") {
+            if (event.provider) this.activeProvider = event.provider;
+            if (event.model) this.activeModel = event.model;
+            this.callbacks.onStateChange(this.getStatus());
+          } else if (event.type === "token") {
+            this.tokensGenerated += Math.ceil((event.content?.length || 0) / 4);
+            this.callbacks.onStreamChunk?.(event.content || "");
+          } else if (event.type === "done") {
+            if (event.error === "no_api_key") {
+              throw new Error("NO_API_KEY: " + (event.details || "No AI API key configured."));
+            }
+            if (event.explanation) {
+              this.callbacks.onExplanation(event.explanation);
+            }
+            result = event.files || null;
+          } else if (event.type === "error" && !event.recoverable) {
+            throw new Error(event.message || "Stream error");
+          }
+        } catch (parseErr) {
+          // Skip unparseable SSE lines
+          if (parseErr instanceof Error && parseErr.message.startsWith("NO_API_KEY")) throw parseErr;
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Non-streaming fallback to /api/studio/generate.
+   */
+  private async callNonStreamingAPI(
+    fullPrompt: string,
+    contextFiles: Record<string, { content: string }>,
+    aiConfig?: { provider: string; apiKey: string; model: string } | null
+  ): Promise<Record<string, string> | null> {
     const response = await fetch("/api/studio/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -237,24 +355,16 @@ export class ArchitectEngine {
 
     const data = await response.json();
 
-    // Handle no-key error from the API
     if (data.error === "no_api_key") {
-      throw new Error("NO_API_KEY: " + (data.details || "No AI API key configured. Open Settings to add your own key."));
+      throw new Error("NO_API_KEY: " + (data.details || "No AI API key configured."));
     }
 
-    // Update active provider/model from API response
     if (data.provider) this.activeProvider = data.provider;
     if (data.model) this.activeModel = data.model;
+    if (data.explanation) this.callbacks.onExplanation(data.explanation);
 
-    if (data.explanation) {
-      this.callbacks.onExplanation(data.explanation);
-    }
-
-    // Estimate tokens from response size
     const responseText = JSON.stringify(data.files || {});
     this.tokensGenerated += Math.ceil(responseText.length / 4);
-
-    // Emit status so UI reflects the real model
     this.callbacks.onStateChange(this.getStatus());
 
     return data.files || null;
@@ -271,7 +381,7 @@ export class ArchitectEngine {
     const response = await fetch("/api/studio/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt, contextFiles }),
+      body: JSON.stringify({ prompt, contextFiles, aiConfig: this.aiConfig || undefined }),
       signal: this.abortController?.signal,
     });
 

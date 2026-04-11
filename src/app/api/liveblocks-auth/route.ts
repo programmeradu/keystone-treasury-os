@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Liveblocks } from "@liveblocks/node";
 import { jwtVerify } from "jose";
+import { db } from "@/db";
+import { vaults, teamMembers } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 
 const SIWS_COOKIE = "keystone-siws-session";
 const NEON_AUTH_COOKIE_NAMES = [
@@ -22,9 +25,11 @@ function getLiveblocks() {
 }
 
 function getJwtSecret() {
-    return new TextEncoder().encode(
-        process.env.JWT_SECRET || "keystone_sovereign_os_2026"
-    );
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error('JWT_SECRET must be configured');
+    }
+    return new TextEncoder().encode(secret);
 }
 
 /**
@@ -102,8 +107,6 @@ export async function POST(request: NextRequest) {
 
     // ─── Validate room access ───────────────────────────────────────
     // User-scoped rooms: "user:{userId}" — only the owner can access
-    // Vault-scoped rooms: "vault:{vaultAddress}" — checked later when
-    //   team/vault membership is added
     if (room.startsWith("user:")) {
         const roomOwner = room.slice("user:".length);
         if (roomOwner !== userId) {
@@ -111,6 +114,50 @@ export async function POST(request: NextRequest) {
                 { error: "Forbidden" },
                 { status: 403 }
             );
+        }
+    }
+
+    // Vault-scoped rooms: "vault:{vaultAddress}" — verify user owns or is team member
+    if (room.startsWith("vault:")) {
+        const vaultAddress = room.slice("vault:".length);
+
+        if (!db) {
+            return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
+        }
+
+        // Look up the vault
+        const [vault] = await db
+            .select()
+            .from(vaults)
+            .where(eq(vaults.address, vaultAddress))
+            .limit(1);
+
+        if (!vault) {
+            return NextResponse.json({ error: "Vault not found" }, { status: 404 });
+        }
+
+        // Allow vault owner
+        const isOwner = vault.userId === userId;
+
+        if (!isOwner) {
+            // Check team membership if vault has a team
+            if (vault.teamId) {
+                const [membership] = await db
+                    .select()
+                    .from(teamMembers)
+                    .where(and(
+                        eq(teamMembers.teamId, vault.teamId),
+                        eq(teamMembers.userId, userId),
+                        eq(teamMembers.status, "active")
+                    ))
+                    .limit(1);
+
+                if (!membership) {
+                    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+                }
+            } else {
+                return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+            }
         }
     }
 

@@ -2,22 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { dcaBots, dcaExecutions, users } from "@/db/schema";
 import { eq, and, lte, desc } from "drizzle-orm";
+import { Keypair } from "@solana/web3.js";
+import bs58 from "bs58";
+import { encryptKeypair } from "@/lib/keypair-envelope";
 
-async function getOrCreateUserId(walletAddress: string) {
+async function getUserId(walletAddress: string): Promise<string | null> {
   if (!walletAddress || walletAddress.length < 32 || walletAddress.length > 44) {
-    throw new Error("Valid wallet address is required to access DCABots");
+    return null;
   }
   if (!db) throw new Error("Database not available");
 
+  // SECURITY: Do NOT auto-create users - require existing user for DCA access
   const userResult = await db.select().from(users).where(eq(users.walletAddress, walletAddress)).limit(1);
   if (userResult.length === 0) {
-    const newUser = await db.insert(users).values({
-      walletAddress,
-      displayName: "Anonymous User",
-      role: "user",
-      tier: "free",
-    }).returning({ id: users.id });
-    return newUser[0].id;
+    return null; // Return null instead of auto-creating
   }
   return userResult[0].id;
 }
@@ -45,7 +43,13 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Wallet not connected" }, { status: 401 });
     }
 
-    const userId = await getOrCreateUserId(wallet);
+    const userId = await getUserId(wallet);
+    if (!userId) {
+      return NextResponse.json(
+        { error: "User not found. Please register or connect your wallet first." },
+        { status: 403 }
+      );
+    }
 
     if (action === "list") {
       // Fetch all bots for user
@@ -146,16 +150,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Rate limit: DCA bots
-    const rateLimit = await checkRouteLimit(req, 'dca_bots');
-    if (!rateLimit.allowed) {
-      return NextResponse.json({
-        error: 'Rate limit exceeded',
-        tier: rateLimit.tier,
-        resetAt: rateLimit.resetAt.toISOString(),
-      }, { status: 429 });
-    }
-
     const body = await req.json();
     const action = body.action;
 
@@ -166,10 +160,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Wallet not connected" }, { status: 401 });
     }
 
-    const userId = await getOrCreateUserId(wallet);
+    const userId = await getUserId(wallet);
+    if (!userId) {
+      return NextResponse.json(
+        { error: "User not found. Please register or connect your wallet first." },
+        { status: 403 }
+      );
+    }
 
     // CREATE BOT
     if (action === "create") {
+      // Rate limit: Enforce maximum allowed DCA bots based on tier
+      const rateLimit = await checkRouteLimit(req, 'dca_bots');
+      if (!rateLimit.allowed) {
+        return NextResponse.json({
+          error: 'Rate limit exceeded',
+          tier: rateLimit.tier,
+          resetAt: rateLimit.resetAt.toISOString(),
+        }, { status: 429 });
+      }
+
       const {
         name,
         buyTokenMint,
@@ -203,6 +213,12 @@ export async function POST(req: NextRequest) {
       const startDate = now;
       const nextExecution = new Date(calculateNextExecution(Date.now(), frequency as any));
 
+      // Generate per-bot keypair and encrypt it
+      const botKeypair = Keypair.generate();
+      const botSecretKeyBase58 = bs58.encode(botKeypair.secretKey);
+      const encryptedKeypair = encryptKeypair(botSecretKeyBase58);
+      const delegateAddress = botKeypair.publicKey.toBase58();
+
       // Insert into database
       await db.insert(dcaBots).values({
         id: botId,
@@ -223,6 +239,7 @@ export async function POST(req: NextRequest) {
         executionCount: 0,
         totalInvested: '0',
         totalReceived: '0',
+        encryptedKeypair,
       });
 
       return NextResponse.json({
@@ -232,6 +249,7 @@ export async function POST(req: NextRequest) {
           name,
           status: "active",
           nextExecution,
+          delegateAddress,
         },
       }, { status: 200 });
     }

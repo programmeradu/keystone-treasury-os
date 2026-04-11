@@ -30,20 +30,20 @@ function hasNeonAuthSession(request: NextRequest): boolean {
 }
 
 function getJwtSecret() {
-    return new TextEncoder().encode(
-        process.env.JWT_SECRET || 'keystone_sovereign_os_2026'
-    );
+    const secret = process.env.JWT_SECRET;
+    if (!secret) throw new Error('JWT_SECRET must be configured');
+    return new TextEncoder().encode(secret);
 }
 
-async function hasSiwsSession(request: NextRequest): Promise<boolean> {
+async function getSiwsPayload(request: NextRequest): Promise<Record<string, unknown> | null> {
     const token = request.cookies.get(SIWS_COOKIE)?.value;
-    if (!token) return false;
+    if (!token) return null;
 
     try {
-        await jwtVerify(token, getJwtSecret(), { issuer: 'keystone-treasury-os' });
-        return true;
+        const { payload } = await jwtVerify(token, getJwtSecret(), { issuer: 'keystone-treasury-os' });
+        return payload as Record<string, unknown>;
     } catch {
-        return false;
+        return null;
     }
 }
 
@@ -85,6 +85,7 @@ export async function middleware(request: NextRequest) {
         '/favicon',
         '/images',
         '/fonts',
+        '/manifest',
     ];
 
     const publicPages = ['/', '/marketplace', '/pricing', '/docs', '/about', '/auth'];
@@ -98,11 +99,12 @@ export async function middleware(request: NextRequest) {
     }
 
     // ─── Check both auth systems in parallel ────────────────────────
-    const [hasSiws, hasNeon] = await Promise.all([
-        hasSiwsSession(request),
+    const [siwsPayload, hasNeon] = await Promise.all([
+        getSiwsPayload(request),
         Promise.resolve(hasNeonAuthSession(request)),
     ]);
 
+    const hasSiws = !!siwsPayload;
     const isAuthenticated = hasSiws || hasNeon;
 
     // ─── Public API routes (no auth required) ───────────────────────
@@ -149,6 +151,29 @@ export async function middleware(request: NextRequest) {
         if (pathname !== '/app') {
             url.searchParams.set('redirect', pathname);
         }
+        return NextResponse.redirect(url);
+    }
+
+    // ─── Admin Role Gate ────────────────────────────────────────────
+    if (pathname.startsWith('/app/admin')) {
+        if (!isAuthenticated) {
+            const url = request.nextUrl.clone();
+            url.pathname = '/auth';
+            return NextResponse.redirect(url);
+        }
+    }
+
+    // ─── Onboarding redirect for authenticated but un-onboarded users ──
+    if (
+        isAuthenticated &&
+        pathname.startsWith('/app') &&
+        !pathname.startsWith('/app/onboarding') &&
+        !pathname.startsWith('/api/') &&
+        siwsPayload &&
+        siwsPayload.onboarded === false
+    ) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/app/onboarding';
         return NextResponse.redirect(url);
     }
 

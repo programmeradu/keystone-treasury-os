@@ -26,10 +26,9 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Invalid Solana address" }, { status: 400 });
     }
 
-  // Mock mode for testing (env OR ?mock=true)
-  const mockMode = String(process.env.MOCK_MODE || "").toLowerCase() === "true";
-  const mockParam = String(searchParams.get("mock") || "").toLowerCase() === "true";
-  if (mockMode || mockParam) {
+  // Mock mode for testing (server-side env only — not client-triggerable)
+  const mockMode = process.env.NODE_ENV !== "production" && String(process.env.MOCK_MODE || "").toLowerCase() === "true";
+  if (mockMode) {
       return NextResponse.json({
         address,
         bundleableTransactions: [
@@ -223,7 +222,7 @@ export async function POST(req: Request) {
     }
 
     // Mock mode
-    const mockMode = String(process.env.MOCK_MODE || "").toLowerCase() === "true";
+    const mockMode = process.env.NODE_ENV !== "production" && String(process.env.MOCK_MODE || "").toLowerCase() === "true";
     if (mockMode) {
       return NextResponse.json({
         success: true,

@@ -16,9 +16,9 @@ import {
     Hash,
     Cpu,
     Shield,
-
-    Loader2,
     FolderOpen,
+    BookOpen,
+    Plus,
 } from "lucide-react";
 import { useSelf } from "@/liveblocks.config";
 import { getAvatarUrl } from "@/lib/avatars";
@@ -36,6 +36,12 @@ import { ProjectBrowser } from "@/components/studio/ProjectBrowser";
 import { StudioToolbar } from "@/components/studio/StudioToolbar";
 import { useSearchParams } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { TemplateGallery } from "@/components/studio/TemplateGallery";
+import { SDKReferencePanel } from "@/components/studio/SDKReferencePanel";
+import { CommandPalette, type PaletteCommand } from "@/components/studio/CommandPalette";
+import { GlobalSearch } from "@/components/studio/GlobalSearch";
+import { DiffReview, FileHistory } from "@/components/studio/DiffReview";
+import { type ProjectTemplate } from "@/lib/studio/templates";
 
 interface StudioFile {
     name: string;
@@ -173,6 +179,14 @@ export default function StudioPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [projectBrowserUserId, setProjectBrowserUserId] = useState("Operator");
 
+    // New component states
+    const [showTemplateGallery, setShowTemplateGallery] = useState(false);
+    const [showSDKReference, setShowSDKReference] = useState(false);
+    const [showCommandPalette, setShowCommandPalette] = useState(false);
+    const [showGlobalSearch, setShowGlobalSearch] = useState(false);
+    const [pendingDiff, setPendingDiff] = useState<{ fileName: string; original: string; modified: string } | null>(null);
+    const fileHistoryRef = useRef(new FileHistory());
+
     const searchParams = useSearchParams();
     const hasLoadedFromUrl = useRef(false);
 
@@ -199,6 +213,10 @@ export default function StudioPage() {
     }, [searchParams]);
 
     const handleNewProject = () => {
+        setShowTemplateGallery(true);
+    };
+
+    const handleNewBlankProject = () => {
         setAppName("Untitled Mini-App");
         setCurrentAppId(undefined);
         setFiles({ ...DEFAULT_FILES });
@@ -206,9 +224,38 @@ export default function StudioPage() {
         setRuntimeLogs([]);
         setProgramBuffer(null);
         setActiveTab("preview");
-        // Clear ?appId= so refresh doesn't resurrect old project
         window.history.replaceState({}, "", "/app/studio");
+        setShowTemplateGallery(false);
         toast.info("New project created.");
+    };
+
+    const handleSelectTemplate = (template: ProjectTemplate) => {
+        const newFiles: Record<string, StudioFile> = {};
+        for (const [name, content] of Object.entries(template.files)) {
+            const ext = name.split(".").pop() || "";
+            const langMap: Record<string, string> = {
+                tsx: "typescript", ts: "typescript", js: "javascript", jsx: "javascript",
+                css: "css", json: "json", rs: "rust", html: "html", toml: "toml",
+            };
+            newFiles[name] = { name, content, language: langMap[ext] || "plaintext" };
+        }
+        // Ensure utils and styles exist
+        if (!newFiles["utils.ts"]) {
+            newFiles["utils.ts"] = { ...DEFAULT_FILES["utils.ts"] };
+        }
+        if (!newFiles["styles.css"]) {
+            newFiles["styles.css"] = { ...DEFAULT_FILES["styles.css"] };
+        }
+        setAppName(template.name);
+        setCurrentAppId(undefined);
+        setFiles(newFiles);
+        setActiveFile("App.tsx");
+        setRuntimeLogs([]);
+        setProgramBuffer(null);
+        setActiveTab("preview");
+        setShowTemplateGallery(false);
+        window.history.replaceState({}, "", "/app/studio");
+        toast.success(`Loaded template: ${template.name}`);
     };
 
     const handleCodeChange = useCallback((newCode: string) => {
@@ -222,27 +269,60 @@ export default function StudioPage() {
     }, [activeFile]);
 
     const handleAIGenerate = useCallback(async (generatedFiles: Record<string, string>) => {
+        // Save snapshots of files being overwritten for diff review
+        for (const [name] of Object.entries(generatedFiles)) {
+            const existing = files[name];
+            if (existing) {
+                fileHistoryRef.current.saveSnapshot(name, existing.content, "Before AI edit");
+            }
+        }
+
+        // If App.tsx is being changed, show diff review
+        if (generatedFiles["App.tsx"] && files["App.tsx"]) {
+            setPendingDiff({
+                fileName: "App.tsx",
+                original: files["App.tsx"].content,
+                modified: generatedFiles["App.tsx"],
+            });
+            // Store all generated files for when user accepts
+            pendingFilesRef.current = generatedFiles;
+            return;
+        }
+
+        // No diff review needed — apply directly
+        applyGeneratedFiles(generatedFiles);
+    }, [files]);
+
+    const pendingFilesRef = useRef<Record<string, string> | null>(null);
+
+    const applyGeneratedFiles = useCallback((generatedFiles: Record<string, string>) => {
         const newFiles: Record<string, StudioFile> = {};
         for (const [name, content] of Object.entries(generatedFiles)) {
             const ext = name.split(".").pop() || "";
             const langMap: Record<string, string> = {
-                tsx: "typescript",
-                ts: "typescript",
-                js: "javascript",
-                jsx: "javascript",
-                css: "css",
-                json: "json",
+                tsx: "typescript", ts: "typescript", js: "javascript", jsx: "javascript",
+                css: "css", json: "json", rs: "rust", html: "html", toml: "toml",
             };
-            newFiles[name] = {
-                name,
-                content,
-                language: langMap[ext] || "plaintext",
-            };
+            newFiles[name] = { name, content, language: langMap[ext] || "plaintext" };
         }
         setFiles((prev) => ({ ...prev, ...newFiles }));
         if (generatedFiles["App.tsx"]) {
             setActiveFile("App.tsx");
         }
+    }, []);
+
+    const handleDiffAccept = useCallback((code: string) => {
+        const allFiles = pendingFilesRef.current || {};
+        allFiles["App.tsx"] = code; // Use the (possibly edited) version from diff view
+        applyGeneratedFiles(allFiles);
+        setPendingDiff(null);
+        pendingFilesRef.current = null;
+    }, [applyGeneratedFiles]);
+
+    const handleDiffReject = useCallback(() => {
+        setPendingDiff(null);
+        pendingFilesRef.current = null;
+        toast.info("Changes rejected.");
     }, []);
 
 
@@ -381,6 +461,57 @@ export default function StudioPage() {
         }
     };
 
+    // ─── Keyboard Shortcuts ─────────────────────────────────────
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            const mod = e.metaKey || e.ctrlKey;
+            if (mod && e.key === "k" && !e.shiftKey) {
+                e.preventDefault();
+                setShowCommandPalette(prev => !prev);
+            } else if (mod && e.shiftKey && e.key === "F") {
+                e.preventDefault();
+                setShowGlobalSearch(prev => !prev);
+            } else if (mod && e.key === "s") {
+                e.preventDefault();
+                handleSave();
+            }
+        };
+        document.addEventListener("keydown", handler);
+        return () => document.removeEventListener("keydown", handler);
+    }, []);
+
+    // ─── Command Palette Commands ───────────────────────────────
+    const paletteCommands: PaletteCommand[] = React.useMemo(() => [
+        { id: "new-blank", label: "New Blank Project", category: "Project", shortcut: "", action: handleNewBlankProject },
+        { id: "new-template", label: "New from Template", category: "Project", action: () => setShowTemplateGallery(true) },
+        { id: "open-projects", label: "Open Projects", category: "Project", shortcut: "", action: () => setShowProjectBrowser(true) },
+        { id: "save", label: "Save Project", category: "Project", shortcut: "⌘S", action: handleSave },
+        { id: "ship", label: "Ship to Library", category: "Project", action: handleShip },
+        { id: "sdk-ref", label: "Toggle SDK Reference", category: "View", action: () => setShowSDKReference(prev => !prev) },
+        { id: "global-search", label: "Search in Files", category: "View", shortcut: "⌘⇧F", action: () => setShowGlobalSearch(true) },
+        { id: "toggle-console", label: "Toggle Console", category: "View", action: () => setActiveTab(prev => prev === "code" ? "preview" : "code") },
+        { id: "toggle-preview", label: "Toggle Preview", category: "View", action: () => setActiveTab("preview") },
+    ], []);
+
+    // ─── GlobalSearch Handlers ──────────────────────────────────
+    const handleSearchNavigate = useCallback((fileName: string, _line: number) => {
+        setActiveFile(fileName);
+        setShowGlobalSearch(false);
+    }, []);
+
+    const handleSearchReplaceAll = useCallback((replacements: { fileName: string; content: string }[]) => {
+        setFiles(prev => {
+            const next = { ...prev };
+            for (const r of replacements) {
+                if (next[r.fileName]) {
+                    next[r.fileName] = { ...next[r.fileName], content: r.content };
+                }
+            }
+            return next;
+        });
+        toast.success(`Replaced in ${replacements.length} file(s)`);
+    }, []);
+
     return (
         <div className="h-screen flex flex-col bg-background text-foreground selection:bg-primary/20 overflow-hidden min-h-0">
             {/* Studio Header */}
@@ -432,8 +563,14 @@ export default function StudioPage() {
                     <div className="h-4 w-px bg-border/60" />
 
                     <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => setShowProjectBrowser(true)} className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground">
+                        <Button variant="ghost" size="sm" onClick={handleNewProject} className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" title="New Project">
+                            <Plus size={16} />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setShowProjectBrowser(true)} className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" title="Open Projects">
                             <FolderOpen size={16} />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setShowSDKReference(prev => !prev)} className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" title="SDK Reference">
+                            <BookOpen size={16} />
                         </Button>
                         <Button variant="ghost" size="sm" onClick={handleSave} disabled={isSaving} className="h-8 text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground">
                             {isSaving ? "SAVING..." : "SAVE"}
@@ -573,6 +710,7 @@ export default function StudioPage() {
                                     files={files}
                                     tab={activeTab as "preview" | "code"}
                                     onLogsChange={(newLogs) => setRuntimeLogs(newLogs)}
+                                    walletAddress={publicKey?.toBase58() || null}
                                     appId={currentAppId}
                                 />
                             )}
@@ -597,6 +735,49 @@ export default function StudioPage() {
                 onLoadProject={handleLoadProject}
                 onNewProject={handleNewProject}
             />
-        </div >
+
+            {/* Template Gallery */}
+            <TemplateGallery
+                isOpen={showTemplateGallery}
+                onClose={() => setShowTemplateGallery(false)}
+                onSelectTemplate={handleSelectTemplate}
+                onBlank={handleNewBlankProject}
+            />
+
+            {/* SDK Reference Panel */}
+            <SDKReferencePanel
+                isOpen={showSDKReference}
+                onClose={() => setShowSDKReference(false)}
+            />
+
+            {/* Command Palette */}
+            <CommandPalette
+                commands={paletteCommands}
+                isOpen={showCommandPalette}
+                onClose={() => setShowCommandPalette(false)}
+            />
+
+            {/* Global Search */}
+            <GlobalSearch
+                files={files}
+                isOpen={showGlobalSearch}
+                onClose={() => setShowGlobalSearch(false)}
+                onNavigate={handleSearchNavigate}
+                onReplaceAll={handleSearchReplaceAll}
+            />
+
+            {/* Diff Review */}
+            {pendingDiff && (
+                <DiffReview
+                    fileName={pendingDiff.fileName}
+                    originalCode={pendingDiff.original}
+                    modifiedCode={pendingDiff.modified}
+                    language="typescript"
+                    onAccept={handleDiffAccept}
+                    onReject={handleDiffReject}
+                    isOpen={true}
+                />
+            )}
+        </div>
     );
 }

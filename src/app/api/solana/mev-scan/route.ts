@@ -9,7 +9,7 @@ export async function GET(req: Request) {
     const minProfit = Number(searchParams.get("minProfit") || "0.5"); // Minimum profit % threshold
 
     // Mock mode for testing
-    const mockMode = String(process.env.MOCK_MODE || "").toLowerCase() === "true";
+    const mockMode = process.env.NODE_ENV !== "production" && String(process.env.MOCK_MODE || "").toLowerCase() === "true";
     if (mockMode) {
       return NextResponse.json({
         opportunities: [

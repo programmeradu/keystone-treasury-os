@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useOthers, useSelf, useBroadcastEvent, useEventListener } from "@/liveblocks.config";
+import { useOthers, useSelf, useBroadcastEvent, useEventListener, useStatus } from "@/liveblocks.config";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
     Users, Shield, Zap, MessageSquare, Activity, Send, CheckCircle2, Play,
@@ -20,6 +20,39 @@ import { getAvatarUrl } from "@/lib/avatars";
 import { NetworkSelector } from "@/components/NetworkSelector";
 import { useVault } from "@/lib/contexts/VaultContext";
 import { toast } from "@/lib/toast-notifications";
+import { useSearchParams } from "next/navigation";
+
+function InviteInterceptor() {
+    const searchParams = useSearchParams();
+    const acceptToken = searchParams.get('accept');
+
+    useEffect(() => {
+        if (acceptToken) {
+            const acceptInvite = async () => {
+                try {
+                    const res = await fetch('/api/team/accept-invite', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token: acceptToken })
+                    });
+                    if (res.ok) {
+                        toast.success("Successfully joined the Collaborative Node");
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        setTimeout(() => window.location.reload(), 2000);
+                    } else {
+                        const err = await res.json();
+                        toast.error(err.error || "Failed to accept invite");
+                    }
+                } catch (e) {
+                    toast.error("Failed to accept invite");
+                }
+            };
+            acceptInvite();
+        }
+    }, [acceptToken]);
+
+    return null;
+}
 
 interface LogEntry {
     user: string;
@@ -28,20 +61,75 @@ interface LogEntry {
     time: string;
 }
 
-const SEED_LOG: LogEntry[] = [
-    { user: "Neural Agent 01", action: "SIMULATED TRANSACTION", target: "Jupiter Swap: 10 SOL -> USDC", time: "02:42:12" },
-    { user: "You", action: "UPDATED TREASURY", target: "New Vault Linked", time: "02:30:05" },
-    { user: "Neural Agent 01", action: "RISK SCAN", target: "Liquidity Check: PASSED", time: "02:15:00" },
-];
+    // Live Tactical Log — pulls real events from Postgres
+
+function InviteCounterpart({ vaultAddress }: { vaultAddress: string }) {
+    const [teamId, setTeamId] = useState<string | null>(null);
+    const [address, setAddress] = useState("");
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (!vaultAddress) return;
+        fetch('/api/team/my-teams').then(res => res.json()).then(data => {
+            const team = data.teams?.find((t: any) => t.vaultAddress === vaultAddress);
+            if (team) setTeamId(team.teamId);
+        });
+    }, [vaultAddress]);
+
+    const handleInvite = async () => {
+        if (!teamId || !address) return;
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/team/${teamId}/invite`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ address, role: "member" })
+            });
+            if (res.ok) {
+                toast.success("Deployment transmission sequence sent.");
+                setAddress("");
+            } else {
+                const err = await res.json();
+                toast.error(err.error || "Transmission rejected");
+            }
+        } catch(e) {
+            toast.error("Transmission failed");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (!teamId) return null;
+
+    return (
+        <div className="mt-6 pt-4 border-t border-border/50 flex flex-col md:flex-row items-stretch md:items-center gap-3 relative z-10">
+            <input 
+                type="text" 
+                placeholder="WALLET ADDRESS OR EMAIL..." 
+                value={address} 
+                onChange={(e) => setAddress(e.target.value)} 
+                className="flex-1 bg-background text-foreground text-[10px] uppercase font-mono px-4 py-3 rounded-lg border border-border focus:border-primary outline-none hover:border-primary/50 transition-colors shadow-inner"
+            />
+            <Button 
+                onClick={handleInvite} 
+                disabled={loading || !address}
+                className="bg-primary hover:opacity-90 text-primary-foreground text-[10px] uppercase font-black px-6 py-3 h-auto shadow-[0_0_15px_var(--dashboard-accent-muted)] transition-all"
+            >
+                {loading ? "TRANSMITTING..." : "INVITE COUNTERPART"}
+            </Button>
+        </div>
+    );
+}
 
 export default function TeamPage() {
+    const connectionStatus = useStatus();
+    const isSpectator = connectionStatus !== 'connected';
     const others = useOthers();
     const self = useSelf();
     const { activeVault, vaultConfig } = useVault();
     const vaultAddress = activeVault || "";
 
-    // Live Tactical Log — seeded with mocks, appends real events
-    const [logEntries, setLogEntries] = useState<LogEntry[]>(SEED_LOG);
+    const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
     const logRef = useRef<HTMLDivElement>(null);
 
     const appendLog = useCallback((entry: Omit<LogEntry, "time">) => {
@@ -50,14 +138,49 @@ export default function TeamPage() {
         setLogEntries(prev => [{ ...entry, time }, ...prev].slice(0, 50));
     }, []);
 
+    // Polling real DB events
+    useEffect(() => {
+        if (!vaultAddress) return;
+        
+        let isMounted = true;
+        const fetchLogs = async () => {
+            try {
+                const res = await fetch(`/api/vault/${vaultAddress}/activity`);
+                const data = await res.json();
+                if (isMounted && Array.isArray(data)) {
+                    const mapped = data.map((log: any) => {
+                        const now = new Date(log.createdAt);
+                        return {
+                            user: log.user?.name || "System Orchestrator",
+                            action: log.action.replace(/_/g, " ").toUpperCase(),
+                            target: log.description || log.targetType || "Vault Element",
+                            time: now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })
+                        };
+                    });
+                    setLogEntries(mapped);
+                }
+            } catch (e) {
+                console.error("Log fetch error", e);
+            }
+        };
+
+        fetchLogs();
+        const interval = setInterval(fetchLogs, 15000); // 15s refresh
+        return () => {
+            isMounted = false;
+            clearInterval(interval);
+        };
+    }, [vaultAddress]);
+
+    // Listen to local optimistic events
     useEffect(() => {
         const unsub = AppEventBus.subscribe((event) => {
             switch (event.type) {
                 case "AGENT_COMMAND":
-                    appendLog({ user: "Agent", action: "AGENT COMMAND", target: event.payload?.command || event.payload?.message || "Executed" });
+                    appendLog({ user: "Agent", action: "AGENT COMMAND", target: (event.payload?.command || event.payload?.message || "Executed") as string });
                     break;
                 case "UI_NOTIFICATION":
-                    appendLog({ user: "System", action: "NOTIFICATION", target: event.payload?.message || "Event" });
+                    appendLog({ user: "System", action: "NOTIFICATION", target: (event.payload?.message || "Event") as string });
                     break;
                 case "REFRESH_DASHBOARD":
                     appendLog({ user: "You", action: "REFRESH", target: "Dashboard data synced" });
@@ -74,8 +197,10 @@ export default function TeamPage() {
             <header className="flex items-center justify-between px-6 py-4 border-b border-border bg-background/50 backdrop-blur-md z-10">
                 <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--dashboard-accent-muted)]" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Keystone OS // Primary Node</span>
+                        <div className={`w-1.5 h-1.5 rounded-full ${isSpectator ? 'bg-amber-500' : 'bg-primary'} shadow-[0_0_8px_var(--dashboard-accent-muted)]`} />
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+                            Keystone OS // {isSpectator ? 'Spectator Mode' : 'Primary Node'}
+                        </span>
                     </div>
                     <div className="flex items-center gap-3">
                         <Users className="text-primary" size={20} />
@@ -151,22 +276,16 @@ export default function TeamPage() {
                                         <MemberCard
                                             key={connectionId}
                                             name={info?.name || "Collaborator"}
-                                            role="Operator"
+                                            role="Operator / Signer"
                                             status="online"
                                             avatar={getAvatarUrl(info?.name || "Collaborator")}
                                             color={info?.color || "var(--dashboard-accent)"}
                                         />
                                     ))}
-
-                                    {/* Mocked offline members for UI density */}
-                                    <MemberCard
-                                        name="Neural Agent 01"
-                                        role="Automated Auditor"
-                                        status="offline"
-                                        avatar={getAvatarUrl("Neural Agent 01")}
-                                        color="var(--dashboard-muted-foreground)"
-                                    />
                                 </div>
+
+                                {/* Invite New Operative */}
+                                <InviteCounterpart vaultAddress={vaultAddress} />
                             </div>
 
                             {/* 2. Command History (Terminal Style) */}
@@ -212,7 +331,7 @@ export default function TeamPage() {
                             <CollaborativeChat />
 
                             {/* Quorum Core: Real-time Governance Power */}
-                            <QuorumCore others={others as any[]} threshold={vaultConfig?.threshold ?? 3} />
+                            <QuorumCore others={others as any[]} threshold={vaultConfig?.threshold ?? 1} />
                         </div>
                     </div>
                 </div>
@@ -222,7 +341,7 @@ export default function TeamPage() {
 }
 
 function WarRoom({ vaultAddress }: { vaultAddress: string }) {
-    const { proposals, loading, signProposal } = useSquadsMultisig(vaultAddress);
+    const { proposals, loading, signProposal, executeProposal } = useSquadsMultisig(vaultAddress);
     const broadcast = useBroadcastEvent();
     const [simulating, setSimulating] = useState<number | null>(null);
 
@@ -312,13 +431,23 @@ function WarRoom({ vaultAddress }: { vaultAddress: string }) {
                                     <Play size={10} className={simulating === p.index ? "animate-pulse" : ""} />
                                     {simulating === p.index ? "..." : "Sim"}
                                 </Button>
-                                <Button
-                                    className="h-7 bg-primary hover:opacity-90 text-primary-foreground text-[9px] font-black uppercase gap-2 shadow-sm"
-                                    onClick={() => signProposal(p.index)}
-                                >
-                                    <CheckCircle2 size={10} />
-                                    Sign
-                                </Button>
+                                {p.status === 'Approved' || p.signatures >= p.threshold ? (
+                                    <Button
+                                        className="h-7 bg-amber-500 hover:bg-amber-600 text-amber-950 text-[9px] font-black uppercase gap-2 shadow-sm"
+                                        onClick={() => executeProposal(p.index)}
+                                    >
+                                        <Zap size={10} />
+                                        Execute
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        className="h-7 bg-primary hover:opacity-90 text-primary-foreground text-[9px] font-black uppercase gap-2 shadow-sm"
+                                        onClick={() => signProposal(p.index)}
+                                    >
+                                        <CheckCircle2 size={10} />
+                                        Sign
+                                    </Button>
+                                )}
                             </div>
                         </motion.div>
                     ))

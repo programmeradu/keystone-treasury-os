@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSelf } from "@/liveblocks.config";
 import { cn } from "@/lib/utils";
 import { ArchitectEngine, type ArchitectStatus, type ArchitectState } from "@/lib/studio/architect-engine";
+import { loadAIConfig, type AIKeyConfig } from "@/components/studio/APIKeySettings";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -45,7 +46,14 @@ const STATE_LABELS: Record<ArchitectState, { label: string; color: string; icon:
 
 // ─── Available Models ───────────────────────────────────────────────
 
-const AVAILABLE_MODELS = [
+interface ModelOption {
+    id: string;
+    label: string;
+    provider: string;
+    byok?: boolean;
+}
+
+const FREE_MODELS: ModelOption[] = [
     { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B", provider: "groq" },
     { id: "llama-3.1-8b-instant", label: "Llama 3.1 8B Fast", provider: "groq" },
     { id: "mixtral-8x7b-32768", label: "Mixtral 8x7B", provider: "groq" },
@@ -53,6 +61,32 @@ const AVAILABLE_MODELS = [
     { id: "@cf/qwen/qwen2.5-coder-32b-instruct", label: "Qwen 2.5 Coder 32B", provider: "cloudflare" },
     { id: "@cf/qwen/qwen3-30b-a3b-fp8", label: "Qwen 3 30B", provider: "cloudflare" },
 ];
+
+const BYOK_MODELS: Record<string, ModelOption[]> = {
+    openai: [
+        { id: "gpt-4o", label: "GPT-4o", provider: "openai", byok: true },
+        { id: "gpt-4o-mini", label: "GPT-4o Mini", provider: "openai", byok: true },
+        { id: "o1", label: "o1", provider: "openai", byok: true },
+        { id: "o3-mini", label: "o3-mini", provider: "openai", byok: true },
+    ],
+    google: [
+        { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash", provider: "google", byok: true },
+        { id: "gemini-2.0-pro", label: "Gemini 2.0 Pro", provider: "google", byok: true },
+    ],
+    anthropic: [
+        { id: "claude-sonnet-4-20250514", label: "Claude Sonnet 4", provider: "anthropic", byok: true },
+        { id: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet", provider: "anthropic", byok: true },
+        { id: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku", provider: "anthropic", byok: true },
+    ],
+    groq: [
+        { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B (BYOK)", provider: "groq", byok: true },
+    ],
+    ollama: [
+        { id: "qwen2.5-coder:7b", label: "Qwen2.5-Coder 7B", provider: "ollama", byok: true },
+        { id: "qwen2.5-coder:32b", label: "Qwen2.5-Coder 32B", provider: "ollama", byok: true },
+        { id: "codellama:7b", label: "CodeLlama 7B", provider: "ollama", byok: true },
+    ],
+};
 
 // ─── Component ──────────────────────────────────────────────────────
 
@@ -74,6 +108,39 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
     const engineRef = useRef<ArchitectEngine | null>(null);
     const [selectedModel, setSelectedModel] = useState("llama-3.3-70b-versatile");
     const [showModelDropdown, setShowModelDropdown] = useState(false);
+    const [byokConfig, setByokConfig] = useState<AIKeyConfig | null>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Load BYOK config on mount
+    useEffect(() => {
+        try {
+            const config = loadAIConfig();
+            setByokConfig(config);
+        } catch { /* no config */ }
+    }, []);
+
+    // Close model dropdown on outside click
+    useEffect(() => {
+        if (!showModelDropdown) return;
+        const handleClick = (e: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+                setShowModelDropdown(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClick);
+        return () => document.removeEventListener("mousedown", handleClick);
+    }, [showModelDropdown]);
+
+    // Build dynamic model list: BYOK models first (if configured), then free models
+    const availableModels = useMemo(() => {
+        const models: ModelOption[] = [];
+        if (byokConfig?.apiKey && byokConfig.provider) {
+            const byokModels = BYOK_MODELS[byokConfig.provider];
+            if (byokModels) models.push(...byokModels);
+        }
+        models.push(...FREE_MODELS);
+        return models;
+    }, [byokConfig]);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -174,73 +241,72 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
             // ─── Run Architect Engine ───────────────────────
             const engine = getEngine();
 
-            // Subscribe to state changes for message updates
-            const originalOnState = engine["callbacks"].onStateChange;
-            engine["callbacks"].onStateChange = (status: ArchitectStatus) => {
-                originalOnState(status);
+            // Update engine callbacks for this generation run
+            engine.updateCallbacks({
+                onStateChange: (status: ArchitectStatus) => {
+                    setArchitectStatus({ ...status });
+                    const stateMsg = getStateMessage(status);
+                    setMessages((prev) =>
+                        prev.map((m) =>
+                            m.id === thinkingId
+                                ? { ...m, content: stateMsg, state: status.state }
+                                : m
+                        )
+                    );
+                },
+                onExplanation: (explanation: string) => {
+                    setMessages((prev) =>
+                        prev.map((m) =>
+                            m.id === thinkingId
+                                ? {
+                                    ...m,
+                                    content: `Generation complete.\n\n${explanation}`,
+                                    codeGenerated: true,
+                                    state: "CLEAN",
+                                }
+                                : m
+                        )
+                    );
+                },
+                onFilesGenerated: (files: Record<string, string>) => {
+                    const status = engine.getStatus();
+                    const fileCount = Object.keys(files).length;
+                    const wasClean = status.state === "CLEAN";
 
-                // Update thinking message based on state
-                const stateMsg = getStateMessage(status);
-                setMessages((prev) =>
-                    prev.map((m) =>
-                        m.id === thinkingId
-                            ? { ...m, content: stateMsg, state: status.state }
-                            : m
-                    )
-                );
-            };
+                    setMessages((prev) =>
+                        prev.map((m) =>
+                            m.id === thinkingId
+                                ? {
+                                    ...m,
+                                    content: wasClean
+                                        ? `${fileCount} module(s) synthesized. Clean build.${status.attempt > 0 ? ` (${status.attempt} correction(s) applied)` : ""}`
+                                        : `${fileCount} module(s) generated with ${status.errors.length} remaining issue(s) after ${status.attempt} correction attempt(s).`,
+                                    codeGenerated: true,
+                                    state: status.state,
+                                }
+                                : m
+                        )
+                    );
 
-            engine["callbacks"].onExplanation = (explanation: string) => {
-                setMessages((prev) =>
-                    prev.map((m) =>
-                        m.id === thinkingId
-                            ? {
-                                ...m,
-                                content: `Generation complete.\n\n${explanation}`,
-                                codeGenerated: true,
-                                state: "CLEAN",
-                            }
-                            : m
-                    )
-                );
-            };
+                    onGenerate(files);
+                },
+                onError: (error: string) => {
+                    setMessages((prev) =>
+                        prev.map((m) =>
+                            m.id === thinkingId
+                                ? {
+                                    ...m,
+                                    content: `Generation issue:\n${error}`,
+                                    state: "FAILED",
+                                }
+                                : m
+                        )
+                    );
+                },
+            });
 
-            engine["callbacks"].onFilesGenerated = (files: Record<string, string>) => {
-                const status = engine.getStatus();
-                const fileCount = Object.keys(files).length;
-                const wasClean = status.state === "CLEAN";
-
-                setMessages((prev) =>
-                    prev.map((m) =>
-                        m.id === thinkingId
-                            ? {
-                                ...m,
-                                content: wasClean
-                                    ? `${fileCount} module(s) synthesized. Clean build.${status.attempt > 0 ? ` (${status.attempt} correction(s) applied)` : ""}`
-                                    : `${fileCount} module(s) generated with ${status.errors.length} remaining issue(s) after ${status.attempt} correction attempt(s).`,
-                                codeGenerated: true,
-                                state: status.state,
-                            }
-                            : m
-                    )
-                );
-
-                onGenerate(files);
-            };
-
-            engine["callbacks"].onError = (error: string) => {
-                setMessages((prev) =>
-                    prev.map((m) =>
-                        m.id === thinkingId
-                            ? {
-                                ...m,
-                                content: `Generation issue:\n${error}`,
-                                state: "FAILED",
-                            }
-                            : m
-                    )
-                );
-            };
+            const selectedModelInfo = availableModels.find(m => m.id === selectedModel);
+            const isByok = selectedModelInfo?.byok && byokConfig?.apiKey;
 
             await engine.generate(
                 userMessage.content,
@@ -248,8 +314,8 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
                 runtimeLogs,
                 researchContext || undefined,
                 {
-                    provider: AVAILABLE_MODELS.find(m => m.id === selectedModel)?.provider || "groq",
-                    apiKey: "",
+                    provider: selectedModelInfo?.provider || "groq",
+                    apiKey: isByok ? byokConfig!.apiKey : "",
                     model: selectedModel,
                 }
             );
@@ -370,35 +436,52 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
                     </Button>
 
                     {/* Model selector — inside textbox, bottom-left */}
-                    <div className="absolute bottom-2 left-2 z-10">
+                    <div className="absolute bottom-2 left-2 z-10" ref={dropdownRef}>
                         <div className="relative">
                             <button
                                 onClick={() => setShowModelDropdown(!showModelDropdown)}
                                 className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono text-muted-foreground hover:text-foreground transition-colors bg-muted/40 hover:bg-muted/70 border border-border/30"
                             >
-                                {AVAILABLE_MODELS.find(m => m.id === selectedModel)?.label || selectedModel}
+                                {availableModels.find(m => m.id === selectedModel)?.label || selectedModel}
                                 <ChevronDown size={8} className={cn("transition-transform", showModelDropdown && "rotate-180")} />
                             </button>
 
                             {showModelDropdown && (
-                                <div className="absolute bottom-full left-0 mb-1 w-52 rounded-md border border-border bg-popover shadow-lg z-50 py-1">
-                                    {AVAILABLE_MODELS.map((model) => (
-                                        <button
-                                            key={model.id}
-                                            onClick={() => {
-                                                setSelectedModel(model.id);
-                                                setShowModelDropdown(false);
-                                            }}
-                                            className={cn(
-                                                "w-full text-left px-3 py-1.5 text-[11px] font-mono transition-colors",
-                                                selectedModel === model.id
-                                                    ? "bg-primary/10 text-primary"
-                                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                                            )}
-                                        >
-                                            {model.label}
-                                        </button>
-                                    ))}
+                                <div className="absolute bottom-full left-0 mb-1 w-56 rounded-md border border-border bg-popover shadow-lg z-50 py-1 max-h-64 overflow-auto">
+                                    {byokConfig?.apiKey && (
+                                        <div className="px-3 py-1 text-[9px] font-bold uppercase tracking-wider text-purple-400/60 border-b border-border/30 mb-0.5">
+                                            Your Models ({byokConfig.provider})
+                                        </div>
+                                    )}
+                                    {availableModels.map((model, i) => {
+                                        const isFirstFree = model === FREE_MODELS[0] && byokConfig?.apiKey;
+                                        return (
+                                            <React.Fragment key={model.id + (model.byok ? "-byok" : "")}>
+                                                {isFirstFree && (
+                                                    <div className="px-3 py-1 text-[9px] font-bold uppercase tracking-wider text-zinc-500 border-t border-border/30 mt-0.5">
+                                                        Free Models
+                                                    </div>
+                                                )}
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedModel(model.id);
+                                                        setShowModelDropdown(false);
+                                                    }}
+                                                    className={cn(
+                                                        "w-full text-left px-3 py-1.5 text-[11px] font-mono transition-colors flex items-center gap-2",
+                                                        selectedModel === model.id
+                                                            ? "bg-primary/10 text-primary"
+                                                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                                    )}
+                                                >
+                                                    <span className="flex-1">{model.label}</span>
+                                                    {model.byok && (
+                                                        <span className="text-[8px] text-purple-400 bg-purple-500/10 px-1 py-0.5 rounded uppercase tracking-wider font-bold">key</span>
+                                                    )}
+                                                </button>
+                                            </React.Fragment>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>

@@ -9,7 +9,7 @@ export async function GET(_req: NextRequest) {
   const target = "https://airdrops.io/speculative/solana/";
 
   // MOCK_MODE: return deterministic items to avoid upstream flakiness in CI
-  const mockMode = String(process.env.MOCK_MODE || "").toLowerCase() === "true";
+  const mockMode = process.env.NODE_ENV !== "production" && String(process.env.MOCK_MODE || "").toLowerCase() === "true";
   if (mockMode) {
     const items = [
       {

@@ -7,6 +7,9 @@
  * Each stub returns interface-conformant data matching the SDK's typed interfaces
  * so Mini-App preview rendering never breaks.
  *
+ * When a wallet is connected, read-only stubs (quotes, yield data) fetch
+ * real data from live APIs, falling back to mocks on failure.
+ *
  * [Phase 2] — Iframe Bridge Fix
  */
 
@@ -71,7 +74,24 @@ export function stubMCPCall(params: { serverUrl: string; tool: string; params?: 
 
 // ─── Jupiter Swap ───────────────────────────────────────────────────
 
-export function stubJupiterQuote(params: { inputMint: string; outputMint: string; amount: string; slippageBps?: number }) {
+export async function stubJupiterQuote(params: { inputMint: string; outputMint: string; amount: string; slippageBps?: number }, liveMode = false) {
+    // When liveMode is true, fetch a real quote from Jupiter
+    if (liveMode) {
+        try {
+            const slippage = params.slippageBps ?? 50;
+            const url = `https://lite-api.jup.ag/swap/v1/quote?inputMint=${params.inputMint}&outputMint=${params.outputMint}&amount=${params.amount}&slippageBps=${slippage}`;
+            const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+            if (res.ok) {
+                const quote = await res.json();
+                return quote;
+            }
+            // Fall through to mock on non-OK response
+        } catch {
+            // Fall through to mock on network error
+        }
+    }
+
+    // Mock fallback
     const inAmount = params.amount || "1000000";
     const mockRate = 23.42; // SOL/USDC approximate
     const outAmount = String(Math.floor(parseFloat(inAmount) * mockRate));
@@ -150,29 +170,40 @@ export function stubTaxForensics(params: { since?: string }) {
 
 // ─── Yield Optimizer ────────────────────────────────────────────────
 
-export function stubYieldOptimize(params: { asset: string }) {
+export async function stubYieldOptimize(params: { asset: string }, liveMode = false) {
+    // Live mode: try to fetch real yield data from DeFi Llama
+    if (liveMode) {
+        try {
+            const res = await fetch("https://yields.llama.fi/pools", { signal: AbortSignal.timeout(8000) });
+            if (res.ok) {
+                const data = await res.json();
+                const pools = (data.data || [])
+                    .filter((p: any) => {
+                        const sym = params.asset.toUpperCase();
+                        return p.chain === "Solana" && p.symbol?.toUpperCase().includes(sym) && p.apy > 0;
+                    })
+                    .sort((a: any, b: any) => (b.apy || 0) - (a.apy || 0))
+                    .slice(0, 5);
+
+                if (pools.length > 0) {
+                    return pools.map((p: any) => ({
+                        protocol: p.project || "Unknown",
+                        apy: Math.round((p.apy || 0) * 100) / 100,
+                        riskScore: p.ilRisk === "no" ? 10 : 30,
+                        tvl: Math.round(p.tvlUsd || 0),
+                        instructions: [],
+                    }));
+                }
+            }
+        } catch {
+            // Fall through to mock
+        }
+    }
+
     return [
-        {
-            protocol: "Marinade (mSOL)",
-            apy: 7.2,
-            riskScore: 15,
-            tvl: 2_400_000_000,
-            instructions: [],
-        },
-        {
-            protocol: "Jito MEV",
-            apy: 8.4,
-            riskScore: 25,
-            tvl: 1_800_000_000,
-            instructions: [],
-        },
-        {
-            protocol: "Kamino kSOL",
-            apy: 6.9,
-            riskScore: 20,
-            tvl: 950_000_000,
-            instructions: [],
-        },
+        { protocol: "Marinade (mSOL)", apy: 7.2, riskScore: 15, tvl: 2_400_000_000, instructions: [] },
+        { protocol: "Jito MEV", apy: 8.4, riskScore: 25, tvl: 1_800_000_000, instructions: [] },
+        { protocol: "Kamino kSOL", apy: 6.9, riskScore: 20, tvl: 950_000_000, instructions: [] },
     ];
 }
 

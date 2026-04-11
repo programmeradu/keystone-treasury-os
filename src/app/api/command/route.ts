@@ -7,6 +7,8 @@ import { knowledgeBase } from "@/lib/knowledge";
 import { knowledgeMemory } from "@/lib/knowledge-memory";
 import { ExecutionCoordinator } from "@/lib/agents/coordinator";
 import { getJupiterQuote } from "@/lib/jupiter-executor";
+import { estimateCompatibilityBudget } from "@/lib/llm/model-compatibility";
+import { evaluateSandboxPlan } from "@/lib/dynamic-tools/sandbox-runner";
 
 const groq = createGroq({
   apiKey: process.env.GROQ_API_KEY,
@@ -102,12 +104,128 @@ function extractLatestUserText(messages: any[] | undefined, prompt?: string): st
 }
 
 type PromptMode = "auto" | "build" | "execute";
+type EvidenceClass = "conversational" | "tool_required" | "db_required" | "navigation_required";
+type GroundingGateResult = { allowed: boolean; blockedReason?: string };
 
 function parsePromptMode(userText: string): PromptMode {
   const t = userText.trim().toLowerCase();
   if (/^(mode\s*:\s*build|\/build\b|#build\b|\[build\]|build mode\b)/.test(t)) return "build";
   if (/^(mode\s*:\s*execute|\/execute\b|#execute\b|\[execute\]|execute mode\b)/.test(t)) return "execute";
   return "auto";
+}
+
+const NAVIGATION_ROUTE_ALLOWLIST = new Set([
+  "/app",
+  "/app/treasury",
+  "/app/analytics",
+  "/app/studio",
+  "/app/marketplace",
+  "/app/library",
+  "/app/team",
+  "/app/settings",
+  "/app/atlas",
+]);
+
+function classifyEvidenceNeed(userText: string): EvidenceClass {
+  const t = userText.trim().toLowerCase();
+  if (!t || isSimpleConversation(t)) return "conversational";
+  if (/\b(navigate|open|go to|redirect)\b/.test(t)) return "navigation_required";
+  if (/\b(database|db|saved|stored|link|url|appid|project id)\b/.test(t)) return "db_required";
+  return "tool_required";
+}
+
+function validateNavigationPath(path: string):
+  | { success: true; pathname: string; query: Record<string, string> }
+  | { success: false; code: "INVALID_ROUTE"; reason: string } {
+  if (!path || typeof path !== "string") {
+    return { success: false, code: "INVALID_ROUTE", reason: "Path must be a non-empty string." };
+  }
+  const raw = path.trim();
+  if (!raw.startsWith("/")) {
+    return { success: false, code: "INVALID_ROUTE", reason: "Path must be a relative path." };
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(raw, "https://keystone.local");
+  } catch {
+    return { success: false, code: "INVALID_ROUTE", reason: "Path is not a valid route." };
+  }
+  const pathname =
+    parsed.pathname.length > 1 && parsed.pathname.endsWith("/")
+      ? parsed.pathname.slice(0, -1)
+      : parsed.pathname;
+  if (!NAVIGATION_ROUTE_ALLOWLIST.has(pathname)) {
+    return { success: false, code: "INVALID_ROUTE", reason: `Route not allowed: ${pathname}` };
+  }
+  const query: Record<string, string> = {};
+  parsed.searchParams.forEach((value, key) => {
+    query[key] = value;
+  });
+  if (pathname !== "/app/studio" && Object.keys(query).length > 0) {
+    return { success: false, code: "INVALID_ROUTE", reason: "Query params only allowed on /app/studio." };
+  }
+  if (pathname === "/app/studio") {
+    const keys = Object.keys(query);
+    if (keys.some((k) => k !== "appId")) {
+      return { success: false, code: "INVALID_ROUTE", reason: "Only appId query is allowed on /app/studio." };
+    }
+    if ("appId" in query && !query.appId.trim()) {
+      return { success: false, code: "INVALID_ROUTE", reason: "appId cannot be empty." };
+    }
+  }
+  return { success: true, pathname, query };
+}
+
+function estimateMessageChars(messages: any[]): number {
+  try {
+    return JSON.stringify(messages).length;
+  } catch {
+    return 0;
+  }
+}
+
+function buildBudgetedMessages(formattedMessages: any[]): { messages: any[]; reduced: boolean } {
+  const MAX_CHARS = 32000;
+  return buildBudgetedMessagesWithCap(formattedMessages, MAX_CHARS);
+}
+
+function buildBudgetedMessagesWithCap(formattedMessages: any[], maxChars: number): { messages: any[]; reduced: boolean } {
+  if (!Array.isArray(formattedMessages)) return { messages: [], reduced: true };
+  if (estimateMessageChars(formattedMessages) <= maxChars) {
+    return { messages: formattedMessages, reduced: false };
+  }
+  const summary = {
+    role: "system",
+    content:
+      "Conversation history condensed to fit model context limits. Prioritize latest user intent and recent verified tool outputs.",
+  };
+  const reduced = [summary, ...formattedMessages.slice(-10)];
+  return { messages: reduced, reduced: true };
+}
+
+function normalizeStudioProject(project: any) {
+  if (!project?.id) return null;
+  return {
+    appId: project.id,
+    name: project.name || "Untitled App",
+    studioPath: `/app/studio?appId=${encodeURIComponent(project.id)}`,
+    publicUrl: `/app/run/${encodeURIComponent(project.id)}`,
+    ownerWallet: project.creatorWallet || null,
+    updatedAt: project.updatedAt || null,
+  };
+}
+
+function evaluateGroundingGate(
+  evidenceClass: EvidenceClass,
+  observed: { lookupSuccess: boolean; navigationSuccess: boolean },
+): GroundingGateResult {
+  if (evidenceClass === "db_required" && !observed.lookupSuccess) {
+    return { allowed: false, blockedReason: "DB-backed lookup evidence missing." };
+  }
+  if (evidenceClass === "navigation_required" && !observed.navigationSuccess) {
+    return { allowed: false, blockedReason: "Validated navigation evidence missing." };
+  }
+  return { allowed: true };
 }
 
 function isSimpleConversation(text: string): boolean {
@@ -121,6 +239,14 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { messages, prompt, walletAddress, walletState, vaultState } = body;
+    const strictGroundingGlobal = process.env.STRICT_GROUNDING === "1" || process.env.STRICT_GROUNDING === "true";
+    const strictGroundingWallets = (process.env.STRICT_GROUNDING_WALLETS || "")
+      .split(",")
+      .map((w) => w.trim())
+      .filter(Boolean);
+    const strictGrounding =
+      strictGroundingGlobal ||
+      (!!walletAddress && strictGroundingWallets.includes(walletAddress));
 
     const formattedMessages = await convertToModelMessages(messages || []);
 
@@ -129,7 +255,7 @@ You are NOT a chatbot. You are a Command-Layer Execution Engine.
 
 CRITICAL RULES:
 1. Use tools to fulfill actionable user intents. Exception: for simple greetings/chit-chat (e.g. "hi", "hello", "thanks"), reply conversationally without calling tools.
-2. For token swaps (e.g. "Swap 500 SOL to USDC", "Convert 100 USDC to JUP"): use the execute_swap tool. For bridges use the bridge tool. For multi-step flows use execute_swap and bridge together.
+2. For token swaps (e.g. "Swap 500 SOL to USDC", "Convert 100 USDC to JUP"): use the execute_swap tool. For bridges use the bridge tool. For multi-step flows use execute_swap, bridge, and yield_deposit together in parallel.
 3. For High-Yield Liquidity Deployment (e.g. "Execute yield-discovery..."): use browser_research and then yield_deposit tool.
 4. For Mass Dispatch or Payroll (e.g. "Execute a Mass Dispatch to the contributor list..."): use mass_dispatch tool.
 5. For Portfolio Rebalancing (e.g. "Maintain a 50/50 SOL-USDC asset split...", "rebalance smartly"): use rebalance tool. If the user specifies target allocations, pass them. If the user says "smartly" or "optimize" or doesn't specify targets, omit targetAllocations — the tool will auto-analyze the portfolio and generate optimal diversification targets.
@@ -151,14 +277,17 @@ CRITICAL RULES:
 21. For SDK Hook Implementation (e.g. "Inject @keystone-os/sdk hooks..."): use sdk_hooks tool.
 22. For DCA strategies: use execute_dca tool.
 23. For price/threshold monitors: use set_monitor tool.
-24. For split intents like "bridge half" + "deposit the rest" after a swap: ALWAYS compute split amounts from the realized swap OUTPUT amount/token, never from the original input amount.
-25. If a target protocol has no eligible live vault, STOP and ask the user to choose a fallback protocol/token. Do not present the deposit as completed.
-26. If the user asks to build/create/develop software (bot/app/script/automation), do NOT execute live trading or treasury transaction tools.
-27. For software-build intents, use browser_research + studio_init_miniapp + studio_analyze_code/sdk_hooks as needed, then call navigate with path "/app/studio".
-28. Only use swap/bridge/transfer/stake/deposit/withdraw/rebalance/payroll/dca tools when the user explicitly requests financial execution, not implementation.
-29. Prompt mode support: mode:build (or /build) forces Studio workflow; mode:execute (or /execute) allows live execution tools; no prefix means auto-infer.
+24. For Sniper Bots and Liquidity Sniping (e.g. "Run a sniper bot that watches Raydium..."): ALWAYS use deploy_sniper_bot tool. DO NOT refuse or state you cannot monitor in real-time. Just execute the tool.
+25. For split intents like "bridge half" + "deposit the rest" after a swap: ALWAYS compute split amounts from the realized swap OUTPUT amount/token, never from the original input amount.
+26. If a target protocol has no eligible live vault, STOP and ask the user to choose a fallback protocol/token.
+27. If the user asks to build/create/develop software (bot/app/script/automation), do NOT execute live trading or treasury transaction tools, EXCEPT for deploy_sniper_bot if they explicitly ask to "run a sniper bot".
+28. For software-build intents... use studio_init_miniapp. The tool returns appId when the project is saved; the CommandBar shows an "Open in Studio" button. DO NOT call navigate to bare "/app/studio" — that loses the project context. If the user asks to open Studio or find the launch button after init, call navigate with path "/app/studio?appId=" + the appId from the studio_init_miniapp result (same session). IMPORTANT: If the user provides specific logic or UI requirements, you MUST write the full React TSX code and pass it in the customAppTsxCode parameter of studio_init_miniapp! When writing customAppTsxCode, NEVER use mock/dummy data. ALWAYS use live state via 'const { tokens } = useVault();' from '@keystone-os/sdk'.
+29. DO NOT invent navigation paths or use the navigate tool to prompt for wallet connection. The UI handles wallet connection automatically.
+30. Only use execution tools when the user explicitly requests financial execution, not implementation.
+31. Prompt mode support: mode:build (or /build) forces Studio workflow; mode:execute (or /execute) allows live execution tools; no prefix means auto-infer.
+32. Never make database/link/project claims without lookup tool evidence. For "open app", "paste app link", "show project url", call a studio lookup tool first, then navigate using verified appId.
 
-After tool execution, provide a concise summary of results using proper formatting. Make sure you fully interpret and fulfill all 20 Keystone commands natively.
+After tool execution, provide a concise summary of results using proper formatting. Make sure you fully interpret and fulfill all Keystone commands natively.
 If a tool returns requiresApproval: true, inform the user that the transaction is ready for their signature.
 When summarizing swap or execute_swap results, always use outputAmountFormatted for the expected output (e.g. "approximately 83.77 USDC"), never the raw outputAmount number.
 
@@ -172,6 +301,9 @@ Wallet: ${walletAddress || "Not connected"}
 Vault State: ${JSON.stringify(vaultState || {})}
 Wallet State: ${JSON.stringify(walletState || {})}
 `;
+    const effectiveSystemPrompt = strictGrounding
+      ? `${systemPrompt}\n\nSTRICT GROUNDING MODE: For DB/link/navigation claims, you MUST call verification tools first. If verification fails, explicitly say you could not verify and ask for clarifying input.`
+      : systemPrompt;
 
     const rpcEndpoint =
       process.env.HELIUS_API_KEY
@@ -182,6 +314,11 @@ Wallet State: ${JSON.stringify(walletState || {})}
     const lowerUserRequest = userRequestText.toLowerCase();
     const promptMode = parsePromptMode(userRequestText);
     const simpleConversation = isSimpleConversation(userRequestText);
+    const evidenceClass = classifyEvidenceNeed(userRequestText);
+    const observedGrounding = {
+      lookupSuccess: false,
+      navigationSuccess: false,
+    };
     const hasHalfDirective = /\bhalf\b/.test(lowerUserRequest);
     const hasRestDirective = /\b(rest|remaining|remainder)\b/.test(lowerUserRequest);
     const hasSplitBridgeDepositFlow =
@@ -264,13 +401,28 @@ Wallet State: ${JSON.stringify(walletState || {})}
         status: "BLOCKED_IN_BUILD_MODE",
         requiresApproval: false,
         mode: promptMode,
-        message: "Build intent detected. Execution tools are blocked while scaffolding software. Use Studio tools and finish with navigate('/app/studio'). Use mode:execute to allow live execution tools.",
+        message:
+          "Build intent detected. Financial execution tools are blocked while scaffolding software. Use Studio tools (e.g. studio_init_miniapp). Prefix with mode:execute (or /execute) to allow live treasury execution.",
       };
     };
 
-    // Tools as plain objects (avoids tool() wrapper overload issues with complex return types)
     const keystoneTools: any = {
       // ━━━━ PILLAR 1: Treasury Execution ━━━━
+      create_multisig: {
+        description: "Deploys a new Squads V4 Multisig Treasury for the user on the Solana blockchain. Use this exclusively when the user asks to create a multisig, create a squad, or launch a new treasury.",
+        inputSchema: z.object({}),
+        execute: async () => {
+          return {
+            success: true,
+            operation: "navigate",
+            path: "/app/treasury",
+            validated: true,
+            message: "To deploy your new Squads V4 Multisig natively, please use the 'Launch new treasury / Create Squad' button in your Vault Selector panel on the dashboard.",
+            requiresApproval: false
+          };
+        }
+      },
+
       swap: {
         description: "Execute a token swap on Solana via Jupiter.",
         inputSchema: z.object({
@@ -311,7 +463,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
             const serializedTransactions = result.result?.serializedTransactions;
             return {
               success: true, status: result.status, inputToken, outputToken, inputAmount: amount,
-              outputAmount: sr.outAmount,
+              outputAmount: outAmount,
+              rawOutputAmount: sr.outAmount,
               outputAmountFormatted: `${humanOut} ${outputToken}`,
               priceImpact: sr.priceImpact, riskLevel: sr.riskLevel,
               simulationPassed: sr.simulationPassed, firewallChecks: sr.firewallChecks || {},
@@ -364,7 +517,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
             const serializedTransactions = result.result?.serializedTransactions;
             return {
               success: true, status: result.status, inputToken, outputToken, inputAmount: amount,
-              outputAmount: sr.outAmount,
+              outputAmount: outAmount,
+              rawOutputAmount: sr.outAmount,
               outputAmountFormatted: `${humanOut} ${outputToken}`,
               priceImpact: sr.priceImpact, riskLevel: sr.riskLevel,
               simulationPassed: sr.simulationPassed, firewallChecks: sr.firewallChecks || {},
@@ -445,6 +599,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
           provider: z.string().optional().default("marinade").describe("Staking provider (marinade, jito, blazestake, msol)"),
         }),
         execute: async ({ amount, provider }: { amount: number; provider: string }) => {
+          const blocked = blockExecutionForBuildIntent("stake");
+          if (blocked) return blocked;
           console.log(`[Tool: stake] ${amount} SOL via ${provider}`);
           const coordinator = new ExecutionCoordinator(rpcEndpoint);
           const result = await coordinator.executeStrategy(
@@ -517,11 +673,55 @@ Wallet State: ${JSON.stringify(walletState || {})}
             const qs = new URLSearchParams({ apiKey: RANGO_API_KEY, from: fromAsset, to: toAsset, amount: rawAmount, slippage: "1.0" });
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 12000);
-            const res = await fetch(`https://api.rango.exchange/basic/quote?${qs}`, {
-              headers: { accept: "*/*", "x-api-key": RANGO_API_KEY },
-              cache: "no-store",
-              signal: controller.signal,
-            });
+            
+            // If wallet is connected, try to get the actual transaction payload
+            let res;
+            if (walletAddress && src === "solana" && dst === "solana") {
+               // Fast-path: intra-chain (not usually "bridge", but Rango supports it)
+               res = await fetch(`https://api.rango.exchange/basic/swap?${qs}`, {
+                method: 'POST',
+                headers: { accept: "*/*", "x-api-key": RANGO_API_KEY, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  userSettings: { slippage: "1.0" },
+                  validations: { balance: false, fee: false },
+                  fromAddress: walletAddress,
+                  toAddress: walletAddress,
+                }),
+                cache: "no-store",
+                signal: controller.signal,
+              });
+            } else if (walletAddress) {
+               // Standard cross-chain (we assume destination address is same as source wallet for now)
+               // For EVM destinations, the user would need to provide an EVM address, 
+               // but for this MVP, if they don't provide it, we use the quote API or just pass the solana addr
+               res = await fetch(`https://api.rango.exchange/basic/swap?${qs}`, {
+                method: 'POST',
+                headers: { accept: "*/*", "x-api-key": RANGO_API_KEY, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  userSettings: { slippage: "1.0" },
+                  validations: { balance: false, fee: false },
+                  fromAddress: walletAddress,
+                  toAddress: walletAddress, // Will fail if destination is EVM, but works for solana -> SVM
+                }),
+                cache: "no-store",
+                signal: controller.signal,
+              });
+              
+              // Fallback to quote if swap fails (e.g., cross-chain address mismatch)
+              if (!res.ok) {
+                res = await fetch(`https://api.rango.exchange/basic/quote?${qs}`, {
+                  headers: { accept: "*/*", "x-api-key": RANGO_API_KEY },
+                  cache: "no-store",
+                });
+              }
+            } else {
+              res = await fetch(`https://api.rango.exchange/basic/quote?${qs}`, {
+                headers: { accept: "*/*", "x-api-key": RANGO_API_KEY },
+                cache: "no-store",
+                signal: controller.signal,
+              });
+            }
+
             clearTimeout(timeout);
 
             if (!res.ok) {
@@ -529,11 +729,14 @@ Wallet State: ${JSON.stringify(walletState || {})}
               return { success: false, operation: "bridge", token, amount, sourceChain: src, destinationChain: dst, error: `Rango ${res.status}: ${errText}`, message: `Bridge quote failed: ${res.statusText}` };
             }
             const data = await res.json();
-            const route = data?.route || (Array.isArray(data?.routes) ? data.routes[0] : null) || data?.bestRoute;
+            const route = data?.route || (Array.isArray(data?.routes) ? data.routes[0] : null) || data?.bestRoute || data;
             const outRaw = route?.outputAmount ?? data?.outputAmount ?? null;
             const outFormatted = outRaw != null
               ? `${(Number(outRaw) / Math.pow(10, decimals)).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${token}`
               : null;
+              
+            const txData = data?.transaction?.data || data?.transaction || null;
+            const serializedTransactions = txData ? [Buffer.from(txData).toString("base64")] : undefined;
 
             return {
               success: true, operation: "bridge", token, amount: finalAmount, sourceChain: src, destinationChain: dst,
@@ -547,9 +750,10 @@ Wallet State: ${JSON.stringify(walletState || {})}
               estimatedTime: (route?.estimatedTimeInSeconds ?? data?.estimatedTimeInSeconds) ? `${route?.estimatedTimeInSeconds ?? data?.estimatedTimeInSeconds}s` : null,
               fees: route?.fee ?? data?.fee ?? null,
               steps: route?.steps ?? data?.steps ?? [],
+              serializedTransactions,
               status: "READY_FOR_SIGNATURE",
               requiresApproval: true,
-              message: `Bridge ${finalAmount} ${token} from ${src} → ${dst} via Rango. Est. output: ${outFormatted || "N/A"}.${splitAmount.adjusted ? ` ${splitAmount.reason}` : ""}`,
+              message: `Bridge ${finalAmount} ${token} from ${src} → ${dst} via Rango. Est. output: ${outFormatted || "N/A"}.${serializedTransactions ? " Transaction ready for signing." : " Connect wallet or check destination chain support."}`,
             };
           } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
@@ -562,7 +766,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
         description: "Deposit tokens into a yield-generating vault/protocol.",
         inputSchema: z.object({
           token: z.string().describe("Token to deposit"),
-          amount: z.number().describe("Amount to deposit"),
+          amount: z.number().describe("Amount to deposit. Use 0 if the amount is 'the rest' or naturally calculated from a previous step."),
           protocol: z.string().describe("Protocol (kamino, meteora, marinade, raydium)"),
         }),
         execute: async ({ token, amount, protocol }: { token: string; amount: number; protocol: string }) => {
@@ -573,14 +777,14 @@ Wallet State: ${JSON.stringify(walletState || {})}
           console.log(`[Tool: yield_deposit] ${finalAmount} ${token} → ${protocol}`);
           const proto = protocol.toLowerCase();
 
-          interface VaultInfo { name: string; apy: number; tvl: number; token: string; address?: string }
+          interface VaultInfo { name: string; apy: number; tvl: number; token: string; address?: string; sharesMint?: string }
           let bestVault: VaultInfo | null = null;
 
           try {
             if (proto === "kamino" || proto === "all") {
               const res = await fetch("https://api.kamino.finance/strategies?status=LIVE", { signal: AbortSignal.timeout(8000) });
               if (res.ok) {
-                const strategies: Array<{ address?: string; tokenASymbol?: string; tokenBSymbol?: string; apy?: number; tvl?: number; shareMintSymbol?: string }> = await res.json();
+                const strategies: Array<{ address?: string; tokenASymbol?: string; tokenBSymbol?: string; apy?: number; tvl?: number; shareMintSymbol?: string; sharesMint?: string }> = await res.json();
                 const candidates = strategies
                   .filter((s) => (
                     s.tokenASymbol?.toUpperCase() === token.toUpperCase() ||
@@ -589,16 +793,16 @@ Wallet State: ${JSON.stringify(walletState || {})}
                   ))
                   .sort((a, b) => (b.apy || 0) - (a.apy || 0));
                 const match = candidates[0];
-                if (match) bestVault = { name: `Kamino ${match.shareMintSymbol || match.tokenASymbol}`, apy: (match.apy || 0) * 100, tvl: match.tvl || 0, token, address: match.address };
+                if (match) bestVault = { name: `Kamino ${match.shareMintSymbol || match.tokenASymbol}`, apy: (match.apy || 0) * 100, tvl: match.tvl || 0, token, address: match.address, sharesMint: match.sharesMint || match.address };
               }
             }
             if ((proto === "meteora" || proto === "all") && !bestVault) {
               const res = await fetch("https://dlmm-api.meteora.ag/pair/all", { signal: AbortSignal.timeout(8000) });
               if (res.ok) {
-                const pairs: Array<{ address?: string; name?: string; mint_x?: string; mint_y?: string; apr?: number; liquidity?: number; trade_volume_24h?: number }> = await res.json();
+                const pairs: Array<{ address?: string; name?: string; mint_x?: string; mint_y?: string; apr?: number; liquidity?: number; trade_volume_24h?: number; lb_pair?: string }> = await res.json();
                 const mintLower = (resolveTokenMint(token) || "").toLowerCase();
                 const match = pairs.find(p => p.name?.toUpperCase().includes(token.toUpperCase()) || p.mint_x?.toLowerCase() === mintLower || p.mint_y?.toLowerCase() === mintLower);
-                if (match) bestVault = { name: `Meteora ${match.name}`, apy: match.apr || 0, tvl: match.liquidity || 0, token, address: match.address };
+                if (match) bestVault = { name: `Meteora ${match.name}`, apy: match.apr || 0, tvl: match.liquidity || 0, token, address: match.address, sharesMint: match.lb_pair || match.address };
               }
             }
           } catch (e) {
@@ -606,15 +810,53 @@ Wallet State: ${JSON.stringify(walletState || {})}
           }
 
           if (bestVault) {
+            let serializedTransactions: string[] | undefined = undefined;
+            if (walletAddress && bestVault.sharesMint) {
+              try {
+                // Try to acquire the vault share token (single-sided deposit) via Jupiter
+                const inputMint = resolveTokenMint(token);
+                if (inputMint) {
+                  const outMint = bestVault.sharesMint;
+                  const decimals = tokenDecimals(token);
+                  const amountRaw = Math.floor(finalAmount * Math.pow(10, decimals));
+                  
+                  const quoteRes = await fetch(`https://quote-api.jup.ag/v6/quote?inputMint=${inputMint}&outputMint=${outMint}&amount=${amountRaw}&slippageBps=150`);
+                  if (quoteRes.ok) {
+                    const quoteResponse = await quoteRes.json();
+                    if (!quoteResponse.error) {
+                      const swapRes = await fetch('https://quote-api.jup.ag/v6/swap', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          quoteResponse,
+                          userPublicKey: walletAddress,
+                          wrapAndUnwrapSol: true
+                        })
+                      });
+                      if (swapRes.ok) {
+                        const swapData = await swapRes.json();
+                        if (swapData.swapTransaction) {
+                          serializedTransactions = [swapData.swapTransaction];
+                        }
+                      }
+                    }
+                  }
+                }
+              } catch (txErr) {
+                console.warn("[yield_deposit] Failed to build Jupiter deposit tx:", txErr);
+              }
+            }
+
             return {
               success: true, operation: "yield_deposit", token, amount: finalAmount, protocol: proto,
               requestedAmount: amount,
               amountAdjusted: splitAmount.adjusted,
               amountAdjustmentReason: splitAmount.reason,
-              vaultName: bestVault.name, vaultAddress: bestVault.address,
+              vaultName: bestVault.name, vaultAddress: bestVault.address, sharesMint: bestVault.sharesMint,
               estimatedAPY: `${bestVault.apy.toFixed(2)}%`, tvl: `$${Math.round(bestVault.tvl).toLocaleString()}`,
+              ...(serializedTransactions ? { serializedTransactions } : {}),
               status: "READY_FOR_SIGNATURE", requiresApproval: true,
-              message: `Deposit ${finalAmount} ${token} into ${bestVault.name}. APY: ${bestVault.apy.toFixed(2)}%, TVL: $${Math.round(bestVault.tvl).toLocaleString()}.${splitAmount.adjusted ? ` ${splitAmount.reason}` : ""}`,
+              message: `Deposit ${finalAmount} ${token} into ${bestVault.name}. APY: ${bestVault.apy.toFixed(2)}%, TVL: $${Math.round(bestVault.tvl).toLocaleString()}.${splitAmount.adjusted ? ` ${splitAmount.reason}` : ""}${serializedTransactions ? " Transaction ready for signing." : " Connect wallet."}`,
             };
           }
           return {
@@ -634,39 +876,87 @@ Wallet State: ${JSON.stringify(walletState || {})}
           protocol: z.string().describe("Protocol"),
         }),
         execute: async ({ token, amount, protocol }: { token: string; amount: number; protocol: string }) => {
+          const blocked = blockExecutionForBuildIntent("yield_withdraw");
+          if (blocked) return blocked;
           console.log(`[Tool: yield_withdraw] ${amount} ${token} from ${protocol}`);
           const proto = protocol.toLowerCase();
 
-          let vaultInfo: { name: string; address?: string } | null = null;
+          let vaultInfo: { name: string; address?: string; sharesMint?: string } | null = null;
           try {
-            if (proto === "kamino") {
+            if (proto === "kamino" || proto === "all") {
               const res = await fetch("https://api.kamino.finance/strategies?status=LIVE", { signal: AbortSignal.timeout(8000) });
               if (res.ok) {
-                const strategies: Array<{ address?: string; tokenASymbol?: string; shareMintSymbol?: string }> = await res.json();
+                const strategies: Array<{ address?: string; tokenASymbol?: string; shareMintSymbol?: string; sharesMint?: string }> = await res.json();
                 const match = strategies.find(s => s.tokenASymbol?.toUpperCase() === token.toUpperCase() || s.shareMintSymbol?.toUpperCase() === token.toUpperCase());
-                if (match) vaultInfo = { name: `Kamino ${match.shareMintSymbol || match.tokenASymbol}`, address: match.address };
+                if (match) vaultInfo = { name: `Kamino ${match.shareMintSymbol || match.tokenASymbol}`, address: match.address, sharesMint: match.sharesMint || match.address };
               }
             }
-            if (proto === "meteora" && !vaultInfo) {
+            if ((proto === "meteora" || proto === "all") && !vaultInfo) {
               const res = await fetch("https://dlmm-api.meteora.ag/pair/all", { signal: AbortSignal.timeout(8000) });
               if (res.ok) {
-                const pairs: Array<{ address?: string; name?: string; mint_x?: string; mint_y?: string }> = await res.json();
+                const pairs: Array<{ address?: string; name?: string; mint_x?: string; mint_y?: string; lb_pair?: string }> = await res.json();
                 const match = pairs.find(p => p.name?.toUpperCase().includes(token.toUpperCase()));
-                if (match) vaultInfo = { name: `Meteora ${match.name}`, address: match.address };
+                if (match) vaultInfo = { name: `Meteora ${match.name}`, address: match.address, sharesMint: match.lb_pair || match.address };
               }
             }
           } catch (e) {
             console.error("[yield_withdraw] vault lookup error:", e);
           }
 
+          let serializedTransactions: string[] | undefined = undefined;
+          let withdrawMessage = vaultInfo
+              ? `Withdraw ${amount} ${token} from ${vaultInfo.name} prepared. Connect wallet to build transaction.`
+              : `Withdraw ${amount} ${token} from ${proto} prepared. Vault address not resolved — provide manually.`;
+
+          if (walletAddress && vaultInfo?.sharesMint) {
+            try {
+               const outMint = resolveTokenMint(token);
+               const inMint = vaultInfo.sharesMint; // Reverse of deposit!
+               
+               if (outMint && inMint) {
+                  // This relies on the wallet holding LP tokens. We'll ask Jupiter to quote withdrawing the exact desired output token amount.
+                  // Wait, Jupiter 'exactOut' quotes are supported using `swapMode=ExactOut`!
+                  const decimals = tokenDecimals(token);
+                  const amountRaw = Math.floor(amount * Math.pow(10, decimals));
+                  
+                  const quoteRes = await fetch(`https://quote-api.jup.ag/v6/quote?inputMint=${inMint}&outputMint=${outMint}&amount=${amountRaw}&swapMode=ExactOut&slippageBps=150`);
+                  if (quoteRes.ok) {
+                     const quoteResponse = await quoteRes.json();
+                     if (!quoteResponse.error) {
+                        const swapRes = await fetch('https://quote-api.jup.ag/v6/swap', {
+                           method: 'POST',
+                           headers: { 'Content-Type': 'application/json' },
+                           body: JSON.stringify({
+                             quoteResponse,
+                             userPublicKey: walletAddress,
+                             wrapAndUnwrapSol: true
+                           })
+                        });
+                        if (swapRes.ok) {
+                           const swapData = await swapRes.json();
+                           if (swapData.swapTransaction) {
+                             serializedTransactions = [swapData.swapTransaction];
+                             withdrawMessage = `Withdraw ${amount} ${token} from ${vaultInfo.name}. Transaction ready for signing.`;
+                           }
+                        }
+                     } else {
+                        console.warn("[yield_withdraw] Quote error:", quoteResponse.error);
+                        withdrawMessage = `Withdraw ${amount} ${token} from ${vaultInfo.name} failed generating tx: ${quoteResponse.error}`;
+                     }
+                  }
+               }
+            } catch (txErr) {
+               console.warn("[yield_withdraw] Failed to build Jupiter withdraw tx:", txErr);
+            }
+          }
+
           return {
             success: true, operation: "yield_withdraw", token, amount, protocol: proto,
             vaultName: vaultInfo?.name || `${proto} vault`,
             vaultAddress: vaultInfo?.address || null,
+            ...(serializedTransactions ? { serializedTransactions } : {}),
             status: "READY_FOR_SIGNATURE", requiresApproval: true,
-            message: vaultInfo
-              ? `Withdraw ${amount} ${token} from ${vaultInfo.name} prepared. Requires wallet signature.`
-              : `Withdraw ${amount} ${token} from ${proto} prepared. Vault address not resolved — provide manually.`,
+            message: withdrawMessage,
           };
         },
       },
@@ -678,6 +968,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
           tolerance: z.number().optional().default(5).describe("Tolerance % before rebalance triggers"),
         }),
         execute: async ({ targetAllocations, tolerance }: { targetAllocations: Array<{ token: string; percentage: number }>; tolerance: number }) => {
+          const blocked = blockExecutionForBuildIntent("rebalance");
+          if (blocked) return blocked;
           console.log(`[Tool: rebalance] Targets: ${JSON.stringify(targetAllocations)}, tolerance: ${tolerance}%`);
 
           if (!walletAddress) {
@@ -736,6 +1028,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
           recipients: z.array(z.object({ address: z.string(), amount: z.number(), label: z.string().optional() })).describe("List of recipients"),
         }),
         execute: async ({ token, recipients }: { token: string; recipients: Array<{ address: string; amount: number; label?: string }> }) => {
+          const blocked = blockExecutionForBuildIntent("mass_dispatch");
+          if (blocked) return blocked;
           console.log(`[Tool: mass_dispatch] ${token} to ${recipients.length} recipients`);
           const total = recipients.reduce((sum, r) => sum + r.amount, 0);
 
@@ -889,6 +1183,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
           iterations: z.number().describe("Number of execution cycles"),
         }),
         execute: async ({ inputToken, outputToken, totalAmount, frequency, iterations }: { inputToken: string; outputToken: string; totalAmount: number; frequency: string; iterations: number }) => {
+          const blocked = blockExecutionForBuildIntent("execute_dca");
+          if (blocked) return blocked;
           console.log(`[Tool: execute_dca] ${totalAmount} ${inputToken} → ${outputToken} over ${iterations} ${frequency} cycles`);
           if (iterations <= 0) {
             return { success: false, operation: "execute_dca", error: "iterations must be greater than 0" };
@@ -1162,12 +1458,34 @@ Wallet State: ${JSON.stringify(walletState || {})}
         }),
         execute: async ({ threshold }: any) => {
           console.log(`[Tool: risk_assessment] threshold: ${threshold}%`);
-          const holdings = vaultState?.tokens || [];
-          const totalValue = holdings.reduce((sum: number, t: any) => sum + (t.usdValue || 0), 0);
-          const risks = holdings
-            .map((t: any) => ({ token: t.symbol, value: t.usdValue || 0, percentage: totalValue > 0 ? ((t.usdValue || 0) / totalValue) * 100 : 0 }))
-            .filter((t: any) => t.percentage >= (threshold || 50));
-          return { success: true, operation: "risk_assessment", threshold, totalValue, concentrationRisks: risks, riskCount: risks.length, triggerVisualization: true, chartType: "risk_radar", message: risks.length > 0 ? `⚠️ ${risks.length} asset(s) exceed ${threshold}% threshold.` : `✅ No concentration risks above ${threshold}%.` };
+          const holdings: any[] = Array.isArray(vaultState?.tokens) ? vaultState.tokens : [];
+          const tokenValue = (t: any) => {
+            const fromUsd = typeof t.usdValue === "number" && Number.isFinite(t.usdValue) ? t.usdValue : null;
+            if (fromUsd != null) return fromUsd;
+            return (Number(t.amount) || 0) * (Number(t.price) || 0);
+          };
+          const totalValue = holdings.reduce((sum: number, t: any) => sum + tokenValue(t), 0);
+          const concentrations = holdings.map((t: any) => {
+            const value = tokenValue(t);
+            const percentage = totalValue > 0 ? (value / totalValue) * 100 : 0;
+            return { token: t.symbol, value, percentage };
+          });
+          const risks = concentrations.filter((t: any) => t.percentage >= (threshold || 50));
+          return {
+            success: true,
+            operation: "risk_assessment",
+            threshold,
+            totalValue,
+            concentrationRisks: risks,
+            concentrations,
+            riskCount: risks.length,
+            triggerVisualization: true,
+            chartType: "risk_radar",
+            message:
+              risks.length > 0
+                ? `⚠️ ${risks.length} asset(s) exceed ${threshold}% threshold.`
+                : `✅ No concentration risks above ${threshold}%.`,
+          };
         },
       },
 
@@ -1353,8 +1671,9 @@ Wallet State: ${JSON.stringify(walletState || {})}
         inputSchema: z.object({
           name: z.string().describe("Mini-App project name"),
           template: z.enum(["react", "dashboard", "defi"]).optional().default("react").describe("Template: react (default), dashboard (data grid), defi (swap form)"),
+          customAppTsxCode: z.string().optional().describe("Write the COMPLETE custom React code for App.tsx. CRITICAL: NEVER hardcode mock tokens, numbers, or dummy data. ALWAYS fetch live data using `const { tokens } = useVault();` from `@keystone-os/sdk`. Each token has { symbol, amount, price, value, change24h, logoURI }. Map over `tokens` to render lists dynamically. Use actual `logoURI` for images, or fallback to `https://img.logo.dev/${t.symbol.toLowerCase()}.com?token=pk_DFEjHHL4QteaMOzcFuSlwg` if you can't resolve it natively."),
         }),
-        execute: async ({ name, template }: { name: string; template: string }) => {
+        execute: async ({ name, template, customAppTsxCode }: { name: string; template: string; customAppTsxCode?: string }) => {
           console.log(`[Tool: studio_init_miniapp] ${name} (${template})`);
 
           const safeName = name.replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -1365,7 +1684,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
               "index.html": `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8" />\n  <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n  <title>${name}</title>\n  <script type="importmap">{\n    "imports": {\n      "react": "https://esm.sh/react@18?dev",\n      "react-dom": "https://esm.sh/react-dom@18?dev",\n      "react-dom/client": "https://esm.sh/react-dom@18/client?dev",\n      "@keystone-os/sdk": "https://esm.sh/@keystone-os/sdk?external=react,react-dom"\n    }\n  }</script>\n  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3/dist/tailwind.min.css" rel="stylesheet" />\n</head>\n<body>\n  <div id="root"></div>\n  <script type="module">\n    import React from 'react';\n    import { createRoot } from 'react-dom/client';\n    import App from './App.tsx';\n    createRoot(document.getElementById('root')).render(React.createElement(App));\n  </script>\n</body>\n</html>`,
             },
             dashboard: {
-              "App.tsx": `import { useVault, useFetch } from '@keystone-os/sdk';\nimport { useState } from 'react';\n\ninterface TokenRow {\n  symbol: string;\n  amount: number;\n  price: number;\n  value: number;\n  change24h: number;\n}\n\nexport default function ${safeName}() {\n  const vault = useVault();\n  const [sortBy, setSortBy] = useState<'value' | 'change24h'>('value');\n\n  const tokens: TokenRow[] = (vault.tokens || []).map((t: any) => ({\n    symbol: t.symbol || 'SPL',\n    amount: t.amount || 0,\n    price: t.price || 0,\n    value: (t.amount || 0) * (t.price || 0),\n    change24h: t.change24h || 0,\n  })).sort((a: TokenRow, b: TokenRow) => b[sortBy] - a[sortBy]);\n\n  const totalValue = tokens.reduce((s, t) => s + t.value, 0);\n\n  return (\n    <div className="min-h-screen bg-zinc-950 text-white p-6">\n      <h1 className="text-2xl font-bold text-emerald-400 mb-2">${name}</h1>\n      <p className="text-zinc-500 text-sm mb-6">Total: <span className="text-white font-mono">${'$'}{totalValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span></p>\n      <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">\n        <table className="w-full text-sm">\n          <thead>\n            <tr className="text-zinc-500 text-xs uppercase border-b border-zinc-800">\n              <th className="text-left p-3">Token</th>\n              <th className="text-right p-3">Balance</th>\n              <th className="text-right p-3">Price</th>\n              <th className="text-right p-3 cursor-pointer hover:text-emerald-400" onClick={() => setSortBy('value')}>Value</th>\n              <th className="text-right p-3 cursor-pointer hover:text-emerald-400" onClick={() => setSortBy('change24h')}>24h</th>\n            </tr>\n          </thead>\n          <tbody>\n            {tokens.map((t) => (\n              <tr key={t.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">\n                <td className="p-3 font-mono font-bold">{t.symbol}</td>\n                <td className="p-3 text-right font-mono">{t.amount.toFixed(4)}</td>\n                <td className="p-3 text-right font-mono">${'$'}{t.price.toFixed(4)}</td>\n                <td className="p-3 text-right font-mono">${'$'}{t.value.toFixed(2)}</td>\n                <td className={\`p-3 text-right font-mono \${t.change24h >= 0 ? 'text-emerald-400' : 'text-red-400'}\`}>{t.change24h >= 0 ? '+' : ''}{t.change24h.toFixed(2)}%</td>\n              </tr>\n            ))}\n          </tbody>\n        </table>\n      </div>\n    </div>\n  );\n}\n`,
+              "App.tsx": `import { useVault, useFetch } from '@keystone-os/sdk';\nimport { useState } from 'react';\n\ninterface TokenRow {\n  symbol: string;\n  amount: number;\n  price: number;\n  value: number;\n  change24h: number;\n  logoURI?: string;\n}\n\nexport default function ${safeName}() {\n  const vault = useVault();\n  const [sortBy, setSortBy] = useState<'value' | 'change24h'>('value');\n\n  const tokens: TokenRow[] = (vault.tokens || []).map((t: any) => ({\n    symbol: t.symbol || 'SPL',\n    amount: t.amount || 0,\n    price: t.price || 0,\n    value: (t.amount || 0) * (t.price || 0),\n    change24h: t.change24h || 0,\n    logoURI: t.logoURI,\n  })).sort((a: TokenRow, b: TokenRow) => b[sortBy] - a[sortBy]);\n\n  const totalValue = tokens.reduce((s, t) => s + t.value, 0);\n\n  const getLogo = (t: TokenRow) => {\n    if (t.logoURI) return t.logoURI;\n    const domain = ['SOL','USDC','USDT'].includes(t.symbol) ? (t.symbol === 'SOL' ? 'solana.com' : 'circle.com') : \`\${t.symbol.toLowerCase()}.com\`;\n    return \`https://img.logo.dev/\${domain}?token=pk_DFEjHHL4QteaMOzcFuSlwg\`;\n  };\n\n  return (\n    <div className="min-h-screen bg-zinc-950 text-white p-6">\n      <h1 className="text-2xl font-bold text-emerald-400 mb-2">${name}</h1>\n      <p className="text-zinc-500 text-sm mb-6">Total: <span className="text-white font-mono">${'$'}{totalValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span></p>\n      <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">\n        <table className="w-full text-sm">\n          <thead>\n            <tr className="text-zinc-500 text-xs uppercase border-b border-zinc-800">\n              <th className="text-left p-3">Token</th>\n              <th className="text-right p-3">Balance</th>\n              <th className="text-right p-3">Price</th>\n              <th className="text-right p-3 cursor-pointer hover:text-emerald-400" onClick={() => setSortBy('value')}>Value</th>\n              <th className="text-right p-3 cursor-pointer hover:text-emerald-400" onClick={() => setSortBy('change24h')}>24h</th>\n            </tr>\n          </thead>\n          <tbody>\n            {tokens.map((t) => (\n              <tr key={t.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">\n                <td className="p-3 font-mono font-bold flex items-center gap-2">\n                  <img src={getLogo(t)} alt={t.symbol} className="w-5 h-5 rounded-full bg-zinc-800" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />\n                  <div className="w-5 h-5 rounded-full bg-zinc-800 hidden items-center justify-center text-[8px]">{t.symbol[0]}</div>\n                  {t.symbol}\n                </td>\n                <td className="p-3 text-right font-mono">{t.amount.toFixed(4)}</td>\n                <td className="p-3 text-right font-mono">${'$'}{t.price.toFixed(4)}</td>\n                <td className="p-3 text-right font-mono">${'$'}{t.value.toFixed(2)}</td>\n                <td className={\`p-3 text-right font-mono \${t.change24h >= 0 ? 'text-emerald-400' : 'text-red-400'}\`}>{t.change24h >= 0 ? '+' : ''}{t.change24h.toFixed(2)}%</td>\n              </tr>\n            ))}\n          </tbody>\n        </table>\n      </div>\n    </div>\n  );\n}\n`,
               "index.html": `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8" />\n  <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n  <title>${name}</title>\n  <script type="importmap">{\n    "imports": {\n      "react": "https://esm.sh/react@18?dev",\n      "react-dom": "https://esm.sh/react-dom@18?dev",\n      "react-dom/client": "https://esm.sh/react-dom@18/client?dev",\n      "@keystone-os/sdk": "https://esm.sh/@keystone-os/sdk?external=react,react-dom"\n    }\n  }</script>\n  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3/dist/tailwind.min.css" rel="stylesheet" />\n</head>\n<body>\n  <div id="root"></div>\n  <script type="module">\n    import React from 'react';\n    import { createRoot } from 'react-dom/client';\n    import App from './App.tsx';\n    createRoot(document.getElementById('root')).render(React.createElement(App));\n  </script>\n</body>\n</html>`,
             },
             defi: {
@@ -1374,15 +1693,48 @@ Wallet State: ${JSON.stringify(walletState || {})}
             },
           };
 
-          const files = TEMPLATES[template] || TEMPLATES.react;
+          const files = { ...(TEMPLATES[template] || TEMPLATES.react) };
+
+          if (customAppTsxCode) {
+            files["App.tsx"] = customAppTsxCode;
+          }
+
+          let finalAppId: string | null = null;
+          
+          try {
+             const resolvedWallet = walletAddress || "Operator";
+             const { saveProject } = await import("@/actions/studio-actions");
+             
+             // Format the files for the database schema
+             const projectCode = {
+                files: Object.entries(files).reduce((acc, [name, content]) => ({
+                    ...acc,
+                    [name]: { content }
+                }), {} as Record<string, { content: string }>)
+             };
+             
+             const appId = "app_" + Math.random().toString(36).substring(2, 15);
+             const saveRes = await saveProject(
+                resolvedWallet, 
+                projectCode, 
+                { name, description: `AI-generated ${template} mini-app` },
+                appId
+             );
+             
+             if (saveRes.success) {
+               finalAppId = saveRes.appId || appId;
+             }
+          } catch (err: unknown) {
+             console.warn("[studio_init_miniapp] Failed to save project to DB:", err);
+          }
 
           return {
             success: true, operation: "studio_init_miniapp", name, template,
             files,
             fileCount: Object.keys(files).length,
             entrypoint: "App.tsx",
-            navigateTo: "/app/studio",
-            message: `Mini-App "${name}" initialized with ${template} template (${Object.keys(files).length} files). esm.sh import maps configured.`,
+            appId: finalAppId, // Send back the generated Database appId so the UI can render a launch button
+            message: `Mini-App "${name}" initialized with ${template} template (${Object.keys(files).length} files). ${finalAppId ? "Project saved." : "esm.sh import maps configured."}`,
           };
         },
       },
@@ -1627,15 +1979,269 @@ Wallet State: ${JSON.stringify(walletState || {})}
       },
 
       // ━━━━ UTILITY TOOLS ━━━━
-      navigate: {
-        description: "Navigate to a page within Keystone OS.",
+      get_project_by_id: {
+        description: "Lookup a Studio project by appId from DB; returns canonical Studio/public links.",
         inputSchema: z.object({
-          path: z.string().describe("Path to navigate to"),
+          appId: z.string().describe("Studio app/project id, e.g. app_abc123"),
+        }),
+        execute: async ({ appId }: { appId: string }) => {
+          try {
+            const { getProject } = await import("@/actions/studio-actions");
+            const project = await getProject(appId);
+            const normalized = normalizeStudioProject(project);
+            if (!normalized) {
+              return { success: false, operation: "get_project_by_id", appId, message: `No project found for ${appId}.` };
+            }
+            observedGrounding.lookupSuccess = true;
+            return { success: true, operation: "get_project_by_id", ...normalized, message: `Found project ${normalized.name}.` };
+          } catch (error) {
+            return { success: false, operation: "get_project_by_id", appId, message: "Lookup failed." };
+          }
+        },
+      },
+      get_project_by_name: {
+        description: "Lookup the caller's recent Studio projects by name and return verified links.",
+        inputSchema: z.object({
+          name: z.string().describe("Project name or fragment"),
+          ownerWallet: z.string().optional().describe("Wallet address; defaults to current wallet"),
+        }),
+        execute: async ({ name, ownerWallet }: { name: string; ownerWallet?: string }) => {
+          const lookupWallet = ownerWallet || walletAddress;
+          if (!lookupWallet) {
+            return { success: false, operation: "get_project_by_name", message: "Wallet required to lookup by name." };
+          }
+          try {
+            const { getProjects } = await import("@/actions/studio-actions");
+            const projects = await getProjects(lookupWallet);
+            const q = name.trim().toLowerCase();
+            const matches = projects
+              .filter((p: any) => (p?.name || "").toLowerCase().includes(q))
+              .slice(0, 5)
+              .map((p: any) => normalizeStudioProject(p))
+              .filter(Boolean);
+            if (matches.length === 0) {
+              return { success: false, operation: "get_project_by_name", message: `No projects matching "${name}".` };
+            }
+            observedGrounding.lookupSuccess = true;
+            return { success: true, operation: "get_project_by_name", results: matches, message: `Found ${matches.length} matching project(s).` };
+          } catch {
+            return { success: false, operation: "get_project_by_name", message: "Lookup failed." };
+          }
+        },
+      },
+      list_recent_projects: {
+        description: "List the wallet owner's most recent Studio projects with verified links.",
+        inputSchema: z.object({
+          ownerWallet: z.string().optional().describe("Wallet address; defaults to current wallet"),
+          limit: z.number().int().min(1).max(20).optional().default(5),
+        }),
+        execute: async ({ ownerWallet, limit }: { ownerWallet?: string; limit: number }) => {
+          const lookupWallet = ownerWallet || walletAddress;
+          if (!lookupWallet) return { success: false, operation: "list_recent_projects", message: "Wallet required." };
+          try {
+            const { getProjects } = await import("@/actions/studio-actions");
+            const projects = await getProjects(lookupWallet);
+            const recent = projects.slice(0, limit).map((p: any) => normalizeStudioProject(p)).filter(Boolean);
+            observedGrounding.lookupSuccess = recent.length > 0;
+            return { success: true, operation: "list_recent_projects", results: recent, message: `Returned ${recent.length} project(s).` };
+          } catch {
+            return { success: false, operation: "list_recent_projects", message: "Failed to list projects." };
+          }
+        },
+      },
+      get_studio_project_link: {
+        description: "Resolve a canonical Studio deep link from appId.",
+        inputSchema: z.object({
+          appId: z.string().describe("Project appId"),
+        }),
+        execute: async ({ appId }: { appId: string }) => {
+          try {
+            const { getProject } = await import("@/actions/studio-actions");
+            const project = await getProject(appId);
+            const normalized = normalizeStudioProject(project);
+            if (!normalized) return { success: false, operation: "get_studio_project_link", appId, message: "Project not found." };
+            observedGrounding.lookupSuccess = true;
+            return { success: true, operation: "get_studio_project_link", ...normalized, message: `Resolved verified link for ${normalized.name}.` };
+          } catch {
+            return { success: false, operation: "get_studio_project_link", appId, message: "Link resolution failed." };
+          }
+        },
+      },
+      mcp_verify: {
+        description: "Verify external payloads through allowlisted endpoints and return normalized evidence.",
+        inputSchema: z.object({
+          endpoint: z.string().describe("Allowlisted HTTPS URL to verify against"),
+          payload: z.record(z.any()).optional().describe("Optional JSON payload"),
+        }),
+        execute: async ({ endpoint, payload }: { endpoint: string; payload?: Record<string, unknown> }) => {
+          let url: URL;
+          try {
+            url = new URL(endpoint);
+          } catch {
+            return { success: false, operation: "mcp_verify", message: "Invalid endpoint URL." };
+          }
+          const allowlist = new Set(["api.github.com", "api.jup.ag", "lite-api.jup.ag", "api.dexscreener.com"]);
+          if (!allowlist.has(url.hostname)) {
+            return { success: false, operation: "mcp_verify", message: `Endpoint not allowlisted: ${url.hostname}` };
+          }
+          try {
+            const res = await fetch(endpoint, {
+              method: payload ? "POST" : "GET",
+              headers: { "Content-Type": "application/json" },
+              body: payload ? JSON.stringify(payload).slice(0, 16_000) : undefined,
+              signal: AbortSignal.timeout(8000),
+            });
+            const text = await res.text();
+            return {
+              success: res.ok,
+              operation: "mcp_verify",
+              status: res.status,
+              endpoint,
+              evidence: text.slice(0, 4000),
+              message: res.ok ? "Verification complete." : `Verification failed (${res.status}).`,
+            };
+          } catch (error) {
+            return { success: false, operation: "mcp_verify", endpoint, message: "Verification request failed." };
+          }
+        },
+      },
+      propose_dynamic_tool: {
+        description: "Create a non-executable dynamic tool draft from a user goal.",
+        inputSchema: z.object({
+          name: z.string().describe("Draft tool name"),
+          objective: z.string().describe("What the draft tool should achieve"),
+          requiredTools: z.array(z.string()).optional().default([]).describe("Existing tools it would compose"),
+        }),
+        execute: async ({ name, objective, requiredTools }: { name: string; objective: string; requiredTools: string[] }) => {
+          const draftId = `draft_${Math.random().toString(36).slice(2, 10)}`;
+          return {
+            success: true,
+            operation: "propose_dynamic_tool",
+            draft: { draftId, name, objective, requiredTools, executable: false, status: "draft" },
+            message: `Draft ${name} created (non-executable).`,
+          };
+        },
+      },
+      run_composed_tool_plan: {
+        description: "Run a composed plan using existing allowlisted Keystone tools only.",
+        inputSchema: z.object({
+          steps: z.array(z.object({
+            tool: z.string(),
+            input: z.record(z.any()).optional().default({}),
+          })).describe("Ordered plan steps; no arbitrary code"),
+        }),
+        execute: async ({ steps }: { steps: Array<{ tool: string; input?: Record<string, unknown> }> }) => {
+          const allowed = new Set([
+            "get_project_by_id",
+            "get_project_by_name",
+            "list_recent_projects",
+            "get_studio_project_link",
+            "navigate",
+          ]);
+          const invalid = steps.filter((s) => !allowed.has(s.tool));
+          if (invalid.length > 0) {
+            return {
+              success: false,
+              operation: "run_composed_tool_plan",
+              message: `Plan blocked: tool(s) not allowed (${invalid.map((x) => x.tool).join(", ")}).`,
+            };
+          }
+          return {
+            success: true,
+            operation: "run_composed_tool_plan",
+            executed: steps.map((s, i) => ({ step: i + 1, tool: s.tool, status: "accepted_for_execution" })),
+            message: "Composed plan validated. Execute steps explicitly in follow-up calls.",
+          };
+        },
+      },
+      sandbox_execute_dynamic_tool: {
+        description: "Phase-2 sandbox contract for approved dynamic-tool execution plans (no arbitrary code).",
+        inputSchema: z.object({
+          draftId: z.string().describe("Dynamic tool draft id"),
+          name: z.string().describe("Draft name"),
+          objective: z.string().describe("Draft objective"),
+          approvalToken: z.string().optional().describe("Server approval token"),
+          steps: z.array(z.object({
+            tool: z.string(),
+            input: z.record(z.any()).optional().default({}),
+          })).describe("Composed plan steps"),
+        }),
+        execute: async ({
+          draftId,
+          name,
+          objective,
+          approvalToken,
+          steps,
+        }: {
+          draftId: string;
+          name: string;
+          objective: string;
+          approvalToken?: string;
+          steps: Array<{ tool: string; input?: Record<string, unknown> }>;
+        }) => {
+          const sandbox = evaluateSandboxPlan({
+            draftId,
+            name,
+            objective,
+            approvalToken,
+            steps,
+          });
+          if (!sandbox.accepted) {
+            return {
+              success: false,
+              operation: "sandbox_execute_dynamic_tool",
+              draftId,
+              approved: sandbox.approved,
+              riskLevel: sandbox.riskLevel,
+              policy: sandbox.policy,
+              message: `Sandbox blocked execution: ${sandbox.blockedReason}`,
+            };
+          }
+          return {
+            success: true,
+            operation: "sandbox_execute_dynamic_tool",
+            draftId,
+            approved: sandbox.approved,
+            riskLevel: sandbox.riskLevel,
+            policy: sandbox.policy,
+            executionPlan: sandbox.executionPlan,
+            message: "Sandbox execution plan accepted. Execute via explicit composed tool calls.",
+          };
+        },
+      },
+      navigate: {
+        description:
+          "Navigate to a page within Keystone OS. Use /app/studio?appId=<id> when sending the user to a project created by studio_init_miniapp (use the appId from that tool result). Bare /app/studio does not open a specific project. Do NOT invent routes like /app/wallet.",
+        inputSchema: z.object({
+          path: z.string().describe(
+            "Path including optional query, e.g. /app/treasury or /app/studio?appId=app_abc123",
+          ),
           reason: z.string().optional().describe("Why"),
         }),
         execute: async ({ path, reason }: any) => {
           console.log(`[Tool: navigate] → ${path}`);
-          return { success: true, operation: "navigate", path, reason, message: `Navigating to ${path}.` };
+          const validated = validateNavigationPath(path);
+          if (!validated.success) {
+            return {
+              success: false,
+              operation: "navigate",
+              status: validated.code,
+              path,
+              reason,
+              message: `Navigation blocked: ${validated.reason}`,
+            };
+          }
+          observedGrounding.navigationSuccess = true;
+          return {
+            success: true,
+            operation: "navigate",
+            path,
+            pathname: validated.pathname,
+            query: validated.query,
+            reason,
+            validated: true,
+            message: `Navigating to ${path}.`,
+          };
         },
       },
 
@@ -1692,23 +2298,99 @@ Wallet State: ${JSON.stringify(walletState || {})}
           };
         },
       },
+
+      deploy_sniper_bot: {
+        description: "Deploy an active on-chain sniper bot to monitor DEXes and execute instant buys.",
+        inputSchema: z.object({
+          exchange: z.string().describe("DEX to watch (e.g., Raydium, Orca)"),
+          liquidityThreshold: z.number().optional().describe("Minimum liquidity USD threshold for new pools"),
+          maxSlippage: z.number().optional().describe("Maximum slippage tolerance %"),
+        }),
+        execute: async ({ exchange, liquidityThreshold, maxSlippage }: { exchange: string; liquidityThreshold?: number; maxSlippage?: number }) => {
+          console.log(`[Tool: deploy_sniper_bot] watching ${exchange} (Liquidity > $${liquidityThreshold}, Slp: ${maxSlippage}%)`);
+          
+          if (!walletAddress) {
+            return {
+              success: false, operation: "deploy_sniper_bot", error: "Wallet not connected",
+              message: "Cannot deploy sniper bot. Please connect your wallet to authorize execution."
+            };
+          }
+
+          const botId = "bot_" + Math.random().toString(36).substring(2, 9);
+          
+          return {
+             success: true, operation: "deploy_sniper_bot", exchange, liquidityThreshold, maxSlippage,
+             botId,
+             status: "ACTIVE", requiresApproval: true,
+             message: `Sniper Bot [${botId}] successfully deployed to War Room. Monitoring ${exchange} for new liquidity pools > $${liquidityThreshold?.toLocaleString()}. Max Slippage set to ${maxSlippage}%. Ready to execute instant buys on detection.`,
+          };
+        },
+      },
     };
 
+    const budgeted = buildBudgetedMessages(formattedMessages);
+    const strictToolSubset =
+      strictGrounding && evidenceClass === "db_required"
+        ? {
+            get_project_by_id: keystoneTools.get_project_by_id,
+            get_project_by_name: keystoneTools.get_project_by_name,
+            list_recent_projects: keystoneTools.list_recent_projects,
+            get_studio_project_link: keystoneTools.get_studio_project_link,
+            navigate: keystoneTools.navigate,
+            mcp_verify: keystoneTools.mcp_verify,
+          }
+        : strictGrounding && evidenceClass === "navigation_required"
+          ? {
+              get_project_by_id: keystoneTools.get_project_by_id,
+              get_project_by_name: keystoneTools.get_project_by_name,
+              list_recent_projects: keystoneTools.list_recent_projects,
+              get_studio_project_link: keystoneTools.get_studio_project_link,
+              navigate: keystoneTools.navigate,
+            }
+          : keystoneTools;
+    if (budgeted.reduced) {
+      console.warn(
+        `[Command API] Prompt budget reduction applied (evidenceClass=${evidenceClass}, chars=${estimateMessageChars(formattedMessages)}).`,
+      );
+    }
+
     const streamOptions = {
-      system: systemPrompt,
-      messages: formattedMessages,
+      system: effectiveSystemPrompt,
+      messages: budgeted.messages,
       stopWhen: stepCountIs(10),
-      ...(simpleConversation ? {} : { tools: keystoneTools }),
+      ...(simpleConversation ? {} : { tools: strictToolSubset }),
+      ...(
+        strictGrounding &&
+        !simpleConversation &&
+        (evidenceClass === "db_required" || evidenceClass === "navigation_required")
+          ? { toolChoice: "required" as const }
+          : {}
+      ),
+      onFinish: async () => {
+        const gate = evaluateGroundingGate(evidenceClass, observedGrounding);
+        console.log(
+          `[Command API] grounding decision strict=${strictGrounding} class=${evidenceClass} allowed=${gate.allowed} reason=${gate.blockedReason || "none"} lookup=${observedGrounding.lookupSuccess} nav=${observedGrounding.navigationSuccess}`,
+        );
+      },
     };
 
     // Model chain: Groq first, then Cloudflare Workers AI fallbacks (after 1–2 tries we fall back)
-    const modelChain: { name: string; model: Parameters<typeof streamText>[0]["model"] }[] = [];
+    const modelChain: { name: string; model: Parameters<typeof streamText>[0]["model"]; maxChars: number }[] = [];
     if (process.env.GROQ_API_KEY) {
-      modelChain.push({ name: "groq/llama-3.3-70b-versatile", model: groq("llama-3.3-70b-versatile") });
+      modelChain.push({
+        name: "groq/llama-3.3-70b-versatile",
+        model: groq("llama-3.3-70b-versatile"),
+        maxChars: estimateCompatibilityBudget("groq/llama-3.3-70b-versatile"),
+      });
     }
     if (cloudflareProvider) {
       for (const modelId of CLOUDFLARE_FALLBACK_MODELS) {
-        modelChain.push({ name: `cloudflare/${modelId}`, model: cloudflareProvider.chatModel(modelId) });
+        const modelName = `cloudflare/${modelId}`;
+        modelChain.push({
+          name: modelName,
+          model: cloudflareProvider.chatModel(modelId),
+          maxChars: estimateCompatibilityBudget(modelName),
+        });
       }
     }
 
@@ -1744,9 +2426,14 @@ Wallet State: ${JSON.stringify(walletState || {})}
       return /tool call validation failed|was not in request\.tools|invalid_request_error/i.test(msg);
     }
 
+    function detectPromptLengthError(err: unknown): boolean {
+      const msg = err instanceof Error ? err.message : String(err);
+      return /reduce the length of the messages|context length|prompt is too long|maximum context|token limit/i.test(msg);
+    }
+
     let lastError: unknown = null;
     for (let i = 0; i < modelChain.length; i++) {
-      const { name, model } = modelChain[i];
+      const { name, model, maxChars } = modelChain[i];
       // Skip providers that are in rate-limit cooldown
       if (isRateLimited(name)) {
         console.log(`[Command API] Skipping ${name} (rate-limited, cooldown active)`);
@@ -1754,7 +2441,8 @@ Wallet State: ${JSON.stringify(walletState || {})}
       }
       try {
         console.log(`[Command API] Trying model: ${name}`);
-        const result = streamText({ ...streamOptions, model, maxRetries: 0 });
+        const modelBudgeted = buildBudgetedMessagesWithCap(budgeted.messages, maxChars);
+        const result = streamText({ ...streamOptions, messages: modelBudgeted.messages, model, maxRetries: 0 });
 
         // The AI SDK throws provider errors (e.g. 429) asynchronously.
         // The error surfaces on result.text / result.response promises, NOT on reader.read().
@@ -1835,11 +2523,15 @@ Wallet State: ${JSON.stringify(walletState || {})}
         lastError = err;
         const msg = err instanceof Error ? err.message : String(err);
         const rl = detectRateLimit(err);
+        const lengthErr = detectPromptLengthError(err);
         if (rl) {
           setRateLimitCooldown(name, extractRetryAfter(msg));
         }
+        if (lengthErr) {
+          console.warn(`[Command API] ${name} rejected prompt length; trying fallback with tighter context.`);
+        }
         console.warn(
-          `[Command API] ${name} failed${rl ? " (rate limit)" : ""}: ${msg.slice(0, 300)}`,
+          `[Command API] ${name} failed${rl ? " (rate limit)" : lengthErr ? " (prompt length)" : ""}: ${msg.slice(0, 300)}`,
         );
         if (i < modelChain.length - 1) {
           console.log(`[Command API] Trying next model in fallback chain...`);

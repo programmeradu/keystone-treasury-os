@@ -100,6 +100,16 @@ export function LandingCommandBar() {
                         description: "Connect a wallet to execute this action.",
                     });
                     return;
+                } else if (plan._execution?.serializedTransactions && plan._execution.serializedTransactions.length > 0) {
+                    // Try to execute serialized transactions if the API returned them
+                    for (const tx of plan._execution.serializedTransactions) {
+                        const result = await txExecutor.executeRawTransaction(tx);
+                        if (!result.success) throw new Error(result.error);
+                    }
+                } else {
+                    toast.error("Action Queued", {
+                        description: `Execution engine for ${op} is not fully integrated for individual wallets yet. Action skipped.`,
+                    });
                 }
             }
 

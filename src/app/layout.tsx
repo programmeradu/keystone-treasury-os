@@ -5,6 +5,7 @@ import ErrorReporter from "@/components/ErrorReporter";
 import Script from "next/script";
 import { Web3Providers } from "@/components/providers/web3-provider";
 import { ToastContainer } from "@/components/ToastContainer";
+import { CookieBanner } from "@/components/CookieBanner";
 
 export const metadata: Metadata = {
   title: "KeyStone | The Command Layer for Treasury Management",
@@ -37,7 +38,7 @@ export default function RootLayout({
           data-message-type="ROUTE_CHANGE"
           data-include-search-params="true"
           data-only-in-iframe="true"
-          data-debug="true"
+          data-debug={process.env.NODE_ENV === "development" ? "true" : "false"}
           data-custom-data='{"appName": "YourApp", "version": "1.0.0", "greeting": "hi"}'
         />
         {/* Jupiter Plugin script - load after hydration inside body to prevent head SSR/CSR mismatch */}
@@ -45,9 +46,22 @@ export default function RootLayout({
           src="https://plugin.jup.ag/plugin-v1.js"
           strategy="afterInteractive"
         />
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-P23GPETJSL"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-P23GPETJSL');
+          `}
+        </Script>
         <Web3Providers>{children}</Web3Providers>
         <VisualEditsMessenger />
         <ToastContainer />
+        <CookieBanner />
       </body>
     </html>
   );

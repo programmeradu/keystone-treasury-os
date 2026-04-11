@@ -252,6 +252,40 @@ export function useTransactionExecutor() {
   }, [sqClient, activeVault]);
 
   /**
+   * Execute a raw serialized transaction via wallet sign
+   */
+  const executeRawTransaction = useCallback(async (serializedTx: string): Promise<ExecutionResult> => {
+    if (!wallet.connected || !wallet.signTransaction || !wallet.publicKey) {
+      return { success: false, error: "Wallet not connected" };
+    }
+
+    try {
+      const txBuf = Buffer.from(serializedTx, "base64");
+      const transaction = VersionedTransaction.deserialize(txBuf);
+      const signedTx = await wallet.signTransaction(transaction);
+
+      const signature = await connection.sendRawTransaction(signedTx.serialize(), {
+        skipPreflight: false,
+        maxRetries: 2,
+      });
+
+      const confirmation = await connection.confirmTransaction(signature, "confirmed");
+      if (confirmation.value.err) {
+        throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+      }
+
+      toast.success("Transaction Confirmed", {
+        description: `Tx: ${signature.slice(0, 8)}...`,
+      });
+
+      return { success: true, signature };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }, [wallet, connection]);
+
+
+  /**
    * Execute a full multi-action plan sequentially.
    * Calls onStepUpdate(index, status) so the UI can render per-step progress.
    */
@@ -334,6 +368,7 @@ export function useTransactionExecutor() {
     executeSwap,
     executeTransfer,
     createProposal,
+    executeRawTransaction,
     executePlan,
     isMultisig,
     isWalletConnected: wallet.connected && !!wallet.publicKey,

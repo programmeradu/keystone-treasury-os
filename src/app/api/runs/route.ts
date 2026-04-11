@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { runs } from '@/db/schema';
+import { runs, users } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { randomBytes } from 'crypto';
 import { checkDatabaseAvailability } from '@/lib/db-utils';
 import { checkRouteLimit } from '@/lib/rate-limit-middleware';
+import { jwtVerify } from 'jose';
 
 function generateShortId(): string {
   const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
@@ -22,17 +23,42 @@ function validateJsonSize(obj: any, maxSizeBytes: number): boolean {
   return sizeBytes <= maxSizeBytes;
 }
 
+async function getAuthUserId(request: NextRequest): Promise<string | null> {
+  const token = request.cookies.get('keystone-siws-session')?.value;
+  if (!token) return null;
+
+  try {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) return null;
+
+    const { payload } = await jwtVerify(token, new TextEncoder().encode(secret), {
+      issuer: 'keystone-treasury-os',
+    });
+    return payload.sub as string;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Check if database is available
     const dbError = checkDatabaseAvailability();
     if (dbError) return dbError;
 
+    // SECURITY: Get authenticated user for runs isolation
+    const userId = await getAuthUserId(request);
+    if (!userId) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 50);
 
+    // SECURITY: Filter runs by userId to prevent cross-user data access
     const results = await db!.select()
       .from(runs)
+      .where(eq(runs.userId, userId))
       .orderBy(desc(runs.createdAt))
       .limit(limit);
 
