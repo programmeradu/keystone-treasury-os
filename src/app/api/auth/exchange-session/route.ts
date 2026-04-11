@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
         // Upsert user in our app's own users table
         let dbUser = null;
         if (db) {
-            const [upsertedUser] = await db
+            const [insertedUser] = await db
                 .insert(users)
                 .values({
                     walletAddress: `neon_${user.id}`,
@@ -204,12 +204,22 @@ export async function POST(request: NextRequest) {
                     displayName: user.name || user.email?.split('@')[0] || 'User',
                     role: 'user',
                 })
-                .onConflictDoUpdate({
-                    target: users.supabaseUserId,
-                    set: { supabaseUserId: user.id },
+                .onConflictDoNothing({
+                    target: users.supabaseUserId
                 })
                 .returning();
-            dbUser = upsertedUser;
+
+            dbUser = insertedUser;
+
+            if (!dbUser) {
+                // If it conflicted and returned nothing, select the existing user
+                const existing = await db
+                    .select()
+                    .from(users)
+                    .where(eq(users.supabaseUserId, user.id))
+                    .limit(1);
+                dbUser = existing[0] || null;
+            }
         }
 
         const userId = dbUser?.id || user.id;

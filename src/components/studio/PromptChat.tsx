@@ -10,6 +10,7 @@ import { getAvatarUrl } from "@/lib/avatars";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSelf } from "@/liveblocks.config";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { ArchitectEngine, type ArchitectStatus, type ArchitectState } from "@/lib/studio/architect-engine";
 import { loadAIConfig, type AIKeyConfig } from "@/components/studio/APIKeySettings";
 
