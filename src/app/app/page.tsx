@@ -45,6 +45,14 @@ export default function AppPortalPage() {
     }
   });
 
+  // Real-time Dashboard Polling (30s)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refresh();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [refresh]);
+
   // Background Monitoring Heartbeat (Phase 9)
   useEffect(() => {
     const pulseInterval = setInterval(() => {

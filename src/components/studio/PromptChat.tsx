@@ -173,6 +173,11 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
     const handleSubmit = async () => {
         if (!input.trim() || isGenerating) return;
 
+        if (input.trim().length > 100000) {
+            toast.error("Prompt too long", { description: "Your prompt must be under 100,000 characters." });
+            return;
+        }
+
         const userMessage: Message = {
             id: Date.now().toString(),
             role: "user",
