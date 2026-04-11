@@ -10,6 +10,7 @@ import { getAvatarUrl } from "@/lib/avatars";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSelf } from "@/liveblocks.config";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { ArchitectEngine, type ArchitectStatus, type ArchitectState } from "@/lib/studio/architect-engine";
 import { loadAIConfig, type AIKeyConfig } from "@/components/studio/APIKeySettings";
 
@@ -172,6 +173,11 @@ export function PromptChat({ onGenerate, isGenerating, setIsGenerating, userFile
     // ─── Submit Handler ─────────────────────────────────────
     const handleSubmit = async () => {
         if (!input.trim() || isGenerating) return;
+
+        if (input.trim().length > 100000) {
+            toast.error("Prompt too long", { description: "Your prompt must be under 100,000 characters." });
+            return;
+        }
 
         const userMessage: Message = {
             id: Date.now().toString(),
