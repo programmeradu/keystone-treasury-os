@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 const nextConfig: NextConfig = {
   eslint: {
@@ -38,4 +37,12 @@ const nextConfig: NextConfig = {
 
 export default nextConfig;
 
-initOpenNextCloudflareForDev();
+if (process.env.NODE_ENV === "development" && !process.env.VERCEL) {
+  void import("@opennextjs/cloudflare")
+    .then(({ initOpenNextCloudflareForDev }) => {
+      initOpenNextCloudflareForDev();
+    })
+    .catch(() => {
+      // Ignore Cloudflare dev init issues outside Cloudflare workflows.
+    });
+}
