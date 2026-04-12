@@ -11,6 +11,10 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "generate:types": "npx tsx scripts/generate-sdk-types.ts",
+    "paddle:seed-catalog": "npx tsx scripts/paddle-seed-catalog.ts",
+    "fastspring:seed-catalog": "npx tsx scripts/fastspring-seed-catalog.ts",
+    "fastspring:set-webhook-hmac": "npx tsx scripts/fastspring-set-webhook-hmac.ts",
+    "fastspring:verify-api": "npx tsx scripts/fastspring-verify-api.ts",
     "prebuild": "npm run generate:types",
     "build": "cross-env NEXT_TELEMETRY_DISABLED=1 NEXT_PRIVATE_BUILD_WORKER_COUNT=1 NODE_OPTIONS=--max-old-space-size=4096 next build",
     "cf:build": "opennextjs-cloudflare build",

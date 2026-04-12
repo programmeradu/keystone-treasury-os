@@ -51,7 +51,7 @@ export const BillingView = () => {
 
     const fetchStatus = async () => {
         try {
-            const res = await fetch('/api/lemon-squeezy/status');
+            const res = await fetch('/api/fastspring/status');
             const data = await res.json();
             if (data.tier) setTier(data.tier);
             if (data.status) setStatus(data.status);
@@ -65,7 +65,7 @@ export const BillingView = () => {
     const handleVerify = async () => {
         setVerifying(true);
         try {
-            const res = await fetch('/api/lemon-squeezy/status');
+            const res = await fetch('/api/fastspring/status');
             const data = await res.json();
             if (data.reconciled) {
                 toast.success(`Subscription reconciled. Your tier is now: ${data.tier.toUpperCase()}`);

@@ -12,7 +12,7 @@ export default function BillingPage() {
 
     // Self-hydrate the user's current tier on mount
     useEffect(() => {
-        fetch('/api/lemon-squeezy/status')
+        fetch('/api/fastspring/status')
             .then(res => res.json())
             .then(data => { if (data.tier) setCurrentTier(data.tier); })
             .catch(() => {});
@@ -22,7 +22,7 @@ export default function BillingPage() {
         setLoading(true);
         try {
             toast.info(`Initializing ${tier.toUpperCase()} uplink sequence...`);
-            const res = await fetch('/api/lemon-squeezy/checkout', {
+            const res = await fetch('/api/fastspring/checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ tier }),
@@ -43,7 +43,7 @@ export default function BillingPage() {
     const handleVerify = async () => {
         setVerifying(true);
         try {
-            const res = await fetch('/api/lemon-squeezy/status');
+            const res = await fetch('/api/fastspring/status');
             const data = await res.json();
             if (data.reconciled) {
                 toast.success(`Subscription reconciled. Your tier is now: ${data.tier.toUpperCase()}`);

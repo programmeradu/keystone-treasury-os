@@ -4,6 +4,7 @@ import { LogoFilled } from "@/components/icons";
 import { FaDiscord, FaGithub, FaTwitter } from "react-icons/fa6";
 
 const productLinks = [
+  { label: "Pricing", href: "/pricing" },
   { label: "App Dashboard", href: "/app" },
   { label: "Treasury Hub", href: "/app/treasury" },
   { label: "Keystone Studio", href: "/app/studio" },
@@ -27,6 +28,7 @@ const companyLinks = [
 const legalLinks = [
   { label: "Privacy Policy", href: "/legal/privacy" },
   { label: "Terms of Service", href: "/legal/terms" },
+  { label: "Refunds", href: "/legal/refunds" },
   { label: "Cookie Policy", href: "/legal/cookies" },
 ];
 
