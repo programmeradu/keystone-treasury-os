@@ -551,10 +551,8 @@ export function LivePreview({
                 keystoneBridge.notify('runtime.ready', { timestamp: Date.now() });
             } catch (err) {
                 console.error('Runtime Boot Error:', err);
-                document.getElementById('root').innerHTML =
-                    '<div style="color:#ef4444;padding:20px;font-family:monospace;font-size:13px;line-height:1.6">' +
-                    '<strong style="color:#f87171">Runtime Error</strong><br/>' +
-                    '<span style="color:#fca5a5">' + (err.message || err) + '</span></div>';
+                document.getElementById('root').innerHTML = '<div style="color:#ef4444;padding:20px;font-family:monospace;font-size:13px;line-height:1.6"><strong style="color:#f87171">Runtime Error</strong><br/><span id="err-msg" style="color:#fca5a5"></span></div>';
+                document.getElementById('err-msg').textContent = err.message || String(err);
                 keystoneBridge.notify('runtime.error', { message: err.message || String(err) });
             }
         })();
