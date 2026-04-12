@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { users, siwsNonces } from '@/db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { SignJWT, jwtVerify } from 'jose';
@@ -9,7 +9,7 @@ import { SignJWT, jwtVerify } from 'jose';
 const COOKIE_NAME = 'keystone-siws-session';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
-// In-memory nonce tracking to prevent replay attacks
+// Nonce tracking to prevent replay attacks
 const NONCE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 
 function getJwtSecret() {
