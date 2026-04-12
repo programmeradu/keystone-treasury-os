@@ -59,3 +59,9 @@ scripts/seed-mini-apps.mjs
 # build artifacts
 build-output.txt
 .open-next/
+
+# firecrawl cache
+.firecrawl/
+
+# research & strategy docs (private)
+docs/
