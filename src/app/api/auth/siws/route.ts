@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { users } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { users, siwsNonces } from '@/db/schema';
+import { eq, sql } from 'drizzle-orm';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { SignJWT, jwtVerify } from 'jose';
@@ -10,7 +10,6 @@ const COOKIE_NAME = 'keystone-siws-session';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 // In-memory nonce tracking to prevent replay attacks
-const usedNonces = new Set<string>();
 const NONCE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 
 function getJwtSecret() {
@@ -65,8 +64,20 @@ export async function POST(request: NextRequest) {
         if (nonceMatch) {
             const nonce = nonceMatch[1].trim();
 
+            // Ensure DB is available
+            if (!db) {
+                return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
+            }
+
+
             // Check if nonce was already used (replay attack prevention)
-            if (usedNonces.has(nonce)) {
+            const existingNonce = await db
+                .select()
+                .from(siwsNonces)
+                .where(eq(siwsNonces.nonce, nonce))
+                .limit(1);
+
+            if (existingNonce.length > 0) {
                 return NextResponse.json(
                     { error: 'Nonce already used. Please generate a new sign-in request.' },
                     { status: 401 }
@@ -86,9 +97,12 @@ export async function POST(request: NextRequest) {
                 }
             }
 
-            // Mark nonce as used and schedule cleanup
-            usedNonces.add(nonce);
-            setTimeout(() => usedNonces.delete(nonce), NONCE_EXPIRY_MS);
+            // Mark nonce as used in DB
+            await db.insert(siwsNonces).values({
+                nonce,
+                expiresAt: new Date(Date.now() + NONCE_EXPIRY_MS),
+            });
+
         } else {
             // Reject messages without a nonce — all SIWS messages must include one
             return NextResponse.json(
