@@ -25,7 +25,7 @@
 
 ## Learned Workspace Facts
 
-- Monorepo: root Next.js 15.5 app + `packages/cli` and `packages/sdk` workspaces; React 19, Drizzle ORM, Neon Postgres; **production deployment is Vercel only** (dreyv.stauniverse.tech). Repo still includes optional Cloudflare/OpenNext scripts (`cf:*`, `@opennextjs/cloudflare`) for experiments — not the live host.
+- Monorepo: root Next.js 15.5 app + `packages/cli` and `packages/sdk` workspaces; React 19, Drizzle ORM, Neon Postgres; **production deployment is Vercel only** (dreyv.stauniverse.tech). Netlify config, Cloudflare Workers/OpenNext deploy artifacts, and `wrangler.toml` were removed from the repo — use Vercel for hosting and enable **Vercel Analytics** / **Speed Insights** in the project dashboard (`@vercel/analytics` + `@vercel/speed-insights` in root layout).
 - 148 API routes under `src/app/api/`, single schema file at `src/db/schema.ts` with 30+ tables, auth via SIWS JWT + Neon/Better Auth middleware
 - Billing stack: Paddle (`src/lib/paddle.ts`, `src/app/api/paddle/`*) kept as reference; FastSpring (`src/lib/fastspring.ts`, `src/app/api/fastspring/*`) is the active MoR; tier stored in `users.tier` column (free/mini/max); catalog seed scripts: `npm run fastspring:seed-catalog`, `npm run paddle:seed-catalog`; env vars in `.env.example`
 - Core product modules: Command-Ops (NL interface), Foresight Simulator (what-if engine), Solana Atlas (MEV/rug-pull/DCA), Keystone Studio (browser IDE + AI Architect), Marketplace (80/20 revenue split, Anchor devnet contract), Simulation Firewall, Persistent Knowledge Memory

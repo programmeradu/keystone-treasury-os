@@ -50,13 +50,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-
-if (process.env.NODE_ENV === "development" && !process.env.VERCEL) {
-  void import("@opennextjs/cloudflare")
-    .then(({ initOpenNextCloudflareForDev }) => {
-      initOpenNextCloudflareForDev();
-    })
-    .catch(() => {
-      // Ignore Cloudflare dev init issues outside Cloudflare workflows.
-    });
-}
