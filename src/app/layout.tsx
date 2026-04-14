@@ -6,6 +6,7 @@ import Script from "next/script";
 import { Web3Providers } from "@/components/providers/web3-provider";
 import { ToastContainer } from "@/components/ToastContainer";
 import { CookieBanner } from "@/components/CookieBanner";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata: Metadata = {
   title: "KeyStone | The Command Layer for Treasury Management",
@@ -62,6 +63,7 @@ export default function RootLayout({
         <VisualEditsMessenger />
         <ToastContainer />
         <CookieBanner />
+        <SpeedInsights />
       </body>
     </html>
   );
