@@ -114,6 +114,7 @@ export async function middleware(request: NextRequest) {
         publicPaths.some((p) => pathname.startsWith(p)) ||
         publicPages.includes(pathname) ||
         pathname.startsWith('/legal') ||
+        pathname.startsWith('/guides') ||
         pathname.includes('.')
     ) {
         return withSeoHeaders(NextResponse.next(), pathname);

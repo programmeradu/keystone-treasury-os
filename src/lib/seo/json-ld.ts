@@ -48,3 +48,33 @@ export function buildRootJsonLd(): Record<string, unknown> {
     ],
   };
 }
+
+/** Article / long-form guide (rich results–friendly when content is substantive). */
+export function buildArticleJsonLd(opts: {
+  headline: string;
+  description: string;
+  path: string;
+  datePublished: string;
+  dateModified?: string;
+}): Record<string, unknown> {
+  const origin = getSiteOrigin().replace(/\/$/, "");
+  const url = `${origin}${opts.path.startsWith("/") ? opts.path : `/${opts.path}`}`;
+  const modified = opts.dateModified ?? opts.datePublished;
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: opts.headline,
+    description: opts.description,
+    url,
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+    datePublished: opts.datePublished,
+    dateModified: modified,
+    author: { "@type": "Organization", name: "Dreyv", url: origin },
+    publisher: {
+      "@type": "Organization",
+      name: "StaUniverse",
+      logo: { "@type": "ImageObject", url: `${origin}/icon.svg` },
+    },
+  };
+}

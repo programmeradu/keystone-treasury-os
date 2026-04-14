@@ -5,6 +5,10 @@ import { FaDiscord, FaGithub, FaTwitter } from "react-icons/fa6";
 
 const productLinks = [
   { label: "Pricing", href: "/pricing" },
+  {
+    label: "Guide: Command-Ops",
+    href: "/guides/command-ops-for-web3-treasuries",
+  },
   { label: "App Dashboard", href: "/app" },
   { label: "Treasury Hub", href: "/app/treasury" },
   { label: "Keystone Studio", href: "/app/studio" },
