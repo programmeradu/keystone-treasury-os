@@ -148,13 +148,6 @@ export default function PricingPage() {
                         </Link>
                     </div>
                 </div>
-
-                <p className="text-center text-[10px] text-white/35 uppercase font-bold tracking-widest mt-12 max-w-xl mx-auto leading-relaxed">
-                    Catalog products should match these plans; set{" "}
-                    <code className="text-white/50">FASTSPRING_PRODUCT_PATH_MINI</code> and{" "}
-                    <code className="text-white/50">FASTSPRING_PRODUCT_PATH_MAX</code> (and checkout path) in your
-                    deployment environment.
-                </p>
             </main>
 
             <SiteFooter />
