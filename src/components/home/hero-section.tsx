@@ -43,9 +43,9 @@ export function HeroSection() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8 }}
-          className="text-center text-[11px] font-mono uppercase tracking-[0.3em] text-keystone-green/60 mb-8"
+          className="text-center text-[11px] font-mono uppercase tracking-[0.3em] text-dreyv-green/60 mb-8"
         >
-          The Sovereign OS for Digital Assets
+          dreyv — The Sovereign OS for Digital Assets
           {solPrice && (
             <span className="ml-4 text-white/25">SOL ${solPrice.toFixed(2)}</span>
           )}
@@ -63,8 +63,8 @@ export function HeroSection() {
               className="text-[clamp(2.75rem,5vw,5rem)] font-bold tracking-[-0.03em] leading-[1.1] text-white flex flex-col items-start"
             >
               <span>From</span>
-              <span>Click-Ops <span className="text-keystone-green">to</span></span>
-              <span className="bg-gradient-to-r from-keystone-green via-emerald-400 to-keystone-green/50 bg-clip-text text-transparent">
+              <span>Click-Ops <span className="text-dreyv-green">to</span></span>
+              <span className="bg-gradient-to-r from-dreyv-green via-emerald-400 to-dreyv-green/50 bg-clip-text text-transparent">
                 Command-Ops.
               </span>
             </motion.h1>
@@ -88,7 +88,7 @@ export function HeroSection() {
             className="relative hidden lg:flex items-center justify-center"
           >
             {/* Glow behind the image */}
-            <div className="absolute -inset-8 bg-keystone-green/[0.03] blur-[80px] rounded-full pointer-events-none" />
+            <div className="absolute -inset-8 bg-dreyv-green/[0.03] blur-[80px] rounded-full pointer-events-none" />
 
             <div className="relative w-full max-w-lg">
               <Image

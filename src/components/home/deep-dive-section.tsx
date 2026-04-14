@@ -50,7 +50,7 @@ function TreasuryMockUI() {
     <div className="rounded-xl border border-white/[0.06] overflow-hidden">
       <Image
         src="/images/treasury.png"
-        alt="Keystone Treasury Dashboard"
+        alt="dreyv Treasury Dashboard"
         width={800}
         height={600}
         className="w-full h-auto"

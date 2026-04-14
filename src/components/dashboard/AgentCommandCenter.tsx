@@ -18,7 +18,7 @@ export function AgentCommandCenter() {
 
     // Initial boot
     useEffect(() => {
-        addLog("Keystone Agent Interface Linked.", "SYSTEM");
+        addLog("dreyv Agent Interface Linked.", "SYSTEM");
     }, []);
 
     // Listen to real app events

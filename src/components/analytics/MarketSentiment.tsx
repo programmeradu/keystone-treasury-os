@@ -180,7 +180,7 @@ Response format: JSON { "observation": "...", "suggestion": "..." }`;
                         <Logo size={28} fillColor={simActive ? "#f97316" : "var(--dashboard-accent)"} />
                     </div>
                     <div>
-                        <h3 className="text-sm font-bold text-foreground tracking-tight uppercase">Keystone Intelligence</h3>
+                        <h3 className="text-sm font-bold text-foreground tracking-tight uppercase">dreyv Intelligence</h3>
                         <div className="flex items-center gap-2">
                             <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${simActive ? "bg-orange-500" : "bg-primary"}`} />
                             <span className="text-[9px] text-muted-foreground font-mono">

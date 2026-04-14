@@ -58,7 +58,7 @@ export const ReadyStep = ({ data, onComplete, completing }: ReadyStepProps) => {
                         </>
                     ) : (
                         <>
-                            <Rocket size={16} /> Launch Keystone
+                            <Rocket size={16} /> Launch dreyv
                         </>
                     )}
                 </button>

@@ -80,7 +80,7 @@ export function EcosystemSection() {
                   <div className="text-sm font-medium text-white/50">{proof.title}</div>
                   <div className="text-[11px] text-white/20 font-mono">{proof.detail}</div>
                 </div>
-                <span className="text-[10px] font-mono uppercase tracking-wider text-keystone-green/50">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-dreyv-green/50">
                   {proof.status}
                 </span>
               </div>

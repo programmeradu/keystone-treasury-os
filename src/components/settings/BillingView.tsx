@@ -118,7 +118,7 @@ export const BillingView = () => {
                             <div>
                                 <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1">Current Plan</h3>
                                 <h2 className="text-3xl font-black text-foreground tracking-tight flex items-center gap-2 uppercase">
-                                    Keystone OS <span className="text-primary">{tier === 'free' ? 'Base' : tier}</span>
+                                    dreyv OS <span className="text-primary">{tier === 'free' ? 'Base' : tier}</span>
                                 </h2>
                             </div>
                             <div className="flex flex-col items-end gap-2">

@@ -1,7 +1,7 @@
 "use client";
 
 import { LogoFilled } from "@/components/icons";
-import { FaDiscord, FaGithub, FaTwitter } from "react-icons/fa6";
+import { FaDiscord, FaGithub, FaLinkedin, FaTwitter } from "react-icons/fa6";
 
 const productLinks = [
   { label: "Pricing", href: "/pricing" },
@@ -11,7 +11,7 @@ const productLinks = [
   },
   { label: "App Dashboard", href: "/app" },
   { label: "Treasury Hub", href: "/app/treasury" },
-  { label: "Keystone Studio", href: "/app/studio" },
+  { label: "dreyv Studio", href: "/app/studio" },
   { label: "Marketplace", href: "/app/marketplace" },
   { label: "Analytics", href: "/app/analytics" },
 ];
@@ -45,7 +45,7 @@ export function SiteFooter() {
           <div className="md:col-span-1">
             <a href="#content" className="flex items-center gap-2 mb-4">
               <LogoFilled size={22} />
-              <span className="text-sm font-semibold text-white">Keystone</span>
+              <span className="text-sm font-semibold text-white">dreyv</span>
             </a>
             <p className="text-xs text-white/30 leading-relaxed max-w-xs">
               The Sovereign OS for digital assets. Command your treasury with
@@ -133,23 +133,34 @@ export function SiteFooter() {
         {/* Bottom bar */}
         <div className="mt-12 pt-6 border-t border-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="text-xs text-white/20">
-            &copy; {new Date().getFullYear()} Keystone. All rights reserved.
+            &copy; {new Date().getFullYear()} dreyv. All rights reserved.
           </div>
           
           <div className="flex items-center gap-4">
             <a
-              href="https://twitter.com/Keystone_OS"
+              href="https://x.com/dreyvapp"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-white/30 hover:text-keystone-green transition-colors"
+              aria-label="dreyv on X"
+              className="text-white/30 hover:text-dreyv-green transition-colors"
             >
               <FaTwitter size={14} />
+            </a>
+            <a
+              href="https://www.linkedin.com/company/dreyv/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="dreyv on LinkedIn"
+              className="text-white/30 hover:text-dreyv-green transition-colors"
+            >
+              <FaLinkedin size={14} />
             </a>
             <a
               href="https://discord.gg/keystone"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-white/30 hover:text-keystone-green transition-colors"
+              aria-label="dreyv Discord"
+              className="text-white/30 hover:text-dreyv-green transition-colors"
             >
               <FaDiscord size={14} />
             </a>
@@ -157,7 +168,8 @@ export function SiteFooter() {
               href="https://github.com/keystone-org"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-white/30 hover:text-keystone-green transition-colors"
+              aria-label="dreyv on GitHub"
+              className="text-white/30 hover:text-dreyv-green transition-colors"
             >
               <FaGithub size={14} />
             </a>

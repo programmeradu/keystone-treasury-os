@@ -72,7 +72,7 @@ export function PublishDialog({
 
             // Phase 2: Publish to API
             setState((prev) => ({ ...prev, phase: "publishing" }));
-            addProgress("📦 Building & publishing to Keystone Registry…");
+            addProgress("📦 Building & publishing to dreyv Registry…");
 
             const payload = {
                 name: state.appName,
@@ -107,7 +107,7 @@ export function PublishDialog({
             const baseUrl = window.location.origin;
             const marketplaceUrl = `${baseUrl}/app/working-swap?appId=${publishedAppId}`;
 
-            addProgress("✅ Published to Keystone Registry");
+            addProgress("✅ Published to dreyv Registry");
             addProgress(`🔗 Marketplace URL: ${marketplaceUrl}`);
 
             setState((prev) => ({
@@ -144,7 +144,7 @@ export function PublishDialog({
                         </div>
                         <div>
                             <h2 className="text-lg font-bold text-white">Publish Mini-App</h2>
-                            <p className="text-xs text-zinc-500">1-click deploy to Keystone Marketplace</p>
+                            <p className="text-xs text-zinc-500">1-click deploy to dreyv Marketplace</p>
                         </div>
                     </div>
                     <button

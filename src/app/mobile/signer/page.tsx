@@ -62,7 +62,7 @@ export default function MobileSignerPage() {
                     <div className="w-8 h-8 rounded-full bg-[#36e27b]/20 flex items-center justify-center border border-[#36e27b]/20">
                         <div className="w-4 h-4 rounded-full bg-[#36e27b]" />
                     </div>
-                    <span className="font-bold text-white tracking-tight">Keystone</span>
+                    <span className="font-bold text-white tracking-tight">dreyv</span>
                 </div>
                 <div className="relative">
                     <Bell className="text-[#9eb7a8]" size={20} />

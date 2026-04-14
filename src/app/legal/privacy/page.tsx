@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
     title: "Privacy Policy",
     description:
-        "Dreyv privacy policy — how we collect, use, and protect your data.",
+        "dreyv privacy policy — how we collect, use, and protect your data.",
     alternates: { canonical: "/legal/privacy" },
 };
 
@@ -15,7 +15,7 @@ export default function PrivacyPage() {
 
             <h2>1. Information We Collect</h2>
             <p>
-                Keystone collects the minimum information necessary to provide our treasury management services:
+                dreyv collects the minimum information necessary to provide our treasury management services:
             </p>
             <ul>
                 <li><strong>Wallet addresses</strong> you connect to the platform (public blockchain data).</li>

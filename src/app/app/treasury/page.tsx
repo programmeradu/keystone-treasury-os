@@ -51,7 +51,7 @@ function TreasuryHubContent() {
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = `keystone-vault-${Date.now()}.csv`; a.click();
+    a.href = url; a.download = `dreyv-vault-${Date.now()}.csv`; a.click();
     URL.revokeObjectURL(url);
     toast.success("Vault data exported as CSV");
   };
@@ -67,7 +67,7 @@ function TreasuryHubContent() {
       <header className="flex items-center justify-between px-6 py-4 z-30 border-b border-border bg-background/95 backdrop-blur-xl h-16 shrink-0">
         <div className="flex items-center gap-8">
           <div className="flex flex-col">
-            <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground leading-none mb-1">Keystone Treasury</div>
+            <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground leading-none mb-1">dreyv Treasury</div>
             <h1 className="text-lg font-bold text-foreground tracking-tight leading-none">Treasury Hub</h1>
           </div>
 

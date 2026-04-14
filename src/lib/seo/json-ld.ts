@@ -1,9 +1,23 @@
+import { HOME_FAQ_ITEMS } from "./home-faq";
 import { getSiteOrigin } from "./site";
 
-/** JSON-LD @graph for Organization + WebSite + SoftwareApplication (Google-friendly, JSON-LD format). */
+/** JSON-LD @graph for Organization + WebSite + SoftwareApplication + FAQPage (Google-friendly). */
 export function buildRootJsonLd(): Record<string, unknown> {
   const origin = getSiteOrigin();
   const logoUrl = `${origin}/icon.svg`;
+
+  const faqPage: Record<string, unknown> = {
+    "@type": "FAQPage",
+    "@id": `${origin}/#faq`,
+    mainEntity: HOME_FAQ_ITEMS.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.answer,
+      },
+    })),
+  };
 
   return {
     "@context": "https://schema.org",
@@ -11,8 +25,12 @@ export function buildRootJsonLd(): Record<string, unknown> {
       {
         "@type": "Organization",
         "@id": `${origin}/#organization`,
-        name: "Dreyv",
+        name: "dreyv",
         url: origin,
+        sameAs: [
+          "https://x.com/dreyvapp",
+          "https://www.linkedin.com/company/dreyv/",
+        ],
         logo: {
           "@type": "ImageObject",
           url: logoUrl,
@@ -23,7 +41,7 @@ export function buildRootJsonLd(): Record<string, unknown> {
       {
         "@type": "WebSite",
         "@id": `${origin}/#website`,
-        name: "Dreyv",
+        name: "dreyv",
         url: origin,
         publisher: { "@id": `${origin}/#organization` },
         inLanguage: "en-US",
@@ -31,7 +49,7 @@ export function buildRootJsonLd(): Record<string, unknown> {
       {
         "@type": "SoftwareApplication",
         "@id": `${origin}/#product`,
-        name: "Dreyv OS",
+        name: "dreyv OS",
         applicationCategory: "FinanceApplication",
         operatingSystem: "Web",
         offers: {
@@ -45,6 +63,7 @@ export function buildRootJsonLd(): Record<string, unknown> {
         url: origin,
         provider: { "@id": `${origin}/#organization` },
       },
+      faqPage,
     ],
   };
 }
@@ -70,7 +89,7 @@ export function buildArticleJsonLd(opts: {
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
     datePublished: opts.datePublished,
     dateModified: modified,
-    author: { "@type": "Organization", name: "Dreyv", url: origin },
+    author: { "@type": "Organization", name: "dreyv", url: origin },
     publisher: {
       "@type": "Organization",
       name: "StaUniverse",

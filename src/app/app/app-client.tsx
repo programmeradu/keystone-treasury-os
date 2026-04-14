@@ -32,7 +32,7 @@ type RunResponse = {
   error?: string | { code: string; message: string };
 };
 
-export const KeystoneApp: React.FC = () => {
+export const DreyvApp: React.FC = () => {
   const [mode, setMode] = React.useState<"agents" | "command">("agents");
   const [prompt, setPrompt] = React.useState("");
   const [loading, setLoading] = React.useState(false);

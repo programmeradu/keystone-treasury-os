@@ -479,7 +479,7 @@ export function CommandBar() {
           >
             <Sparkles size={16} className="text-primary" />
             <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors mr-2">
-              Ask Keystone...
+              Ask dreyv...
               {IntentRegistry.getActive().length > 0 && (
                 <span
                   className="inline-block w-1 h-1 rounded-full bg-primary animate-ping ml-1"
@@ -502,7 +502,7 @@ export function CommandBar() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
           role="dialog"
           aria-modal="true"
-          aria-label="Keystone command bar"
+          aria-label="dreyv command bar"
         >
           {/* Outside click closes (Requirement 1.8) */}
           <div className="absolute inset-0" onClick={handleClose} />

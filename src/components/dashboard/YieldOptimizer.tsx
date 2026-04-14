@@ -419,7 +419,7 @@ export const YieldOptimizer = () => {
                                                     : "Tactical Deployment Plan"}
                                             </h3>
                                             <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
-                                                Keystone Intelligence Layer
+                                                dreyv Intelligence Layer
                                             </p>
                                         </div>
                                     </div>

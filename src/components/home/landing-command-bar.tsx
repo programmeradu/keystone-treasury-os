@@ -131,11 +131,11 @@ export function LandingCommandBar() {
             {/* Inline trigger — same style as in-app CommandBar */}
             <button
                 onClick={() => setOpen(true)}
-                className="mt-6 flex items-center gap-3 pl-4 pr-3 py-3 rounded-full bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] shadow-2xl hover:border-keystone-green/30 hover:shadow-[0_0_20px_rgba(54,226,123,0.1)] transition-all group"
+                className="mt-6 flex items-center gap-3 pl-4 pr-3 py-3 rounded-full bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] shadow-2xl hover:border-dreyv-green/30 hover:shadow-[0_0_20px_rgba(54,226,123,0.1)] transition-all group"
             >
-                <Sparkles size={16} className="text-keystone-green" />
+                <Sparkles size={16} className="text-dreyv-green" />
                 <span className="text-sm font-medium text-white/40 group-hover:text-white/70 transition-colors mr-2">
-                    Ask Keystone...
+                    Ask dreyv...
                 </span>
                 <div className="flex items-center gap-1 opacity-50 text-[10px] font-mono text-white/30 border-l border-white/[0.08] pl-3">
                     <span>⌘</span> K
@@ -163,15 +163,15 @@ export function LandingCommandBar() {
                             className="relative w-full max-w-2xl bg-[#0a0a0c] border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden"
                         >
                             {/* Neon Glow Border Effect */}
-                            <div className="absolute inset-0 z-0 pointer-events-none rounded-2xl ring-1 ring-keystone-green/20" />
-                            <div className="absolute -inset-0.5 bg-gradient-to-r from-keystone-green to-[#25a85c] rounded-2xl blur opacity-20" />
+                            <div className="absolute inset-0 z-0 pointer-events-none rounded-2xl ring-1 ring-dreyv-green/20" />
+                            <div className="absolute -inset-0.5 bg-gradient-to-r from-dreyv-green to-[#25a85c] rounded-2xl blur opacity-20" />
 
                             <div className="relative z-10 flex flex-col">
                                 {!plan ? (
                                     /* INPUT STATE */
                                     <>
                                         <div className="flex items-center px-6 py-5 border-b border-white/[0.06]">
-                                            <Sparkles size={20} className={`text-keystone-green mr-4 ${loading ? "animate-spin" : ""}`} />
+                                            <Sparkles size={20} className={`text-dreyv-green mr-4 ${loading ? "animate-spin" : ""}`} />
                                             <input
                                                 autoFocus
                                                 value={input}
@@ -185,7 +185,7 @@ export function LandingCommandBar() {
 
                                         <div className="px-6 py-3 bg-white/[0.02] flex items-center justify-between text-[10px] text-white/30">
                                             <div className="flex items-center gap-2">
-                                                <div className={`w-1.5 h-1.5 rounded-full bg-keystone-green ${loading ? "animate-ping" : "animate-pulse"}`} />
+                                                <div className={`w-1.5 h-1.5 rounded-full bg-dreyv-green ${loading ? "animate-ping" : "animate-pulse"}`} />
                                                 <span className="font-mono">{loading ? "THINKING..." : "AI AGENT LISTENING"}</span>
                                             </div>
                                             <div className="flex items-center gap-3">
@@ -199,8 +199,8 @@ export function LandingCommandBar() {
                                     <div className="p-6">
                                         <div className="flex items-center justify-between mb-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="p-2 rounded-lg bg-keystone-green/10 border border-keystone-green/20">
-                                                    <Sparkles size={16} className="text-keystone-green" />
+                                                <div className="p-2 rounded-lg bg-dreyv-green/10 border border-dreyv-green/20">
+                                                    <Sparkles size={16} className="text-dreyv-green" />
                                                 </div>
                                                 <div>
                                                     <h3 className="text-sm font-bold text-white uppercase tracking-wider">
@@ -211,7 +211,7 @@ export function LandingCommandBar() {
                                                     </p>
                                                 </div>
                                             </div>
-                                            <div className="px-2 py-1 rounded bg-keystone-green/10 border border-keystone-green/20 text-keystone-green text-[10px] font-mono uppercase">
+                                            <div className="px-2 py-1 rounded bg-dreyv-green/10 border border-dreyv-green/20 text-dreyv-green text-[10px] font-mono uppercase">
                                                 {plan.operation}
                                             </div>
                                         </div>
@@ -220,7 +220,7 @@ export function LandingCommandBar() {
                                             {plan.actions?.map((action: any, idx: number) => (
                                                 <div key={idx} className="bg-white/[0.03] rounded-xl p-4 border border-white/[0.06]">
                                                     <div className="flex items-center justify-between mb-3 border-b border-white/[0.06] pb-2">
-                                                        <span className="text-[10px] font-bold text-keystone-green uppercase tracking-tighter">Step {idx + 1}</span>
+                                                        <span className="text-[10px] font-bold text-dreyv-green uppercase tracking-tighter">Step {idx + 1}</span>
                                                         <span className="px-1.5 py-0.5 rounded bg-white/[0.04] text-[9px] font-mono text-white/40 uppercase">{action.operation}</span>
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-x-4 gap-y-2">
@@ -234,8 +234,8 @@ export function LandingCommandBar() {
                                                 </div>
                                             ))}
 
-                                            <div className="bg-white/[0.03] rounded-xl p-4 border border-white/[0.06] border-l-2 border-l-keystone-green">
-                                                <span className="text-[10px] text-keystone-green uppercase font-bold block mb-1">Agent Strategy</span>
+                                            <div className="bg-white/[0.03] rounded-xl p-4 border border-white/[0.06] border-l-2 border-l-dreyv-green">
+                                                <span className="text-[10px] text-dreyv-green uppercase font-bold block mb-1">Agent Strategy</span>
                                                 <p className="text-sm text-white/70 italic leading-relaxed">{plan.estimatedOutcome}</p>
                                             </div>
                                         </div>
@@ -252,7 +252,7 @@ export function LandingCommandBar() {
                                             <button
                                                 onClick={handleConfirm}
                                                 disabled={executing}
-                                                className={`flex-1 py-2.5 bg-keystone-green text-black font-bold rounded-lg text-sm hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-keystone-green/20 ${executing ? "opacity-50 cursor-wait" : ""}`}
+                                                className={`flex-1 py-2.5 bg-dreyv-green text-black font-bold rounded-lg text-sm hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-dreyv-green/20 ${executing ? "opacity-50 cursor-wait" : ""}`}
                                             >
                                                 {executing ? "Proposing..." : "Confirm & Execute"}
                                             </button>

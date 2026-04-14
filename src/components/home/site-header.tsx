@@ -12,6 +12,7 @@ const navLinks = [
   { label: "Atlas", href: "#atlas" },
   { label: "How It Works", href: "#how-it-works" },
   { label: "Use Cases", href: "#use-cases" },
+  { label: "FAQ", href: "#faq" },
 ];
 
 export function SiteHeader() {
@@ -22,10 +23,10 @@ export function SiteHeader() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <a href="#content" className="flex items-center gap-2.5 group" aria-label="Keystone Home">
+          <a href="#content" className="flex items-center gap-2.5 group" aria-label="dreyv home">
             <LogoFilled size={28} />
-            <span className="text-base font-semibold tracking-wide text-white group-hover:text-keystone-green transition-colors">
-              Keystone
+            <span className="text-base font-semibold tracking-wide text-white group-hover:text-dreyv-green transition-colors">
+              dreyv
             </span>
           </a>
 
@@ -89,7 +90,7 @@ export function SiteHeader() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-keystone-void/95 backdrop-blur-xl border-t border-white/[0.06]"
+            className="md:hidden bg-dreyv-void/95 backdrop-blur-xl border-t border-white/[0.06]"
           >
             <div className="px-4 py-4 space-y-1">
               {navLinks.map((link) => (

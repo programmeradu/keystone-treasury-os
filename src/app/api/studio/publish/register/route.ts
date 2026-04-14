@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
           },
         ],
         wallet: {
-          walletName: `Keystone Developer Wallet`,
+          walletName: `dreyv Developer Wallet`,
           accounts: [
             {
               curve: "CURVE_ED25519",

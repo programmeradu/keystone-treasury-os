@@ -2,7 +2,7 @@
 
 import React from "react";
 
-// Keystone Icons: Custom Geometric, Thin Stroke, Neon Accents
+// dreyv Icons: Custom Geometric, Thin Stroke, Neon Accents
 // Style: "Future-Primal" - purely functional, mathematical shapes
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {

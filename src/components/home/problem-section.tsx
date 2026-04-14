@@ -14,7 +14,7 @@ const fragmentedTools = [
   { name: "Marinade", status: "ok", detail: "Staked", logo: "/logos/marinade.png" },
 ];
 
-const keystoneModules = [
+const dreyvModules = [
   { label: "Command", accent: "#36e27b", sub: "Natural language ops" },
   { label: "Treasury", accent: "#60a5fa", sub: "Balances & distributions" },
   { label: "Studio", accent: "#a78bfa", sub: "Build & deploy apps" },
@@ -63,7 +63,7 @@ export function ProblemSection() {
             initial={{ opacity: 0 }}
             animate={inView ? { opacity: 1 } : {}}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="bg-keystone-void p-6 md:p-8"
+            className="bg-dreyv-void p-6 md:p-8"
           >
             <p className="text-[10px] font-mono uppercase tracking-[0.25em] text-red-400/40 mb-5">
               Before — 8+ tabs open
@@ -93,7 +93,7 @@ export function ProblemSection() {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={inView ? { opacity: 1, scale: 1 } : {}}
                     transition={{ delay: 0.3 + i * 0.05 }}
-                    className="bg-keystone-void p-3 relative"
+                    className="bg-dreyv-void p-3 relative"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-1.5">
@@ -124,23 +124,23 @@ export function ProblemSection() {
             </p>
           </motion.div>
 
-          {/* ── AFTER: Unified Keystone dashboard ── */}
+          {/* ── AFTER: Unified dreyv dashboard ── */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={inView ? { opacity: 1 } : {}}
             transition={{ duration: 0.6, delay: 0.35 }}
-            className="bg-keystone-void p-6 md:p-8"
+            className="bg-dreyv-void p-6 md:p-8"
           >
-            <p className="text-[10px] font-mono uppercase tracking-[0.25em] text-keystone-green/40 mb-5">
-              After — One Keystone
+            <p className="text-[10px] font-mono uppercase tracking-[0.25em] text-dreyv-green/40 mb-5">
+              After — One dreyv
             </p>
 
             {/* Unified dashboard mock */}
-            <div className="rounded-lg border border-keystone-green/10 overflow-hidden">
+            <div className="rounded-lg border border-dreyv-green/10 overflow-hidden">
               {/* App chrome */}
               <div className="flex items-center gap-3 px-4 py-2.5 border-b border-white/[0.04] bg-white/[0.01]">
-                <div className="h-1.5 w-1.5 rounded-full bg-keystone-green/40" />
-                <span className="text-[9px] font-mono text-white/20 tracking-wider">keystone://treasury</span>
+                <div className="h-1.5 w-1.5 rounded-full bg-dreyv-green/40" />
+                <span className="text-[9px] font-mono text-white/20 tracking-wider">dreyv://treasury</span>
                 <div className="ml-auto flex items-center gap-1.5">
                   <span className="h-1 w-1 rounded-full bg-emerald-500/50" />
                   <span className="text-[8px] font-mono text-white/15">Connected</span>
@@ -151,7 +151,7 @@ export function ProblemSection() {
               <div className="grid grid-cols-[120px_1fr]">
                 {/* Sidebar */}
                 <div className="border-r border-white/[0.03] p-3 space-y-1">
-                  {keystoneModules.map((mod, i) => (
+                  {dreyvModules.map((mod, i) => (
                     <motion.div
                       key={mod.label}
                       initial={{ opacity: 0, x: -8 }}
@@ -176,9 +176,9 @@ export function ProblemSection() {
                 <div className="p-3 space-y-2">
                   {/* Command bar */}
                   <div className="flex items-center gap-2 rounded bg-white/[0.02] border border-white/[0.03] px-3 py-2">
-                    <span className="text-keystone-green/40 text-[10px] font-mono">$</span>
+                    <span className="text-dreyv-green/40 text-[10px] font-mono">$</span>
                     <span className="text-[10px] font-mono text-white/20">Swap 500 SOL → USDC</span>
-                    <span className="ml-auto text-[8px] font-mono text-keystone-green/30 bg-keystone-green/[0.06] px-1.5 py-0.5 rounded">
+                    <span className="ml-auto text-[8px] font-mono text-dreyv-green/30 bg-dreyv-green/[0.06] px-1.5 py-0.5 rounded">
                       Passed
                     </span>
                   </div>
@@ -208,7 +208,7 @@ export function ProblemSection() {
               </div>
             </div>
 
-            <p className="mt-4 text-[11px] text-keystone-green/25 leading-relaxed">
+            <p className="mt-4 text-[11px] text-dreyv-green/25 leading-relaxed">
               One screen · One command · Full control
             </p>
           </motion.div>

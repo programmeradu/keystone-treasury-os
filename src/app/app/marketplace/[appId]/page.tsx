@@ -76,7 +76,7 @@ export default function AppDetailPage() {
                     <div className="flex items-center gap-2">
                         <Link href="/app/marketplace" className="hover:text-primary transition-colors flex items-center gap-2 group">
                             <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-70 group-hover:text-primary transition-colors">Keystone App Store</span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-70 group-hover:text-primary transition-colors">dreyv App Store</span>
                         </Link>
                     </div>
                     <div className="flex items-center gap-3">
@@ -94,14 +94,14 @@ export default function AppDetailPage() {
 
             <div className="flex-1 overflow-y-auto scrollbar-thin relative">
 
-                {/* Immersive Header Background with Keystone Brand Watermark */}
+                {/* Immersive header background with dreyv brand watermark */}
                 <div className="relative h-80 w-full bg-[#0B0C10] border-b border-border/50 overflow-hidden">
                     <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
-                    {/* Keystone Brand Gradient */}
+                    {/* dreyv brand gradient */}
                     <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-[#36e27b]/5 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/3" />
                     <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/4" />
 
-                    {/* Subtle Keystone Logo Watermark */}
+                    {/* Subtle dreyv logo watermark */}
                     <svg className="absolute top-10 right-20 w-96 h-96 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
                         <path d="M 98.00 28.00 C 96.69 24.44 97.68 21.31 98.00 18.00 C 98.00 15.33 98.00 12.67 98.00 10.00 C 100.74 8.89 104.24 7.53 106.00 5.00 C 125.59 14.33 142.63 29.26 162.00 39.00 C 154.48 46.29 139.54 60.68 129.30 51.70 C 119.07 42.72 105.55 39.19 98.00 28.00 M 77.00 57.00 C 69.18 70.17 87.60 76.90 95.25 82.75 C 102.89 88.61 98.71 92.10 89.00 90.00 C 79.29 87.90 54.17 95.94 50.00 82.00 C 48.31 76.35 50.16 66.82 50.00 61.00 C 49.84 55.18 48.27 45.55 51.00 41.00 C 54.66 34.90 65.17 33.43 70.70 28.70 C 76.22 23.96 85.30 19.53 92.00 17.00 C 92.92 23.60 89.87 31.61 97.25 35.75 C 104.62 39.89 96.93 44.24 91.92 46.92 C 86.91 49.61 81.56 53.86 77.00 57.00 M 162.00 85.00 C 156.19 91.47 146.58 94.25 139.77 99.77 C 132.96 105.29 123.77 110.12 116.00 114.00 C 114.99 104.66 118.92 92.65 112.00 86.00 C 116.49 82.60 121.18 79.80 126.00 77.00 C 129.50 74.81 133.13 71.58 137.00 70.00 C 136.64 56.86 154.24 53.51 163.00 47.00 C 166.55 49.11 163.31 61.50 164.00 66.00 C 164.69 70.50 165.03 81.63 162.00 85.00 M 112.00 53.00 C 113.54 52.66 116.18 52.62 117.00 54.00 C 118.04 55.77 107.82 61.29 109.00 64.00 C 112.75 66.60 115.76 70.21 118.00 74.00 C 110.70 78.49 109.31 66.80 103.00 67.00 C 104.03 71.78 102.51 75.57 97.00 74.00 C 97.00 67.00 97.00 60.00 97.00 53.00 C 103.21 51.02 103.69 56.22 103.00 61.00 C 106.45 58.95 108.58 55.00 112.00 53.00" fill="#36e27b" />
                     </svg>
@@ -259,13 +259,13 @@ export default function AppDetailPage() {
                         </div>
 
                         <div className="space-y-6">
-                            {/* Keystone Verified Card */}
+                            {/* dreyv verified card */}
                             <div className="rounded-3xl border border-[#36e27b]/20 bg-[#36e27b]/5 backdrop-blur-md p-6 relative overflow-hidden">
                                 <div className="absolute top-0 right-0 p-6 opacity-10">
                                     <ShieldCheck size={100} />
                                 </div>
                                 <h3 className="font-black text-sm uppercase tracking-[0.2em] text-[#36e27b] mb-4 flex items-center gap-2">
-                                    <ShieldCheck size={16} /> Keystone Security
+                                    <ShieldCheck size={16} /> dreyv Security
                                 </h3>
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-3 text-sm">

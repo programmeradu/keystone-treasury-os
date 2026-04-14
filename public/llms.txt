@@ -1,0 +1,34 @@
+# dreyv
+
+> Non-custodial AI treasury operating system for Web3 teams — command-ops, simulation before you sign, Solana intelligence.
+
+## Site
+
+- Home: /
+- App: /app
+- Atlas (public tools): /atlas
+- Pricing: /pricing
+- Guide — Command-Ops for Web3 treasuries: /guides/command-ops-for-web3-treasuries
+
+## Product summary
+
+dreyv helps treasury teams replace fragmented tab-juggling (wallets, DEX aggregators, analytics, chat) with a single command layer. Natural-language intent becomes multi-step plans; execution is previewed and routed through your multisig.
+
+## Non-custodial
+
+dreyv does not custody user assets. Users connect wallets and multisig; dreyv coordinates planning, simulation, and signing workflows.
+
+## Social
+
+- X (Twitter): https://x.com/dreyvapp
+- LinkedIn: https://www.linkedin.com/company/dreyv/
+
+## Contact & legal
+
+- Privacy: /legal/privacy
+- Terms: /legal/terms
+- Cookies: /legal/cookies
+
+## Machine-readable context
+
+This file is intended for LLMs and discovery systems. For structured data, see JSON-LD Organization, WebSite, SoftwareApplication, and FAQPage emitted in the root HTML of the deployed site (see the live origin in the browser address bar).

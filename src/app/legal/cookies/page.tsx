@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
     title: "Cookie Policy",
-    description: "Dreyv cookie policy — what cookies we use and why.",
+    description: "dreyv cookie policy — what cookies we use and why.",
     alternates: { canonical: "/legal/cookies" },
 };
 
@@ -48,7 +48,7 @@ export default function CookiesPage() {
             <h2>Managing Cookies</h2>
             <p>
                 You can manage cookies through your browser settings. Note that disabling essential
-                cookies will prevent you from signing in to Keystone.
+                cookies will prevent you from signing in to dreyv.
             </p>
 
             <h2>Contact</h2>

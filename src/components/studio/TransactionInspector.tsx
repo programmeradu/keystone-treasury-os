@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * TransactionInspector — Visual blockchain debugger for Keystone Studio.
+ * TransactionInspector — Visual blockchain debugger for dreyv Studio.
  *
  * Displays a visual timeline of transactions executed during the preview session,
  * including impact reports, state diffs, gas estimation, and simulation results.

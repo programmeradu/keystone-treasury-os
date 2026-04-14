@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
     title: "Terms of Service",
     description:
-        "Dreyv terms of service governing use of our treasury management platform.",
+        "dreyv terms of service governing use of our treasury management platform.",
     alternates: { canonical: "/legal/terms" },
 };
 
@@ -15,13 +15,13 @@ export default function TermsPage() {
 
             <h2>1. Acceptance of Terms</h2>
             <p>
-                By accessing or using Keystone ("the Service"), you agree to be bound by these Terms of Service.
+                By accessing or using dreyv (&quot;the Service&quot;), you agree to be bound by these Terms of Service.
                 If you do not agree, do not use the Service.
             </p>
 
             <h2>2. Description of Service</h2>
             <p>
-                Keystone is a treasury management platform that provides tools for managing digital assets
+                dreyv is a treasury management platform that provides tools for managing digital assets
                 on the Solana blockchain, including portfolio management, transaction execution, DCA automation,
                 and AI-powered analytics.
             </p>
@@ -49,7 +49,7 @@ export default function TermsPage() {
 
             <h2>6. Limitation of Liability</h2>
             <p>
-                Keystone is provided "as is" without warranties. We are not liable for losses arising from
+                The Service is provided &quot;as is&quot; without warranties. We are not liable for losses arising from
                 blockchain transactions, smart contract failures, market volatility, or third-party service
                 outages (including but not limited to Solana network, Jupiter, or Helius).
             </p>
@@ -57,7 +57,7 @@ export default function TermsPage() {
             <h2>7. Intellectual Property</h2>
             <p>
                 The Service, including all code, design, and documentation, is the intellectual property of
-                Keystone. Mini-apps created by users remain the intellectual property of their creators.
+                StaUniverse and its licensors. Mini-apps created by users remain the intellectual property of their creators.
             </p>
 
             <h2>8. Termination</h2>

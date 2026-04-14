@@ -7,7 +7,7 @@ const features = [
   {
     title: "Non-Custodial by Default",
     description:
-      "We never touch your keys. Keystone is a coordination layer that sits on top of your existing multisig (Squads).",
+      "We never touch your keys. dreyv is a coordination layer that sits on top of your existing multisig (Squads).",
   },
   {
     title: "Simulation Firewall",
@@ -17,7 +17,7 @@ const features = [
   {
     title: "On-Premise Ready",
     description:
-      "Need full data sovereignty? Keystone can be deployed as a self-hosted instance for institutional compliance.",
+      "Need full data sovereignty? dreyv can be deployed as a self-hosted instance for institutional compliance.",
   },
 ];
 
@@ -38,7 +38,7 @@ export function TrustSection() {
           transition={{ duration: 0.6 }}
           className="max-w-3xl mb-16"
         >
-          <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-keystone-green/40 mb-5">
+          <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-dreyv-green/40 mb-5">
             Security
           </p>
           <h2 className="text-3xl md:text-5xl font-bold text-white tracking-[-0.02em]">
@@ -57,7 +57,7 @@ export function TrustSection() {
               transition={{ duration: 0.5, delay: 0.2 + i * 0.1 }}
               className="border-t md:border-t-0 md:border-l border-white/[0.04] first:border-t-0 md:first:border-l-0 p-8 md:p-10"
             >
-              <div className="h-px w-8 bg-keystone-green opacity-30 mb-5" />
+              <div className="h-px w-8 bg-dreyv-green opacity-30 mb-5" />
               <h3 className="text-lg font-semibold text-white mb-3 tracking-tight">
                 {feature.title}
               </h3>
@@ -78,7 +78,7 @@ export function TrustSection() {
           {/* Pipeline header */}
           <div className="flex items-center justify-between px-6 md:px-10 py-4 border-b border-white/[0.03]">
             <div className="flex items-center gap-3">
-              <span className="h-1.5 w-1.5 rounded-full bg-keystone-green/50 animate-pulse" />
+              <span className="h-1.5 w-1.5 rounded-full bg-dreyv-green/50 animate-pulse" />
               <span className="text-[10px] font-mono uppercase tracking-widest text-white/20">Simulation Firewall</span>
             </div>
             <span className="text-[10px] font-mono text-white/10">real-time</span>
@@ -104,11 +104,11 @@ export function TrustSection() {
 
               {/* Firewall — center, largest */}
               <div className="md:flex-[1.5] relative">
-                <div className="absolute -inset-4 bg-keystone-green/[0.04] blur-3xl rounded-full pointer-events-none" />
-                <div className="relative rounded-xl border border-keystone-green/15 bg-keystone-green/[0.02] p-5">
+                <div className="absolute -inset-4 bg-dreyv-green/[0.04] blur-3xl rounded-full pointer-events-none" />
+                <div className="relative rounded-xl border border-dreyv-green/15 bg-dreyv-green/[0.02] p-5">
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-[9px] font-mono uppercase tracking-widest text-keystone-green/40">Scanning</span>
-                    <span className="text-[10px] font-mono text-keystone-green/50">50+ vectors</span>
+                    <span className="text-[9px] font-mono uppercase tracking-widest text-dreyv-green/40">Scanning</span>
+                    <span className="text-[10px] font-mono text-dreyv-green/50">50+ vectors</span>
                   </div>
 
                   {/* Scan lines */}
@@ -128,7 +128,7 @@ export function TrustSection() {
                         className="flex items-center justify-between font-mono text-[10px]"
                       >
                         <span className="text-white/15">{scan.check}</span>
-                        <span className={scan.ok ? "text-keystone-green/40" : "text-red-400/40"}>{scan.result}</span>
+                        <span className={scan.ok ? "text-dreyv-green/40" : "text-red-400/40"}>{scan.result}</span>
                       </motion.div>
                     ))}
                   </div>
@@ -136,7 +136,7 @@ export function TrustSection() {
                   {/* Progress bar */}
                   <div className="mt-4 h-0.5 rounded-full bg-white/[0.03] overflow-hidden">
                     <motion.div
-                      className="h-full bg-keystone-green/30 rounded-full"
+                      className="h-full bg-dreyv-green/30 rounded-full"
                       initial={{ width: "0%" }}
                       animate={inView ? { width: "100%" } : {}}
                       transition={{ duration: 2, delay: 0.6, ease: "easeOut" }}
@@ -151,18 +151,18 @@ export function TrustSection() {
               </div>
 
               {/* Executed */}
-              <div className="md:flex-1 rounded-xl border border-keystone-green/10 bg-keystone-green/[0.02] p-5">
-                <div className="text-[9px] font-mono uppercase tracking-widest text-keystone-green/30 mb-3">Executed</div>
+              <div className="md:flex-1 rounded-xl border border-dreyv-green/10 bg-dreyv-green/[0.02] p-5">
+                <div className="text-[9px] font-mono uppercase tracking-widest text-dreyv-green/30 mb-3">Executed</div>
                 <div className="text-center py-3">
                   <motion.div
                     initial={{ scale: 0, opacity: 0 }}
                     animate={inView ? { scale: 1, opacity: 1 } : {}}
                     transition={{ delay: 1.8, type: "spring", stiffness: 200 }}
-                    className="text-3xl font-bold text-keystone-green/40 font-mono"
+                    className="text-3xl font-bold text-dreyv-green/40 font-mono"
                   >
 
                   </motion.div>
-                  <div className="text-[10px] font-mono text-keystone-green/25 mt-2">All clear</div>
+                  <div className="text-[10px] font-mono text-dreyv-green/25 mt-2">All clear</div>
                 </div>
                 <div className="text-[10px] font-mono text-white/10 text-center">
                   Queued for 2/3 approval

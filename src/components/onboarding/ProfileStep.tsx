@@ -22,7 +22,7 @@ export const ProfileStep = ({ data, updateData }: StepProps) => {
             <div className="text-center space-y-2">
                 <h2 className="text-2xl font-black text-foreground uppercase tracking-tight">Set Up Your Identity</h2>
                 <p className="text-xs text-muted-foreground font-black uppercase tracking-widest">
-                    How your team will see you across Keystone
+                    How your team will see you across dreyv
                 </p>
             </div>
 

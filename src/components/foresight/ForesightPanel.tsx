@@ -255,7 +255,7 @@ export function ForesightPanel() {
                         </p>
                         <div className="mt-4 flex items-center gap-2 text-[9px] text-muted-foreground/50 uppercase font-bold tracking-widest">
                             <div className="w-1.5 h-1.5 rounded-full bg-primary/50 animate-pulse" />
-                            Powered by Keystone Simulation Engine
+                            Powered by dreyv Simulation Engine
                         </div>
                     </div>
                 )}

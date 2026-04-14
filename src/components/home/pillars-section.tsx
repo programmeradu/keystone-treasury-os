@@ -40,8 +40,8 @@ const supportPillars = [
   {
     title: "Marketplace",
     description: "Publish extensions, earn revenue split, and deploy workflows directly into treasury operations.",
-    accent: "bg-keystone-green",
-    accentText: "text-keystone-green",
+    accent: "bg-dreyv-green",
+    accentText: "text-dreyv-green",
     visual: "grid" as const,
   },
 ];
@@ -82,32 +82,32 @@ export function PillarsSection() {
             initial={{ opacity: 0 }}
             animate={inView ? { opacity: 1 } : {}}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="md:col-span-2 md:row-span-2 bg-keystone-void p-8 md:p-10 flex flex-col"
+            className="md:col-span-2 md:row-span-2 bg-dreyv-void p-8 md:p-10 flex flex-col"
           >
-            <p className="text-[10px] font-mono uppercase tracking-[0.25em] text-keystone-green/40 mb-6">
+            <p className="text-[10px] font-mono uppercase tracking-[0.25em] text-dreyv-green/40 mb-6">
               Command Layer
             </p>
             <div className="relative rounded-xl border border-white/[0.06] bg-white/[0.015] p-5 font-mono overflow-hidden">
-              <div className="absolute -top-10 -right-10 w-40 h-40 bg-keystone-green/[0.04] rounded-full blur-[60px] pointer-events-none" />
+              <div className="absolute -top-10 -right-10 w-40 h-40 bg-dreyv-green/[0.04] rounded-full blur-[60px] pointer-events-none" />
               <div className="text-[10px] uppercase tracking-widest text-white/15 mb-3">
-                keystone://command
+                dreyv://command
               </div>
               <div className="text-sm text-white/70">
-                <span className="text-keystone-green/80">$</span>{" "}
+                <span className="text-dreyv-green/80">$</span>{" "}
                 Swap 500 SOL → USDC via Jupiter with 0.5% slippage.
-                <span className="inline-block h-4 w-[2px] bg-keystone-green/50 ml-1 align-middle animate-terminal-blink" />
+                <span className="inline-block h-4 w-[2px] bg-dreyv-green/50 ml-1 align-middle animate-terminal-blink" />
               </div>
               <div className="mt-5 grid grid-cols-3 gap-4 text-xs">
                 <div className="flex justify-between items-center">
                   <span className="text-white/15">Route</span>
-                  <span className="inline-flex items-center gap-1 text-keystone-green/60">
+                  <span className="inline-flex items-center gap-1 text-dreyv-green/60">
                     <img src="/logos/jup.png" alt="" className="h-3 w-3 rounded-sm" />
                     Jupiter v6
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-white/15">Simulation</span>
-                  <span className="text-keystone-green/60">Passed</span>
+                  <span className="text-dreyv-green/60">Passed</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-white/15">Approval</span>
@@ -129,7 +129,7 @@ export function PillarsSection() {
             initial={{ opacity: 0 }}
             animate={inView ? { opacity: 1 } : {}}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="bg-keystone-void p-8"
+            className="bg-dreyv-void p-8"
           >
             <p className="text-[10px] font-mono uppercase tracking-[0.25em] text-cyan-400/40 mb-5">
               Solana Atlas
@@ -153,19 +153,19 @@ export function PillarsSection() {
             initial={{ opacity: 0 }}
             animate={inView ? { opacity: 1 } : {}}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="bg-keystone-void p-8"
+            className="bg-dreyv-void p-8"
           >
             <p className="text-[10px] font-mono uppercase tracking-[0.25em] text-pink-400/40 mb-5">
-              Keystone Studio
+              dreyv Studio
             </p>
             <div className="relative rounded-lg border border-white/[0.06] bg-white/[0.015] p-4 mb-4 overflow-hidden">
               <div className="absolute -top-6 -left-6 w-20 h-20 bg-pink-500/[0.06] rounded-full blur-[30px] pointer-events-none" />
               <pre className="text-[11px] leading-relaxed text-white/50 font-mono">{`export async function execute(cmd) {
-  const plan = await keystone.plan(cmd)
-  return keystone.simulate(plan)
+  const plan = await dreyv.plan(cmd)
+  return dreyv.simulate(plan)
 }`}</pre>
             </div>
-            <h3 className="text-sm font-semibold text-white">Keystone Studio</h3>
+            <h3 className="text-sm font-semibold text-white">dreyv Studio</h3>
             <p className="mt-1.5 text-xs text-white/25 leading-relaxed">
               Build and monetize mini-apps with AI architect + Monaco IDE.
             </p>
@@ -180,7 +180,7 @@ export function PillarsSection() {
               initial={{ opacity: 0, y: 16 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.4, delay: 0.35 + i * 0.06 }}
-              className="group bg-keystone-void p-6 hover:bg-white/[0.01] transition-colors duration-300"
+              className="group bg-dreyv-void p-6 hover:bg-white/[0.01] transition-colors duration-300"
             >
               {/* Mini visual per card */}
               <div className="mb-4 h-8 flex items-end gap-[2px]">

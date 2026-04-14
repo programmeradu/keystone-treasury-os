@@ -37,8 +37,8 @@ export const ProfileView = ({ onNavigate }: { onNavigate?: (view: string) => voi
     const walletAddress = connected && publicKey ? publicKey.toBase58() : null;
     const shortWallet = walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "Not Connected";
 
-    const displayName = profile?.displayName || "Keystone Operator";
-    const avatarSeed = profile?.avatarSeed || "KeystoneAdmin";
+    const displayName = profile?.displayName || "dreyv Operator";
+    const avatarSeed = profile?.avatarSeed || "dreyvadmin";
     const role = profile?.role || "user";
 
     useEffect(() => {
@@ -47,7 +47,7 @@ export const ProfileView = ({ onNavigate }: { onNavigate?: (view: string) => voi
     }, [walletAddress]);
 
     const handleSaveName = async () => {
-        const name = editName.trim() || "Keystone Operator";
+        const name = editName.trim() || "dreyv Operator";
         setSaving(true);
         const success = await updateProfile({ displayName: name });
         setSaving(false);

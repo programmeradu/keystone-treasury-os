@@ -67,7 +67,7 @@ export default function BillingPage() {
                 <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--dashboard-accent-muted)]" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Keystone OS // Subscription Hub</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">dreyv OS // Subscription Hub</span>
                     </div>
                     <div className="flex items-center gap-3">
                         <CreditCard className="text-primary" size={20} />

@@ -8,7 +8,7 @@ type SafariFrameProps = {
   children: React.ReactNode;
 };
 
-export function SafariFrame({ className, title = "keystone.app", children }: SafariFrameProps) {
+export function SafariFrame({ className, title = "dreyv.app", children }: SafariFrameProps) {
   return (
     <div
       className={cn(

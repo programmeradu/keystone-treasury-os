@@ -883,7 +883,7 @@ export function LivePreview({
                 srcDoc={finalIframeContent}
                 className="w-full h-full border-none"
                 sandbox="allow-scripts"
-                title="Keystone Mini-App Preview"
+                title="dreyv Mini-App Preview"
             />
         </div>
     );

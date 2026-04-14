@@ -12,7 +12,7 @@ interface StepProps {
 
 /**
  * Custom premium icons — each is a unique inline SVG with gradient fills
- * and subtle glow, designed specifically for Keystone's onboarding.
+ * and subtle glow, designed specifically for dreyv onboarding.
  */
 
 const VaultShieldIcon = () => (
@@ -135,7 +135,7 @@ export const WelcomeStep = ({ onNext }: StepProps) => {
         <div className="text-center space-y-10">
             <div className="space-y-4">
                 <h1 className="text-3xl sm:text-4xl font-black text-foreground uppercase tracking-tight">
-                    Welcome to Keystone
+                    Welcome to dreyv
                 </h1>
                 <p className="text-sm text-muted-foreground font-black uppercase tracking-widest max-w-md mx-auto leading-relaxed">
                     Your sovereign treasury operating system. Let&apos;s get you set up in 5 quick steps.

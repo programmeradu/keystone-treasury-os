@@ -7,15 +7,15 @@ import { CheckCircle2, Cpu, Shield, User } from "lucide-react";
 export const metadata: Metadata = {
     title: "Pricing",
     description:
-        "Dreyv plans — Free, Mini, and Max. Subscribe via FastSpring; taxes calculated at checkout where applicable.",
+        "dreyv plans — Free, Mini, and Max. Subscribe via FastSpring; taxes calculated at checkout where applicable.",
     alternates: { canonical: "/pricing" },
 };
 
 export default function PricingPage() {
     return (
-        <div className="relative min-h-dvh w-full bg-[var(--keystone-void)] text-white scroll-smooth">
+        <div className="relative min-h-dvh w-full bg-[var(--dreyv-void)] text-white scroll-smooth">
             <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
-                <div className="absolute top-[-10%] left-[-10%] h-[700px] w-[700px] rounded-full bg-keystone-green/[0.07] blur-[150px]" />
+                <div className="absolute top-[-10%] left-[-10%] h-[700px] w-[700px] rounded-full bg-dreyv-green/[0.07] blur-[150px]" />
                 <div className="absolute top-[20%] right-[-5%] h-[600px] w-[600px] rounded-full bg-aurora-violet/[0.05] blur-[130px]" />
                 <div className="absolute inset-0 noise-overlay opacity-[0.018]" />
             </div>
@@ -25,7 +25,7 @@ export default function PricingPage() {
             <main className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-16 md:py-24">
                 <div className="text-center max-w-2xl mx-auto mb-14">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3">
-                        Dreyv // Pricing
+                        dreyv // Pricing
                     </p>
                     <h1 className="text-3xl md:text-4xl font-black tracking-tight uppercase mb-4">
                         Plans for every squad
@@ -34,7 +34,7 @@ export default function PricingPage() {
                         All paid plans are billed securely through{" "}
                         <span className="text-white/70">FastSpring</span> (merchant of record). Checkout displays your
                         total including applicable taxes.{" "}
-                        <Link href="/legal/refunds" className="text-keystone-green hover:underline">
+                        <Link href="/legal/refunds" className="text-dreyv-green hover:underline">
                             Refund policy
                         </Link>
                         .
@@ -44,8 +44,8 @@ export default function PricingPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 flex flex-col backdrop-blur-sm">
                         <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 border border-keystone-green/30 bg-keystone-green/10 flex items-center justify-center rounded-lg">
-                                <User className="text-keystone-green" size={20} />
+                            <div className="w-10 h-10 border border-dreyv-green/30 bg-dreyv-green/10 flex items-center justify-center rounded-lg">
+                                <User className="text-dreyv-green" size={20} />
                             </div>
                             <div>
                                 <h2 className="text-lg font-black uppercase tracking-widest">Base</h2>
@@ -63,7 +63,7 @@ export default function PricingPage() {
                                 "Standard security routing",
                             ].map((f) => (
                                 <li key={f} className="flex items-center gap-2">
-                                    <CheckCircle2 size={14} className="text-keystone-green shrink-0" />
+                                    <CheckCircle2 size={14} className="text-dreyv-green shrink-0" />
                                     {f}
                                 </li>
                             ))}

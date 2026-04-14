@@ -23,7 +23,7 @@ function getResend(): Resend | null {
 }
 
 function getFromAddress(): string {
-  return process.env.EMAIL_FROM || 'Keystone <noreply@stauniverse.tech>';
+  return process.env.EMAIL_FROM || 'dreyv <noreply@stauniverse.tech>';
 }
 
 // ─── Core send function ──────────────────────────────────────────────
@@ -72,7 +72,7 @@ export async function sendEmail({
 export async function sendWelcomeEmail(to: string, displayName: string) {
   return sendEmail({
     to,
-    subject: 'Welcome to Keystone Treasury OS',
+    subject: 'Welcome to dreyv Treasury OS',
     react: WelcomeEmail({ displayName }),
   });
 }
@@ -95,7 +95,7 @@ export async function sendTeamInviteEmail({
 
   return sendEmail({
     to,
-    subject: `${inviterName} invited you to ${teamName} on Keystone`,
+    subject: `${inviterName} invited you to ${teamName} on dreyv`,
     react: TeamInviteEmail({ teamName, inviterName, role, acceptUrl }),
   });
 }
@@ -115,7 +115,7 @@ export async function sendNotificationEmail({
 }) {
   return sendEmail({
     to,
-    subject: `Keystone: ${title}`,
+    subject: `dreyv: ${title}`,
     react: NotificationEmail({ title, message, actionUrl, actionLabel }),
   });
 }
@@ -123,7 +123,7 @@ export async function sendNotificationEmail({
 export async function sendTierExpiryEmail(to: string, tier: string, daysLeft: number) {
   return sendEmail({
     to,
-    subject: `Your Keystone ${tier} plan expires in ${daysLeft} days`,
+    subject: `Your dreyv ${tier} plan expires in ${daysLeft} days`,
     react: TierExpiryEmail({ tier, daysLeft }),
   });
 }

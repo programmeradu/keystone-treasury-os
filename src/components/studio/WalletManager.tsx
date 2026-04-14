@@ -43,13 +43,13 @@ export function WalletManager() {
             const publicKeyCredentialCreationOptions: PublicKeyCredentialCreationOptions = {
                 challenge: challengeBytes, // Use raw bytes directly
                 rp: {
-                    name: "Keystone Treasury OS",
+                    name: "dreyv Treasury OS",
                     id: window.location.hostname, // localhost for dev
                 },
                 user: {
                     id: Uint8Array.from(Date.now().toString(), c => c.charCodeAt(0)),
-                    name: "Keystone Architect",
-                    displayName: "Keystone Architect",
+                    name: "dreyv Architect",
+                    displayName: "dreyv Architect",
                 },
                 pubKeyCredParams: [
                     { alg: -7, type: "public-key" },  // ES256
@@ -108,7 +108,7 @@ export function WalletManager() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    subOrgName: `Keystone Studio Vault ${Date.now()}`,
+                    subOrgName: `dreyv Studio Vault ${Date.now()}`,
                     challenge,
                     attestation: {
                         credentialId,

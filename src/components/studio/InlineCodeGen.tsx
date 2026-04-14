@@ -76,7 +76,7 @@ export function InlineCodeGen({
         // Register Ctrl+K / Cmd+K
         const disposable = editor.addAction({
             id: "keystone.inlineCodeGen",
-            label: "Keystone: Inline Code Generation",
+            label: "dreyv: Inline Code Generation",
             keybindings: [
                 // Monaco KeyMod.CtrlCmd | Monaco KeyCode.KeyK
                 2048 | 41, // CtrlCmd + K
@@ -318,7 +318,7 @@ export function InlineCodeGen({
                         <kbd className="px-1 py-0.5 bg-zinc-800 rounded text-zinc-500 font-mono">Esc</kbd>
                         {" "}Dismiss
                     </span>
-                    <span className="text-emerald-500/50">Keystone AI Architect</span>
+                    <span className="text-emerald-500/50">dreyv AI Architect</span>
                 </div>
             </div>
         </div>

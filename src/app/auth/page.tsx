@@ -41,7 +41,7 @@ const useTelemetry = () => React.useContext(TelemetryContext);
 
 function TelemetryProvider({ children }: { children: React.ReactNode }) {
     const [lines, setLines] = useState<string[]>([
-        "> INIT.KEYSTONE_OS_V2",
+        "> INIT.DREYV_OS_V2",
         "> SYNCHRONIZING_NODES...",
         "> ESTABLISHING_SECURE_UPLINK..."
     ]);
@@ -199,7 +199,7 @@ function LinuxTerminal() {
                     <div className="w-[11px] h-[11px] rounded-full bg-[#28c840] border border-[#1aab29]/60" />
                 </div>
                 <div className="flex-1 text-center">
-                    <span className="text-[11px] font-mono text-white/30 tracking-wide">keystone@mainnet ~ telemetry</span>
+                    <span className="text-[11px] font-mono text-white/30 tracking-wide">dreyv@mainnet ~ telemetry</span>
                 </div>
                 <div className="w-[60px]" />
             </div>
@@ -301,7 +301,7 @@ function DynamicIsland() {
                                 transition={{ duration: 0.2 }}
                                 className="text-[11px] font-sans font-semibold text-[#36e27b]/80 truncate max-w-[260px] tracking-wide"
                             >
-                                {expanded ? "Keystone OS · Telemetry" : modernize(latestLine)}
+                                {expanded ? "dreyv OS · Telemetry" : modernize(latestLine)}
                             </motion.span>
                         </AnimatePresence>
                     </motion.div>
@@ -364,7 +364,7 @@ function AuthCommandBar({ onExecute }: { onExecute: (cmd: string) => void }) {
             >
                 <Sparkles size={16} className="text-[#36e27b]" />
                 <span className="text-[14px] font-medium text-white/40 group-hover:text-white/70 transition-colors flex-1 text-left tracking-wide">
-                    Ask Keystone...
+                    Ask dreyv...
                 </span>
                 <div className="flex items-center gap-1 opacity-50 text-[10px] font-mono text-white/30 border-l border-white/[0.08] pl-3">
                     <span>⌘</span> K
@@ -428,7 +428,7 @@ function AuthCommandBar({ onExecute }: { onExecute: (cmd: string) => void }) {
     );
 }
 
-function KeystoneBackground() {
+function DreyvBackground() {
     return (
         <>
             <style>{`
@@ -474,7 +474,7 @@ function KeystoneBackground() {
                 <div className="absolute top-12 left-12 flex items-center gap-4 z-20">
                     <LogoFilled size={36} className="text-zinc-900 drop-shadow-md" />
                     <div>
-                        <h1 className="text-[28px] font-bold text-zinc-900 tracking-tight leading-none drop-shadow-md">Keystone</h1>
+                        <h1 className="text-[28px] font-bold text-zinc-900 tracking-tight leading-none drop-shadow-md">dreyv</h1>
                         <p className="text-[11px] text-[#059669] mt-2 uppercase tracking-[0.3em] font-bold drop-shadow-md">TreasuryOS</p>
                     </div>
                 </div>
@@ -723,7 +723,7 @@ function AuthPageContent() {
 
     return (
         <div className="min-h-screen flex relative overflow-hidden font-sans bg-zinc-100">
-            <KeystoneBackground />
+            <DreyvBackground />
 
             {/* Dynamic Island — mobile only */}
             <DynamicIsland />
@@ -742,7 +742,7 @@ function AuthPageContent() {
 
                         {/* Mobile Branding — text only, no logo icon (Dynamic Island replaces it) */}
                         <div className="flex flex-col items-center mb-5 pt-14 relative z-20 lg:hidden">
-                            <h1 className="text-[28px] font-bold text-white tracking-tight drop-shadow-lg leading-none">Keystone</h1>
+                            <h1 className="text-[28px] font-bold text-white tracking-tight drop-shadow-lg leading-none">dreyv</h1>
                             <p className="text-[11px] text-[#36e27b] mt-2.5 uppercase tracking-[0.3em] font-bold drop-shadow-[0_0_10px_rgba(54,226,123,0.5)]">TreasuryOS</p>
                         </div>
 

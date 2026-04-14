@@ -86,7 +86,7 @@ export function ForesightPreview({
         })();
     <\/script>
     <script>
-        // Keystone Base SDK (useVault mock for foresight)
+        // dreyv Base SDK (useVault mock for foresight)
         (function() {
             var React = window.React;
             window.__keystoneSDK = {
@@ -286,7 +286,7 @@ export function ForesightPreview({
                 srcDoc={iframeContent}
                 className="w-full h-full border-none"
                 sandbox="allow-scripts"
-                title="Keystone Foresight"
+                title="dreyv Foresight"
             />
         </div>
     );

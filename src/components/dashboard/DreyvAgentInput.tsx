@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { Send, Sparkles, Cpu } from "lucide-react";
 import { AppEventBus } from "@/lib/events";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
-export function KeystoneAgentInput() {
+export function DreyvAgentInput() {
     const [inputValue, setInputValue] = useState("");
     const [isProcessing, setIsProcessing] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -119,7 +119,7 @@ export function KeystoneAgentInput() {
                         type="text"
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
-                        placeholder={isProcessing ? "Agent is processing..." : "Ask Keystone Agent (e.g. 'Optimize Yield')..."}
+                        placeholder={isProcessing ? "Agent is processing..." : "Ask dreyv Agent (e.g. 'Optimize Yield')..."}
                         disabled={isProcessing}
                         className="flex-1 bg-transparent border-none outline-none text-sm font-medium h-10 placeholder:text-muted-foreground/50 text-foreground"
                     />
@@ -136,7 +136,7 @@ export function KeystoneAgentInput() {
                 {/* Status Badge */}
                 <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1 bg-black/40 backdrop-blur-md rounded-full border border-white/10">
                     <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_10px_#36e27b]" />
-                    <span className="text-[10px] font-mono font-bold text-primary/80 uppercase tracking-widest">Keystone Engine Online</span>
+                    <span className="text-[10px] font-mono font-bold text-primary/80 uppercase tracking-widest">dreyv Engine Online</span>
                 </div>
             </motion.div>
         </div>

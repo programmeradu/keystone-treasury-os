@@ -152,7 +152,7 @@ export default function OnboardingPage() {
             <div className="border-b border-border/50 px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <Logo size={28} />
-                    <span className="text-sm font-black text-foreground uppercase tracking-widest">Keystone Setup</span>
+                    <span className="text-sm font-black text-foreground uppercase tracking-widest">dreyv Setup</span>
                 </div>
                 <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
                     Step {currentStep + 1} of {STEPS.length}
@@ -228,7 +228,7 @@ export default function OnboardingPage() {
                             disabled={completing}
                             className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl text-xs font-black uppercase tracking-widest hover:bg-primary/90 transition-all shadow-[0_0_20px_var(--dashboard-accent-muted)] disabled:opacity-50"
                         >
-                            {completing ? "Launching..." : "Launch Keystone →"}
+                            {completing ? "Launching..." : "Launch dreyv →"}
                         </button>
                     )}
                 </div>

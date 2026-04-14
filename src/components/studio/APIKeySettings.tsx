@@ -11,7 +11,7 @@
  * - Client-side encrypted storage (localStorage)
  * - Connection test button
  *
- * Keys are stored ONLY in the browser — never sent to Keystone servers.
+ * Keys are stored ONLY in the browser — never sent to dreyv servers.
  * They are passed per-request to the /api/studio/generate endpoint
  * which proxies to the selected provider.
  */
@@ -294,7 +294,7 @@ export function APIKeySettings({
                         <Shield className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                         <p className="text-[11px] text-zinc-400 leading-relaxed">
                             Your API key is stored <strong className="text-zinc-300">only in your browser</strong> and
-                            sent directly to the provider. Keystone never stores or logs your keys.
+                            sent directly to the provider. dreyv never stores or logs your keys.
                         </p>
                     </div>
 

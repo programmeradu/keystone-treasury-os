@@ -9,8 +9,8 @@ const steps = [
     title: "Describe Your Intent",
     description:
       "Type what you want in plain English. 'Swap 500 SOL to USDC' or 'Show me runway if we hire 3 devs.' No syntax to learn.",
-    accent: "text-keystone-green/20",
-    line: "bg-keystone-green",
+    accent: "text-dreyv-green/20",
+    line: "bg-dreyv-green",
   },
   {
     number: "02",

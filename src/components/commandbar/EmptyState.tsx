@@ -2,7 +2,7 @@
 
 // Feature: commandbar-god-mode
 // EmptyState component shown when the chat thread is empty (messages.length === 0).
-// Displays Keystone identity, capability description, and example command chips.
+// Displays dreyv identity, capability description, and example command chips.
 
 import React from "react";
 
@@ -32,7 +32,7 @@ export function EmptyState({ onChipClick }: EmptyStateProps) {
       {/* Identity heading */}
       <div className="flex flex-col items-center gap-2">
         <span className="text-2xl font-semibold tracking-tight text-zinc-100">
-          Hello, Sir. I am Keystone.
+          Hello, Sir. I am dreyv.
         </span>
         <p className="text-sm text-zinc-400 max-w-sm">
           Your platform-wide execution layer. Ask me anything.

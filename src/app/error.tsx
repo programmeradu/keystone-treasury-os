@@ -119,7 +119,7 @@ export default function GlobalError({
             <div className="absolute bottom-8 flex items-center justify-center w-full z-10 opacity-40 hover:opacity-100 transition-opacity duration-500">
                 <div className="flex items-center gap-3 cursor-default">
                     <Logo size={20} fillColor="currentColor" className="text-foreground" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-foreground">Keystone Treasury OS</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-foreground">dreyv Treasury OS</span>
                 </div>
             </div>
         </div>

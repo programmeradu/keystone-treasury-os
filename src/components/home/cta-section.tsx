@@ -16,7 +16,7 @@ export function CTASection() {
     >
       {/* Ambient glow — no RetroGrid library */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-        <div className="absolute bottom-[-20%] left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-keystone-green/[0.05] rounded-full blur-[150px]" />
+        <div className="absolute bottom-[-20%] left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-dreyv-green/[0.05] rounded-full blur-[150px]" />
         <div className="absolute inset-0 grid-pattern opacity-20" />
       </div>
 
@@ -29,13 +29,13 @@ export function CTASection() {
         >
           <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white tracking-[-0.03em] leading-[0.95]">
             Ready to command{" "}
-            <span className="bg-gradient-to-r from-keystone-green via-emerald-400 to-keystone-green/50 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-dreyv-green via-emerald-400 to-dreyv-green/50 bg-clip-text text-transparent">
               your treasury?
             </span>
           </h2>
 
           <p className="mt-8 text-white/30 text-lg md:text-xl max-w-lg mx-auto leading-relaxed font-light">
-            Join treasury teams building on Keystone.
+            Join treasury teams building on dreyv.
           </p>
 
           <div className="mt-10 flex flex-wrap justify-center items-center gap-6">
@@ -43,7 +43,7 @@ export function CTASection() {
               href="/app"
               className="group relative inline-flex items-center gap-2.5 font-semibold text-xs px-5 py-2.5 rounded-lg overflow-hidden transition-all duration-300"
             >
-              {/* Metallic keystone-green gradient background */}
+              {/* Metallic dreyv-green gradient background */}
               <span className="absolute inset-0 bg-gradient-to-b from-white/30 via-white/5 to-transparent" />
               <span className="absolute inset-0 bg-gradient-to-br from-[#5aff9d] via-[#36e27b] to-[#1a9c4e]" />
               {/* Shine highlight */}

@@ -13,7 +13,7 @@ import {
   Text,
 } from '@react-email/components';
 
-// ─── Keystone brand tokens ───────────────────────────────────────────
+// ─── dreyv brand tokens ───────────────────────────────────────────
 const brand = {
   bg: '#0a0a0f',
   cardBg: '#111118',
@@ -27,7 +27,7 @@ const brand = {
 };
 
 // ─── Shared Layout ───────────────────────────────────────────────────
-export function KeystoneLayout({
+export function DreyvLayout({
   preview,
   children,
 }: {
@@ -61,13 +61,12 @@ export function KeystoneLayout({
               style={{
                 fontSize: '14px',
                 fontWeight: 900,
-                letterSpacing: '0.2em',
-                textTransform: 'uppercase' as const,
+                letterSpacing: '0.15em',
                 color: brand.accent,
                 margin: 0,
               }}
             >
-              ◆ KEYSTONE
+              ◆ dreyv
             </Text>
           </Section>
 
@@ -93,7 +92,7 @@ export function KeystoneLayout({
                 margin: 0,
               }}
             >
-              Keystone Treasury OS — Sovereign infrastructure for on-chain teams.
+              dreyv Treasury OS — Sovereign infrastructure for on-chain teams.
               <br />
               <Link href="https://stauniverse.tech" style={{ color: brand.textMuted }}>
                 stauniverse.tech
@@ -172,7 +171,7 @@ function PrimaryButton({ href, children }: { href: string; children: React.React
 // ─── 1. Welcome Email ────────────────────────────────────────────────
 export function WelcomeEmail({ displayName }: { displayName: string }) {
   return (
-    <KeystoneLayout preview="Welcome to Keystone — your sovereign treasury is ready.">
+    <DreyvLayout preview="Welcome to dreyv — your sovereign treasury is ready.">
       <EmailHeading>Welcome, {displayName}</EmailHeading>
       <EmailSubtext>
         Your sovereign treasury operating system is live. You&apos;re now part of a
@@ -201,7 +200,7 @@ export function WelcomeEmail({ displayName }: { displayName: string }) {
       <PrimaryButton href="https://stauniverse.tech/app">
         Open Dashboard →
       </PrimaryButton>
-    </KeystoneLayout>
+    </DreyvLayout>
   );
 }
 
@@ -218,7 +217,7 @@ export function TeamInviteEmail({
   acceptUrl: string;
 }) {
   return (
-    <KeystoneLayout preview={`${inviterName} invited you to join ${teamName} on Keystone`}>
+    <DreyvLayout preview={`${inviterName} invited you to join ${teamName} on dreyv`}>
       <EmailHeading>You&apos;re Invited</EmailHeading>
       <EmailSubtext>
         <strong style={{ color: '#ffffff' }}>{inviterName}</strong> has invited you to
@@ -250,7 +249,7 @@ export function TeamInviteEmail({
       <Text style={{ fontSize: '11px', color: brand.textMuted, textAlign: 'center', margin: 0 }}>
         This invitation expires in 7 days.
       </Text>
-    </KeystoneLayout>
+    </DreyvLayout>
   );
 }
 
@@ -267,16 +266,16 @@ export function NotificationEmail({
   actionLabel?: string;
 }) {
   return (
-    <KeystoneLayout preview={title}>
+    <DreyvLayout preview={title}>
       <EmailHeading>{title}</EmailHeading>
       <EmailSubtext>{message}</EmailSubtext>
 
       {actionUrl && (
         <PrimaryButton href={actionUrl}>
-          {actionLabel || 'View in Keystone →'}
+          {actionLabel || 'View in dreyv →'}
         </PrimaryButton>
       )}
-    </KeystoneLayout>
+    </DreyvLayout>
   );
 }
 
@@ -289,7 +288,7 @@ export function TierExpiryEmail({
   daysLeft: number;
 }) {
   return (
-    <KeystoneLayout preview={`Your Keystone ${tier} plan expires in ${daysLeft} days`}>
+    <DreyvLayout preview={`Your dreyv ${tier} plan expires in ${daysLeft} days`}>
       <EmailHeading>Plan Expiring Soon</EmailHeading>
       <EmailSubtext>
         Your <strong style={{ color: brand.accent }}>{tier.toUpperCase()}</strong> plan
@@ -316,7 +315,7 @@ export function TierExpiryEmail({
       <PrimaryButton href="https://stauniverse.tech/pricing">
         Renew Plan →
       </PrimaryButton>
-    </KeystoneLayout>
+    </DreyvLayout>
   );
 }
 
@@ -335,7 +334,7 @@ export function GasAlertEmail({
   thresholdUsd: number;
 }) {
   return (
-    <KeystoneLayout preview="⛽ Gas prices are low — great time to transact!">
+    <DreyvLayout preview="⛽ Gas prices are low — great time to transact!">
       <EmailHeading>⛽ Gas Alert</EmailHeading>
       <EmailSubtext>Gas prices have dropped below your threshold.</EmailSubtext>
 
@@ -370,8 +369,8 @@ export function GasAlertEmail({
       </Section>
 
       <PrimaryButton href="https://stauniverse.tech/app">
-        Open Keystone →
+        Open dreyv →
       </PrimaryButton>
-    </KeystoneLayout>
+    </DreyvLayout>
   );
 }

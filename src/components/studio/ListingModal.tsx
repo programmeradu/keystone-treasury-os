@@ -146,7 +146,7 @@ export function ListingModal({ open, onOpenChange, app, onSuccess }: ListingModa
                     List on Marketplace
                 </PremiumModalTitle>
                 <PremiumModalDescription>
-                    Publish <strong className="text-foreground">{app.name}</strong> to the Keystone Marketplace.
+                    Publish <strong className="text-foreground">{app.name}</strong> to the dreyv Marketplace.
                     Set your price and earn 80% of every sale.
                 </PremiumModalDescription>
             </PremiumModalHeader>

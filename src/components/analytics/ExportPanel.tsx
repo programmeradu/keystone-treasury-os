@@ -46,7 +46,7 @@ export const ExportPanel = () => {
             );
 
             const csv = [header, ...rows].join("\n");
-            downloadBlob(new Blob([csv], { type: "text/csv" }), `keystone-transactions-${activeVault.substring(0, 8)}.csv`);
+            downloadBlob(new Blob([csv], { type: "text/csv" }), `dreyv-transactions-${activeVault.substring(0, 8)}.csv`);
         } catch (e) {
             console.error("Export failed:", e);
         }
@@ -72,7 +72,7 @@ export const ExportPanel = () => {
                 );
 
             const csv = [header, ...rows].join("\n");
-            downloadBlob(new Blob([csv], { type: "text/csv" }), `keystone-portfolio-${activeVault.substring(0, 8)}.csv`);
+            downloadBlob(new Blob([csv], { type: "text/csv" }), `dreyv-portfolio-${activeVault.substring(0, 8)}.csv`);
         } catch (e) {
             console.error("Export failed:", e);
         }
@@ -94,7 +94,7 @@ export const ExportPanel = () => {
             );
 
             const csv = [header, ...rows].join("\n");
-            downloadBlob(new Blob([csv], { type: "text/csv" }), `keystone-flows-${activeVault.substring(0, 8)}.csv`);
+            downloadBlob(new Blob([csv], { type: "text/csv" }), `dreyv-flows-${activeVault.substring(0, 8)}.csv`);
         } catch (e) {
             console.error("Export failed:", e);
         }
@@ -116,7 +116,7 @@ export const ExportPanel = () => {
             // Title
             doc.setFontSize(20);
             doc.setFont("helvetica", "bold");
-            doc.text("Keystone Treasury Report", 14, 22);
+            doc.text("dreyv Treasury Report", 14, 22);
             doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
             doc.text(`Generated: ${now}`, 14, 30);
@@ -192,10 +192,10 @@ export const ExportPanel = () => {
                 doc.setPage(i);
                 doc.setFontSize(7);
                 doc.setFont("helvetica", "normal");
-                doc.text(`Page ${i} of ${pageCount} | Keystone Treasury OS`, 14, 290);
+                doc.text(`Page ${i} of ${pageCount} | dreyv Treasury OS`, 14, 290);
             }
 
-            doc.save(`keystone-treasury-report-${activeVault.substring(0, 8)}.pdf`);
+            doc.save(`dreyv-treasury-report-${activeVault.substring(0, 8)}.pdf`);
         } catch (e) {
             console.error("PDF export failed:", e);
         }

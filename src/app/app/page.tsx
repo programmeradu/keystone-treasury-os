@@ -92,7 +92,7 @@ export default function AppPortalPage() {
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--dashboard-accent)]" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-70">Keystone OS // Primary Node</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-70">dreyv OS // Primary Node</span>
           </div>
           <div className="flex items-center gap-3">
             <h1 className="text-lg font-bold tracking-tight text-foreground uppercase">Dashboard</h1>

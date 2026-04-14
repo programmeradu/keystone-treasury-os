@@ -128,13 +128,13 @@ export function DemoSection() {
                 <div className="h-2 w-2 rounded-full bg-white/[0.06]" />
                 <div className="h-2 w-2 rounded-full bg-white/[0.06]" />
               </div>
-              <span className="ml-3 text-[10px] font-mono text-white/15 tracking-widest">keystone://command</span>
+              <span className="ml-3 text-[10px] font-mono text-white/15 tracking-widest">dreyv://command</span>
             </div>
 
             {/* Input area */}
             <form onSubmit={handleSubmit} className="p-4">
               <div className="flex items-center gap-3">
-                <span className="text-keystone-green/60 font-mono text-sm shrink-0">$</span>
+                <span className="text-dreyv-green/60 font-mono text-sm shrink-0">$</span>
                 <input
                   value={command}
                   onChange={(e) => setCommand(e.target.value)}
@@ -147,7 +147,7 @@ export function DemoSection() {
                 <button
                   type="submit"
                   disabled={!command.trim() || loading}
-                  className="bg-keystone-green text-black font-semibold text-xs px-4 py-2 rounded-lg shrink-0 disabled:opacity-20 hover:bg-keystone-green/90 transition-all"
+                  className="bg-dreyv-green text-black font-semibold text-xs px-4 py-2 rounded-lg shrink-0 disabled:opacity-20 hover:bg-dreyv-green/90 transition-all"
                 >
                   {loading ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -166,7 +166,7 @@ export function DemoSection() {
                     onClick={() => handleExampleClick(ex)}
                     className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
                       command === ex
-                        ? "border-keystone-green/30 bg-keystone-green/10 text-keystone-green"
+                        ? "border-dreyv-green/30 bg-dreyv-green/10 text-dreyv-green"
                         : "border-white/[0.06] text-white/40 hover:text-white/60 hover:border-white/10 hover:bg-white/[0.03]"
                     }`}
                   >
@@ -191,7 +191,7 @@ export function DemoSection() {
                         Execution Plan
                       </div>
                       {loading && (
-                        <Loader2 className="h-3 w-3 animate-spin text-keystone-green/60" />
+                        <Loader2 className="h-3 w-3 animate-spin text-dreyv-green/60" />
                       )}
                     </div>
 
@@ -209,7 +209,7 @@ export function DemoSection() {
                           className="flex items-start gap-3 py-1.5"
                         >
                           {showSteps ? (
-                            <span className="h-1.5 w-1.5 rounded-full bg-keystone-green shrink-0 mt-1.5" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-dreyv-green shrink-0 mt-1.5" />
                           ) : (
                             <span className="h-1.5 w-1.5 rounded-full border border-white/10 shrink-0 mt-1.5" />
                           )}
@@ -223,10 +223,10 @@ export function DemoSection() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.5 }}
-                        className="mt-4 flex items-center gap-2 px-3 py-2 rounded-lg bg-keystone-green/[0.04] border border-keystone-green/10"
+                        className="mt-4 flex items-center gap-2 px-3 py-2 rounded-lg bg-dreyv-green/[0.04] border border-dreyv-green/10"
                       >
-                        <span className="h-1.5 w-1.5 rounded-full bg-keystone-green" />
-                        <span className="text-xs text-keystone-green/60 font-medium">
+                        <span className="h-1.5 w-1.5 rounded-full bg-dreyv-green" />
+                        <span className="text-xs text-dreyv-green/60 font-medium">
                           All validations passed. Ready for approval.
                         </span>
                       </motion.div>

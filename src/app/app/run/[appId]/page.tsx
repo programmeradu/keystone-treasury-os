@@ -88,7 +88,7 @@ export default function RunPage() {
                     <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/80">
-                            Keystone Runtime // {project.name}
+                            dreyv Runtime // {project.name}
                         </span>
                     </div>
                 </div>

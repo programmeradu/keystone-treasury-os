@@ -68,7 +68,7 @@ export function WarRoomSection() {
             animate={inView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.6 }}
           >
-            <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-keystone-green/40 mb-6">
+            <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-dreyv-green/40 mb-6">
               Multiplayer Finance
             </p>
             <h2
@@ -79,7 +79,7 @@ export function WarRoomSection() {
               <span className="text-white/25">Collaborate in real-time.</span>
             </h2>
             <p className="mt-6 text-base text-white/30 leading-relaxed max-w-lg">
-              Keystone brings your entire team into a shared context.
+              dreyv brings your entire team into a shared context.
               Discuss, simulate, and approve together — Figma for finance.
             </p>
 
@@ -157,9 +157,9 @@ export function WarRoomSection() {
                           animate={{ rotate: [0, 15, -15, 0] }}
                           transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                         >
-                          <Sparkles size={16} className="text-keystone-green" />
+                          <Sparkles size={16} className="text-dreyv-green" />
                         </motion.div>
-                        <span className="text-sm font-medium text-white/40 mr-2">Ask Keystone...</span>
+                        <span className="text-sm font-medium text-white/40 mr-2">Ask dreyv...</span>
                         <div className="flex items-center gap-1 opacity-50 text-[10px] font-mono text-white/30 border-l border-white/[0.08] pl-3">
                           <span>⌘</span> K
                         </div>
@@ -180,16 +180,16 @@ export function WarRoomSection() {
                       <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl overflow-hidden shadow-2xl">
                         <div className="flex items-center gap-2.5 px-4 py-3 border-b border-white/[0.04]">
                           <motion.div layoutId="star">
-                            <Sparkles size={16} className="text-keystone-green" />
+                            <Sparkles size={16} className="text-dreyv-green" />
                           </motion.div>
-                          <span className="text-sm text-white/30">Ask Keystone</span>
+                          <span className="text-sm text-white/30">Ask dreyv</span>
                           <span className="ml-auto text-[9px] font-mono text-white/15">ESC to close</span>
                         </div>
 
                         <div className="px-4 py-4">
                           <div className="text-sm text-white/70 font-mono leading-relaxed">
                             {commandText.slice(0, typedChars)}
-                            <span className="inline-block h-4 w-[2px] bg-keystone-green/50 ml-0.5 align-middle animate-terminal-blink" />
+                            <span className="inline-block h-4 w-[2px] bg-dreyv-green/50 ml-0.5 align-middle animate-terminal-blink" />
                           </div>
                         </div>
 
@@ -240,13 +240,13 @@ export function WarRoomSection() {
                     >
                       <div className="relative flex items-center justify-center">
                         <motion.div
-                          className="absolute rounded-full border border-keystone-green/10"
+                          className="absolute rounded-full border border-dreyv-green/10"
                           style={{ width: 80, height: 80 }}
                           animate={{ scale: [1, 1.8, 1], opacity: [0.3, 0, 0.3] }}
                           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                         />
                         <motion.div
-                          className="absolute rounded-full border border-keystone-green/5"
+                          className="absolute rounded-full border border-dreyv-green/5"
                           style={{ width: 80, height: 80 }}
                           animate={{ scale: [1, 2.2, 1], opacity: [0.15, 0, 0.15] }}
                           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
@@ -256,7 +256,7 @@ export function WarRoomSection() {
                             animate={{ rotate: 360 }}
                             transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
                           >
-                            <Sparkles size={36} className="text-keystone-green drop-shadow-[0_0_20px_rgba(54,226,123,0.4)]" />
+                            <Sparkles size={36} className="text-dreyv-green drop-shadow-[0_0_20px_rgba(54,226,123,0.4)]" />
                           </motion.div>
                         </motion.div>
                       </div>
@@ -284,8 +284,8 @@ export function WarRoomSection() {
                       <div className="rounded-xl border border-white/[0.06] bg-gradient-to-b from-white/[0.025] to-transparent overflow-hidden">
                         <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.04]">
                           <div className="flex items-center gap-2">
-                            <Sparkles size={13} className="text-keystone-green" />
-                            <span className="text-[10px] font-mono uppercase tracking-wider text-keystone-green/70 font-semibold">Transaction Preview</span>
+                            <Sparkles size={13} className="text-dreyv-green" />
+                            <span className="text-[10px] font-mono uppercase tracking-wider text-dreyv-green/70 font-semibold">Transaction Preview</span>
                           </div>
                           <span className="text-[9px] font-mono text-white/20">#TXN-0847</span>
                         </div>
@@ -331,7 +331,7 @@ export function WarRoomSection() {
 
                         <div className="flex items-center justify-between px-4 py-2 border-t border-white/[0.04] text-[9px] font-mono text-white/20">
                           <span>Gas ~$0.12</span>
-                          <span className="text-keystone-green/50">Foresight 5/5 </span>
+                          <span className="text-dreyv-green/50">Foresight 5/5 </span>
                         </div>
                       </div>
 
@@ -356,11 +356,11 @@ export function WarRoomSection() {
                               </div>
                               <AnimatePresence mode="wait">
                                 {hasSigned ? (
-                                  <motion.div key="ok" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400 }} className="px-2.5 py-1 rounded-md bg-keystone-green/10 border border-keystone-green/20 text-[9px] font-bold text-keystone-green">
+                                  <motion.div key="ok" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400 }} className="px-2.5 py-1 rounded-md bg-dreyv-green/10 border border-dreyv-green/20 text-[9px] font-bold text-dreyv-green">
                                      Approved
                                   </motion.div>
                                 ) : (
-                                  <motion.div key="btn" className="px-2.5 py-1 rounded-md bg-keystone-green text-black text-[9px] font-bold" animate={{ opacity: [0.7, 1, 0.7] }} transition={{ duration: 2, repeat: Infinity }}>
+                                  <motion.div key="btn" className="px-2.5 py-1 rounded-md bg-dreyv-green text-black text-[9px] font-bold" animate={{ opacity: [0.7, 1, 0.7] }} transition={{ duration: 2, repeat: Infinity }}>
                                     Approve
                                   </motion.div>
                                 )}
@@ -396,7 +396,7 @@ export function WarRoomSection() {
                       </div>
 
                       <div className="mt-1.5 h-0.5 rounded-full bg-white/[0.03] overflow-hidden">
-                        <motion.div className="h-full bg-keystone-green/50 rounded-full" animate={{ width: `${(signedCount / 3) * 100}%` }} transition={{ duration: 0.5 }} />
+                        <motion.div className="h-full bg-dreyv-green/50 rounded-full" animate={{ width: `${(signedCount / 3) * 100}%` }} transition={{ duration: 0.5 }} />
                       </div>
                     </motion.div>
                   )}
@@ -415,13 +415,13 @@ export function WarRoomSection() {
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         transition={{ type: "spring", stiffness: 200, delay: 0.1 }}
-                        className="h-16 w-16 rounded-full bg-keystone-green/10 border-2 border-keystone-green/30 flex items-center justify-center mb-5"
+                        className="h-16 w-16 rounded-full bg-dreyv-green/10 border-2 border-dreyv-green/30 flex items-center justify-center mb-5"
                       >
                         <motion.svg
                           initial={{ pathLength: 0, opacity: 0 }}
                           animate={{ pathLength: 1, opacity: 1 }}
                           transition={{ duration: 0.6, delay: 0.3 }}
-                          className="w-8 h-8 text-keystone-green"
+                          className="w-8 h-8 text-dreyv-green"
                           fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -434,8 +434,8 @@ export function WarRoomSection() {
                       </motion.div>
 
                       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="mt-5 flex items-center gap-4 text-[10px] font-mono">
-                        <div className="flex items-center gap-1.5 text-keystone-green/50">
-                          <span className="h-1.5 w-1.5 rounded-full bg-keystone-green" />
+                        <div className="flex items-center gap-1.5 text-dreyv-green/50">
+                          <span className="h-1.5 w-1.5 rounded-full bg-dreyv-green" />
                           Confirmed
                         </div>
                         <span className="text-white/15">Block #247,891,024</span>
@@ -448,7 +448,7 @@ export function WarRoomSection() {
                             <div className="h-4 w-4 rounded-full overflow-hidden">
                               <img src={getAvatarUrl(u.name)} alt={u.name} className="w-full h-full" />
                             </div>
-                            <span className="text-keystone-green/40"></span>
+                            <span className="text-dreyv-green/40"></span>
                           </div>
                         ))}
                       </motion.div>

@@ -14,7 +14,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 const siteUrl = getSiteUrl();
 const siteOrigin = siteUrl.origin;
 
-const titleDefault = "Dreyv | AI Treasury Operating System for Web3";
+const titleDefault = "dreyv | AI Treasury Operating System for Web3";
 const description =
   "Non-custodial treasury OS: natural-language command-ops, simulation before you sign, Solana intelligence, and agents that remember protocols.";
 
@@ -27,10 +27,10 @@ export const metadata: Metadata = {
   metadataBase: siteUrl,
   title: {
     default: titleDefault,
-    template: "%s | Dreyv",
+    template: "%s | dreyv",
   },
   description,
-  applicationName: "Dreyv",
+  applicationName: "dreyv",
   keywords: [
     "Web3 treasury",
     "DAO treasury",
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: siteOrigin,
-    siteName: "Dreyv",
+    siteName: "dreyv",
     title: titleDefault,
     description,
     images: [
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "Dreyv — AI treasury operating system for Web3",
+        alt: "dreyv — AI treasury operating system for Web3",
       },
     ],
   },

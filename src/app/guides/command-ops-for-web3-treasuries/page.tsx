@@ -9,14 +9,14 @@ const PATH = "/guides/command-ops-for-web3-treasuries";
 const PUBLISHED = "2026-04-14";
 
 const DESCRIPTION =
-  "Why teams move from click-ops to command-ops: intent-driven treasury work, simulation before signing, and non-custodial control — and how Dreyv fits.";
+  "Why teams move from click-ops to command-ops: intent-driven treasury work, simulation before signing, and non-custodial control — and how dreyv fits.";
 
 export const metadata: Metadata = {
   title: "Command-Ops for Web3 Treasuries",
   description: DESCRIPTION,
   alternates: { canonical: PATH },
   openGraph: {
-    title: "Command-Ops for Web3 Treasuries | Dreyv",
+    title: "Command-Ops for Web3 Treasuries | dreyv",
     description:
       "A practical guide to intent-driven treasury operations, pre-execution simulation, and safer signing on Solana.",
     type: "article",
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
 
 export default function CommandOpsGuidePage() {
   return (
-    <div className="relative min-h-dvh w-full bg-[var(--keystone-void)] text-white scroll-smooth">
+    <div className="relative min-h-dvh w-full bg-[var(--dreyv-void)] text-white scroll-smooth">
       <ArticleJsonLd
         path={PATH}
         headline="Command-Ops for Web3 Treasuries: What It Is and Why Teams Adopt It"
@@ -34,7 +34,7 @@ export default function CommandOpsGuidePage() {
         datePublished={`${PUBLISHED}T12:00:00.000Z`}
       />
       <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
-        <div className="absolute top-[-10%] left-[-10%] h-[700px] w-[700px] rounded-full bg-keystone-green/[0.06] blur-[150px]" />
+        <div className="absolute top-[-10%] left-[-10%] h-[700px] w-[700px] rounded-full bg-dreyv-green/[0.06] blur-[150px]" />
         <div className="absolute top-[20%] right-[-5%] h-[600px] w-[600px] rounded-full bg-aurora-violet/[0.05] blur-[130px]" />
         <div className="absolute inset-0 noise-overlay opacity-[0.018]" />
       </div>
@@ -64,7 +64,7 @@ export default function CommandOpsGuidePage() {
           </p>
         </header>
 
-        <article className="prose prose-invert prose-sm md:prose-base max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-a:text-keystone-green prose-a:no-underline hover:prose-a:underline prose-strong:text-white/95">
+        <article className="prose prose-invert prose-sm md:prose-base max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-a:text-dreyv-green prose-a:no-underline hover:prose-a:underline prose-strong:text-white/95">
           <h2>The problem: &ldquo;Click-Ops&rdquo; in treasury work</h2>
           <p>
             Treasury operators constantly switch context: a portfolio screen for balances, a DEX for
@@ -117,23 +117,23 @@ export default function CommandOpsGuidePage() {
           <p>
             Command-ops does not require a custodian. The operating system can orchestrate reads,
             quotes, and transaction <strong>drafts</strong> while keys stay in the user&rsquo;s
-            wallet or multisig. Dreyv is built around that model:{" "}
+            wallet or multisig. dreyv is built around that model:{" "}
             <strong>we help you decide and compose; we do not hold your assets.</strong>
           </p>
 
-          <h2>How Dreyv implements this</h2>
+          <h2>How dreyv implements this</h2>
           <p>
-            <Link href="/" className="text-keystone-green">
-              Dreyv
+            <Link href="/" className="text-dreyv-green">
+              dreyv
             </Link>{" "}
             is an AI-assisted, non-custodial treasury OS: a <strong>command surface</strong> for
             intent, <strong>simulation</strong> before signing,{" "}
             <strong>Solana Atlas</strong> for public-market context (
-            <Link href="/atlas" className="text-keystone-green">
+            <Link href="/atlas" className="text-dreyv-green">
               try Atlas
             </Link>
             ), and a path for builders to ship automations. Pricing is transparent on our{" "}
-            <Link href="/pricing" className="text-keystone-green">
+            <Link href="/pricing" className="text-dreyv-green">
               pricing page
             </Link>
             .
@@ -160,7 +160,7 @@ export default function CommandOpsGuidePage() {
             Command-ops is not hype about &ldquo;AI replacing finance.&rdquo; It is a practical
             standard: <strong>intent first, plan second, simulate third, sign last</strong> — with
             keys and policy under your control. If that matches how you want to run treasury on
-            Solana, Dreyv is built to operationalize it.
+            Solana, dreyv is built to operationalize it.
           </p>
         </article>
 
@@ -169,45 +169,45 @@ export default function CommandOpsGuidePage() {
           aria-label="Related product areas"
         >
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-6">
-            Explore Dreyv
+            Explore dreyv
           </p>
           <div className="grid gap-4 sm:grid-cols-3">
             <Link
               href="/pricing"
-              className="group flex flex-col rounded-xl border border-white/[0.06] bg-black/20 p-4 transition hover:border-keystone-green/30 hover:bg-white/[0.04]"
+              className="group flex flex-col rounded-xl border border-white/[0.06] bg-black/20 p-4 transition hover:border-dreyv-green/30 hover:bg-white/[0.04]"
             >
-              <Shield className="text-keystone-green mb-2" size={22} />
+              <Shield className="text-dreyv-green mb-2" size={22} />
               <span className="text-sm font-semibold text-white mb-1">Pricing</span>
               <span className="text-xs text-white/45 leading-snug">
                 Free, Mini, and Max — billed via FastSpring.
               </span>
-              <span className="mt-3 inline-flex items-center gap-1 text-xs text-keystone-green group-hover:gap-2 transition-all">
+              <span className="mt-3 inline-flex items-center gap-1 text-xs text-dreyv-green group-hover:gap-2 transition-all">
                 View plans <ArrowRight className="size-3.5" />
               </span>
             </Link>
             <Link
               href="/atlas"
-              className="group flex flex-col rounded-xl border border-white/[0.06] bg-black/20 p-4 transition hover:border-keystone-green/30 hover:bg-white/[0.04]"
+              className="group flex flex-col rounded-xl border border-white/[0.06] bg-black/20 p-4 transition hover:border-dreyv-green/30 hover:bg-white/[0.04]"
             >
               <Zap className="text-aurora-violet mb-2" size={22} />
               <span className="text-sm font-semibold text-white mb-1">Solana Atlas</span>
               <span className="text-xs text-white/45 leading-snug">
                 Public intelligence desktop for market context.
               </span>
-              <span className="mt-3 inline-flex items-center gap-1 text-xs text-keystone-green group-hover:gap-2 transition-all">
+              <span className="mt-3 inline-flex items-center gap-1 text-xs text-dreyv-green group-hover:gap-2 transition-all">
                 Open Atlas <ArrowRight className="size-3.5" />
               </span>
             </Link>
             <Link
               href="/auth"
-              className="group flex flex-col rounded-xl border border-white/[0.06] bg-black/20 p-4 transition hover:border-keystone-green/30 hover:bg-white/[0.04]"
+              className="group flex flex-col rounded-xl border border-white/[0.06] bg-black/20 p-4 transition hover:border-dreyv-green/30 hover:bg-white/[0.04]"
             >
-              <Terminal className="text-keystone-green mb-2" size={22} />
+              <Terminal className="text-dreyv-green mb-2" size={22} />
               <span className="text-sm font-semibold text-white mb-1">Command center</span>
               <span className="text-xs text-white/45 leading-snug">
                 Sign in and run intent-driven treasury workflows.
               </span>
-              <span className="mt-3 inline-flex items-center gap-1 text-xs text-keystone-green group-hover:gap-2 transition-all">
+              <span className="mt-3 inline-flex items-center gap-1 text-xs text-dreyv-green group-hover:gap-2 transition-all">
                 Sign in <ArrowRight className="size-3.5" />
               </span>
             </Link>

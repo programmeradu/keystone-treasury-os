@@ -84,7 +84,7 @@ export default function MarketplacePage() {
                 <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--dashboard-accent)]" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-70">Keystone OS // App Layer</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-70">dreyv OS // App Layer</span>
                     </div>
                     <div className="flex items-center gap-3">
                         <h1 className="text-lg font-bold tracking-tight text-foreground uppercase">Marketplace</h1>
@@ -121,7 +121,7 @@ export default function MarketplacePage() {
                         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3 pointer-events-none" />
                         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/4 pointer-events-none" />
 
-                        {/* Keystone Logo Watermark */}
+                        {/* dreyv logo watermark */}
                         <div className="absolute top-1/2 right-12 -translate-y-1/2 opacity-[0.05] pointer-events-none rotate-[-10deg]">
                             <Logo size={320} fillColor="currentColor" className="text-primary" />
                         </div>
@@ -133,7 +133,7 @@ export default function MarketplacePage() {
                                 </h2>
                                 <p className="text-lg text-muted-foreground leading-relaxed">
                                     Browse, install, and deploy audited mini-apps to supercharge your treasury operations.
-                                    Built by the community, secured by Keystone.
+                                    Built by the community, secured by dreyv.
                                 </p>
                             </div>
                             <Button

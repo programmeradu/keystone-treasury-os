@@ -42,7 +42,7 @@ export function ContractEditor({ files, onCompile, isCompiling }: ContractEditor
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     files: sourceFiles,
-                    programName: "keystone_app",
+                    programName: "dreyv_app",
                     useCloud,
                 }),
             });

@@ -103,7 +103,7 @@ export default function SettingsPage() {
                 <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--dashboard-accent-muted)]" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Keystone OS // Primary Node</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">dreyv OS // Primary Node</span>
                     </div>
                     <div className="flex items-center gap-3">
                         <SettingsIcon className="text-primary" size={20} />
@@ -179,7 +179,7 @@ export default function SettingsPage() {
                                 <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground mb-5 shadow-[0_0_20px_var(--dashboard-accent-muted)]">
                                     <Scan size={24} strokeWidth={2.5} />
                                 </div>
-                                <h3 className="text-lg font-black text-foreground mb-2 tracking-tight uppercase">Keystone Mobile</h3>
+                                <h3 className="text-lg font-black text-foreground mb-2 tracking-tight uppercase">dreyv Mobile</h3>
                                 <p className="text-xs text-muted-foreground mb-6 leading-relaxed uppercase tracking-widest font-black">
                                     Securely sign transactions via PWA. Biometric simulation enabled for testing.
                                 </p>

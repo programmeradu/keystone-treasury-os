@@ -87,7 +87,7 @@ export async function POST(
 
       sendTeamInviteEmail({
         to: address,
-        teamName: team?.name || 'Keystone Team',
+        teamName: team?.name || 'dreyv Team',
         inviterName: inviter?.displayName || authUser.id.slice(0, 8),
         role,
         inviteToken,

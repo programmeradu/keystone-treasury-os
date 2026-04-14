@@ -48,7 +48,7 @@ export function DataNexus() {
         const blob = new Blob([csv], { type: "text/csv" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = url; a.download = `keystone-ledger-${Date.now()}.csv`; a.click();
+        a.href = url; a.download = `dreyv-ledger-${Date.now()}.csv`; a.click();
         URL.revokeObjectURL(url);
         toast.success(`Exported ${filtered.length} transactions as CSV`);
     };
@@ -65,7 +65,7 @@ export function DataNexus() {
         });
         const vault = activeVault || "unknown";
         const blob = new Blob([
-            `Keystone Treasury - Transaction Report\n`,
+            `dreyv Treasury - Transaction Report\n`,
             `Vault: ${vault}\n`,
             `Generated: ${new Date().toISOString()}\n`,
             `Transactions: ${filtered.length}\n`,
@@ -74,7 +74,7 @@ export function DataNexus() {
         ], { type: "text/plain" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = url; a.download = `keystone-report-${Date.now()}.txt`; a.click();
+        a.href = url; a.download = `dreyv-report-${Date.now()}.txt`; a.click();
         URL.revokeObjectURL(url);
         toast.success("Report generated");
     };

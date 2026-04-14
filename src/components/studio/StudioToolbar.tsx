@@ -220,7 +220,7 @@ export function StudioToolbar({
                     onClick={onShip}
                     disabled={isShipping}
                     className="h-8 text-[10px] font-black uppercase tracking-[0.2em] px-6 rounded-sm shadow-lg transition-all bg-primary hover:bg-primary/90 text-background shadow-primary/10"
-                    title="Ship to Keystone Marketplace"
+                    title="Ship to dreyv Marketplace"
                 >
                     {isShipping ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Rocket size={13} className="mr-1.5" />}
                     {isShipping ? "SHIPPING..." : "SHIP"}
@@ -245,7 +245,7 @@ export function StudioToolbar({
                     </div>
                 )}
                 <p className="text-xs text-muted-foreground text-center">
-                    This is how your app will appear in the Keystone Marketplace.
+                    This is how your app will appear in the dreyv Marketplace.
                 </p>
             </PremiumModal>
 

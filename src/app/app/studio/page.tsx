@@ -76,7 +76,7 @@ export default function App() {
       </div>
       
       <h1 className="text-4xl font-bold tracking-tight mb-4 text-white">
-        Keystone <span className="text-emerald-400">Architect</span> Node
+        dreyv <span className="text-emerald-400">Architect</span> Node
       </h1>
       
       <p className="text-zinc-400 max-w-2xl mb-8 leading-relaxed text-lg">
@@ -117,7 +117,7 @@ export default function App() {
     },
     "utils.ts": {
         name: "utils.ts",
-        content: `// Keystone Utility Suite
+        content: `// dreyv Utility Suite
 export const formatUSD = (val: number) => 
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
 
@@ -127,7 +127,7 @@ export const cn = (...classes: string[]) => classes.filter(Boolean).join(' ');
     },
     "styles.css": {
         name: "styles.css",
-        content: `/* Keystone Design System */
+        content: `/* dreyv Design System */
 body {
   margin: 0;
   background: #09090b;
@@ -144,11 +144,11 @@ body {
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 #[program]
-pub mod keystone_contract {
+pub mod dreyv_contract {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        msg!("Keystone Vault Initialized");
+        msg!("dreyv Vault Initialized");
         Ok(())
     }
 }
@@ -346,7 +346,7 @@ export default function StudioPage() {
             await saveProject(
                 creatorWallet,
                 projectCode,
-                { name: appName, description: "Created in Keystone Studio" },
+                { name: appName, description: "Created in dreyv Studio" },
                 appId
             );
 
@@ -407,7 +407,7 @@ export default function StudioPage() {
             await saveProject(
                 creatorWallet,
                 projectCode,
-                { name: appName, description: "Built in Keystone Studio by " + creatorWallet },
+                { name: appName, description: "Built in dreyv Studio by " + creatorWallet },
                 appId
             );
 
@@ -520,7 +520,7 @@ export default function StudioPage() {
                     <div className="flex items-center gap-3 pr-6 border-r border-border/60">
                         <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_10px_rgba(54,226,123,0.5)]" />
                         <span className="text-[10px] font-black tracking-[0.2em] text-foreground/90 uppercase">
-                            Keystone OS // Studio Node
+                            dreyv OS // Studio Node
                         </span>
                     </div>
 

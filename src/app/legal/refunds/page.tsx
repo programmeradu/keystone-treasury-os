@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
     title: "Refund Policy",
     description:
-        "Dreyv refund and cancellation policy for subscriptions billed through FastSpring.",
+        "dreyv refund and cancellation policy for subscriptions billed through FastSpring.",
     alternates: { canonical: "/legal/refunds" },
 };
 
@@ -16,7 +16,7 @@ export default function RefundsPage() {
 
             <h2>1. Who processes payments</h2>
             <p>
-                Paid subscriptions for Keystone are sold by{" "}
+                Paid subscriptions for dreyv are sold by{" "}
                 <strong>FastSpring</strong> as the merchant of record. FastSpring appears on your bank or card statement
                 and handles payment processing, invoicing, and many buyer support flows. This policy describes how we
                 work with that model; it does not replace FastSpring&apos;s terms for checkout.
@@ -34,7 +34,7 @@ export default function RefundsPage() {
             <h2>3. Refunds</h2>
             <p>
                 Refund eligibility depends on what FastSpring allows for your transaction type, region, and timing. If
-                you believe you are owed a refund, contact us first at your usual Keystone support channel (e.g. the
+                you believe you are owed a refund, contact us first at your usual dreyv support channel (e.g. the
                 email or in-app contact listed on your invoice or our site). We will coordinate with FastSpring where
                 required.
             </p>

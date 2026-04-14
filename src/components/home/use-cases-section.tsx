@@ -122,7 +122,7 @@ export function UseCasesSection() {
               className="group border-t lg:[&:nth-child(-n+3)]:border-t sm:[&:nth-child(-n+2)]:border-t border-white/[0.04] p-8 hover:bg-white/[0.015] transition-colors duration-300"
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-mono text-keystone-green/30">
+                <span className="text-xs font-mono text-dreyv-green/30">
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 {uc.visual}

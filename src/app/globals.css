@@ -131,6 +131,8 @@
   --radius-xl: calc(var(--radius) + 4px);
   --color-keystone-green: var(--keystone-green);
   --color-keystone-void: var(--keystone-void);
+  --color-dreyv-green: var(--dreyv-green);
+  --color-dreyv-void: var(--dreyv-void);
   --color-aurora-teal: var(--aurora-teal);
   --color-aurora-violet: var(--aurora-violet);
 }
@@ -167,6 +169,8 @@
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --keystone-void: #09090b;
   --keystone-green: #36e27b;
+  --dreyv-void: var(--keystone-void);
+  --dreyv-green: var(--keystone-green);
   --aurora-teal: #2dd4bf;
   --aurora-violet: #7c3aed;
   --keystone-panel: #0f1115;
