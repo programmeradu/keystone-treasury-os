@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-    title: "Terms of Service | Keystone",
-    description: "Keystone terms of service governing use of our treasury management platform.",
+    title: "Terms of Service",
+    description:
+        "Dreyv terms of service governing use of our treasury management platform.",
+    alternates: { canonical: "/legal/terms" },
 };
 
 export default function TermsPage() {

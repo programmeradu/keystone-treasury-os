@@ -1,5 +1,13 @@
+import type { Metadata } from "next";
 import { SolanaProviders } from "@/components/providers/solana-provider";
 import { AtlasClient } from "@/components/atlas/atlas-client";
+
+export const metadata: Metadata = {
+  title: "Solana Atlas",
+  description:
+    "Public intelligence desktop for Solana — market context, risk signals, and automation-ready workflows. Part of Dreyv.",
+  alternates: { canonical: "/atlas" },
+};
 
 export const dynamic = "force-dynamic";
 

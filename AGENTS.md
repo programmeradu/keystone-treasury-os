@@ -12,20 +12,22 @@
 - Prioritizes competitive, innovative UI/UX — wants the app to feel state-of-the-art vs 2026 agentic interfaces, not a traditional dashboard
 - Wants all-in-one implementation passes — complete full todos end-to-end before stopping
 - Wants to be a first mover — invent new protocols/standards others build on (e.g. Treasury MCP Server, Cross-Agent Treasury Protocol), not just integrate existing tools
-- Rebrand is CONFIRMED necessary — "Keystone" directly conflicts with Keystone Hardware Wallet (keyst.one), Keystone Research Group, and Keystone Law; "CTRL" conflicts with CTRL.com (ERP accounting software); "Propel" conflicts with Propel.xyz (Singapore blockchain infrastructure, has PEL token on CoinMarketCap); all three names compromised
-- Rebrand research at findings-rebrand.md: real-word names (Aegis, Vanta, Lucid, etc.) ALL verified as taken by active companies; pivoted to INVENTED names — 15 candidates generated and web-verified for conflicts
-- Invented name Top 5 (verified clean): Kalvo (57/60, Finnish for "protective membrane" — the Aave move), Xelvo (55/60, pure invention, dramatic X opening), Nalyx (53/60, crystalline -yx ending), Vyzen (52/60, vision+zen blend), Kovyn (52/60, Finnish root "kova"=strong)
-- Naming patterns from unicorns: short names (1-2 words) are 4x more likely to raise VC; sweet spot 4-8 characters; abstract/evocative beats descriptive; must pass "crowded bar test" and telephone test; avoid "AI"/"DeFi"/"Web3"/"Finance" in the name — brand must transcend specific tech
-- Before finalizing name: must check domain (.ai preferred, .com gold standard), X/Twitter handle, GitHub, npm scope, USPTO trademark (Class 9 software + Class 36 financial services)
-- Parent company is StaUniverse (founded 2025); live domain is keystone.stauniverse.tech
+- REBRAND DECIDED: **Dreyv** (pronounced "DRAVE") — invented word, 5 characters, 1 syllable, evokes drive/momentum/force; zero existing companies/tokens/apps using the name
+- Domain status: dreyv.com appears available; dreyv.ai appears available; @dreyv on X not claimed by any active account; no GitHub org named "dreyv" — needs immediate registration
+- Previous names rejected: "Keystone" (hardware wallet conflict), "CTRL" (ERP software conflict), "Propel" (blockchain company conflict); all real English words and common invented names were taken by existing businesses
+- Naming patterns from unicorns: short names (1-2 words) are 4x more likely to raise VC; sweet spot 4-8 characters; abstract/evocative beats descriptive; must pass "crowded bar test" and telephone test
+- Next steps: register dreyv.com and/or dreyv.ai, claim @dreyv on X, create GitHub org, reserve npm scope @dreyv, USPTO trademark search (Class 9 software + Class 36 financial services)
+- Parent company is StaUniverse (founded 2025); primary deployment domain is **dreyv.stauniverse.tech** (Vercel); set `NEXT_PUBLIC_APP_URL=https://dreyv.stauniverse.tech` in production for SEO
+- Technical SEO: `metadataBase` + OG/Twitter + `app/sitemap.ts` + `app/robots.ts` + `app/manifest.ts` + edge `opengraph-image.tsx`; JSON-LD (`Organization` + `WebSite` + `SoftwareApplication`) via `RootJsonLd`; private routes get `X-Robots-Tag: noindex` in middleware; optional `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` for Search Console
+- Analytics: **GTM** (`beforeInteractive` + `noscript`) + **GA4 gtag** (`afterInteractive`) with `NEXT_PUBLIC_GA_MEASUREMENT_ID` (default **`G-FYR5RC3HK9`** for Dreyv); do **not** also fire the same GA4 Measurement ID from GTM or page views double-count
 - Wants CEO-level operational rigor: monitoring, tests, documentation, and design partners before scaling features
 - Values honest assessments of current product state — prefers C-tier ratings with improvement plans over inflated claims
 
 ## Learned Workspace Facts
 
-- Monorepo: root Next.js 15.5 app + `packages/cli` and `packages/sdk` workspaces; React 19, Drizzle ORM, Neon Postgres, deployed on Netlify with Cloudflare Workers support (`@opennextjs/cloudflare`)
+- Monorepo: root Next.js 15.5 app + `packages/cli` and `packages/sdk` workspaces; React 19, Drizzle ORM, Neon Postgres; **production deployment is Vercel only** (dreyv.stauniverse.tech). Repo still includes optional Cloudflare/OpenNext scripts (`cf:*`, `@opennextjs/cloudflare`) for experiments — not the live host.
 - 148 API routes under `src/app/api/`, single schema file at `src/db/schema.ts` with 30+ tables, auth via SIWS JWT + Neon/Better Auth middleware
-- Billing stack: Paddle (`src/lib/paddle.ts`, `src/app/api/paddle/*`) kept as reference; FastSpring (`src/lib/fastspring.ts`, `src/app/api/fastspring/*`) is the active MoR; tier stored in `users.tier` column (free/mini/max); catalog seed scripts: `npm run fastspring:seed-catalog`, `npm run paddle:seed-catalog`; env vars in `.env.example`
+- Billing stack: Paddle (`src/lib/paddle.ts`, `src/app/api/paddle/`*) kept as reference; FastSpring (`src/lib/fastspring.ts`, `src/app/api/fastspring/*`) is the active MoR; tier stored in `users.tier` column (free/mini/max); catalog seed scripts: `npm run fastspring:seed-catalog`, `npm run paddle:seed-catalog`; env vars in `.env.example`
 - Core product modules: Command-Ops (NL interface), Foresight Simulator (what-if engine), Solana Atlas (MEV/rug-pull/DCA), Keystone Studio (browser IDE + AI Architect), Marketplace (80/20 revenue split, Anchor devnet contract), Simulation Firewall, Persistent Knowledge Memory
 - Wallet integrations: Solana wallet adapter, EVM via RainbowKit/wagmi, Turnkey embedded wallets; multi-sig via Squads (`@sqds/multisig`)
 - Key dependencies: ai SDK (Vercel), @ai-sdk/groq + @ai-sdk/openai, Jupiter (swap/quote/price/trending), Helius (DAS/token-accounts/tx-history), Marinade, Streamflow (payroll — present but unused), Liveblocks (collab); evaluated agentic SDKs: Phantom MCP Server (v1.0.4, 29 tools), Solana Agent Kit by SendAI (60+ actions), elizaOS (17.6k stars, 200+ plugins), Cloudflare Agents SDK (AIChatAgent, scheduling, MCP server)
@@ -49,7 +51,8 @@
 - Agent Store replaces Mini-App Store with six categories: Risk & Compliance, Yield & DeFi, Governance, Intelligence, Operations, Cross-Chain; plus usage-based pricing and agent-to-agent hiring via ACP
 - Business Lead findings at findings-as-business-lead.md covers 16 areas: pitch strategy, brand identity, jargon-free messaging, social media playbook, content marketing/SEO, community building, PR/media, KOL/influencer, events/conferences, landing page, referral/viral growth, demo/video, email/newsletter, founder story, steal-worthy tactics, and priority stack
 - Pitch one-liners defined per audience: universal ("AI that manages your crypto money while you sleep"), investor ("OS for $32B DAO treasury market"), developer ("Build treasury agents, ship to Agent Store"), non-crypto ("smart CFO for internet organizations")
-- Brand positioning: "Linear for DeFi" — dark, beautiful, minimal, opinionated; every screenshot should be marketing; void + neon palette is strong; subdomain (keystone.stauniverse.tech) = amateur, needs standalone domain; invented name shortlist: Kalvo, Xelvo, Nalyx, Vyzen, Kovyn
+- Brand positioning: "Linear for DeFi" — dark, beautiful, minimal, opinionated; every screenshot should be marketing; void + neon palette is strong; subdomain (keystone.stauniverse.tech) = amateur, needs standalone domain (dreyv.com or dreyv.ai)
+- Product naming: Dreyv OS (operating system), Dreyv Agents, Dreyv Studio, Dreyv Atlas, Dreyv Protocol; npm scope: @dreyv/sdk, @dreyv/cli
 - Social media priority: X/Twitter #1 (1-3x daily, 7 content pillars: product showcase, educational threads, market commentary, builder updates, ecosystem engagement, founder voice, social proof), Discord #2, YouTube #3, LinkedIn #4
 - Community: Discord server structure defined (Welcome, Announcements, General, Support, Developers, Design Partners, Governance); first 100 members from design partners + Solana builder community + personal network
 - PR strategy: CoinDesk/The Block for Tier 1; story must matter beyond the product; PR-worthy moments = audit completion, design partner results, Agent Store launch, fundraise, original data reports
@@ -64,10 +67,11 @@
 - @solana/web3.js 1.x is OUTDATED — @solana/kit (2.x) is 200ms faster tx confirmation, tree-shakeable (26% smaller bundles), type-safe; migration planned
 - SIWS auth has in-memory nonce set that doesn't survive serverless instances — must move to Upstash Redis
 - Testing blueprint: Vitest (unit/integration) + Bankrun (Solana programs) + Playwright (E2E) + MSW (API mocking); coverage targets: 30% month 1 → 50% month 3 → 70% month 6
-- CI/CD blueprint: GitHub Actions with lint + type-check + test + build + bundle-size check + Netlify deploy preview
+- CI/CD blueprint: GitHub Actions with lint + type-check + test + build + bundle-size check + **Vercel** preview/production deploys
 - AI architecture migration: linear streamText (current) → graph-based orchestrator with AgentState, specialist nodes (Treasury/Intelligence/Execution), persistent state, human-in-the-loop, observability
 - Treasury MCP Server blueprint: @modelcontextprotocol/sdk + Cloudflare Workers + 10 treasury tools + .well-known/mcp.json discovery; estimated 3-4 weeks to world's first
 - Ambient Treasury OS blueprint: KeystoneAmbientAgent extends CF Agent class + Durable Objects + scheduled position monitoring + WebSocket to dashboard + human approval; estimated 5-6 weeks to world's first
 - B2C mobile blueprint: React Native + Expo + Expo Router + @solana/kit + Mobile Wallet Adapter (MWA); shared packages/core for business logic; features: Treasury at a Glance, one-tap rebalance, AI push alerts, daily digest, biometric auth
 - Technical debt register: 15 items tracked (TD-01 through TD-15), top 3: monolith (CRITICAL), zero tests (CRITICAL), no CI (HIGH)
 - CTO critical path: fix foundations month 1 → ship MCP Server + Ambient Agent month 2 → migrate Solana + start mobile month 3; by month 3 have two world-firsts live
+

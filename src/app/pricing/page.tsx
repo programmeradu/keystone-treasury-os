@@ -5,9 +5,10 @@ import { SiteFooter } from "@/components/home/site-footer";
 import { CheckCircle2, Cpu, Shield, User } from "lucide-react";
 
 export const metadata: Metadata = {
-    title: "Pricing | Keystone",
+    title: "Pricing",
     description:
-        "Keystone OS plans — Base, Mini, and Max. Subscribe via FastSpring; taxes calculated at checkout where applicable.",
+        "Dreyv plans — Free, Mini, and Max. Subscribe via FastSpring; taxes calculated at checkout where applicable.",
+    alternates: { canonical: "/pricing" },
 };
 
 export default function PricingPage() {
@@ -24,7 +25,7 @@ export default function PricingPage() {
             <main className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-16 md:py-24">
                 <div className="text-center max-w-2xl mx-auto mb-14">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3">
-                        Keystone OS // Pricing
+                        Dreyv // Pricing
                     </p>
                     <h1 className="text-3xl md:text-4xl font-black tracking-tight uppercase mb-4">
                         Plans for every squad

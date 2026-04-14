@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-    title: "Refund Policy | Keystone",
-    description: "Keystone refund and cancellation policy for subscriptions billed through FastSpring.",
+    title: "Refund Policy",
+    description:
+        "Dreyv refund and cancellation policy for subscriptions billed through FastSpring.",
+    alternates: { canonical: "/legal/refunds" },
 };
 
 export default function RefundsPage() {

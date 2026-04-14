@@ -47,6 +47,26 @@ async function getSiwsPayload(request: NextRequest): Promise<Record<string, unkn
     }
 }
 
+/** Aligns with robots.txt — HTML/API responses for app-like routes should not be indexed. */
+function isPrivateSeoPath(pathname: string): boolean {
+    if (pathname === '/hello' || pathname.startsWith('/hello/')) return true;
+    if (pathname === '/working-swap' || pathname.startsWith('/working-swap/')) return true;
+    return (
+        pathname.startsWith('/app') ||
+        pathname.startsWith('/auth') ||
+        pathname.startsWith('/api') ||
+        pathname.startsWith('/github-cleanup') ||
+        pathname.startsWith('/mobile')
+    );
+}
+
+function withSeoHeaders(response: NextResponse, pathname: string): NextResponse {
+    if (isPrivateSeoPath(pathname)) {
+        response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    }
+    return response;
+}
+
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
@@ -74,7 +94,7 @@ export async function middleware(request: NextRequest) {
             cleanUrl.searchParams.set('oauth', 'complete');
         }
         console.log('[Middleware] Stripping neon_auth_session_verifier, redirecting to:', cleanUrl.pathname + cleanUrl.search);
-        return NextResponse.redirect(cleanUrl);
+        return withSeoHeaders(NextResponse.redirect(cleanUrl), pathname);
     }
 
     // ─── Skip public routes ─────────────────────────────────────────
@@ -88,14 +108,15 @@ export async function middleware(request: NextRequest) {
         '/manifest',
     ];
 
-    const publicPages = ['/', '/marketplace', '/pricing', '/docs', '/about', '/auth'];
+    const publicPages = ['/', '/marketplace', '/pricing', '/atlas', '/docs', '/about', '/auth'];
 
     if (
         publicPaths.some((p) => pathname.startsWith(p)) ||
         publicPages.includes(pathname) ||
+        pathname.startsWith('/legal') ||
         pathname.includes('.')
     ) {
-        return NextResponse.next();
+        return withSeoHeaders(NextResponse.next(), pathname);
     }
 
     // ─── Check both auth systems in parallel ────────────────────────
@@ -110,7 +131,10 @@ export async function middleware(request: NextRequest) {
     // ─── Public API routes (no auth required) ───────────────────────
     const publicApiPaths = ['/api/studio/marketplace'];
     if (publicApiPaths.some((p) => pathname === p || (pathname.startsWith(p) && request.method === 'GET'))) {
-        return NextResponse.next({ request: { headers: request.headers } });
+        return withSeoHeaders(
+            NextResponse.next({ request: { headers: request.headers } }),
+            pathname,
+        );
     }
 
     // ─── CLI publish endpoints (self-authenticated, no cookies needed) ──
@@ -118,7 +142,10 @@ export async function middleware(request: NextRequest) {
     // /api/studio/publish/register — POST, registers developer (rate-limited, self-protected)
     // /api/studio/publish        — POST with bearer/signature headers (route does own auth)
     if (pathname === '/api/studio/publish/auth' || pathname === '/api/studio/publish/register') {
-        return NextResponse.next({ request: { headers: request.headers } });
+        return withSeoHeaders(
+            NextResponse.next({ request: { headers: request.headers } }),
+            pathname,
+        );
     }
 
     // ─── CLI auth bypass: let bearer-token / wallet-signature requests through ──
@@ -127,7 +154,10 @@ export async function middleware(request: NextRequest) {
         (pathname === '/api/studio/publish' || pathname.startsWith('/api/studio/publish/')) &&
         (request.headers.has('authorization') || request.headers.has('x-keystone-signature'))
     ) {
-        return NextResponse.next({ request: { headers: request.headers } });
+        return withSeoHeaders(
+            NextResponse.next({ request: { headers: request.headers } }),
+            pathname,
+        );
     }
 
     // ─── Protect /app/* and /api/* routes ───────────────────────────
@@ -135,9 +165,9 @@ export async function middleware(request: NextRequest) {
 
     if (protectedPaths.some((p) => pathname.startsWith(p)) && !isAuthenticated) {
         if (pathname.startsWith('/api/')) {
-            return NextResponse.json(
-                { error: 'Unauthorized. Please sign in.' },
-                { status: 401 }
+            return withSeoHeaders(
+                NextResponse.json({ error: 'Unauthorized. Please sign in.' }, { status: 401 }),
+                pathname,
             );
         }
 
@@ -151,7 +181,7 @@ export async function middleware(request: NextRequest) {
         if (pathname !== '/app') {
             url.searchParams.set('redirect', pathname);
         }
-        return NextResponse.redirect(url);
+        return withSeoHeaders(NextResponse.redirect(url), pathname);
     }
 
     // ─── Admin Role Gate ────────────────────────────────────────────
@@ -159,7 +189,7 @@ export async function middleware(request: NextRequest) {
         if (!isAuthenticated) {
             const url = request.nextUrl.clone();
             url.pathname = '/auth';
-            return NextResponse.redirect(url);
+            return withSeoHeaders(NextResponse.redirect(url), pathname);
         }
     }
 
@@ -174,10 +204,13 @@ export async function middleware(request: NextRequest) {
     ) {
         const url = request.nextUrl.clone();
         url.pathname = '/app/onboarding';
-        return NextResponse.redirect(url);
+        return withSeoHeaders(NextResponse.redirect(url), pathname);
     }
 
-    return NextResponse.next({ request: { headers: request.headers } });
+    return withSeoHeaders(
+        NextResponse.next({ request: { headers: request.headers } }),
+        pathname,
+    );
 }
 
 export const config = {

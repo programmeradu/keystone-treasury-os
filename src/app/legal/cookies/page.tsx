@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-    title: "Cookie Policy | Keystone",
-    description: "Keystone cookie policy — what cookies we use and why.",
+    title: "Cookie Policy",
+    description: "Dreyv cookie policy — what cookies we use and why.",
+    alternates: { canonical: "/legal/cookies" },
 };
 
 export default function CookiesPage() {
