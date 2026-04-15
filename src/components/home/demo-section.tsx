@@ -109,8 +109,12 @@ export function DemoSection() {
             id="demo-heading"
             className="text-3xl md:text-5xl font-bold text-white tracking-[-0.02em]"
           >
-            Command the Treasury
+            Command the treasury
           </h2>
+          <p className="mt-4 text-base text-white/30 max-w-2xl mx-auto leading-relaxed">
+            Type intent below to see how dreyv breaks it into a signer-ready plan — same flow as the product, without
+            connecting a wallet.
+          </p>
         </motion.div>
 
         <motion.div
@@ -152,7 +156,7 @@ export function DemoSection() {
                   {loading ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    "Execute"
+                    "Preview plan"
                   )}
                 </button>
               </div>

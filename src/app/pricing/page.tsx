@@ -7,7 +7,7 @@ import { CheckCircle2, Cpu, Shield, User } from "lucide-react";
 export const metadata: Metadata = {
     title: "Pricing",
     description:
-        "dreyv plans — Free, Mini, and Max. Subscribe via FastSpring; taxes calculated at checkout where applicable.",
+        "dreyv pricing — Free, Mini, and Max for non-custodial AI treasury workspaces. Billed via FastSpring; taxes at checkout where applicable.",
     alternates: { canonical: "/pricing" },
 };
 
@@ -30,7 +30,11 @@ export default function PricingPage() {
                     <h1 className="text-3xl md:text-4xl font-black tracking-tight uppercase mb-4">
                         Plans for every squad
                     </h1>
-                    <p className="text-sm text-white/50 leading-relaxed">
+                    <p className="text-sm text-white/40 leading-relaxed max-w-xl mx-auto">
+                        Every tier includes the same core loop: compose treasury intent, simulate on a fork, show approvers
+                        readable impact, then execute under your multisig. Upgrade for more vaults, seats, and AI capacity.
+                    </p>
+                    <p className="text-sm text-white/50 leading-relaxed mt-4">
                         All paid plans are billed securely through{" "}
                         <span className="text-white/70">FastSpring</span> (merchant of record). Checkout displays your
                         total including applicable taxes.{" "}

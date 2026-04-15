@@ -386,7 +386,7 @@ export async function planStrategy(
   const pluginContext = learnedPlugins.length > 0
     ? `\n\nLearned Protocols (available for execution):\n` +
     learnedPlugins.map(p =>
-      `- "${p.name}": ${p.description} [programId: ${p.programId}] ops: ${p.operations.map(o => o.name).join(", ")}`
+      `- "${p.name}": ${p.description} [programId: ${p.programId}] actions: ${p.operations.map(o => o.name).join(", ")}`
     ).join("\n")
     : "";
 

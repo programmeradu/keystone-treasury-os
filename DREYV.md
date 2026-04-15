@@ -2,7 +2,7 @@
 
 **Pronunciation:** DRAVE (one syllable)
 
-**One line:** Dreyv is an AI-powered, **non-custodial operating system** for Web3 treasuries — moving teams from chaotic **Click-Ops** to intentional **Command-Ops**, with simulation-backed execution and agents that learn.
+**One line:** Dreyv is an AI-powered, **non-custodial operating system** for Web3 treasuries — moving teams from chaotic, **fragmented manual workflows** to **intent-driven treasury control**, with simulation-backed execution and agents that learn.
 
 This document is the **canonical product vision** for Dreyv. It synthesizes strategic, business, product, and technical direction so we can build toward a single north star.
 
@@ -24,7 +24,7 @@ Modern treasury work on-chain is fragmented: execution, intelligence, and coordi
 | Theme                                 | What we are building                                                                                                                                                 |
 | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Operating system, not a dashboard** | A coherent **surface** for treasury strategy, execution, intelligence, and builder workflows — not another chart-only product.                                       |
-| **Command-Ops**                       | Users express **strategic intent** in language; the system **plans**, **simulates**, **explains**, and coordinates **specialist agents** before anything hits chain. |
+| **Intent command surface**            | Users express **strategic intent** in language; the system **plans**, **simulates**, **explains**, and coordinates **specialist agents** before anything hits chain. |
 | **Safety by default**                 | Every AI-generated payload is treated as untrusted until it passes **simulation** and human-readable impact reporting.                                               |
 | **Persistent intelligence**           | **Knowledge memory** and protocol learning so the stack **improves over time** — not one-shot prompts.                                                               |
 | **Builder economy**                   | **Studio + marketplace** evolve toward an **Agent Store** — third parties ship **agents and automations**, not only mini-apps.                                       |
@@ -37,7 +37,7 @@ Modern treasury work on-chain is fragmented: execution, intelligence, and coordi
 
 These are the core modules that together form **Dreyv OS**.
 
-### 3.1 Command-Ops (linguistic command layer)
+### 3.1 Linguistic command layer (intent → plan → simulate)
 
 Natural-language **intent** drives the product. The command surface streams **diagrams, charts, and structured output** so users see a **visual snapshot** before committing to execution. Long-term direction: **graph-based agent orchestration** (stateful specialists, human-in-the-loop, observability), not a single linear chat pipe.
 
@@ -163,9 +163,10 @@ We will **sequence** ruthlessly but **not** drop the vision:
 
 ## 12. How to use this document
 
-- **Product & engineering:** Align features to the **pillars** and **first-mover bets**; avoid shipping orphan features that do not reinforce Command-Ops, safety, or builder distribution.
-- **GTM & content:** Align **story** to non-custodial trust, **simulation-first** execution, and **builder** opportunity.
+- **Product & engineering:** Align features to the **pillars** and **first-mover bets**; avoid shipping orphan features that do not reinforce the **intent command surface**, safety, or builder distribution.
+- **GTM & content:** Align **story** to non-custodial trust, **simulation-first** execution, and **builder** opportunity (avoid *Ops* coinages in customer-facing copy; use *intent-driven*, *tab-hopping*, *command surface*, etc.).
 - **Investors & partners:** This is the **vision deck in text form** — update numbers and milestones as they become real.
+- **Messaging vs research archive:** A reconciliation of this doc with private research markdown (naming finalists, “Keystone” strategic file, business-lead playbook) lives in **`docs/DREYV-BRAND-SYNTHESIS.md`** (local checkout; `docs/` may be gitignored). **`findings-rebrand.md` §14** records the **Dreyv** naming decision vs the Kalvo-tier shortlist.
 
 ---
 

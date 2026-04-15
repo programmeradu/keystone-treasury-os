@@ -10,14 +10,14 @@ const features = [
       "We never touch your keys. dreyv is a coordination layer that sits on top of your existing multisig (Squads).",
   },
   {
-    title: "Simulation Firewall",
+    title: "Simulation-first proposals",
     description:
-      "Every transaction is simulated against 50+ risk vectors before you even see the 'Approve' button.",
+      "Proposed transactions are exercised on a mainnet fork where possible so approvers see expected balances, routes, and impact — not blind hex.",
   },
   {
-    title: "On-Premise Ready",
+    title: "Humans stay in control",
     description:
-      "Need full data sovereignty? dreyv can be deployed as a self-hosted instance for institutional compliance.",
+      "AI proposes plans and automation; your multisig and policies decide what actually executes. No surprise custody, no black-box signing.",
   },
 ];
 

@@ -36,7 +36,7 @@ export function buildRootJsonLd(): Record<string, unknown> {
           url: logoUrl,
         },
         description:
-          "AI-powered, non-custodial operating system for Web3 treasuries — command-ops, simulation-backed execution, and persistent intelligence.",
+          "AI-powered, non-custodial treasury command layer for Solana teams — plain-language intent, simulation before signing, human-readable impact for approvers, multisig-native (e.g. Squads).",
       },
       {
         "@type": "WebSite",
@@ -49,7 +49,7 @@ export function buildRootJsonLd(): Record<string, unknown> {
       {
         "@type": "SoftwareApplication",
         "@id": `${origin}/#product`,
-        name: "dreyv OS",
+        name: "dreyv",
         applicationCategory: "FinanceApplication",
         operatingSystem: "Web",
         offers: {
@@ -59,7 +59,7 @@ export function buildRootJsonLd(): Record<string, unknown> {
           description: "Free tier available; paid plans for teams.",
         },
         description:
-          "Natural-language treasury command layer with pre-execution simulation, Solana intelligence, and an agent-ready studio.",
+          "Treasury command layer for Solana: describe intent in natural language, review fork simulation and human-readable impact, coordinate multisig signing. Includes Solana Atlas, Studio, and agent-ready automation paths. Free tier available.",
         url: origin,
         provider: { "@id": `${origin}/#organization` },
       },

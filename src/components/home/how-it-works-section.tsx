@@ -14,9 +14,9 @@ const steps = [
   },
   {
     number: "02",
-    title: "Agents Plan & Validate",
+    title: "AI plans & simulates",
     description:
-      "Five AI agents collaborate to parse intent, find optimal routes, simulate execution, and enforce policies. Simulation-first safety.",
+      "Specialists parse intent, propose routes, and run simulation-first checks so approvers get a readable plan before any signature is requested.",
     accent: "text-blue-500/20",
     line: "bg-blue-500",
   },

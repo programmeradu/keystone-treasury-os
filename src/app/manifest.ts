@@ -2,10 +2,10 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "dreyv — Treasury Operating System",
+    name: "dreyv — AI treasury workspace",
     short_name: "dreyv",
     description:
-      "AI-powered, non-custodial command layer for Web3 treasuries. Simulate before you sign.",
+      "Non-custodial treasury workspace: intent, simulation, and multisig signing on Solana.",
     start_url: "/",
     scope: "/",
     display: "standalone",

@@ -30,7 +30,7 @@ export default function GlobalError({
                 {/* Fade Gradients */}
                 <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-[#030305] lg:bg-gradient-to-r lg:from-white/40 lg:via-white/10 lg:to-[#030305] dark:from-black/80 dark:via-black/90 dark:to-[#030305]" />
                 
-                {/* Command Ops Grid */}
+                {/* Background grid */}
                 <div
                     className="absolute inset-0 opacity-[0.03] dark:opacity-10"
                     style={{
@@ -110,7 +110,7 @@ export default function GlobalError({
                         className="w-full sm:w-auto px-6 py-2.5 bg-background/50 hover:bg-muted/80 text-foreground font-black uppercase tracking-wider text-[11px] border border-border/50 hover:border-border rounded-xl transition-all flex items-center justify-center gap-2.5 backdrop-blur-xl shadow-lg group"
                     >
                         <MoveLeft size={14} strokeWidth={2.5} className="group-hover:-translate-x-1 transition-transform" />
-                        <span>Return to Platform Ops</span>
+                        <span>Return to workspace</span>
                     </Link>
                 </div>
             </div>

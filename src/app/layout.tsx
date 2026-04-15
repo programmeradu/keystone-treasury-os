@@ -14,9 +14,9 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 const siteUrl = getSiteUrl();
 const siteOrigin = siteUrl.origin;
 
-const titleDefault = "dreyv | AI Treasury Operating System for Web3";
+const titleDefault = "dreyv | Treasury command layer for Solana teams";
 const description =
-  "Non-custodial treasury OS: natural-language command-ops, simulation before you sign, Solana intelligence, and agents that remember protocols.";
+  "Non-custodial treasury operations for DAOs and protocols: describe intent in plain language, review fork simulation and human-readable impact, then sign with your multisig (e.g. Squads). Solana-native — you keep the keys.";
 
 export const viewport: Viewport = {
   themeColor: "#050508",
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     "non-custodial treasury",
     "treasury simulation",
     "crypto treasury operations",
-    "Command-Ops",
+    "intent-driven treasury",
   ],
   authors: [{ name: "StaUniverse", url: "https://stauniverse.tech" }],
   creator: "StaUniverse",
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "dreyv — AI treasury operating system for Web3",
+        alt: "dreyv — treasury command layer for Solana teams (non-custodial)",
       },
     ],
   },

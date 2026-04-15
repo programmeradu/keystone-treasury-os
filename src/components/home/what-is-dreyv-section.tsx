@@ -28,12 +28,17 @@ export function WhatIsDreyvSection() {
             id="what-is-dreyv-heading"
             className="text-2xl md:text-3xl font-bold text-white tracking-[-0.02em]"
           >
-            Command-ops for treasuries, without custody.
+            The workspace between intent and signature.
           </h2>
           <p className="mt-4 text-base md:text-lg text-white/35 leading-relaxed">
-            <span className="text-white/80 font-medium">dreyv</span> is the operating layer that turns intent
-            into routed, simulated, and auditable treasury actions on Solana. It connects to your multisig and
-            the protocols you already use — so approvers see outcomes, not opaque calldata.
+            <span className="text-white/80 font-medium">dreyv</span> is where{" "}
+            <span className="text-white/55">treasury-by-intent</span> lives: plain-language intent → execution plan → fork
+            simulation → human-readable impact report → sign with your wallet. Non-custodial by design; built to sit on
+            Squads, Jupiter, and the Solana stack you already use.
+          </p>
+          <p className="mt-4 text-sm md:text-base text-white/25 leading-relaxed">
+            Vaults guard assets; accounting closes the books — dreyv is where the team <span className="text-white/40">coordinates what happens next</span>{" "}
+            before anyone signs.
           </p>
         </motion.div>
       </div>

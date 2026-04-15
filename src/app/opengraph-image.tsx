@@ -3,7 +3,7 @@ import { ImageResponse } from "next/og";
 export const runtime = "edge";
 
 export const alt =
-  "Dreyv — AI-powered treasury operating system for Web3";
+  "dreyv — AI treasury workspace for Solana teams (non-custodial)";
 
 export const size = {
   width: 1200,
@@ -64,8 +64,8 @@ export default function OpenGraphImage() {
             lineHeight: 1.35,
           }}
         >
-          Command-ops for Web3 treasuries — simulate before you sign, agents that
-          remember protocols.
+          Treasury intent → simulated plan → human-readable impact — then sign
+          with your multisig. Non-custodial. Solana-native.
         </div>
         <div
           style={{
@@ -76,7 +76,7 @@ export default function OpenGraphImage() {
             color: "rgba(255,255,255,0.38)",
           }}
         >
-          Non-custodial · Solana-native · AI orchestration
+          Non-custodial · Simulation-first · Multisig-ready
         </div>
       </div>
     ),

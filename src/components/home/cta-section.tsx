@@ -28,19 +28,20 @@ export function CTASection() {
           className="relative text-center max-w-3xl mx-auto"
         >
           <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white tracking-[-0.03em] leading-[0.95]">
-            Ready to command{" "}
+            Ready to run treasury{" "}
             <span className="bg-gradient-to-r from-dreyv-green via-emerald-400 to-dreyv-green/50 bg-clip-text text-transparent">
-              your treasury?
+              with clarity?
             </span>
           </h2>
 
-          <p className="mt-8 text-white/30 text-lg md:text-xl max-w-lg mx-auto leading-relaxed font-light">
-            Join treasury teams building on dreyv.
+          <p className="mt-8 text-white/30 text-lg md:text-xl max-w-xl mx-auto leading-relaxed font-light">
+            Bring your multisig and your playbook. Compose intent once, see simulated outcomes in plain language, then
+            approve as a team — non-custodial by design.
           </p>
 
           <div className="mt-10 flex flex-wrap justify-center items-center gap-6">
             <a
-              href="/app"
+              href="/auth?redirect=/app"
               className="group relative inline-flex items-center gap-2.5 font-semibold text-xs px-5 py-2.5 rounded-lg overflow-hidden transition-all duration-300"
             >
               {/* Metallic dreyv-green gradient background */}
@@ -53,7 +54,7 @@ export function CTASection() {
               {/* Border */}
               <span className="absolute inset-0 rounded-lg border border-white/20" />
               {/* Content */}
-              <span className="relative text-black font-semibold tracking-wide">Open App</span>
+              <span className="relative text-black font-semibold tracking-wide">Get started — free</span>
               <ArrowRight className="relative h-3.5 w-3.5 text-black/70 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-black" />
             </a>
             <a

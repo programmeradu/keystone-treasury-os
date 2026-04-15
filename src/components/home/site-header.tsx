@@ -7,12 +7,13 @@ import { LogoFilled } from "@/components/icons";
 import { Menu, X, ArrowRight } from "lucide-react";
 
 const navLinks = [
-  { label: "Platform", href: "#pillars" },
-  { label: "Features", href: "#deep-dive" },
-  { label: "Atlas", href: "#atlas" },
-  { label: "How It Works", href: "#how-it-works" },
-  { label: "Use Cases", href: "#use-cases" },
-  { label: "FAQ", href: "#faq" },
+  { label: "Platform", href: "/#pillars" },
+  { label: "Features", href: "/#deep-dive" },
+  { label: "Atlas", href: "/#atlas" },
+  { label: "How It Works", href: "/#how-it-works" },
+  { label: "Use Cases", href: "/#use-cases" },
+  { label: "Pricing", href: "/pricing" },
+  { label: "FAQ", href: "/#faq" },
 ];
 
 export function SiteHeader() {
@@ -23,7 +24,7 @@ export function SiteHeader() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <a href="#content" className="flex items-center gap-2.5 group" aria-label="dreyv home">
+          <a href="/#content" className="flex items-center gap-2.5 group" aria-label="dreyv home">
             <LogoFilled size={28} />
             <span className="text-base font-semibold tracking-wide text-white group-hover:text-dreyv-green transition-colors">
               dreyv
@@ -54,7 +55,7 @@ export function SiteHeader() {
               <a href="/atlas">Try Atlas</a>
             </Button>
             <a
-              href="/app"
+              href="/auth?redirect=/app"
               className="group relative inline-flex items-center gap-2 font-semibold text-xs px-4 py-2 rounded-lg overflow-hidden transition-all duration-300"
             >
               {/* Metallic keystone-green gradient background */}
@@ -67,7 +68,7 @@ export function SiteHeader() {
               {/* Border */}
               <span className="absolute inset-0 rounded-lg border border-white/20" />
               {/* Content */}
-              <span className="relative text-black font-semibold tracking-wide">Open App</span>
+              <span className="relative text-black font-semibold tracking-wide">Get started</span>
               <ArrowRight className="relative h-3 w-3 text-black/70 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-black" />
             </a>
           </div>
@@ -108,7 +109,7 @@ export function SiteHeader() {
                   <a href="/atlas">Try Atlas</a>
                 </Button>
                 <a
-                  href="/app"
+                  href="/auth?redirect=/app"
                   className="group relative inline-flex items-center justify-center gap-2 font-semibold text-xs px-4 py-2.5 rounded-lg overflow-hidden transition-all duration-300"
                 >
                   {/* Metallic keystone-green gradient background */}
@@ -121,7 +122,7 @@ export function SiteHeader() {
                   {/* Border */}
                   <span className="absolute inset-0 rounded-lg border border-white/20" />
                   {/* Content */}
-                  <span className="relative text-black font-semibold tracking-wide">Open App</span>
+                  <span className="relative text-black font-semibold tracking-wide">Get started</span>
                   <ArrowRight className="relative h-3 w-3 text-black/70 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-black" />
                 </a>
               </div>

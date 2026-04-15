@@ -5,18 +5,18 @@ import { SiteFooter } from "@/components/home/site-footer";
 import { ArticleJsonLd } from "@/components/seo/ArticleJsonLd";
 import { ArrowRight, Shield, Terminal, Zap } from "lucide-react";
 
-const PATH = "/guides/command-ops-for-web3-treasuries";
+const PATH = "/guides/intent-driven-treasury-solana";
 const PUBLISHED = "2026-04-14";
 
 const DESCRIPTION =
-  "Why teams move from click-ops to command-ops: intent-driven treasury work, simulation before signing, and non-custodial control — and how dreyv fits.";
+  "Why teams move from click-heavy, fragmented treasury UIs to intent-driven workflows: plan in language, simulate before signing, stay non-custodial — and how dreyv fits.";
 
 export const metadata: Metadata = {
-  title: "Command-Ops for Web3 Treasuries",
+  title: "Intent-Driven Treasury on Solana",
   description: DESCRIPTION,
   alternates: { canonical: PATH },
   openGraph: {
-    title: "Command-Ops for Web3 Treasuries | dreyv",
+    title: "Intent-Driven Treasury on Solana | dreyv",
     description:
       "A practical guide to intent-driven treasury operations, pre-execution simulation, and safer signing on Solana.",
     type: "article",
@@ -24,12 +24,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function CommandOpsGuidePage() {
+export default function IntentDrivenTreasuryGuidePage() {
   return (
     <div className="relative min-h-dvh w-full bg-[var(--dreyv-void)] text-white scroll-smooth">
       <ArticleJsonLd
         path={PATH}
-        headline="Command-Ops for Web3 Treasuries: What It Is and Why Teams Adopt It"
+        headline="Intent-Driven Treasury on Solana: What It Is and Why Teams Adopt It"
         description={DESCRIPTION}
         datePublished={`${PUBLISHED}T12:00:00.000Z`}
       />
@@ -50,14 +50,14 @@ export default function CommandOpsGuidePage() {
             Guides // Treasury
           </p>
           <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white mb-6 leading-tight">
-            Command-Ops for Web3 Treasuries: What It Is and Why Teams Adopt It
+            Intent-Driven Treasury on Solana: What It Is and Why Teams Adopt It
           </h1>
           <p className="text-base text-white/55 leading-relaxed">
             Most on-chain treasury work still happens as a patchwork of dashboards, explorers, and
             wallet pop-ups. This guide explains{" "}
-            <strong className="text-white/90 font-semibold">command-ops</strong> — describing
-            intent in language, getting a plan and impact view, then signing with context — and
-            why it matters for DAOs, protocols, and small teams managing real capital.
+            <strong className="text-white/90 font-semibold">intent-driven treasury</strong> —
+            describing what you want in language, getting a plan and impact view, then signing with
+            context — and why it matters for DAOs, protocols, and small teams managing real capital.
           </p>
           <p className="mt-4 text-xs text-white/35">
             Published {PUBLISHED} · ~8 min read
@@ -65,7 +65,7 @@ export default function CommandOpsGuidePage() {
         </header>
 
         <article className="prose prose-invert prose-sm md:prose-base max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-a:text-dreyv-green prose-a:no-underline hover:prose-a:underline prose-strong:text-white/95">
-          <h2>The problem: &ldquo;Click-Ops&rdquo; in treasury work</h2>
+          <h2>The problem: click-heavy, fragmented treasury work</h2>
           <p>
             Treasury operators constantly switch context: a portfolio screen for balances, a DEX for
             swaps, a bridge UI for cross-chain moves, a multisig for approvals, and a spreadsheet
@@ -74,13 +74,13 @@ export default function CommandOpsGuidePage() {
             <strong>blind signing</strong> behavior, even for sophisticated teams.
           </p>
           <p>
-            That pattern is what many teams call <strong>click-ops</strong>: success depends on
-            manual navigation through UIs instead of a single, reviewable intent.
+            That pattern is <strong>click-heavy fragmentation</strong>: success depends on manual
+            navigation through many UIs instead of a single, reviewable intent.
           </p>
 
-          <h2>What command-ops means</h2>
+          <h2>What intent-driven treasury means</h2>
           <p>
-            <strong>Command-ops</strong> flips the order: you state{" "}
+            <strong>Intent-driven treasury</strong> flips the order: you state{" "}
             <strong>strategic intent</strong> in natural language (or structured commands), and the
             system responds with a <strong>plan</strong> — steps, dependencies, and expected
             outcomes — before anything touches chain. Execution becomes a{" "}
@@ -115,7 +115,7 @@ export default function CommandOpsGuidePage() {
 
           <h2>Non-custodial by design</h2>
           <p>
-            Command-ops does not require a custodian. The operating system can orchestrate reads,
+            Intent-driven treasury does not require a custodian. The workspace can orchestrate reads,
             quotes, and transaction <strong>drafts</strong> while keys stay in the user&rsquo;s
             wallet or multisig. dreyv is built around that model:{" "}
             <strong>we help you decide and compose; we do not hold your assets.</strong>
@@ -126,7 +126,7 @@ export default function CommandOpsGuidePage() {
             <Link href="/" className="text-dreyv-green">
               dreyv
             </Link>{" "}
-            is an AI-assisted, non-custodial treasury OS: a <strong>command surface</strong> for
+            is an AI-assisted, non-custodial treasury workspace: a <strong>command surface</strong> for
             intent, <strong>simulation</strong> before signing,{" "}
             <strong>Solana Atlas</strong> for public-market context (
             <Link href="/atlas" className="text-dreyv-green">
@@ -146,7 +146,7 @@ export default function CommandOpsGuidePage() {
               zones.
             </li>
             <li>
-              <strong>Small finance / ops teams</strong> who outgrew spreadsheets but refuse opaque
+              <strong>Small finance teams</strong> who outgrew spreadsheets but refuse opaque
               custodial tools.
             </li>
             <li>
@@ -157,10 +157,10 @@ export default function CommandOpsGuidePage() {
 
           <h2>Bottom line</h2>
           <p>
-            Command-ops is not hype about &ldquo;AI replacing finance.&rdquo; It is a practical
-            standard: <strong>intent first, plan second, simulate third, sign last</strong> — with
-            keys and policy under your control. If that matches how you want to run treasury on
-            Solana, dreyv is built to operationalize it.
+            This is not hype about &ldquo;AI replacing finance.&rdquo; It is a practical standard:{" "}
+            <strong>intent first, plan second, simulate third, sign last</strong> — with keys and
+            policy under your control. If that matches how you want to run treasury on Solana, dreyv
+            is built to operationalize it.
           </p>
         </article>
 

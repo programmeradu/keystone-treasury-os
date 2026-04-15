@@ -454,7 +454,7 @@ function DreyvBackground() {
                 <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-[#030305] lg:bg-none lg:bg-gradient-to-r lg:from-white/40 lg:via-white/10 lg:to-[#030305]" />
             </div>
 
-            {/* Desktop Left Panel Theme - "Command Ops" Light Edition */}
+            {/* Desktop left panel — light theme */}
             <div className="hidden lg:flex absolute inset-y-0 left-0 w-[55%] xl:w-[60%] overflow-hidden z-0 pointer-events-none">
                 {/* Subtle Grid - Darkened for light bg */}
                 <div
@@ -731,7 +731,7 @@ function AuthPageContent() {
             {/* Content Wrapper */}
             <div className="relative w-full h-full min-h-screen flex flex-col lg:flex-row z-10">
 
-                {/* Empty left side placeholder for Desktop Command-Ops Panel */}
+                {/* Empty left side placeholder for desktop intent panel */}
                 <div className="hidden lg:block lg:w-[55%] xl:w-[60%] pointer-events-none"></div>
 
                 {/* Right side containing Auth Card */}

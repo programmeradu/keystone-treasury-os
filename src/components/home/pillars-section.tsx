@@ -25,7 +25,8 @@ const supportPillars = [
   },
   {
     title: "Treasury Hub",
-    description: "Operations Nexus, Governance Oracle, and Data Nexus in one control plane for every treasury flow.",
+    description:
+      "Balances, governance context, and treasury data in one control plane — fewer tabs between decision and execution.",
     accent: "bg-purple-500",
     accentText: "text-purple-400",
     visual: "bars" as const,
@@ -71,8 +72,11 @@ export function PillarsSection() {
             id="pillars-heading"
             className="text-3xl md:text-5xl font-bold text-white tracking-[-0.02em]"
           >
-            Six Pillars. One Operating System.
+            Six pillars. One surface for treasury work.
           </h2>
+          <p className="mt-4 text-base text-white/30 max-w-2xl leading-relaxed">
+            Not another read-only dashboard — a single place to command, simulate, build, and ship automation on top of real balances and multisig policy.
+          </p>
         </motion.div>
 
         {/* Custom grid — no BentoGrid library */}
@@ -117,7 +121,8 @@ export function PillarsSection() {
             </div>
             <h3 className="mt-6 text-lg font-semibold text-white tracking-tight">Command Layer</h3>
             <p className="mt-2 text-sm text-white/30 leading-relaxed max-w-lg">
-              Natural language interface that turns intent into multi-step treasury execution.
+              Natural language interface that turns intent into a multi-step plan, simulation, and signer-ready impact
+              report — before anyone touches approve.
             </p>
             <div className="mt-auto pt-6 flex justify-center">
               <LandingCommandBar />

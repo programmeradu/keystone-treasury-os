@@ -15,12 +15,12 @@ const fragmentedTools = [
 ];
 
 const dreyvModules = [
-  { label: "Command", accent: "#36e27b", sub: "Natural language ops" },
+  { label: "Command", accent: "#36e27b", sub: "Natural language control" },
   { label: "Treasury", accent: "#60a5fa", sub: "Balances & distributions" },
   { label: "Studio", accent: "#a78bfa", sub: "Build & deploy apps" },
   { label: "Foresight", accent: "#fbbf24", sub: "Scenario modeling" },
   { label: "Atlas", accent: "#22d3ee", sub: "DeFi toolkit" },
-  { label: "Agents", accent: "#f43f5e", sub: "Autonomous policies" },
+  { label: "Agents", accent: "#f43f5e", sub: "Policy-aware automation" },
 ];
 
 const statusColors: Record<string, string> = {
@@ -52,8 +52,8 @@ export function ProblemSection() {
             Death by Fragmentation
           </h2>
           <p className="mt-5 text-white/30 text-base md:text-lg leading-relaxed max-w-2xl mx-auto">
-            Treasury teams juggle 8+ disconnected tools. Every tab switch is a context-switch risk.
-            Blind signing hex strings. Opportunities lost to slow coordination.
+            Treasury teams juggle 8+ disconnected tools. Every tab switch is a context-switch risk; every blind sign is
+            reputational and financial exposure. Opportunities die in Slack threads while approvers hunt for context.
           </p>
         </motion.div>
 

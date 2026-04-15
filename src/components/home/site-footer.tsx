@@ -6,10 +6,11 @@ import { FaDiscord, FaGithub, FaLinkedin, FaTwitter } from "react-icons/fa6";
 const productLinks = [
   { label: "Pricing", href: "/pricing" },
   {
-    label: "Guide: Command-Ops",
-    href: "/guides/command-ops-for-web3-treasuries",
+    label: "Guide: Intent-driven treasury",
+    href: "/guides/intent-driven-treasury-solana",
   },
-  { label: "App Dashboard", href: "/app" },
+  { label: "Get started (free)", href: "/auth?redirect=/app" },
+  { label: "App dashboard", href: "/app" },
   { label: "Treasury Hub", href: "/app/treasury" },
   { label: "dreyv Studio", href: "/app/studio" },
   { label: "Marketplace", href: "/app/marketplace" },
@@ -24,9 +25,9 @@ const toolLinks = [
 ];
 
 const companyLinks = [
-  { label: "About", href: "#content" },
-  { label: "Documentation", href: "#deep-dive" },
-  { label: "Contact", href: "#contact" },
+  { label: "About", href: "/#content" },
+  { label: "Documentation", href: "/#deep-dive" },
+  { label: "Contact", href: "/#contact" },
 ];
 
 const legalLinks = [
@@ -43,13 +44,13 @@ export function SiteFooter() {
         <div className="grid gap-8 md:grid-cols-5">
           {/* Brand */}
           <div className="md:col-span-1">
-            <a href="#content" className="flex items-center gap-2 mb-4">
+            <a href="/#content" className="flex items-center gap-2 mb-4">
               <LogoFilled size={22} />
               <span className="text-sm font-semibold text-white">dreyv</span>
             </a>
             <p className="text-xs text-white/30 leading-relaxed max-w-xs">
-              The Sovereign OS for digital assets. Command your treasury with
-              natural language. Built on Solana.
+              Treasury command layer for Solana teams — intent, simulation, readable impact, then multisig sign.
+              Non-custodial. StaUniverse.
             </p>
           </div>
 

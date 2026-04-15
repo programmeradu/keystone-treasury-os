@@ -1,6 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      {
+        source: "/guides/command-ops-for-web3-treasuries",
+        destination: "/guides/intent-driven-treasury-solana",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

@@ -110,22 +110,22 @@ export const WelcomeStep = ({ onNext }: StepProps) => {
     const features = [
         {
             icon: <VaultShieldIcon />,
-            title: "Sovereign Vaults",
-            desc: "Multi-sig hardware security",
+            title: "Your keys",
+            desc: "Non-custodial · multisig",
             borderColor: "hover:border-emerald-500/40",
             bgGlow: "group-hover:shadow-[0_0_24px_rgba(54,226,123,0.08)]",
         },
         {
             icon: <NeuralBrainIcon />,
-            title: "AI Architect",
-            desc: "Autonomous agent ops",
+            title: "Studio & agents",
+            desc: "Build and automate flows",
             borderColor: "hover:border-violet-500/40",
             bgGlow: "group-hover:shadow-[0_0_24px_rgba(167,139,250,0.08)]",
         },
         {
             icon: <TeamConstellationIcon />,
-            title: "Team Mesh",
-            desc: "Real-time multi-party",
+            title: "Multisig-ready",
+            desc: "Your signers, your policy",
             borderColor: "hover:border-sky-500/40",
             bgGlow: "group-hover:shadow-[0_0_24px_rgba(56,189,248,0.08)]",
         },
@@ -138,7 +138,8 @@ export const WelcomeStep = ({ onNext }: StepProps) => {
                     Welcome to dreyv
                 </h1>
                 <p className="text-sm text-muted-foreground font-black uppercase tracking-widest max-w-md mx-auto leading-relaxed">
-                    Your sovereign treasury operating system. Let&apos;s get you set up in 5 quick steps.
+                    Plain-language treasury intent, simulated impact, then sign with your multisig — you keep custody. Five
+                    quick steps.
                 </p>
             </div>
 
