@@ -1,0 +1,4 @@
+## 2025-02-14 - Prevent Open Redirects in Auth Flows
+**Vulnerability:** The application was passing the `redirect` and `next` URL search parameters directly to `window.location.href` and `NextResponse.redirect()` in authentication flows (specifically in `src/app/auth/page.tsx` and `src/app/api/auth/callback/route.ts`), making it vulnerable to Open Redirect attacks. An attacker could craft a malicious link that redirects a user to an attacker-controlled site after login.
+**Learning:** React Server Components/App Router contexts and `NextResponse.redirect()` still require explicit sanitization for redirect query parameters to ensure they only resolve locally.
+**Prevention:** Always validate and sanitize input from URL query parameters meant for redirects. Verify the URL is a relative path starting with `/` and not an absolute or protocol-relative URL (e.g., `redirect.startsWith('/') && !redirect.startsWith('//')`).
