@@ -1,0 +1,4 @@
+## 2024-04-10 - DOM-based XSS via innerHTML Event Handlers
+**Vulnerability:** A DOM-based XSS vulnerability existed in `src/components/dashboard/VaultAssetsCompact.tsx` where an image's `onError` handler directly concatenated a potentially untrusted token symbol into a parent element's `innerHTML`.
+**Learning:** When you modify the `innerHTML` of a parent element from a child's event handler (e.g., `target.parentElement!.innerHTML = ...`), the child element is removed from the DOM. Any subsequent references to `target.parentElement` evaluate to `null`.
+**Prevention:** To safely inject dynamic content, cache the parent element reference before modification, construct the static structure using `innerHTML` with a targeted placeholder class, and then set the dynamic content on the placeholder using `textContent`.
