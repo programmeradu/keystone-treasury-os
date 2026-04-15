@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect , useMemo, memo } from "react";
 import { ExecutionStatus } from "@/lib/agents/types";
 import { formatDistanceToNow } from "date-fns";
 
@@ -81,16 +81,20 @@ export function ExecutionHistory({
     }
   };
 
-  const filteredExecutions = filter
-    ? executions.filter((e) => e.strategy === filter || e.status === filter)
-    : executions;
+  const filteredExecutions = useMemo(() => {
+    return filter
+      ? executions.filter((e) => e.strategy === filter || e.status === filter)
+      : executions;
+  }, [executions, filter]);
 
-  const sortedExecutions = [...filteredExecutions].sort((a, b) => {
-    if (sortBy === "newest") {
-      return b.createdAt - a.createdAt;
-    }
-    return a.createdAt - b.createdAt;
-  });
+  const sortedExecutions = useMemo(() => {
+    return [...filteredExecutions].sort((a, b) => {
+      if (sortBy === "newest") {
+        return b.createdAt - a.createdAt;
+      }
+      return a.createdAt - b.createdAt;
+    });
+  }, [filteredExecutions, sortBy]);
 
   if (compact) {
     return (
@@ -194,7 +198,7 @@ export function ExecutionHistory({
 /**
  * Individual execution row component
  */
-function ExecutionRow({ execution }: { execution: Execution }) {
+const ExecutionRow = memo(function ExecutionRow({ execution }: { execution: Execution }) {
   const [expanded, setExpanded] = useState(false);
 
   const statusColor =
@@ -252,7 +256,7 @@ function ExecutionRow({ execution }: { execution: Execution }) {
       )}
     </div>
   );
-}
+});
 
 /**
  * Execution details component
