@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { notifications } from '@/db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray, sql } from 'drizzle-orm';
 import { getAuthUser } from '@/lib/auth-utils';
 
 /**
@@ -29,15 +29,15 @@ export async function GET(request: NextRequest) {
       .limit(limit);
 
     // Unread count
-    const unreadItems = await db
-      .select({ id: notifications.id })
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)::int` })
       .from(notifications)
       .where(and(
         eq(notifications.userId, user.id),
         eq(notifications.read, false)
       ));
 
-    return NextResponse.json({ notifications: items, unreadCount: unreadItems.length });
+    return NextResponse.json({ notifications: items, unreadCount: count });
   } catch (err) {
     console.error('[Notifications API] GET error:', err);
     return NextResponse.json({ error: 'Failed to fetch notifications' }, { status: 500 });
@@ -71,12 +71,10 @@ export async function PUT(request: NextRequest) {
     }
 
     if (action === 'read') {
-      for (const id of ids) {
-        await db
-          .update(notifications)
-          .set({ read: true, readAt: new Date() })
-          .where(and(eq(notifications.id, id), eq(notifications.userId, user.id)));
-      }
+      await db
+        .update(notifications)
+        .set({ read: true, readAt: new Date() })
+        .where(and(inArray(notifications.id, ids), eq(notifications.userId, user.id)));
     }
 
     return NextResponse.json({ success: true });
