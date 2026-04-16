@@ -9,7 +9,7 @@ const steps = [
     title: "Describe Your Intent",
     description:
       "Type what you want in plain English. 'Swap 500 SOL to USDC' or 'Show me runway if we hire 3 devs.' No syntax to learn.",
-    accent: "text-dreyv-green/20",
+    accent: "text-violet-400/70",
     line: "bg-dreyv-green",
   },
   {
@@ -37,7 +37,7 @@ export function HowItWorksSection() {
   return (
     <section
       id="how-it-works"
-      className="relative border-t border-white/[0.04] scroll-mt-24"
+      className="relative border-t border-violet-200/35 scroll-mt-24"
       aria-labelledby="how-it-works-heading"
       ref={ref}
     >
@@ -48,12 +48,12 @@ export function HowItWorksSection() {
           transition={{ duration: 0.6 }}
           className="max-w-3xl mb-16"
         >
-          <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-white/20 mb-5">
+          <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-slate-400 mb-5">
             How It Works
           </p>
           <h2
             id="how-it-works-heading"
-            className="text-3xl md:text-5xl font-bold text-white tracking-[-0.02em]"
+            className="text-3xl md:text-5xl font-bold text-slate-900 tracking-[-0.02em]"
           >
             Three steps. Zero friction.
           </h2>
@@ -76,10 +76,10 @@ export function HowItWorksSection() {
                 {step.number}
               </span>
 
-              <h3 className="text-lg font-semibold text-white mb-3 tracking-tight">
+              <h3 className="text-lg font-semibold text-slate-900 mb-3 tracking-tight">
                 {step.title}
               </h3>
-              <p className="text-sm text-white/30 leading-relaxed">
+              <p className="text-sm text-slate-500 leading-relaxed">
                 {step.description}
               </p>
             </motion.div>

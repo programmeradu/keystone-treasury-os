@@ -66,7 +66,7 @@ const tools = [
     title: "Portfolio Rebalancer", desc: "Auto-rebalance your portfolio based on target allocations.",
     visual: (
       <svg viewBox="0 0 60 20" className="w-14 h-5">
-        {[{w:18,c:"#a78bfa"},{w:12,c:"#60a5fa"},{w:8,c:"#22d3ee"},{w:22,c:"#36e27b"}].reduce<{el:React.JSX.Element[],x:number}>((acc, seg, i) => {
+        {[{w:18,c:"#a78bfa"},{w:12,c:"#60a5fa"},{w:8,c:"#22d3ee"},{w:22,c:"#9333ea"}].reduce<{el:React.JSX.Element[],x:number}>((acc, seg, i) => {
           acc.el.push(<rect key={i} x={acc.x} y="6" width={seg.w} height="8" rx="1" fill={seg.c} opacity="0.2" />);
           return { el: acc.el, x: acc.x + seg.w };
         }, { el: [], x: 0 }).el}
@@ -114,7 +114,7 @@ export function AtlasSection() {
   return (
     <section
       id="atlas"
-      className="relative border-t border-white/[0.04] scroll-mt-24"
+      className="relative border-t border-violet-200/35 scroll-mt-24"
       aria-labelledby="atlas-heading"
       ref={ref}
     >
@@ -132,11 +132,11 @@ export function AtlasSection() {
             </p>
             <h2
               id="atlas-heading"
-              className="text-3xl md:text-5xl font-bold text-white tracking-[-0.02em]"
+              className="text-3xl md:text-5xl font-bold text-slate-900 tracking-[-0.02em]"
             >
               Solana Atlas
             </h2>
-            <p className="mt-4 text-white/30 text-base md:text-lg leading-relaxed">
+            <p className="mt-4 text-slate-500 text-base md:text-lg leading-relaxed">
               A free DeFi toolkit for the Solana ecosystem. Discover, analyze, optimize.
             </p>
           </motion.div>
@@ -147,15 +147,15 @@ export function AtlasSection() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="flex items-center gap-6"
           >
-            <div className="flex items-center gap-4 text-xs font-mono text-white/25">
+            <div className="flex items-center gap-4 text-xs font-mono text-slate-400">
               <span className="inline-flex items-center gap-1.5">
                 <img src="/logos/token-sol.png" alt="" className="h-3.5 w-3.5 rounded-full" />
-                SOL <span className="text-white/60">{solPrice ? `$${solPrice.toFixed(2)}` : "..."}</span>
+                SOL <span className="text-slate-500">{solPrice ? `$${solPrice.toFixed(2)}` : "..."}</span>
               </span>
               <span className="h-3 w-px bg-white/[0.06]" />
               <span className="inline-flex items-center gap-1.5">
                 <img src="/logos/token-msol.png" alt="" className="h-3.5 w-3.5 rounded-full" />
-                mSOL <span className="text-white/60">{msolPrice ? `$${msolPrice.toFixed(2)}` : "..."}</span>
+                mSOL <span className="text-slate-500">{msolPrice ? `$${msolPrice.toFixed(2)}` : "..."}</span>
               </span>
             </div>
             <a
@@ -179,10 +179,10 @@ export function AtlasSection() {
               className="group border-t lg:odd:border-r border-white/[0.04] p-6 hover:bg-cyan-500/[0.02] transition-colors duration-300"
             >
               <div className="mb-3 h-5">{tool.visual}</div>
-              <h3 className="text-sm font-semibold text-white mb-1.5 group-hover:text-cyan-300 transition-colors duration-300">
+              <h3 className="text-sm font-semibold text-slate-900 mb-1.5 group-hover:text-cyan-300 transition-colors duration-300">
                 {tool.title}
               </h3>
-              <p className="text-xs text-white/25 leading-relaxed">{tool.desc}</p>
+              <p className="text-xs text-slate-400 leading-relaxed">{tool.desc}</p>
             </motion.div>
           ))}
         </div>

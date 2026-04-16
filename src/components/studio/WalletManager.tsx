@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, Shield, Wallet } from "lucide-react";
-import { LogoFilled } from "@/components/icons";
+import { DreyvMark } from "@/components/brand/dreyv-mark";
 import { turnkeyBrowser } from "@/lib/turnkey-browser";
 import { getAvatarUrl } from "@/lib/avatars";
 
@@ -144,7 +144,7 @@ export function WalletManager() {
             <Card className="bg-zinc-900/90 border-[#36e27b]/30 shadow-[0_0_20px_-5px_rgba(54,226,123,0.1)] backdrop-blur-sm">
                 <CardContent className="pt-8 pb-8 flex flex-col items-center text-center">
                     <div className="w-16 h-16 rounded-full bg-[#36e27b]/10 border border-[#36e27b]/20 flex items-center justify-center mb-5 animate-in fade-in zoom-in duration-500">
-                        <LogoFilled size={32} fillColor="#36e27b" />
+                        <DreyvMark size={32} />
                     </div>
 
                     <h3 className="text-white font-bold text-lg mb-2 tracking-tight">Vault Initialized</h3>

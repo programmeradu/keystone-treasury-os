@@ -17,8 +17,11 @@ import {
     Lock,
 } from "lucide-react";
 
-import { Logo, LogoFilled, Sparkles } from "@/components/icons";
+import { Logo, Sparkles } from "@/components/icons";
+import { DreyvMark } from "@/components/brand/dreyv-mark";
+import { DreyvLogoLight } from "@/components/brand/dreyv-logo-light";
 import { motion, AnimatePresence } from "framer-motion";
+import { marketingPrimaryCta } from "@/components/home/marketing-styles";
 
 const LOGO_DEV_TOKEN = "pk_DFEjHHL4QteaMOzcFuSlwg";
 
@@ -28,7 +31,7 @@ const BRAND_COLORS: Record<string, { bg: string, ring: string, glow: string }> =
     'walletconnect.com': { bg: 'bg-transparent', ring: 'border-transparent', glow: 'group-hover:shadow-[0_0_20px_rgba(51,150,255,0.3)] group-hover:bg-[#3396FF]/10' },
 };
 
-const DEFAULT_BRAND_COLOR = { bg: 'bg-transparent', ring: 'border-transparent', glow: 'group-hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] group-hover:bg-white/5' };
+const DEFAULT_BRAND_COLOR = { bg: 'bg-transparent', ring: 'border-transparent', glow: 'group-hover:shadow-[0_0_12px_rgba(124,58,237,0.12)] group-hover:bg-violet-50/90' };
 
 
 // ─── Telemetry Context ──────────────────────────────────────────────
@@ -90,20 +93,20 @@ function TelemetryProvider({ children }: { children: React.ReactNode }) {
 
 // ─── Logo Image Loaders ─────────────────────────────────────────────
 function WalletLogo({ domain, name }: { domain: string; name: string }) {
-    const src = `https://img.logo.dev/${domain}?token=${LOGO_DEV_TOKEN}&format=png&size=120&fallback=monogram&theme=dark`;
+    const src = `https://img.logo.dev/${domain}?token=${LOGO_DEV_TOKEN}&format=png&size=120&fallback=monogram&theme=light`;
     const brand = BRAND_COLORS[domain] || DEFAULT_BRAND_COLOR;
     return (
-        <div className={`w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center p-0.5 border transition-all duration-500 shrink-0 ${brand.bg} ${brand.ring} ${brand.glow}`}>
-            <img src={src} alt={`${name} logo`} className="w-full h-full object-contain drop-shadow-md rounded-[10px]" />
+        <div className={`h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-violet-200/35 bg-white/90 p-0.5 transition-all duration-500 flex items-center justify-center lg:h-11 lg:w-11 ${brand.bg} ${brand.ring} ${brand.glow}`}>
+            <img src={src} alt={`${name} logo`} className="w-full h-full object-contain rounded-[10px]" />
         </div>
     );
 }
 
 function SocialLogo({ domain, name }: { domain: string; name: string }) {
-    const src = `https://img.logo.dev/${domain}?token=${LOGO_DEV_TOKEN}&format=png&size=120&fallback=monogram&theme=dark`;
+    const src = `https://img.logo.dev/${domain}?token=${LOGO_DEV_TOKEN}&format=png&size=120&fallback=monogram&theme=light`;
     return (
-        <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center p-0.5 border shadow-inner transition-all duration-500 shrink-0 bg-transparent border-transparent group-hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] group-hover:bg-white/5">
-            <img src={src} alt={`${name} logo`} className="w-full h-full object-contain drop-shadow-md rounded-[10px]" />
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-violet-200/35 bg-white/90 p-0.5 shadow-sm transition-all duration-500 group-hover:bg-violet-50/90 group-hover:shadow-[0_0_12px_rgba(124,58,237,0.12)] lg:h-10 lg:w-10">
+            <img src={src} alt={`${name} logo`} className="w-full h-full object-contain rounded-[10px]" />
         </div>
     );
 }
@@ -123,29 +126,29 @@ function WalletButton({
         <button
             onClick={onClick}
             className={`
-        group relative w-full flex items-center gap-3 p-3 rounded-[18px] border transition-all duration-500 overflow-hidden
+        group relative flex w-full items-center gap-2.5 overflow-hidden rounded-[16px] border p-2.5 transition-all duration-500 lg:gap-3 lg:rounded-[18px] lg:p-3
         hover:-translate-y-0.5 active:scale-[0.98]
         ${recommended
-                    ? "bg-gradient-to-r from-[#36e27b]/10 to-transparent border-[#36e27b]/40 hover:from-[#36e27b]/20 hover:to-[#36e27b]/5 hover:border-[#36e27b]/70 shadow-[0_0_20px_rgba(54,226,123,0.05)] hover:shadow-[0_8px_30px_-10px_rgba(54,226,123,0.3)]"
-                    : "bg-[#0a0a0f]/60 border-white/[0.08] hover:bg-white/[0.05] hover:border-white/20 hover:shadow-[0_8px_30px_-10px_rgba(255,255,255,0.08)]"
+                    ? "bg-violet-50/90 border-violet-300/55 hover:bg-violet-100/90 hover:border-violet-400/70 shadow-sm shadow-violet-500/10 hover:shadow-md hover:shadow-violet-500/15"
+                    : "bg-white/95 border-violet-200/45 hover:bg-white hover:border-violet-300/60 shadow-sm hover:shadow-md hover:shadow-violet-500/10"
                 }
       `}
         >
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.04] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-violet-200/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
 
             <WalletLogo domain={domain} name={name} />
 
             <div className="flex-1 text-left">
                 <div className="flex items-center gap-2">
-                    <span className="text-[15px] font-bold text-white/90 group-hover:text-white transition-colors tracking-wide">{name}</span>
+                    <span className="text-[14px] font-bold tracking-wide text-slate-800 transition-colors group-hover:text-slate-900 lg:text-[15px]">{name}</span>
                     {recommended && (
-                        <span className="text-[9px] px-2.5 py-1 rounded-full bg-[#36e27b]/20 border border-[#36e27b]/40 text-[#36e27b] font-extrabold tracking-widest uppercase shadow-[0_0_10px_rgba(54,226,123,0.2)]">
+                        <span className="rounded-full border border-violet-300/60 bg-violet-100 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-violet-700 lg:px-2.5 lg:py-1 lg:text-[9px] lg:tracking-widest">
                             Recommended
                         </span>
                     )}
                 </div>
             </div>
-            <ArrowRight className={`w-5 h-5 transition-all duration-300 ${recommended ? 'text-[#36e27b] group-hover:translate-x-1' : 'text-white/20 group-hover:text-white/60 group-hover:translate-x-1'}`} />
+            <ArrowRight className={`h-[18px] w-[18px] shrink-0 transition-all duration-300 lg:h-5 lg:w-5 ${recommended ? 'text-violet-600 group-hover:translate-x-1' : 'text-slate-400 group-hover:text-violet-600 group-hover:translate-x-1'}`} />
         </button>
     );
 }
@@ -155,14 +158,14 @@ function SocialButton({ name, domain, onClick, loading }: { name: string, domain
         <button
             onClick={onClick}
             disabled={loading}
-            className="group w-full flex items-center justify-center gap-3 p-3 rounded-[16px] bg-[#0a0a0f]/60 border border-white/[0.08] hover:bg-white/[0.05] hover:border-white/20 transition-all duration-300 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
+            className="group flex w-full items-center justify-center gap-2 rounded-[14px] border border-violet-200/45 bg-white/95 p-2.5 shadow-sm transition-all duration-300 hover:border-violet-300/55 hover:bg-violet-50/80 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 lg:gap-3 lg:rounded-[16px] lg:p-3"
         >
             {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin text-white/50" />
+                <Loader2 className="h-[18px] w-[18px] animate-spin text-violet-600 lg:h-5 lg:w-5" />
             ) : (
                 <>
                     <SocialLogo domain={domain} name={name} />
-                    <span className="text-[14px] font-bold text-white/70 group-hover:text-white transition-colors tracking-wide">{name}</span>
+                    <span className="text-[13px] font-bold tracking-wide text-slate-600 transition-colors group-hover:text-slate-900 lg:text-[14px]">{name}</span>
                 </>
             )}
         </button>
@@ -171,10 +174,10 @@ function SocialButton({ name, domain, onClick, loading }: { name: string, domain
 
 function ProgressIndicator({ step }: { step: number }) {
     return (
-        <div className="flex items-center justify-center gap-2 mb-5">
-            <div className={`h-1.5 rounded-full transition-all duration-700 ${step >= 0 ? "w-8 bg-[#36e27b] shadow-[0_0_10px_rgba(54,226,123,0.5)]" : "w-3 bg-white/10"}`} />
-            <div className={`h-1.5 rounded-full transition-all duration-700 ${step >= 1 ? "w-8 bg-[#36e27b] shadow-[0_0_10px_rgba(54,226,123,0.5)]" : "w-3 bg-white/10"}`} />
-            <div className={`h-1.5 rounded-full transition-all duration-700 ${step >= 2 ? "w-8 bg-[#36e27b] shadow-[0_0_10px_rgba(54,226,123,0.5)]" : "w-3 bg-white/10"}`} />
+        <div className="mb-3 flex items-center justify-center gap-1.5 lg:mb-4 lg:gap-2">
+            <div className={`h-1.5 rounded-full transition-all duration-700 ${step >= 0 ? "w-7 bg-violet-600 shadow-sm shadow-violet-500/30 lg:w-8" : "w-2.5 bg-violet-200/80 lg:w-3"}`} />
+            <div className={`h-1.5 rounded-full transition-all duration-700 ${step >= 1 ? "w-7 bg-violet-600 shadow-sm shadow-violet-500/30 lg:w-8" : "w-2.5 bg-violet-200/80 lg:w-3"}`} />
+            <div className={`h-1.5 rounded-full transition-all duration-700 ${step >= 2 ? "w-7 bg-violet-600 shadow-sm shadow-violet-500/30 lg:w-8" : "w-2.5 bg-violet-200/80 lg:w-3"}`} />
         </div>
     );
 }
@@ -190,28 +193,28 @@ function LinuxTerminal() {
     }, [lines]);
 
     return (
-        <div className="absolute bottom-12 left-12 z-20 hidden lg:flex flex-col w-[480px] rounded-lg overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/[0.08]">
+        <div className="absolute bottom-12 left-12 z-20 hidden lg:flex flex-col w-[480px] rounded-xl overflow-hidden shadow-[0_20px_60px_-15px_rgba(124,58,237,0.2)] border border-violet-200/45 bg-white/95 backdrop-blur-xl">
             {/* Title Bar */}
-            <div className="flex items-center h-9 px-3.5 bg-[#1e1e24] border-b border-white/[0.06] shrink-0 select-none">
+            <div className="flex items-center h-9 px-3.5 bg-violet-50/90 border-b border-violet-200/40 shrink-0 select-none">
                 <div className="flex items-center gap-[7px]">
-                    <div className="w-[11px] h-[11px] rounded-full bg-[#ff5f57] border border-[#e0443e]/60" />
-                    <div className="w-[11px] h-[11px] rounded-full bg-[#febc2e] border border-[#d4a123]/60" />
-                    <div className="w-[11px] h-[11px] rounded-full bg-[#28c840] border border-[#1aab29]/60" />
+                    <div className="w-[11px] h-[11px] rounded-full bg-rose-300/90 border border-rose-400/40" />
+                    <div className="w-[11px] h-[11px] rounded-full bg-amber-300/90 border border-amber-400/40" />
+                    <div className="w-[11px] h-[11px] rounded-full bg-violet-400/80 border border-violet-500/35" />
                 </div>
                 <div className="flex-1 text-center">
-                    <span className="text-[11px] font-mono text-white/30 tracking-wide">dreyv@mainnet ~ telemetry</span>
+                    <span className="text-[11px] font-mono text-slate-400 tracking-wide">dreyv@mainnet ~ telemetry</span>
                 </div>
                 <div className="w-[60px]" />
             </div>
 
             {/* Terminal Body */}
-            <div className="bg-[#0c0c10] relative">
-                <div className="absolute inset-0 opacity-[0.015] pointer-events-none" style={{
-                    backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)`,
+            <div className="bg-white relative">
+                <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{
+                    backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(124,58,237,0.06) 2px, rgba(124,58,237,0.06) 4px)`,
                 }} />
 
                 <div ref={scrollRef} className="p-4 pb-2 font-mono text-[11.5px] leading-[1.7] h-[200px] overflow-y-auto scrollbar-none relative z-10">
-                    <div className="text-white/20 mb-3 text-[10px]">Last login: {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} on ttys001</div>
+                    <div className="text-slate-400 mb-3 text-[10px]">Last login: {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} on ttys001</div>
                     <AnimatePresence initial={false}>
                         {lines.map((line, idx) => (
                             <motion.div
@@ -219,122 +222,38 @@ function LinuxTerminal() {
                                 initial={{ opacity: 0, y: 6 }}
                                 animate={{ opacity: idx === lines.length - 1 ? 1 : 0.55, y: 0 }}
                                 transition={{ duration: 0.25, ease: "easeOut" }}
-                                className="text-[#36e27b] font-medium"
+                                className="text-violet-700 font-medium"
                             >
                                 {line}
                             </motion.div>
                         ))}
                     </AnimatePresence>
 
-                    {/* Blinking cursor */}
                     <div className="flex items-center gap-1.5 mt-1">
-                        <span className="text-[#36e27b]/40 text-[10px]">$</span>
+                        <span className="text-violet-500/80 text-[10px]">$</span>
                         <motion.span
                             animate={{ opacity: [1, 1, 0, 0] }}
                             transition={{ duration: 1, repeat: Infinity, times: [0, 0.49, 0.5, 1] }}
-                            className="inline-block w-[7px] h-[14px] bg-[#36e27b]/70"
+                            className="inline-block w-[7px] h-[14px] bg-violet-500/80"
                         />
                     </div>
                 </div>
 
-                {/* Status Bar */}
-                <div className="px-4 py-2 bg-[#36e27b]/[0.06] border-t border-[#36e27b]/10 flex items-center justify-between relative z-10">
+                <div className="px-4 py-2 bg-violet-50/80 border-t border-violet-200/40 flex items-center justify-between relative z-10">
                     <div className="flex items-center gap-2">
                         <motion.div
                             animate={{ opacity: [0.4, 1, 0.4] }}
                             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                            className="w-1.5 h-1.5 rounded-full bg-[#36e27b]"
+                            className="w-1.5 h-1.5 rounded-full bg-violet-500"
                         />
-                        <span className="text-[10px] font-mono font-bold text-[#36e27b]/50 tracking-widest uppercase">telemetry</span>
+                        <span className="text-[10px] font-mono font-bold text-violet-600/80 tracking-widest uppercase">telemetry</span>
                     </div>
-                    <div className="flex items-center gap-4 text-[10px] font-mono text-white/20">
+                    <div className="flex items-center gap-4 text-[10px] font-mono text-slate-400">
                         <span>solana-mainnet</span>
                         <span>{lines.length} events</span>
                     </div>
                 </div>
             </div>
-        </div>
-    );
-}
-
-function DynamicIsland() {
-    const { lines } = useTelemetry();
-    const [expanded, setExpanded] = useState(false);
-    const latestLine = lines[lines.length - 1] || "";
-    const prevLineCount = React.useRef(lines.length);
-
-    const modernize = (raw: string) =>
-        raw.replace(/^>\s*/, "").replace(/_/g, " ").replace(/\.\.\.$/, "…").replace(/\.\.\./g, "…");
-
-    useEffect(() => {
-        if (lines.length > prevLineCount.current) {
-            setExpanded(true);
-            const timer = setTimeout(() => setExpanded(false), 3000);
-            prevLineCount.current = lines.length;
-            return () => clearTimeout(timer);
-        }
-    }, [lines.length]);
-
-    return (
-        <div className="fixed top-2 left-1/2 -translate-x-1/2 z-50 lg:hidden">
-            <motion.div
-                layout
-                onClick={() => setExpanded(prev => !prev)}
-                className="cursor-pointer overflow-hidden bg-[#0a0a0f] border border-white/[0.08] shadow-[0_8px_30px_rgba(0,0,0,0.5)]"
-                style={{ borderRadius: 24 }}
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            >
-                <motion.div layout className="flex flex-col">
-                    {/* Compact row — always visible */}
-                    <motion.div layout="position" className="flex items-center gap-2.5 px-4 py-2 min-w-0">
-                        <motion.div
-                            animate={{ opacity: [0.4, 1, 0.4] }}
-                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                            className="w-2 h-2 rounded-full bg-[#36e27b] shrink-0 shadow-[0_0_6px_rgba(54,226,123,0.5)]"
-                        />
-                        <AnimatePresence mode="wait">
-                            <motion.span
-                                key={latestLine}
-                                initial={{ opacity: 0, y: 4 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -4 }}
-                                transition={{ duration: 0.2 }}
-                                className="text-[11px] font-sans font-semibold text-[#36e27b]/80 truncate max-w-[260px] tracking-wide"
-                            >
-                                {expanded ? "dreyv OS · Telemetry" : modernize(latestLine)}
-                            </motion.span>
-                        </AnimatePresence>
-                    </motion.div>
-
-                    {/* Expanded telemetry feed */}
-                    <AnimatePresence>
-                        {expanded && (
-                            <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: "auto", opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                                className="overflow-hidden"
-                            >
-                                <div className="border-t border-white/[0.06] px-4 py-2.5 space-y-1.5">
-                                    {lines.slice(-5).map((line, idx, arr) => (
-                                        <div
-                                            key={idx}
-                                            className={`text-[10.5px] font-sans leading-relaxed tracking-wide ${idx === arr.length - 1 ? "text-[#36e27b] font-semibold" : "text-white/25 font-medium"}`}
-                                        >
-                                            {modernize(line)}
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="px-4 py-1.5 border-t border-white/[0.04] flex items-center justify-between">
-                                    <span className="text-[9px] font-sans text-white/20 tracking-widest uppercase font-semibold">Mainnet Beta</span>
-                                    <span className="text-[9px] font-sans text-white/20 font-medium">{lines.length} events</span>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </motion.div>
-            </motion.div>
         </div>
     );
 }
@@ -360,13 +279,13 @@ function AuthCommandBar({ onExecute }: { onExecute: (cmd: string) => void }) {
             <button
                 type="button"
                 onClick={() => setOpen(true)}
-                className="mt-4 w-full flex items-center gap-3 pl-4 pr-3 py-2.5 rounded-[16px] bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] shadow-[0_8px_30px_-10px_rgba(0,0,0,0.5)] hover:border-[#36e27b]/30 hover:shadow-[0_0_20px_rgba(54,226,123,0.05)] transition-all group"
+                className="mt-2 flex w-full items-center gap-2.5 rounded-[14px] border border-violet-200/45 bg-white/90 py-2 pl-3 pr-2.5 shadow-sm backdrop-blur-xl transition-all group hover:border-violet-300/60 hover:shadow-md hover:shadow-violet-500/10 lg:mt-4 lg:gap-3 lg:rounded-[16px] lg:py-2.5 lg:pl-4 lg:pr-3"
             >
-                <Sparkles size={16} className="text-[#36e27b]" />
-                <span className="text-[14px] font-medium text-white/40 group-hover:text-white/70 transition-colors flex-1 text-left tracking-wide">
+                <Sparkles size={16} className="shrink-0 text-violet-600" />
+                <span className="flex-1 text-left text-[13px] font-medium tracking-wide text-slate-500 transition-colors group-hover:text-slate-700 lg:text-[14px]">
                     Ask dreyv...
                 </span>
-                <div className="flex items-center gap-1 opacity-50 text-[10px] font-mono text-white/30 border-l border-white/[0.08] pl-3">
+                <div className="flex items-center gap-0.5 border-l border-violet-200/50 pl-2.5 font-mono text-[10px] text-slate-400 opacity-70 lg:gap-1 lg:pl-3">
                     <span>⌘</span> K
                 </div>
             </button>
@@ -378,7 +297,7 @@ function AuthCommandBar({ onExecute }: { onExecute: (cmd: string) => void }) {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 font-sans"
+                        className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/25 backdrop-blur-sm p-4 font-sans"
                     >
                         <div className="absolute inset-0" onClick={() => setOpen(false)} />
                         <motion.div
@@ -386,13 +305,12 @@ function AuthCommandBar({ onExecute }: { onExecute: (cmd: string) => void }) {
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.95, opacity: 0, y: 20 }}
                             transition={{ type: "spring", stiffness: 350, damping: 25 }}
-                            className="relative w-full max-w-2xl bg-[#0a0a0c] border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden"
+                            className="relative w-full max-w-2xl bg-white border border-violet-200/45 rounded-2xl shadow-[0_24px_60px_-20px_rgba(124,58,237,0.25)] overflow-hidden"
                         >
-                            <div className="absolute inset-0 z-0 pointer-events-none rounded-2xl ring-1 ring-[#36e27b]/20" />
-                            <div className="absolute -inset-0.5 bg-gradient-to-r from-[#36e27b] to-[#25a85c] rounded-2xl blur opacity-20" />
+                            <div className="absolute inset-0 z-0 pointer-events-none rounded-2xl ring-1 ring-violet-200/30" />
                             <div className="relative z-10 flex flex-col">
-                                <div className="flex items-center px-6 py-5 border-b border-white/[0.06]">
-                                    <Sparkles size={20} className="text-[#36e27b] mr-4" />
+                                <div className="flex items-center px-6 py-5 border-b border-violet-200/35 bg-violet-50/40">
+                                    <Sparkles size={20} className="text-violet-600 mr-4 shrink-0" />
                                     <input
                                         autoFocus
                                         value={cmd}
@@ -406,17 +324,17 @@ function AuthCommandBar({ onExecute }: { onExecute: (cmd: string) => void }) {
                                             }
                                         }}
                                         placeholder="Describe your intent (e.g., 'Log in with Phantom' or 'Connect Google')..."
-                                        className="flex-1 bg-transparent text-lg font-medium text-white placeholder:text-white/25 outline-none font-sans"
+                                        className="flex-1 bg-transparent text-lg font-medium text-slate-900 placeholder:text-slate-400 outline-none font-sans"
                                     />
                                 </div>
-                                <div className="px-6 py-3 bg-white/[0.02] flex items-center justify-between text-[10px] text-white/30">
+                                <div className="px-6 py-3 bg-white flex items-center justify-between text-[10px] text-slate-500">
                                     <div className="flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-[#36e27b] animate-pulse" />
-                                        <span className="font-mono uppercase tracking-widest">AI AGENT LISTENING</span>
+                                        <div className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />
+                                        <span className="font-mono uppercase tracking-widest text-violet-700/90">AI agent listening</span>
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        <span>Press <strong className="text-white/60">Enter</strong> to execute</span>
-                                        <span><strong className="text-white/60">Esc</strong> to close</span>
+                                        <span>Press <strong className="text-slate-700">Enter</strong> to execute</span>
+                                        <span><strong className="text-slate-700">Esc</strong> to close</span>
                                     </div>
                                 </div>
                             </div>
@@ -431,68 +349,39 @@ function AuthCommandBar({ onExecute }: { onExecute: (cmd: string) => void }) {
 function DreyvBackground() {
     return (
         <>
-            <style>{`
-                @keyframes scan-line {
-                    0% { transform: translateY(-100vh); }
-                    100% { transform: translateY(100vh); }
-                }
-            `}</style>
-
-            {/* Full Page Background Image - Light, Minimal, Real */}
-            <div className="absolute inset-0 z-0 bg-zinc-100">
+            <div className="absolute inset-0 z-0 bg-marketing-bg">
                 <div
-                    className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
-                    style={{
-                        backgroundImage: `url('/images/auth_bg_minimal_arch_4k.png')`,
-                    }}
+                    className="absolute inset-0 bg-cover bg-center opacity-[0.22] pointer-events-none"
+                    style={{ backgroundImage: `url('/images/auth_bg_minimal_arch_4k.png')` }}
                 />
-                {/* 
-                  Gradient overlay: 
-                  - Mobile: darker to support central card
-                  - Desktop: clear on left, dark gradient on right 
-                */}
-                <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-[#030305] lg:bg-none lg:bg-gradient-to-r lg:from-white/40 lg:via-white/10 lg:to-[#030305]" />
+                <div className="absolute inset-0 bg-gradient-to-br from-violet-100/35 via-transparent to-fuchsia-50/25 pointer-events-none" />
+                <div className="absolute top-[-14%] left-[-12%] h-[520px] w-[520px] rounded-full bg-violet-400/[0.11] blur-[120px] pointer-events-none" />
+                <div className="absolute top-[18%] right-[-10%] h-[440px] w-[440px] rounded-full bg-fuchsia-400/[0.09] blur-[110px] pointer-events-none" />
+                <div className="absolute inset-0 noise-overlay opacity-[0.028] pointer-events-none" />
+                <div className="absolute inset-0 grid-pattern-marketing opacity-[0.55] pointer-events-none" />
             </div>
 
-            {/* Desktop left panel — light theme */}
             <div className="hidden lg:flex absolute inset-y-0 left-0 w-[55%] xl:w-[60%] overflow-hidden z-0 pointer-events-none">
-                {/* Subtle Grid - Darkened for light bg */}
-                <div
-                    className="absolute inset-0 opacity-[0.03]"
-                    style={{
-                        backgroundImage: `linear-gradient(rgba(0,0,0,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.8) 1px, transparent 1px)`,
-                        backgroundSize: "64px 64px",
-                    }}
-                />
-
-                {/* Large Watermark */}
-                <div className="absolute inset-0 opacity-[0.04] pointer-events-none flex items-center justify-center">
-                    <Logo size={800} fillColor="#000000" />
+                <div className="absolute inset-0 opacity-[0.06] pointer-events-none flex items-center justify-center">
+                    <Logo size={720} fillColor="#5a00e4" className="opacity-90" />
                 </div>
 
-                {/* Left Panel Branding (Top Left) */}
-                <div className="absolute top-12 left-12 flex items-center gap-4 z-20">
-                    <LogoFilled size={36} className="text-zinc-900 drop-shadow-md" />
-                    <div>
-                        <h1 className="text-[28px] font-bold text-zinc-900 tracking-tight leading-none drop-shadow-md">dreyv</h1>
-                        <p className="text-[11px] text-[#059669] mt-2 uppercase tracking-[0.3em] font-bold drop-shadow-md">TreasuryOS</p>
-                    </div>
+                <div className="absolute top-12 left-12 flex flex-col items-start gap-3 z-20 overflow-visible">
+                    <DreyvLogoLight priority className="drop-shadow-sm" />
+                    <p className="text-[11px] text-violet-600 uppercase tracking-[0.3em] font-bold">
+                        TreasuryOS
+                    </p>
                 </div>
 
-                {/* Linux Terminal — desktop only */}
                 <LinuxTerminal />
             </div>
 
-            {/* Mobile / Right Panel Background Effects */}
             <div className="absolute inset-y-0 right-0 w-full lg:w-[45%] xl:w-[40%] z-0 flex items-center justify-center pointer-events-none overflow-hidden">
-                {/* Deep elegant emerald glow behind auth card */}
-                <div
-                    className="absolute top-[30%] -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-[#36e27b]/[0.05] blur-[150px] mix-blend-screen pointer-events-none"
-                />
+                <div className="absolute top-[28%] -translate-y-1/2 w-[560px] h-[560px] rounded-full bg-violet-400/[0.12] blur-[140px] pointer-events-none" />
+                <div className="absolute top-[42%] w-[420px] h-[420px] rounded-full bg-fuchsia-300/[0.08] blur-[100px] pointer-events-none" />
             </div>
 
-            {/* Desktop Divider Line */}
-            <div className="hidden lg:block absolute inset-y-0 left-[55%] xl:left-[60%] w-px bg-gradient-to-b from-transparent via-black/10 to-transparent z-10" />
+            <div className="hidden lg:block absolute inset-y-0 left-[55%] xl:left-[60%] w-px bg-gradient-to-b from-transparent via-violet-200/50 to-transparent z-10" />
         </>
     );
 }
@@ -722,66 +611,59 @@ function AuthPageContent() {
     }, [select, handleSocialLogin, openWalletModal]);
 
     return (
-        <div className="min-h-screen flex relative overflow-hidden font-sans bg-zinc-100">
+        <div className="relative h-svh max-h-svh overflow-x-hidden overflow-y-hidden font-manrope text-slate-900 lg:h-dvh lg:max-h-dvh">
             <DreyvBackground />
 
-            {/* Dynamic Island — mobile only */}
-            <DynamicIsland />
-
-            {/* Content Wrapper */}
-            <div className="relative w-full h-full min-h-screen flex flex-col lg:flex-row z-10">
+            {/* Single-frame layout: fixed viewport height, no page scroll; content is compact + scales down on short screens. */}
+            <div className="relative z-10 flex h-full min-h-0 w-full flex-col lg:flex-row">
 
                 {/* Empty left side placeholder for desktop intent panel */}
-                <div className="hidden lg:block lg:w-[55%] xl:w-[60%] pointer-events-none"></div>
+                <div className="pointer-events-none hidden shrink-0 lg:block lg:w-[55%] xl:w-[60%]" />
 
-                {/* Right side containing Auth Card */}
-                <div className="w-full lg:w-[45%] xl:w-[40%] flex flex-col justify-center items-center p-4">
+                <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 py-2 lg:w-[45%] xl:w-[40%] lg:justify-center lg:px-4 lg:py-4">
+                    <div className="flex w-full max-w-[min(100%,340px)] flex-col items-center [@media(max-height:640px)]:origin-top [@media(max-height:640px)]:scale-[0.96] sm:max-w-[372px] lg:max-w-[400px]">
+                        <h1 className="sr-only">Sign in to dreyv</h1>
 
-                    {/* Auth Modal Card - Super Premium & Compact */}
-                    <div className="relative w-full max-w-[400px]">
-
-                        {/* Mobile Branding — text only, no logo icon (Dynamic Island replaces it) */}
-                        <div className="flex flex-col items-center mb-5 pt-14 relative z-20 lg:hidden">
-                            <h1 className="text-[28px] font-bold text-white tracking-tight drop-shadow-lg leading-none">dreyv</h1>
-                            <p className="text-[11px] text-[#36e27b] mt-2.5 uppercase tracking-[0.3em] font-bold drop-shadow-[0_0_10px_rgba(54,226,123,0.5)]">TreasuryOS</p>
+                        {/* Mobile branding — full lockup */}
+                        <div className="relative z-20 mb-2 flex flex-col items-center pt-0.5 lg:hidden">
+                            <DreyvLogoLight variant="auth" priority className="origin-center scale-[0.92] drop-shadow-sm sm:scale-[0.97] lg:scale-100" />
+                            <p className="mt-1.5 text-[11px] font-bold uppercase tracking-[0.3em] text-violet-600 lg:mt-2">
+                                TreasuryOS
+                            </p>
                         </div>
 
-                        <div className="relative rounded-[32px] border border-white/[0.08] bg-[#050508]/80 backdrop-blur-[40px] shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset,0_40px_80px_-20px_rgba(0,0,0,1)] p-6 overflow-hidden w-full">
-                            {/* Logo Watermark */}
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
-                                <Logo size={300} fillColor="#ffffff" className="opacity-[0.045] rotate-[-12deg]" />
+                        <div className="relative w-full overflow-hidden rounded-[20px] border border-violet-200/45 bg-white/92 p-3.5 shadow-[0_16px_48px_-14px_rgba(124,58,237,0.15)] backdrop-blur-xl lg:rounded-[30px] lg:p-5 lg:shadow-[0_16px_48px_-14px_rgba(124,58,237,0.16)]">
+                            <div className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center overflow-hidden">
+                                <Logo size={230} fillColor="#5a00e4" className="rotate-[-12deg] opacity-[0.06]" />
                             </div>
 
-                            {/* Noise Texture Overlay */}
-                            <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay pointer-events-none" style={{ backgroundImage: `url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E')` }}></div>
+                            <div className="absolute inset-0 opacity-[0.04] mix-blend-multiply pointer-events-none" style={{ backgroundImage: `url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E')` }} />
 
-                            {/* Inner radial gradient for ambient light */}
-                            <div className="absolute inset-0 bg-gradient-to-br from-[#36e27b]/5 via-transparent to-transparent pointer-events-none" />
+                            <div className="absolute inset-0 bg-gradient-to-br from-violet-400/[0.07] via-transparent to-fuchsia-400/[0.05] pointer-events-none" />
 
-                            {/* Subtle top glare */}
-                            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+                            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-violet-200/50 to-transparent" />
 
                             <div className="relative z-10">
                                 <ProgressIndicator step={currentStep} />
 
                                 {/* ─── Step 0: Connect Options ──────────────────────────── */}
                                 {currentStep === 0 && !showWelcome && (
-                                    <div className="space-y-3.5 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                                        <div className="text-center space-y-2 mb-6">
-                                            <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-sm">Access Terminal</h2>
-                                            <p className="text-[14px] text-white/50 font-medium tracking-wide">
+                                    <div className="space-y-2 animate-in fade-in slide-in-from-bottom-4 duration-700 lg:space-y-3.5">
+                                        <div className="mb-3 space-y-1 text-center lg:mb-4 lg:space-y-2">
+                                            <h2 className="text-xl font-black leading-tight tracking-tight text-slate-900 lg:text-2xl">Access Terminal</h2>
+                                            <p className="text-[13px] font-medium tracking-wide text-slate-500 lg:text-[14px]">
                                                 Authenticate connection securely
                                             </p>
                                         </div>
 
                                         {oauthError && (
-                                            <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 flex items-start gap-3 backdrop-blur-md">
-                                                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                                                <p className="text-[13px] text-red-300 leading-snug font-medium">{oauthError}</p>
+                                            <div className="flex items-start gap-2.5 rounded-xl border border-red-200/80 bg-red-50 p-3 lg:gap-3 lg:p-3.5">
+                                                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+                                                <p className="text-[12px] font-medium leading-snug text-red-800 lg:text-[13px]">{oauthError}</p>
                                             </div>
                                         )}
 
-                                        <div className="space-y-2">
+                                        <div className="space-y-1.5 lg:space-y-2">
                                             <WalletButton
                                                 name="Phantom"
                                                 domain="phantom.app"
@@ -801,16 +683,16 @@ function AuthPageContent() {
                                         </div>
 
                                         {connecting && (
-                                            <div className="flex items-center justify-center gap-2.5 text-[#36e27b]/90 text-[13px] mt-4 font-semibold py-2">
-                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                            <div className="mt-2 flex items-center justify-center gap-2 py-1 text-[12px] font-semibold text-violet-600 lg:mt-3 lg:py-2 lg:text-[13px]">
+                                                <Loader2 className="h-4 w-4 animate-spin" />
                                                 <span>Establishing secure protocol...</span>
                                             </div>
                                         )}
 
-                                        <div className="flex items-center gap-4 py-2 opacity-60">
-                                            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/[0.15] to-transparent" />
-                                            <span className="text-[10px] text-white/50 font-bold uppercase tracking-widest">Or Continue With</span>
-                                            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/[0.15] to-transparent" />
+                                        <div className="flex items-center gap-3 py-1 lg:gap-4 lg:py-2">
+                                            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-violet-200/60 to-transparent" />
+                                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Or Continue With</span>
+                                            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-violet-200/60 to-transparent" />
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-2">
@@ -824,28 +706,28 @@ function AuthPageContent() {
 
                                 {/* ─── Step 1: Sign Message ────────────────────────────── */}
                                 {currentStep === 1 && !showWelcome && (
-                                    <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-700">
-                                        <div className="text-center space-y-2 mb-4">
-                                            <h1 className="text-xl font-bold text-white tracking-tight">Verify Identity</h1>
-                                            <p className="text-[13px] text-white/40 tracking-wide font-medium">
+                                    <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-700 lg:space-y-5">
+                                        <div className="mb-3 space-y-1 text-center lg:mb-4 lg:space-y-2">
+                                            <h1 className="text-lg font-bold tracking-tight text-slate-900 lg:text-xl">Verify Identity</h1>
+                                            <p className="text-[13px] font-medium tracking-wide text-slate-500 lg:text-[13px]">
                                                 Sign message to authenticate
                                             </p>
                                         </div>
 
-                                        <div className="p-4 rounded-[16px] bg-white/[0.02] border border-white/[0.05] shadow-inner relative overflow-hidden">
-                                            <div className="absolute top-0 right-0 p-2 opacity-10">
-                                                <Shield className="w-16 h-16 text-white" />
+                                        <div className="relative overflow-hidden rounded-xl border border-violet-200/50 bg-violet-50/60 p-3 shadow-inner lg:rounded-[16px] lg:p-4">
+                                            <div className="absolute right-0 top-0 p-2 opacity-[0.12]">
+                                                <Shield className="h-14 w-14 text-violet-600 lg:h-16 lg:w-16" />
                                             </div>
-                                            <div className="flex items-center gap-4 relative z-10">
-                                                <div className="w-11 h-11 rounded-xl bg-[#36e27b]/10 border border-[#36e27b]/20 flex items-center justify-center shadow-[0_0_15px_rgba(54,226,123,0.1)]">
-                                                    <Wallet className="w-5 h-5 text-[#36e27b]" />
+                                            <div className="relative z-10 flex items-center gap-3.5 lg:gap-4">
+                                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-violet-200/80 bg-violet-100 shadow-sm lg:h-11 lg:w-11">
+                                                    <Wallet className="h-[18px] w-[18px] text-violet-600 lg:h-5 lg:w-5" />
                                                 </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-[#36e27b] shadow-[0_0_5px_rgba(54,226,123,0.8)]"></div>
-                                                        <p className="text-[10px] tracking-widest uppercase text-[#36e27b] font-bold">Connected</p>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="mb-1 flex items-center gap-2">
+                                                        <div className="h-1.5 w-1.5 rounded-full bg-violet-500 shadow-[0_0_6px_rgba(124,58,237,0.5)]" />
+                                                        <p className="text-[10px] font-bold uppercase tracking-widest text-violet-600">Connected</p>
                                                     </div>
-                                                    <p className="text-[15px] font-mono font-medium text-white/90 truncate">
+                                                    <p className="truncate font-mono text-[14px] font-medium text-slate-800 lg:text-[15px]">
                                                         {publicKey?.toBase58().slice(0, 10)}...{publicKey?.toBase58().slice(-8)}
                                                     </p>
                                                 </div>
@@ -853,37 +735,36 @@ function AuthPageContent() {
                                         </div>
 
                                         {step === "signing" && (
-                                            <div className="flex flex-col items-center justify-center gap-4 py-5">
+                                            <div className="flex flex-col items-center justify-center gap-2 py-2 lg:gap-4 lg:py-5">
                                                 <div className="relative">
-                                                    <div className="absolute inset-0 bg-[#36e27b]/20 rounded-full blur-2xl animate-pulse"></div>
-                                                    <div className="w-16 h-16 rounded-[20px] bg-[#0a0a0f] border border-[#36e27b]/40 flex items-center justify-center relative z-10 shadow-[0_0_20px_rgba(54,226,123,0.2)]">
-                                                        <PenLine className="w-7 h-7 text-[#36e27b] animate-pulse" />
+                                                    <div className="absolute inset-0 animate-pulse rounded-full bg-violet-400/25 blur-2xl" />
+                                                    <div className="relative z-10 flex h-14 w-14 items-center justify-center rounded-2xl border border-violet-200/80 bg-white shadow-[0_12px_40px_-12px_rgba(124,58,237,0.35)] lg:h-16 lg:w-16">
+                                                        <PenLine className="h-6 w-6 animate-pulse text-violet-600 lg:h-7 lg:w-7" />
                                                     </div>
                                                 </div>
-                                                <p className="text-[14px] font-medium text-emerald-400">Awaiting signature approval...</p>
+                                                <p className="text-center text-[12px] font-medium text-violet-700 lg:text-[14px]">Awaiting signature approval...</p>
                                             </div>
                                         )}
 
                                         {step === "verifying" && (
-                                            <div className="flex flex-col items-center justify-center gap-4 py-5">
+                                            <div className="flex flex-col items-center justify-center gap-2 py-2 lg:gap-4 lg:py-5">
                                                 <div className="relative">
-                                                    <div className="absolute inset-0 bg-[#36e27b]/10 rounded-full blur-2xl animate-pulse"></div>
-                                                    <Loader2 className="w-10 h-10 text-[#36e27b] animate-spin relative z-10" />
+                                                    <div className="absolute inset-0 animate-pulse rounded-full bg-violet-300/20 blur-2xl" />
+                                                    <Loader2 className="relative z-10 h-9 w-9 animate-spin text-violet-600 lg:h-10 lg:w-10" />
                                                 </div>
-                                                <p className="text-[14px] font-medium text-emerald-400">Verifying signature cryptographically...</p>
+                                                <p className="text-center text-[12px] font-medium text-violet-700 lg:text-[14px]">Verifying signature cryptographically...</p>
                                             </div>
                                         )}
 
                                         {step === "error" && error && (
-                                            <div className="relative overflow-hidden p-5 rounded-[16px] bg-red-950/30 border border-red-500/30 space-y-4">
-                                                <div className="absolute inset-0 bg-red-500/5 mix-blend-overlay"></div>
+                                            <div className="relative overflow-hidden p-5 rounded-[16px] bg-red-50 border border-red-200/80 space-y-4">
                                                 <div className="flex items-start gap-3 relative z-10">
-                                                    <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-                                                    <p className="text-[13px] text-red-200 font-medium leading-relaxed">{error}</p>
+                                                    <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                                                    <p className="text-[13px] text-red-900 font-medium leading-relaxed">{error}</p>
                                                 </div>
                                                 <button
                                                     onClick={handleRetry}
-                                                    className="w-full relative z-10 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 border border-red-500/40 text-red-300 hover:bg-red-500/20 transition-colors text-[13px] font-bold shadow-sm"
+                                                    className="w-full relative z-10 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-red-200 text-red-700 hover:bg-red-50 transition-colors text-[13px] font-bold shadow-sm"
                                                 >
                                                     <RefreshCw className="w-4 h-4" />
                                                     Try Again
@@ -893,22 +774,21 @@ function AuthPageContent() {
 
                                         {(step === "idle" || step === "connecting") && (
                                             <button
+                                                type="button"
                                                 onClick={() => signIn()}
-                                                className="w-full relative group overflow-hidden rounded-[16px] bg-[#36e27b]/10 hover:bg-[#36e27b]/20 border border-[#36e27b]/30 hover:border-[#36e27b]/50 transition-all duration-500 shadow-[0_0_20px_rgba(54,226,123,0.05)] hover:shadow-[0_0_30px_rgba(54,226,123,0.15)]"
+                                                className={`${marketingPrimaryCta} w-full justify-center gap-2.5 rounded-2xl py-3 text-[14px] font-bold tracking-wide lg:gap-3 lg:py-4 lg:text-[15px]`}
                                             >
-                                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#36e27b]/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                                                <div className="relative flex items-center justify-center gap-3 px-5 py-4 text-emerald-400 group-hover:text-[#36e27b] font-bold text-[15px] tracking-wide">
-                                                    <Lock className="w-5 h-5" />
-                                                    <span>Sign & Enter OS</span>
-                                                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 opacity-70 transition-transform" />
-                                                </div>
+                                                <Lock className="h-[18px] w-[18px] shrink-0 lg:h-5 lg:w-5" />
+                                                <span>Sign & Enter OS</span>
+                                                <ArrowRight className="h-[18px] w-[18px] shrink-0 opacity-90 transition-transform group-hover:translate-x-0.5 lg:h-5 lg:w-5" />
                                             </button>
                                         )}
 
-                                        <div className="pt-2 text-center">
+                                        <div className="pt-2 text-center lg:pt-2">
                                             <button
+                                                type="button"
                                                 onClick={() => { disconnect(); }}
-                                                className="text-[11px] font-bold tracking-widest uppercase text-white/30 hover:text-white/60 transition-colors"
+                                                className="text-[11px] font-bold uppercase tracking-widest text-slate-400 transition-colors hover:text-violet-600"
                                             >
                                                 Cancel & Switch Wallet
                                             </button>
@@ -918,30 +798,30 @@ function AuthPageContent() {
 
                                 {/* ─── Step 2: Welcome / Success ───────────────────────── */}
                                 {showWelcome && (
-                                    <div className="space-y-6 animate-in zoom-in-95 duration-700 text-center py-5">
+                                    <div className="animate-in zoom-in-95 space-y-4 py-3 text-center duration-700 lg:space-y-5 lg:py-5">
                                         <div className="flex justify-center">
                                             <div className="relative">
-                                                <div className="absolute inset-0 bg-[#36e27b]/20 rounded-full blur-[30px] animate-pulse"></div>
-                                                <div className="relative w-24 h-24 rounded-[24px] bg-[#14141a] border border-[#36e27b]/40 flex items-center justify-center backdrop-blur-xl shadow-[0_0_40px_rgba(54,226,123,0.2)]">
-                                                    <LogoFilled size={48} fillColor="#36e27b" className="drop-shadow-[0_0_12px_rgba(54,226,123,0.6)]" />
+                                                <div className="absolute inset-0 animate-pulse rounded-full bg-violet-400/25 blur-[28px] lg:blur-[30px]" />
+                                                <div className="relative flex h-[5.25rem] w-[5.25rem] items-center justify-center rounded-[22px] border border-violet-200/70 bg-white shadow-[0_18px_44px_-12px_rgba(124,58,237,0.32)] lg:h-24 lg:w-24 lg:rounded-[24px] lg:shadow-[0_20px_50px_-15px_rgba(124,58,237,0.35)]">
+                                                    <DreyvMark size={44} className="drop-shadow-[0_0_14px_rgba(139,92,246,0.45)] lg:h-[48px] lg:w-[48px]" />
                                                 </div>
-                                                <div className="absolute -top-3 -right-3">
-                                                    <Sparkles className="w-6 h-6 text-white animate-pulse" style={{ animationDuration: '2s' }} />
+                                                <div className="absolute -right-2 -top-2 lg:-right-3 lg:-top-3">
+                                                    <Sparkles className="h-5 w-5 animate-pulse text-violet-500 lg:h-6 lg:w-6" style={{ animationDuration: '2s' }} />
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <h1 className="text-2xl font-bold tracking-tight text-white drop-shadow-lg">
+                                        <div className="space-y-1 lg:space-y-2">
+                                            <h1 className="text-xl font-bold tracking-tight text-slate-900 lg:text-2xl">
                                                 Access Granted
                                             </h1>
-                                            <p className="text-[14px] text-white/50 font-medium tracking-wide">
+                                            <p className="text-[13px] font-medium tracking-wide text-slate-500 lg:text-[14px]">
                                                 Identity verified. Preparing session...
                                             </p>
                                         </div>
 
-                                        <div className="flex items-center justify-center gap-2.5 text-[#36e27b] text-[13px] font-bold tracking-widest uppercase bg-[#36e27b]/10 py-3 px-6 rounded-xl border border-[#36e27b]/20 inline-flex mx-auto backdrop-blur-sm shadow-[0_0_15px_rgba(54,226,123,0.1)]">
-                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                        <div className="mx-auto inline-flex items-center justify-center gap-2 rounded-xl border border-violet-200/70 bg-violet-50 px-5 py-2.5 text-[12px] font-bold uppercase tracking-widest text-violet-700 shadow-sm lg:gap-2.5 lg:px-6 lg:py-3 lg:text-[13px]">
+                                            <Loader2 className="h-4 w-4 animate-spin text-violet-600 lg:h-5 lg:w-5" />
                                             Entering Protocol
                                         </div>
                                     </div>
@@ -950,9 +830,9 @@ function AuthPageContent() {
                         </div>
 
                         {/* Footer elements */}
-                        <div className="mt-8 flex items-center justify-center gap-3 text-[10px] uppercase tracking-widest font-semibold text-zinc-500 relative z-10 transition-colors hover:text-zinc-600 cursor-default drop-shadow-sm">
-                            <Shield className="w-3.5 h-3.5" />
-                            <span>Zero Trust Security Architecture</span>
+                        <div className="mt-3 flex shrink-0 cursor-default items-center justify-center gap-2 text-[9px] font-semibold uppercase tracking-widest text-slate-500 transition-colors hover:text-violet-700 lg:mt-6 lg:gap-3 lg:text-[10px]">
+                            <Shield className="h-3.5 w-3.5" />
+                            <span className="max-w-[18rem] text-center leading-snug lg:max-w-none">Zero Trust Security Architecture</span>
                         </div>
                     </div>
                 </div>
@@ -965,13 +845,13 @@ export default function AuthPage() {
     return (
         <TelemetryProvider>
             <Suspense fallback={
-                <div className="min-h-screen bg-[#030305] flex items-center justify-center">
+                <div className="min-h-screen bg-marketing-bg flex items-center justify-center font-manrope">
                     <div className="flex flex-col items-center gap-6">
-                        <div className="w-16 h-16 rounded-[20px] bg-[#0a0a0f] border border-white/10 flex items-center justify-center shadow-2xl relative overflow-hidden">
-                            <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-                            <LogoFilled size={32} className="text-white animate-pulse" />
+                        <div className="w-16 h-16 rounded-[20px] bg-white border border-violet-200/60 flex items-center justify-center shadow-[0_20px_50px_-12px_rgba(124,58,237,0.25)] relative overflow-hidden">
+                            <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-violet-200/70 to-transparent" />
+                            <DreyvMark size={32} className="animate-pulse opacity-90" />
                         </div>
-                        <p className="text-white/30 text-[11px] font-bold tracking-[0.2em] uppercase">Initializing Handshake...</p>
+                        <p className="text-slate-500 text-[11px] font-bold tracking-[0.2em] uppercase">Initializing Handshake...</p>
                     </div>
                 </div>
             }>

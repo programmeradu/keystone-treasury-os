@@ -2,7 +2,8 @@
 
 import { useEffect } from "react";
 import { AlertTriangle, RefreshCw, MoveLeft } from "lucide-react";
-import { Logo, LogoFilled } from "@/components/icons";
+import { Logo } from "@/components/icons";
+import { DreyvMark } from "@/components/brand/dreyv-mark";
 import Link from "next/link";
 
 export default function GlobalError({
@@ -55,7 +56,7 @@ export default function GlobalError({
                     <div className="relative group cursor-not-allowed">
                         <div className="absolute inset-0 bg-destructive/20 blur-2xl rounded-full transition-all duration-500 group-hover:bg-destructive/40 group-hover:blur-xl" />
                         <div className="w-16 h-16 bg-background/60 backdrop-blur-2xl border border-destructive/20 rounded-2xl flex items-center justify-center shadow-2xl relative transition-transform duration-500 hover:scale-105">
-                            <LogoFilled size={32} className="text-destructive drop-shadow-md" />
+                            <DreyvMark size={32} className="drop-shadow-md ring-2 ring-destructive/35 rounded-lg" />
                             <div className="absolute -bottom-2 -right-2 w-7 h-7 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-xl border-2 border-background">
                                 <AlertTriangle size={12} strokeWidth={3} />
                             </div>

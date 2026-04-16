@@ -63,6 +63,8 @@
 /* Updated: 2025-09-24T17:35:39.324Z */
 /* Updated: 2025-09-24T17:19:52.444Z */
 /* Updated: 2025-09-24T17:19:37.738Z */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&display=swap');
@@ -135,6 +137,15 @@
   --color-dreyv-void: var(--dreyv-void);
   --color-aurora-teal: var(--aurora-teal);
   --color-aurora-violet: var(--aurora-violet);
+  /* Stitch-inspired marketing (light) — use via bg-marketing-* / text-marketing-* */
+  --color-marketing-bg: var(--marketing-bg);
+  --color-marketing-bg-low: var(--marketing-bg-low);
+  --color-marketing-fg: var(--marketing-fg);
+  --color-marketing-muted: var(--marketing-muted);
+  --color-marketing-violet: var(--marketing-violet);
+  --color-marketing-violet-mid: var(--marketing-violet-mid);
+  --font-manrope: var(--font-manrope);
+  --font-inter-label: var(--font-inter-label);
 }
 
 :root {
@@ -166,7 +177,15 @@
   --chart-5: oklch(0.769 0.188 70.08);
 
   --font-sans: 'Inter Tight', 'Spline Sans', sans-serif;
+  --font-manrope: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-inter-label: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --marketing-bg: #fdf7ff;
+  --marketing-bg-low: #f8f1ff;
+  --marketing-fg: #1d1a25;
+  --marketing-muted: #5b5e68;
+  --marketing-violet: #5a00e4;
+  --marketing-violet-mid: #7336ff;
   --keystone-void: #09090b;
   --keystone-green: #36e27b;
   --dreyv-void: var(--keystone-void);
@@ -851,4 +870,29 @@ nextjs-portal {
     linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
   background-size: 64px 64px;
+}
+
+/* Light marketing: faint grid on lavender base */
+.grid-pattern-marketing {
+  background-image:
+    linear-gradient(rgba(90, 0, 228, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(90, 0, 228, 0.045) 1px, transparent 1px);
+  background-size: 72px 72px;
+}
+
+.dreyv-marketing-root {
+  background-color: var(--marketing-bg);
+  color: var(--marketing-fg);
+}
+
+/* Hero / display gradient — purple brand */
+.text-gradient-dreyv {
+  background: linear-gradient(135deg, var(--marketing-violet) 0%, var(--marketing-violet-mid) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.marketing-shadow-float {
+  box-shadow: 0 24px 48px rgba(29, 26, 37, 0.07);
 }

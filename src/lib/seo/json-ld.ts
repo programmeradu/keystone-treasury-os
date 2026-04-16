@@ -4,7 +4,7 @@ import { getSiteOrigin } from "./site";
 /** JSON-LD @graph for Organization + WebSite + SoftwareApplication + FAQPage (Google-friendly). */
 export function buildRootJsonLd(): Record<string, unknown> {
   const origin = getSiteOrigin();
-  const logoUrl = `${origin}/icon.svg`;
+  const logoUrl = `${origin}/icon.png`;
 
   const faqPage: Record<string, unknown> = {
     "@type": "FAQPage",
@@ -93,7 +93,7 @@ export function buildArticleJsonLd(opts: {
     publisher: {
       "@type": "Organization",
       name: "StaUniverse",
-      logo: { "@type": "ImageObject", url: `${origin}/icon.svg` },
+      logo: { "@type": "ImageObject", url: `${origin}/icon.png` },
     },
   };
 }

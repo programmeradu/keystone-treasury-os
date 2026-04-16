@@ -9,7 +9,8 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useSelf } from "@/liveblocks.config";
 import { getAvatarUrl } from "@/lib/avatars";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Logo, LogoFilled, WalletCards, PieChart, Users, Settings, Database, LayoutGrid, ArchitectIcon } from "@/components/icons";
+import { WalletCards, PieChart, Users, Settings, Database, LayoutGrid, ArchitectIcon } from "@/components/icons";
+import { DreyvMark } from "@/components/brand/dreyv-mark";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -55,8 +56,8 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
 
             {/* Side Navigation (Slim Rail - Auto-fit, No Scroll) */}
             <nav className="flex flex-col items-center w-20 h-full py-3 border-r border-border bg-sidebar z-50 shrink-0 select-none">
-                <Link href="/" className="mb-2 p-1.5 rounded-xl bg-[#36e27b]/5 border border-[#36e27b]/20 flex items-center justify-center shadow-[0_0_15px_rgba(54,226,123,0.1)] hover:scale-105 transition-transform group shrink-0">
-                    <LogoFilled size={34} fillColor={theme === 'light' ? '#16A34A' : "#36e27b"} className="group-hover:drop-shadow-[0_0_8px_rgba(54,226,123,0.4)] transition-all" />
+                <Link href="/" className="mb-2 p-1.5 rounded-xl bg-violet-500/5 border border-violet-500/20 flex items-center justify-center shadow-[0_0_15px_rgba(139,92,246,0.12)] hover:scale-105 transition-transform group shrink-0">
+                    <DreyvMark size={34} className="group-hover:drop-shadow-[0_0_10px_rgba(139,92,246,0.45)] transition-all" />
                 </Link>
 
                 <TooltipProvider>

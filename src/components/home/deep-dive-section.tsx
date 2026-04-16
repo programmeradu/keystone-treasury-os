@@ -47,7 +47,7 @@ const tabs = [
 
 function TreasuryMockUI() {
   return (
-    <div className="rounded-xl border border-white/[0.06] overflow-hidden">
+    <div className="rounded-xl border border-violet-200/40 overflow-hidden">
       <Image
         src="/images/treasury.png"
         alt="dreyv Treasury Dashboard"
@@ -63,40 +63,40 @@ function StudioMockUI() {
   const codeLines = [
     { num: 1, content: "import { useVault } from '@keystone/sdk'", color: "text-pink-400/50" },
     { num: 2, content: "", color: "" },
-    { num: 3, content: "export default function RebalanceBot() {", color: "text-white/40" },
-    { num: 4, content: "  const { tokens, execute } = useVault()", color: "text-white/30" },
-    { num: 5, content: "  const overweight = tokens.filter(", color: "text-white/30" },
+    { num: 3, content: "export default function RebalanceBot() {", color: "text-slate-500" },
+    { num: 4, content: "  const { tokens, execute } = useVault()", color: "text-slate-500" },
+    { num: 5, content: "  const overweight = tokens.filter(", color: "text-slate-500" },
     { num: 6, content: "    t => t.pctOfTotal > t.target + 5", color: "text-amber-400/40" },
-    { num: 7, content: "  )", color: "text-white/30" },
+    { num: 7, content: "  )", color: "text-slate-500" },
     { num: 8, content: "", color: "" },
-    { num: 9, content: "  return overweight.map(t => (", color: "text-white/30" },
-    { num: 10, content: "    execute('swap', { from: t, pct: 5 })", color: "text-emerald-400/40" },
-    { num: 11, content: "  ))", color: "text-white/30" },
-    { num: 12, content: "}", color: "text-white/40" },
+    { num: 9, content: "  return overweight.map(t => (", color: "text-slate-500" },
+    { num: 10, content: "    execute('swap', { from: t, pct: 5 })", color: "text-violet-600/55" },
+    { num: 11, content: "  ))", color: "text-slate-500" },
+    { num: 12, content: "}", color: "text-slate-500" },
   ];
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+    <div className="rounded-xl border border-violet-200/40 bg-white/70 overflow-hidden">
       {/* Editor tabs */}
-      <div className="flex items-center gap-0 border-b border-white/[0.04]">
-        <div className="px-4 py-2.5 text-[11px] font-mono text-white/40 border-b border-pink-500/50 bg-white/[0.02]">
+      <div className="flex items-center gap-0 border-b border-violet-200/35">
+        <div className="px-4 py-2.5 text-[11px] font-mono text-slate-500 border-b border-pink-500/50 bg-white/70">
           rebalance-bot.tsx
         </div>
-        <div className="px-4 py-2.5 text-[11px] font-mono text-white/15">
+        <div className="px-4 py-2.5 text-[11px] font-mono text-slate-400">
           config.json
         </div>
         <div className="ml-auto px-4 py-2.5 flex items-center gap-2">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/40" />
-          <span className="text-[9px] font-mono text-white/15">Live</span>
+          <span className="h-1.5 w-1.5 rounded-full bg-violet-500/50" />
+          <span className="text-[9px] font-mono text-slate-400">Live</span>
         </div>
       </div>
 
       <div className="grid md:grid-cols-[1fr_0.8fr]">
         {/* Code panel */}
-        <div className="p-4 border-r border-white/[0.04] font-mono text-[11px] leading-[1.7]">
+        <div className="p-4 border-r border-violet-200/30 font-mono text-[11px] leading-[1.7]">
           {codeLines.map((line) => (
             <div key={line.num} className="flex">
-              <span className="w-6 text-right text-white/[0.08] mr-4 select-none">{line.num}</span>
+              <span className="w-6 text-right text-slate-300 mr-4 select-none">{line.num}</span>
               <span className={line.color || "text-transparent"}>{line.content || "\u00A0"}</span>
             </div>
           ))}
@@ -104,18 +104,18 @@ function StudioMockUI() {
 
         {/* Preview panel */}
         <div className="p-4">
-          <div className="text-[9px] font-mono uppercase tracking-wider text-white/10 mb-3">Preview</div>
-          <div className="rounded-lg border border-white/[0.04] bg-white/[0.01] p-4">
-            <div className="text-xs font-semibold text-white/50 mb-3">Rebalance Bot</div>
+          <div className="text-[9px] font-mono uppercase tracking-wider text-slate-300 mb-3">Preview</div>
+          <div className="rounded-lg border border-violet-200/35 bg-violet-50/40 p-4">
+            <div className="text-xs font-semibold text-slate-500 mb-3">Rebalance Bot</div>
             <div className="space-y-2">
               {[
                 { token: "SOL", action: "Sell 5%", color: "#ef4444", logo: "/logos/token-sol.png" },
                 { token: "BONK", action: "Sell 5%", color: "#ef4444", logo: "/logos/token-bonk.png" },
               ].map((item) => (
-                <div key={item.token} className="flex items-center justify-between rounded-md bg-white/[0.02] px-3 py-2">
+                <div key={item.token} className="flex items-center justify-between rounded-md bg-white/70 px-3 py-2">
                   <div className="flex items-center gap-2">
                     <img src={item.logo} alt="" className="h-3.5 w-3.5 rounded-full" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                    <span className="text-[11px] text-white/40 font-mono">{item.token}</span>
+                    <span className="text-[11px] text-slate-500 font-mono">{item.token}</span>
                   </div>
                   <span className="text-[10px] font-mono" style={{ color: item.color, opacity: 0.5 }}>{item.action}</span>
                 </div>
@@ -141,15 +141,15 @@ function ForesightMockUI() {
   const baseCurve = "M 290,40 C 310,42 330,44 350,48 C 370,52 390,56 410,58 C 430,60 445,62 460,64";
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+    <div className="rounded-xl border border-violet-200/40 bg-white/70 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.04]">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-violet-200/35">
         <div className="flex items-center gap-3">
           <div className="h-2 w-2 rounded-full bg-amber-500/60" />
-          <span className="text-[11px] font-mono text-white/30">Foresight · What-If Scenario</span>
+          <span className="text-[11px] font-mono text-slate-500">Foresight · What-If Scenario</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[9px] font-mono text-white/15">Treasury NAV</span>
+          <span className="text-[9px] font-mono text-slate-400">Treasury NAV</span>
           <span className="text-[10px] font-mono text-amber-400/40 bg-amber-400/[0.06] px-2 py-0.5 rounded">
             SOL −40%
           </span>
@@ -160,7 +160,7 @@ function ForesightMockUI() {
         {/* Chart area */}
         <div className="relative mb-5">
           {/* Y-axis labels */}
-          <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-[8px] font-mono text-white/10 pr-2 py-1 pointer-events-none" style={{ width: 36 }}>
+          <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-[8px] font-mono text-slate-300 pr-2 py-1 pointer-events-none" style={{ width: 36 }}>
             <span>$2.4M</span><span>$2.0M</span><span>$1.6M</span><span>$1.2M</span>
           </div>
           <div className="ml-9">
@@ -185,11 +185,11 @@ function ForesightMockUI() {
 
               {/* Grid lines */}
               {[10, 35, 60, 85].map((y) => (
-                <line key={y} x1="0" y1={y} x2="460" y2={y} stroke="rgba(255,255,255,0.025)" />
+                <line key={y} x1="0" y1={y} x2="460" y2={y} stroke="rgba(139,92,246,0.08)" />
               ))}
 
               {/* Scenario divider */}
-              <line x1="290" y1="0" x2="290" y2="110" stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
+              <line x1="290" y1="0" x2="290" y2="110" stroke="rgba(139,92,246,0.15)" strokeDasharray="3 3" />
               <rect x="290" y="0" width="170" height="110" fill="rgba(251,191,36,0.01)" />
 
               {/* Real data area fill */}
@@ -202,10 +202,10 @@ function ForesightMockUI() {
               <path d={bearCurve} fill="none" stroke="#ef4444" strokeWidth="1" opacity="0.35" strokeDasharray="4 3" />
 
               {/* Base scenario (white dashed) */}
-              <path d={baseCurve} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="0.8" strokeDasharray="2 3" />
+              <path d={baseCurve} fill="none" stroke="rgba(100,116,139,0.35)" strokeWidth="0.8" strokeDasharray="2 3" />
 
-              {/* Bull scenario (green dashed) */}
-              <path d={bullCurve} fill="none" stroke="#36e27b" strokeWidth="1" opacity="0.35" strokeDasharray="4 3" />
+              {/* Bull scenario (violet dashed) */}
+              <path d={bullCurve} fill="none" stroke="#7c3aed" strokeWidth="1" opacity="0.4" strokeDasharray="4 3" />
 
               {/* Real data line (main, with glow) */}
               <path d={realCurve} fill="none" stroke="#fbbf24" strokeWidth="2" opacity="0.5" filter="url(#foresight-glow)" />
@@ -216,9 +216,9 @@ function ForesightMockUI() {
               <circle cx="290" cy="40" r="6" fill="#fbbf24" opacity="0.08" />
 
               {/* Scenario labels */}
-              <text x="296" y="8" fill="rgba(255,255,255,0.08)" fontSize="7" fontFamily="monospace">PROJECTION</text>
-              <text x="444" y="10" fill="rgba(54,226,123,0.25)" fontSize="6" fontFamily="monospace">Bull</text>
-              <text x="444" y="67" fill="rgba(255,255,255,0.1)" fontSize="6" fontFamily="monospace">Base</text>
+              <text x="296" y="8" fill="rgba(100,116,139,0.45)" fontSize="7" fontFamily="monospace">PROJECTION</text>
+              <text x="444" y="10" fill="rgba(124,58,237,0.45)" fontSize="6" fontFamily="monospace">Bull</text>
+              <text x="444" y="67" fill="rgba(100,116,139,0.4)" fontSize="6" fontFamily="monospace">Base</text>
               <text x="444" y="100" fill="rgba(239,68,68,0.25)" fontSize="6" fontFamily="monospace">Bear</text>
 
               {/* Animated scan line */}
@@ -229,7 +229,7 @@ function ForesightMockUI() {
             </svg>
 
             {/* X-axis labels */}
-            <div className="flex justify-between text-[8px] font-mono text-white/10 mt-1 px-1">
+            <div className="flex justify-between text-[8px] font-mono text-slate-300 mt-1 px-1">
               <span>Jan</span><span>Mar</span><span>May</span><span>Jul</span>
               <span className="text-amber-400/20">Sep</span><span className="text-amber-400/20">Nov</span><span className="text-amber-400/20">Jan</span>
             </div>
@@ -242,22 +242,22 @@ function ForesightMockUI() {
             { label: "Runway", value: "8.2 mo", sub: "was 14 mo", accent: "text-red-400/50", trend: "↓" },
             { label: "Risk Score", value: "7.4", sub: "/ 10 High", accent: "text-amber-400/50", trend: "↑" },
             { label: "Drawdown", value: "−$906K", sub: "−40% NAV", accent: "text-red-400/50", trend: "↓" },
-            { label: "Burn Rate", value: "$82K", sub: "/ month", accent: "text-white/30", trend: "→" },
+            { label: "Burn Rate", value: "$82K", sub: "/ month", accent: "text-slate-500", trend: "→" },
           ].map((metric) => (
-            <div key={metric.label} className="rounded-lg bg-white/[0.02] border border-white/[0.03] p-3">
+            <div key={metric.label} className="rounded-lg bg-white/70 border border-white/[0.03] p-3">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[8px] font-mono uppercase tracking-wider text-white/10">{metric.label}</span>
+                <span className="text-[8px] font-mono uppercase tracking-wider text-slate-300">{metric.label}</span>
                 <span className={`text-[9px] ${metric.accent}`}>{metric.trend}</span>
               </div>
               <div className={`text-sm font-bold ${metric.accent} tracking-tight`}>{metric.value}</div>
-              <div className="text-[9px] text-white/10 font-mono">{metric.sub}</div>
+              <div className="text-[9px] text-slate-300 font-mono">{metric.sub}</div>
             </div>
           ))}
         </div>
 
         {/* Suggested actions — pill style */}
-        <div className="mt-4 flex items-center gap-3 border-t border-white/[0.04] pt-4">
-          <span className="text-[8px] font-mono uppercase tracking-wider text-white/10 shrink-0">Actions</span>
+        <div className="mt-4 flex items-center gap-3 border-t border-violet-200/35 pt-4">
+          <span className="text-[8px] font-mono uppercase tracking-wider text-slate-300 shrink-0">Actions</span>
           <div className="flex gap-2 overflow-x-auto">
             {[
               { label: "Hedge 20% → USDC", urgency: "high" },
@@ -271,7 +271,7 @@ function ForesightMockUI() {
                     ? "text-red-400/40 bg-red-400/[0.04] border-red-400/10"
                     : a.urgency === "med"
                     ? "text-amber-400/30 bg-amber-400/[0.04] border-amber-400/10"
-                    : "text-white/20 bg-white/[0.02] border-white/[0.04]"
+                    : "text-slate-400 bg-white/70 border-white/[0.04]"
                 }`}
               >
                 {a.label}
@@ -301,7 +301,7 @@ export function DeepDiveSection() {
   return (
     <section
       id="deep-dive"
-      className="relative border-t border-white/[0.04] scroll-mt-24"
+      className="relative border-t border-violet-200/35 scroll-mt-24"
       aria-labelledby="deep-dive-heading"
       ref={ref}
     >
@@ -312,12 +312,12 @@ export function DeepDiveSection() {
           transition={{ duration: 0.6 }}
           className="max-w-3xl mb-14"
         >
-          <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-white/20 mb-5">
+          <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-slate-400 mb-5">
             Deep Dive
           </p>
           <h2
             id="deep-dive-heading"
-            className="text-3xl md:text-5xl font-bold text-white tracking-[-0.02em]"
+            className="text-3xl md:text-5xl font-bold text-slate-900 tracking-[-0.02em]"
           >
             Three modules. Total control.
           </h2>
@@ -336,8 +336,8 @@ export function DeepDiveSection() {
               onClick={() => setActiveTab(tab.id)}
               className={`relative px-5 py-3 text-sm font-medium transition-colors duration-200 ${
                 activeTab === tab.id
-                  ? "text-white"
-                  : "text-white/30 hover:text-white/50"
+                  ? "text-slate-900"
+                  : "text-slate-500 hover:text-slate-500"
               }`}
             >
               {tab.label}
@@ -375,10 +375,10 @@ export function DeepDiveSection() {
                   <span className={`text-[10px] font-mono ${activeData.colorText} opacity-40 mb-2 block`}>
                     {String(i + 1).padStart(2, "0")}
                   </span>
-                  <h3 className="text-sm font-semibold text-white mb-1.5 tracking-tight">
+                  <h3 className="text-sm font-semibold text-slate-900 mb-1.5 tracking-tight">
                     {feature.title}
                   </h3>
-                  <p className="text-[12px] text-white/25 leading-relaxed">
+                  <p className="text-[12px] text-slate-400 leading-relaxed">
                     {feature.description}
                   </p>
                 </div>

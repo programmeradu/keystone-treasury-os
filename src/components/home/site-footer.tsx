@@ -1,7 +1,8 @@
 "use client";
 
-import { LogoFilled } from "@/components/icons";
+import { DreyvLogoLight } from "@/components/brand/dreyv-logo-light";
 import { FaDiscord, FaGithub, FaLinkedin, FaTwitter } from "react-icons/fa6";
+import { marketingSectionDivider } from "./marketing-styles";
 
 const productLinks = [
   { label: "Pricing", href: "/pricing" },
@@ -39,33 +40,31 @@ const legalLinks = [
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-white/[0.04]">
+    <footer className={`${marketingSectionDivider} bg-marketing-bg-low/80 backdrop-blur-sm font-inter-label`}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 md:py-16">
         <div className="grid gap-8 md:grid-cols-5">
-          {/* Brand */}
           <div className="md:col-span-1">
-            <a href="/#content" className="flex items-center gap-2 mb-4">
-              <LogoFilled size={22} />
-              <span className="text-sm font-semibold text-white">dreyv</span>
+            <a
+              href="/#content"
+              className="flex items-center overflow-visible mb-4 w-full max-w-[372px] rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500/40"
+              aria-label="dreyv home"
+            >
+              <DreyvLogoLight variant="footer" className="hover:opacity-90 transition-opacity" />
             </a>
-            <p className="text-xs text-white/30 leading-relaxed max-w-xs">
+            <p className="text-xs text-slate-500 leading-relaxed max-w-xs">
               Treasury command layer for Solana teams — intent, simulation, readable impact, then multisig sign.
               Non-custodial. StaUniverse.
             </p>
           </div>
 
-          {/* Product */}
           <div>
-            <h4 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-4">
+            <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">
               Product
             </h4>
             <ul className="space-y-2.5">
               {productLinks.map((link) => (
                 <li key={link.label}>
-                  <a
-                    href={link.href}
-                    className="text-sm text-white/40 hover:text-white/70 transition-colors"
-                  >
+                  <a href={link.href} className="text-sm text-slate-600 hover:text-violet-700 transition-colors">
                     {link.label}
                   </a>
                 </li>
@@ -73,18 +72,14 @@ export function SiteFooter() {
             </ul>
           </div>
 
-          {/* Tools */}
           <div>
-            <h4 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-4">
+            <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">
               Free Tools
             </h4>
             <ul className="space-y-2.5">
               {toolLinks.map((link) => (
                 <li key={link.label}>
-                  <a
-                    href={link.href}
-                    className="text-sm text-white/40 hover:text-white/70 transition-colors"
-                  >
+                  <a href={link.href} className="text-sm text-slate-600 hover:text-violet-700 transition-colors">
                     {link.label}
                   </a>
                 </li>
@@ -92,18 +87,14 @@ export function SiteFooter() {
             </ul>
           </div>
 
-          {/* Company */}
           <div>
-            <h4 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-4">
+            <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">
               Company
             </h4>
             <ul className="space-y-2.5">
               {companyLinks.map((link) => (
                 <li key={link.label}>
-                  <a
-                    href={link.href}
-                    className="text-sm text-white/40 hover:text-white/70 transition-colors"
-                  >
+                  <a href={link.href} className="text-sm text-slate-600 hover:text-violet-700 transition-colors">
                     {link.label}
                   </a>
                 </li>
@@ -111,18 +102,14 @@ export function SiteFooter() {
             </ul>
           </div>
 
-          {/* Legal */}
           <div>
-            <h4 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-4">
+            <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">
               Legal
             </h4>
             <ul className="space-y-2.5">
               {legalLinks.map((link) => (
                 <li key={link.label}>
-                  <a
-                    href={link.href}
-                    className="text-sm text-white/40 hover:text-white/70 transition-colors"
-                  >
+                  <a href={link.href} className="text-sm text-slate-600 hover:text-violet-700 transition-colors">
                     {link.label}
                   </a>
                 </li>
@@ -131,19 +118,18 @@ export function SiteFooter() {
           </div>
         </div>
 
-        {/* Bottom bar */}
-        <div className="mt-12 pt-6 border-t border-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="text-xs text-white/20">
+        <div className={`mt-12 pt-6 ${marketingSectionDivider} flex flex-col sm:flex-row items-center justify-between gap-3`}>
+          <div className="text-xs text-slate-400">
             &copy; {new Date().getFullYear()} dreyv. All rights reserved.
           </div>
-          
+
           <div className="flex items-center gap-4">
             <a
               href="https://x.com/dreyvapp"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="dreyv on X"
-              className="text-white/30 hover:text-dreyv-green transition-colors"
+              className="text-slate-400 hover:text-violet-600 transition-colors"
             >
               <FaTwitter size={14} />
             </a>
@@ -152,7 +138,7 @@ export function SiteFooter() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="dreyv on LinkedIn"
-              className="text-white/30 hover:text-dreyv-green transition-colors"
+              className="text-slate-400 hover:text-violet-600 transition-colors"
             >
               <FaLinkedin size={14} />
             </a>
@@ -161,7 +147,7 @@ export function SiteFooter() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="dreyv Discord"
-              className="text-white/30 hover:text-dreyv-green transition-colors"
+              className="text-slate-400 hover:text-violet-600 transition-colors"
             >
               <FaDiscord size={14} />
             </a>
@@ -170,7 +156,7 @@ export function SiteFooter() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="dreyv on GitHub"
-              className="text-white/30 hover:text-dreyv-green transition-colors"
+              className="text-slate-400 hover:text-violet-600 transition-colors"
             >
               <FaGithub size={14} />
             </a>

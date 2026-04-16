@@ -15,7 +15,7 @@ const fragmentedTools = [
 ];
 
 const dreyvModules = [
-  { label: "Command", accent: "#36e27b", sub: "Natural language control" },
+  { label: "Command", accent: "#7c3aed", sub: "Natural language control" },
   { label: "Treasury", accent: "#60a5fa", sub: "Balances & distributions" },
   { label: "Studio", accent: "#a78bfa", sub: "Build & deploy apps" },
   { label: "Foresight", accent: "#fbbf24", sub: "Scenario modeling" },
@@ -26,7 +26,7 @@ const dreyvModules = [
 const statusColors: Record<string, string> = {
   pending: "bg-amber-400",
   loading: "bg-blue-400 animate-pulse",
-  ok: "bg-emerald-400",
+  ok: "bg-violet-500",
   stale: "bg-red-400",
   unread: "bg-red-400",
   waiting: "bg-amber-400 animate-pulse",
@@ -37,7 +37,7 @@ export function ProblemSection() {
   const inView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section className="relative border-t border-white/[0.04] scroll-mt-24" ref={ref}>
+    <section className="relative border-t border-violet-200/35 scroll-mt-24" ref={ref}>
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-24 md:py-32">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
@@ -48,52 +48,52 @@ export function ProblemSection() {
           <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-amber-400/50 mb-5">
             The Problem
           </p>
-          <h2 className="text-3xl md:text-5xl font-bold text-white tracking-[-0.02em]">
+          <h2 className="text-3xl md:text-5xl font-bold text-slate-900 tracking-[-0.02em]">
             Death by Fragmentation
           </h2>
-          <p className="mt-5 text-white/30 text-base md:text-lg leading-relaxed max-w-2xl mx-auto">
+          <p className="mt-5 text-slate-500 text-base md:text-lg leading-relaxed max-w-2xl mx-auto">
             Treasury teams juggle 8+ disconnected tools. Every tab switch is a context-switch risk; every blind sign is
             reputational and financial exposure. Opportunities die in Slack threads while approvers hunt for context.
           </p>
         </motion.div>
 
-        <div className="mt-20 grid md:grid-cols-2 gap-px bg-white/[0.04] rounded-2xl overflow-hidden">
+        <div className="mt-20 grid md:grid-cols-2 gap-px bg-white/80 rounded-2xl overflow-hidden">
           {/* ── BEFORE: Chaotic tool windows ── */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={inView ? { opacity: 1 } : {}}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="bg-dreyv-void p-6 md:p-8"
+            className="bg-white/92 p-6 md:p-8 rounded-2xl border border-violet-200/30 marketing-shadow-float"
           >
             <p className="text-[10px] font-mono uppercase tracking-[0.25em] text-red-400/40 mb-5">
               Before — 8+ tabs open
             </p>
 
             {/* Fake browser tab bar */}
-            <div className="rounded-lg border border-white/[0.04] overflow-hidden mb-4">
-              <div className="flex items-center gap-0 bg-white/[0.02] border-b border-white/[0.04] px-1 py-1">
+            <div className="rounded-lg border border-violet-200/40 overflow-hidden mb-4">
+              <div className="flex items-center gap-0 bg-violet-50/50 border-b border-violet-200/35 px-1 py-1">
                 {fragmentedTools.slice(0, 5).map((t, i) => (
                   <div
                     key={t.name}
                     className={`text-[8px] font-mono px-2 py-1 rounded-t truncate max-w-[70px] ${
-                      i === 0 ? "bg-white/[0.03] text-white/30" : "text-white/10"
+                      i === 0 ? "bg-white/75 text-slate-500" : "text-slate-300"
                     }`}
                   >
                     {t.name}
                   </div>
                 ))}
-                <div className="text-[8px] text-white/10 px-1">+3</div>
+                <div className="text-[8px] text-slate-300 px-1">+3</div>
               </div>
 
               {/* Scattered mini-windows grid */}
-              <div className="grid grid-cols-2 gap-px bg-white/[0.03] p-px">
+              <div className="grid grid-cols-2 gap-px bg-violet-100/40 p-px">
                 {fragmentedTools.map((tool, i) => (
                   <motion.div
                     key={tool.name}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={inView ? { opacity: 1, scale: 1 } : {}}
                     transition={{ delay: 0.3 + i * 0.05 }}
-                    className="bg-dreyv-void p-3 relative"
+                    className="bg-violet-50/70 p-3 relative rounded-lg border border-violet-200/35"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-1.5">
@@ -104,11 +104,11 @@ export function ProblemSection() {
                           className="h-3.5 w-3.5 rounded-sm opacity-50"
                           onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                         />
-                        <span className="text-[10px] font-mono text-white/25">{tool.name}</span>
+                        <span className="text-[10px] font-mono text-slate-400">{tool.name}</span>
                       </div>
                       <div className={`h-1 w-1 rounded-full ${statusColors[tool.status]} opacity-60`} />
                     </div>
-                    <div className="text-[9px] font-mono text-white/10">{tool.detail}</div>
+                    <div className="text-[9px] font-mono text-slate-300">{tool.detail}</div>
                     {tool.status === "waiting" && (
                       <div className="mt-1.5 text-[8px] font-mono text-amber-400/30 bg-amber-400/[0.05] px-1.5 py-0.5 rounded inline-block">
                         Action needed
@@ -119,7 +119,7 @@ export function ProblemSection() {
               </div>
             </div>
 
-            <p className="text-[11px] text-white/10 leading-relaxed">
+            <p className="text-[11px] text-slate-300 leading-relaxed">
               Context switching · Blind signing · Missed opportunities · No audit trail
             </p>
           </motion.div>
@@ -129,28 +129,28 @@ export function ProblemSection() {
             initial={{ opacity: 0 }}
             animate={inView ? { opacity: 1 } : {}}
             transition={{ duration: 0.6, delay: 0.35 }}
-            className="bg-dreyv-void p-6 md:p-8"
+            className="bg-white/92 p-6 md:p-8 rounded-2xl border border-violet-200/30 marketing-shadow-float"
           >
-            <p className="text-[10px] font-mono uppercase tracking-[0.25em] text-dreyv-green/40 mb-5">
+            <p className="text-[10px] font-mono uppercase tracking-[0.25em] text-violet-600 mb-5">
               After — One dreyv
             </p>
 
             {/* Unified dashboard mock */}
-            <div className="rounded-lg border border-dreyv-green/10 overflow-hidden">
+            <div className="rounded-lg border border-violet-200/45 overflow-hidden">
               {/* App chrome */}
               <div className="flex items-center gap-3 px-4 py-2.5 border-b border-white/[0.04] bg-white/[0.01]">
                 <div className="h-1.5 w-1.5 rounded-full bg-dreyv-green/40" />
-                <span className="text-[9px] font-mono text-white/20 tracking-wider">dreyv://treasury</span>
+                <span className="text-[9px] font-mono text-slate-400 tracking-wider">dreyv://treasury</span>
                 <div className="ml-auto flex items-center gap-1.5">
-                  <span className="h-1 w-1 rounded-full bg-emerald-500/50" />
-                  <span className="text-[8px] font-mono text-white/15">Connected</span>
+                  <span className="h-1 w-1 rounded-full bg-violet-500/60" />
+                  <span className="text-[8px] font-mono text-slate-400">Connected</span>
                 </div>
               </div>
 
               {/* Module sidebar + main area */}
               <div className="grid grid-cols-[120px_1fr]">
                 {/* Sidebar */}
-                <div className="border-r border-white/[0.03] p-3 space-y-1">
+                <div className="border-r border-violet-200/30 p-3 space-y-1 bg-violet-50/25">
                   {dreyvModules.map((mod, i) => (
                     <motion.div
                       key={mod.label}
@@ -158,14 +158,14 @@ export function ProblemSection() {
                       animate={inView ? { opacity: 1, x: 0 } : {}}
                       transition={{ delay: 0.5 + i * 0.06 }}
                       className={`flex items-center gap-2 px-2 py-1.5 rounded ${
-                        i === 0 ? "bg-white/[0.03]" : ""
+                        i === 0 ? "bg-white/75" : ""
                       }`}
                     >
                       <div
                         className="h-1 w-1 rounded-full shrink-0"
                         style={{ backgroundColor: mod.accent, opacity: i === 0 ? 0.7 : 0.3 }}
                       />
-                      <span className={`text-[10px] font-medium ${i === 0 ? "text-white/50" : "text-white/15"}`}>
+                      <span className={`text-[10px] font-medium ${i === 0 ? "text-slate-500" : "text-slate-400"}`}>
                         {mod.label}
                       </span>
                     </motion.div>
@@ -175,10 +175,10 @@ export function ProblemSection() {
                 {/* Main content area — mini dashboard */}
                 <div className="p-3 space-y-2">
                   {/* Command bar */}
-                  <div className="flex items-center gap-2 rounded bg-white/[0.02] border border-white/[0.03] px-3 py-2">
-                    <span className="text-dreyv-green/40 text-[10px] font-mono">$</span>
-                    <span className="text-[10px] font-mono text-white/20">Swap 500 SOL → USDC</span>
-                    <span className="ml-auto text-[8px] font-mono text-dreyv-green/30 bg-dreyv-green/[0.06] px-1.5 py-0.5 rounded">
+                  <div className="flex items-center gap-2 rounded bg-white/85 border border-violet-200/35 px-3 py-2">
+                    <span className="text-violet-600 text-[10px] font-mono">$</span>
+                    <span className="text-[10px] font-mono text-slate-400">Swap 500 SOL → USDC</span>
+                    <span className="ml-auto text-[8px] font-mono text-violet-600/85 bg-violet-500/[0.10] px-1.5 py-0.5 rounded">
                       Passed
                     </span>
                   </div>
@@ -190,25 +190,25 @@ export function ProblemSection() {
                       { label: "Runway", value: "14 mo" },
                       { label: "Risk", value: "3.2/10" },
                     ].map((s) => (
-                      <div key={s.label} className="rounded bg-white/[0.015] border border-white/[0.02] px-2 py-1.5 text-center">
-                        <div className="text-[7px] font-mono text-white/10 uppercase">{s.label}</div>
-                        <div className="text-[11px] font-bold text-white/35">{s.value}</div>
+                      <div key={s.label} className="rounded bg-violet-50/50 border border-violet-200/30 px-2 py-1.5 text-center">
+                        <div className="text-[7px] font-mono text-slate-300 uppercase">{s.label}</div>
+                        <div className="text-[11px] font-bold text-slate-600">{s.value}</div>
                       </div>
                     ))}
                   </div>
 
                   {/* Mini chart */}
-                  <div className="rounded bg-white/[0.015] border border-white/[0.02] p-2">
+                  <div className="rounded bg-violet-50/50 border border-violet-200/30 p-2">
                     <svg viewBox="0 0 200 30" className="w-full h-auto">
-                      <path d="M 0 25 L 25 22 L 50 20 L 75 18 L 100 19 L 125 15 L 150 12 L 175 10 L 200 8" fill="none" stroke="#36e27b" strokeWidth="1" opacity="0.3" />
-                      <path d="M 0 25 L 25 22 L 50 20 L 75 18 L 100 19 L 125 15 L 150 12 L 175 10 L 200 8 L 200 30 L 0 30 Z" fill="#36e27b" opacity="0.03" />
+                      <path d="M 0 25 L 25 22 L 50 20 L 75 18 L 100 19 L 125 15 L 150 12 L 175 10 L 200 8" fill="none" stroke="#7c3aed" strokeWidth="1" opacity="0.35" />
+                      <path d="M 0 25 L 25 22 L 50 20 L 75 18 L 100 19 L 125 15 L 150 12 L 175 10 L 200 8 L 200 30 L 0 30 Z" fill="#7c3aed" opacity="0.06" />
                     </svg>
                   </div>
                 </div>
               </div>
             </div>
 
-            <p className="mt-4 text-[11px] text-dreyv-green/25 leading-relaxed">
+            <p className="mt-4 text-[11px] text-violet-600/80 leading-relaxed">
               One screen · One command · Full control
             </p>
           </motion.div>

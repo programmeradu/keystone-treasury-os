@@ -19,8 +19,8 @@ const description =
   "Non-custodial treasury operations for DAOs and protocols: describe intent in plain language, review fork simulation and human-readable impact, then sign with your multisig (e.g. Squads). Solana-native — you keep the keys.";
 
 export const viewport: Viewport = {
-  themeColor: "#050508",
-  colorScheme: "dark",
+  themeColor: "#fdf7ff",
+  colorScheme: "light",
 };
 
 export const metadata: Metadata = {
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "dreyv — treasury command layer for Solana teams (non-custodial)",
+        alt: "dreyv — treasury command layer for Solana teams",
       },
     ],
   },
@@ -85,10 +85,10 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/icon.svg", type: "image/svg+xml", sizes: "512x512" },
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", type: "image/png", sizes: "512x512" },
     ],
-    apple: "/icon.svg",
+    apple: "/apple-touch-icon.png",
   },
   manifest: "/manifest.webmanifest",
   ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION

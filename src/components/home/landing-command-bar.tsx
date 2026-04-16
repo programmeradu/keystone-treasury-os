@@ -131,13 +131,13 @@ export function LandingCommandBar() {
             {/* Inline trigger — same style as in-app CommandBar */}
             <button
                 onClick={() => setOpen(true)}
-                className="mt-6 flex items-center gap-3 pl-4 pr-3 py-3 rounded-full bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] shadow-2xl hover:border-dreyv-green/30 hover:shadow-[0_0_20px_rgba(54,226,123,0.1)] transition-all group"
+                className="mt-6 flex items-center gap-3 pl-4 pr-3 py-3 rounded-full bg-white/75 backdrop-blur-xl border border-violet-200/50 shadow-2xl hover:border-violet-400/45 hover:shadow-[0_0_20px_rgba(54,226,123,0.1)] transition-all group"
             >
-                <Sparkles size={16} className="text-dreyv-green" />
-                <span className="text-sm font-medium text-white/40 group-hover:text-white/70 transition-colors mr-2">
+                <Sparkles size={16} className="text-violet-600" />
+                <span className="text-sm font-medium text-slate-500 group-hover:text-slate-600 transition-colors mr-2">
                     Ask dreyv...
                 </span>
-                <div className="flex items-center gap-1 opacity-50 text-[10px] font-mono text-white/30 border-l border-white/[0.08] pl-3">
+                <div className="flex items-center gap-1 opacity-50 text-[10px] font-mono text-slate-500 border-l border-violet-200/50 pl-3">
                     <span>⌘</span> K
                 </div>
             </button>
@@ -160,18 +160,18 @@ export function LandingCommandBar() {
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.95, opacity: 0, y: 20 }}
                             transition={{ type: "spring", stiffness: 350, damping: 25 }}
-                            className="relative w-full max-w-2xl bg-[#0a0a0c] border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden"
+                            className="relative w-full max-w-2xl bg-[#0a0a0c] border border-violet-200/50 rounded-2xl shadow-2xl overflow-hidden"
                         >
                             {/* Neon Glow Border Effect */}
-                            <div className="absolute inset-0 z-0 pointer-events-none rounded-2xl ring-1 ring-dreyv-green/20" />
-                            <div className="absolute -inset-0.5 bg-gradient-to-r from-dreyv-green to-[#25a85c] rounded-2xl blur opacity-20" />
+                            <div className="absolute inset-0 z-0 pointer-events-none rounded-2xl ring-1 ring-violet-300/50" />
+                            <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-600 to-[#25a85c] rounded-2xl blur opacity-20" />
 
                             <div className="relative z-10 flex flex-col">
                                 {!plan ? (
                                     /* INPUT STATE */
                                     <>
                                         <div className="flex items-center px-6 py-5 border-b border-white/[0.06]">
-                                            <Sparkles size={20} className={`text-dreyv-green mr-4 ${loading ? "animate-spin" : ""}`} />
+                                            <Sparkles size={20} className={`text-violet-600 mr-4 ${loading ? "animate-spin" : ""}`} />
                                             <input
                                                 autoFocus
                                                 value={input}
@@ -179,18 +179,18 @@ export function LandingCommandBar() {
                                                 onKeyDown={(e) => e.key === "Enter" && executeCommand()}
                                                 disabled={loading}
                                                 placeholder="Describe your intent (e.g., 'Swap 50k USDC to SOL')..."
-                                                className="flex-1 bg-transparent text-lg font-medium text-white placeholder:text-white/25 outline-none"
+                                                className="flex-1 bg-transparent text-lg font-medium text-slate-900 placeholder:text-slate-400 outline-none"
                                             />
                                         </div>
 
-                                        <div className="px-6 py-3 bg-white/[0.02] flex items-center justify-between text-[10px] text-white/30">
+                                        <div className="px-6 py-3 bg-white/70 flex items-center justify-between text-[10px] text-slate-500">
                                             <div className="flex items-center gap-2">
                                                 <div className={`w-1.5 h-1.5 rounded-full bg-dreyv-green ${loading ? "animate-ping" : "animate-pulse"}`} />
                                                 <span className="font-mono">{loading ? "THINKING..." : "AI AGENT LISTENING"}</span>
                                             </div>
                                             <div className="flex items-center gap-3">
-                                                <span>Press <strong className="text-white/60">Enter</strong> to execute</span>
-                                                <span><strong className="text-white/60">Esc</strong> to close</span>
+                                                <span>Press <strong className="text-slate-500">Enter</strong> to execute</span>
+                                                <span><strong className="text-slate-500">Esc</strong> to close</span>
                                             </div>
                                         </div>
                                     </>
@@ -199,44 +199,44 @@ export function LandingCommandBar() {
                                     <div className="p-6">
                                         <div className="flex items-center justify-between mb-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="p-2 rounded-lg bg-dreyv-green/10 border border-dreyv-green/20">
-                                                    <Sparkles size={16} className="text-dreyv-green" />
+                                                <div className="p-2 rounded-lg bg-violet-100 border border-violet-300/55">
+                                                    <Sparkles size={16} className="text-violet-600" />
                                                 </div>
                                                 <div>
-                                                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                                                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
                                                         Proposed {plan.actions?.length > 1 ? "Workflow" : "Action"}
                                                     </h3>
-                                                    <p className="text-xs text-white/40">
+                                                    <p className="text-xs text-slate-500">
                                                         {plan.actions?.length || 1} step{plan.actions?.length > 1 ? "s" : ""} prepared
                                                     </p>
                                                 </div>
                                             </div>
-                                            <div className="px-2 py-1 rounded bg-dreyv-green/10 border border-dreyv-green/20 text-dreyv-green text-[10px] font-mono uppercase">
+                                            <div className="px-2 py-1 rounded bg-violet-100 border border-violet-300/55 text-violet-600 text-[10px] font-mono uppercase">
                                                 {plan.operation}
                                             </div>
                                         </div>
 
                                         <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 mb-4">
                                             {plan.actions?.map((action: any, idx: number) => (
-                                                <div key={idx} className="bg-white/[0.03] rounded-xl p-4 border border-white/[0.06]">
+                                                <div key={idx} className="bg-white/75 rounded-xl p-4 border border-violet-200/40">
                                                     <div className="flex items-center justify-between mb-3 border-b border-white/[0.06] pb-2">
-                                                        <span className="text-[10px] font-bold text-dreyv-green uppercase tracking-tighter">Step {idx + 1}</span>
-                                                        <span className="px-1.5 py-0.5 rounded bg-white/[0.04] text-[9px] font-mono text-white/40 uppercase">{action.operation}</span>
+                                                        <span className="text-[10px] font-bold text-violet-600 uppercase tracking-tighter">Step {idx + 1}</span>
+                                                        <span className="px-1.5 py-0.5 rounded bg-white/80 text-[9px] font-mono text-slate-500 uppercase">{action.operation}</span>
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                                                         {Object.entries(action.parameters || {}).map(([key, value]) => (
                                                             <div key={key}>
-                                                                <span className="text-[9px] text-white/30 uppercase block">{key}</span>
-                                                                <span className="text-xs text-white/70 font-mono truncate block">{String(value)}</span>
+                                                                <span className="text-[9px] text-slate-500 uppercase block">{key}</span>
+                                                                <span className="text-xs text-slate-600 font-mono truncate block">{String(value)}</span>
                                                             </div>
                                                         ))}
                                                     </div>
                                                 </div>
                                             ))}
 
-                                            <div className="bg-white/[0.03] rounded-xl p-4 border border-white/[0.06] border-l-2 border-l-dreyv-green">
-                                                <span className="text-[10px] text-dreyv-green uppercase font-bold block mb-1">Agent Strategy</span>
-                                                <p className="text-sm text-white/70 italic leading-relaxed">{plan.estimatedOutcome}</p>
+                                            <div className="bg-white/75 rounded-xl p-4 border border-violet-200/40 border-l-2 border-l-dreyv-green">
+                                                <span className="text-[10px] text-violet-600 uppercase font-bold block mb-1">Agent Strategy</span>
+                                                <p className="text-sm text-slate-600 italic leading-relaxed">{plan.estimatedOutcome}</p>
                                             </div>
                                         </div>
 
@@ -252,14 +252,14 @@ export function LandingCommandBar() {
                                             <button
                                                 onClick={handleConfirm}
                                                 disabled={executing}
-                                                className={`flex-1 py-2.5 bg-dreyv-green text-black font-bold rounded-lg text-sm hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-dreyv-green/20 ${executing ? "opacity-50 cursor-wait" : ""}`}
+                                                className={`flex-1 py-2.5 bg-dreyv-green text-black font-bold rounded-lg text-sm hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-violet-500/15 ${executing ? "opacity-50 cursor-wait" : ""}`}
                                             >
                                                 {executing ? "Proposing..." : "Confirm & Execute"}
                                             </button>
                                             <button
                                                 onClick={() => setPlan(null)}
                                                 disabled={executing}
-                                                className="px-4 py-2.5 bg-white/[0.04] text-white font-medium rounded-lg text-sm hover:bg-white/[0.06] transition-all border border-white/[0.08]"
+                                                className="px-4 py-2.5 bg-white/80 text-slate-900 font-medium rounded-lg text-sm hover:bg-violet-50 transition-all border border-violet-200/50"
                                             >
                                                 Cancel
                                             </button>
