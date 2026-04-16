@@ -525,7 +525,8 @@ function AuthPageContent() {
     }, [searchParams, addLog]);
 
     // Determine where to go after auth (supports ?redirect= param from middleware)
-    const postAuthRedirect = searchParams.get('redirect') || '/app';
+    const rawRedirect = searchParams.get('redirect');
+    const postAuthRedirect = rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/app';
 
     // Handle OAuth completion: exchange Neon Auth session for local JWT
     useEffect(() => {
