@@ -15,7 +15,8 @@ import { eq } from 'drizzle-orm';
 export async function GET(request: NextRequest) {
     const { searchParams, origin } = new URL(request.url);
     const code = searchParams.get('code');
-    const next = searchParams.get('next') ?? '/app';
+    const rawNext = searchParams.get('next') ?? '/app';
+    const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/app';
 
     if (!code) {
         // No code — redirect to auth page with error
