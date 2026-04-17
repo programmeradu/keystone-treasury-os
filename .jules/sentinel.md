@@ -1,0 +1,4 @@
+## 2024-05-24 - Sanitize redirect URL
+**Vulnerability:** The application was directly using the `redirect` URL parameter in `window.location.href = redirectUrl` across `src/app/auth/page.tsx` and the `next` URL parameter in `src/app/api/auth/callback/route.ts` as the target for `NextResponse.redirect()`. This opens up an Open Redirect vulnerability where attackers can construct a link with a malicious `redirect` parameter, and if the user authenticates, they are sent to the attacker's server.
+**Learning:** External URL parameters acting as targets for redirects (`NextResponse.redirect()`) or DOM sink assignments (`window.location.href`) should always be validated.
+**Prevention:** Always validate and sanitize user-provided redirect URLs to restrict them strictly to relative paths (`startsWith('/') && !startsWith('//')`). A helper like `sanitizeRedirect` can be used to ensure redirects stay within the application domain.
