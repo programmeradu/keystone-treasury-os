@@ -6,7 +6,7 @@ import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useKeystoneAuth } from "@/hooks/useKeystoneAuth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/auth/client";
-import { sanitizeRedirect } from "@/lib/auth-utils";
+import { sanitizeRedirect } from "@/lib/utils";
 import {
     Shield,
     Wallet,
