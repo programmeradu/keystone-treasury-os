@@ -1,0 +1,6 @@
+## 2024-05-18 - Prevent Path Traversal in File Writing Endpoints
+**Vulnerability:** The `/api/studio/compile-contract` endpoint wrote user-provided files (via `files` dictionary keys mapping to source code) directly to a server directory using `path.join`. Because `filename` could include sequences like `../`, an attacker could traverse directories and overwrite arbitrary files on the system. Furthermore, `programName` was unvalidated and could be manipulated.
+**Learning:** Even internal or sandboxed temporary directory processes (`.keystone/contracts/build_*`) are vulnerable if they map untrusted dictionary keys directly into file paths. `path.join` does not inherently protect against directory traversal if the resulting path is not constrained.
+**Prevention:**
+1. Validate inputs (like `programName`) using strict regex boundaries (`/^[a-zA-Z0-9_-]+$/`).
+2. Resolve paths using `path.resolve(baseDir, userInput)` and strictly assert `filePath.startsWith(baseDir + path.sep)` to ensure the finalized file path remains sandboxed within the intended base directory.
