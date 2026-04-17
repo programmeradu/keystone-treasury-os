@@ -7,6 +7,7 @@ import { useNotificationStore } from "@/lib/notifications";
 import { formatDistanceToNow } from "date-fns";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { toast } from "@/lib/toast-notifications";
+import { billingStatusPath } from "@/lib/billing-endpoints";
 
 interface AppStats {
     appsCreated: number;
@@ -51,7 +52,7 @@ export const BillingView = () => {
 
     const fetchStatus = async () => {
         try {
-            const res = await fetch('/api/fastspring/status');
+            const res = await fetch(billingStatusPath());
             const data = await res.json();
             if (data.tier) setTier(data.tier);
             if (data.status) setStatus(data.status);
@@ -65,7 +66,7 @@ export const BillingView = () => {
     const handleVerify = async () => {
         setVerifying(true);
         try {
-            const res = await fetch('/api/fastspring/status');
+            const res = await fetch(billingStatusPath());
             const data = await res.json();
             if (data.reconciled) {
                 toast.success(`Subscription reconciled. Your tier is now: ${data.tier.toUpperCase()}`);

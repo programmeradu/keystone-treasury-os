@@ -14,9 +14,9 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 const siteUrl = getSiteUrl();
 const siteOrigin = siteUrl.origin;
 
-const titleDefault = "dreyv | Treasury command layer for Solana teams";
+const titleDefault = "dreyv | AI treasury command layer for Solana & Web3 teams";
 const description =
-  "Non-custodial treasury operations for DAOs and protocols: describe intent in plain language, review fork simulation and human-readable impact, then sign with your multisig (e.g. Squads). Solana-native — you keep the keys.";
+  "dreyv (dreyv.com) — non-custodial treasury for DAOs and protocols: plain-language intent, simulation before you sign, human-readable impact for approvers, multisig-native (e.g. Squads). Solana-native; you keep the keys. Includes dreyv atlas.";
 
 export const viewport: Viewport = {
   themeColor: "#fdf7ff",
@@ -32,6 +32,11 @@ export const metadata: Metadata = {
   description,
   applicationName: "dreyv",
   keywords: [
+    "dreyv",
+    "dreyv.com",
+    "dreyv atlas",
+    "AI powered treasury",
+    "AI treasury Web3",
     "Web3 treasury",
     "DAO treasury",
     "Solana treasury",
@@ -62,7 +67,7 @@ export const metadata: Metadata = {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "dreyv — treasury command layer for Solana teams",
+        alt: "dreyv — AI treasury command layer for Solana teams",
       },
     ],
   },

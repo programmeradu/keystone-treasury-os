@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/lib/toast-notifications";
+import { billingCheckoutPath, billingStatusPath } from "@/lib/billing-endpoints";
 import { Zap, Shield, Globe, Terminal, User, Cpu, CreditCard, CheckCircle2 } from "lucide-react";
 
 export default function BillingPage() {
@@ -12,7 +13,7 @@ export default function BillingPage() {
 
     // Self-hydrate the user's current tier on mount
     useEffect(() => {
-        fetch('/api/fastspring/status')
+        fetch(billingStatusPath())
             .then(res => res.json())
             .then(data => { if (data.tier) setCurrentTier(data.tier); })
             .catch(() => {});
@@ -22,7 +23,7 @@ export default function BillingPage() {
         setLoading(true);
         try {
             toast.info(`Initializing ${tier.toUpperCase()} uplink sequence...`);
-            const res = await fetch('/api/fastspring/checkout', {
+            const res = await fetch(billingCheckoutPath(), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ tier }),
@@ -43,7 +44,7 @@ export default function BillingPage() {
     const handleVerify = async () => {
         setVerifying(true);
         try {
-            const res = await fetch('/api/fastspring/status');
+            const res = await fetch(billingStatusPath());
             const data = await res.json();
             if (data.reconciled) {
                 toast.success(`Subscription reconciled. Your tier is now: ${data.tier.toUpperCase()}`);

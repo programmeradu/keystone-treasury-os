@@ -118,10 +118,27 @@ export function SiteFooter() {
           </div>
         </div>
 
-        <div className={`mt-12 pt-6 ${marketingSectionDivider} flex flex-col sm:flex-row items-center justify-between gap-3`}>
+        <div className={`mt-12 pt-6 ${marketingSectionDivider} flex flex-col sm:flex-row items-center justify-between gap-4`}>
           <div className="text-xs text-slate-400">
             &copy; {new Date().getFullYear()} dreyv. All rights reserved.
           </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <a
+              href="https://www.producthunt.com/products/dreyv?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-dreyv"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex shrink-0 opacity-90 hover:opacity-100 transition-opacity"
+              aria-label="dreyv on Product Hunt — featured badge"
+            >
+              <img
+                src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1126334&theme=light&t=1776453903138"
+                alt="dreyv - Manage your web3 treasury like you are texting your friend. | Product Hunt"
+                width={250}
+                height={54}
+                className="h-auto w-[250px] max-w-full"
+              />
+            </a>
 
           <div className="flex items-center gap-4">
             <a
@@ -160,6 +177,7 @@ export function SiteFooter() {
             >
               <FaGithub size={14} />
             </a>
+          </div>
           </div>
         </div>
       </div>

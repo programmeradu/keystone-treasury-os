@@ -1,8 +1,8 @@
 /**
  * Canonical site URL for metadata, sitemaps, JSON-LD, and OG tags.
- * Set NEXT_PUBLIC_APP_URL in production (e.g. https://dreyv.stauniverse.tech).
+ * Override with NEXT_PUBLIC_APP_URL (or NEXT_PUBLIC_SITE_URL) in each environment.
  */
-export const DEFAULT_SITE_URL = "https://dreyv.stauniverse.tech";
+export const DEFAULT_SITE_URL = "https://dreyv.com";
 
 export function getSiteUrl(): URL {
   const raw =
@@ -18,4 +18,11 @@ export function getSiteUrl(): URL {
 
 export function getSiteOrigin(): string {
   return getSiteUrl().origin;
+}
+
+/** Extra Organization.sameAs URLs (GitHub, X, LinkedIn, etc.) — comma- or newline-separated. */
+export function getOrgSameAsFromEnv(): string[] {
+  const raw = process.env.NEXT_PUBLIC_ORG_SAME_AS;
+  if (!raw?.trim()) return [];
+  return [...new Set(raw.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean))];
 }

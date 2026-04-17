@@ -17,6 +17,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/", changeFrequency: "weekly", priority: 1 },
     { path: "/pricing", changeFrequency: "monthly", priority: 0.9 },
     { path: "/atlas", changeFrequency: "weekly", priority: 0.85 },
+    { path: "/atlas/methodology", changeFrequency: "monthly", priority: 0.75 },
     {
       path: "/guides/intent-driven-treasury-solana",
       changeFrequency: "monthly",

@@ -1,36 +1,36 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { SolanaProviders } from "@/components/providers/solana-provider";
 import { AtlasClient } from "@/components/atlas/atlas-client";
 
 export const metadata: Metadata = {
-  title: "Solana Atlas",
+  title: "dreyv atlas",
   description:
-    "Public intelligence desktop for Solana — market context, risk signals, and automation-ready workflows. Part of Dreyv.",
+    "dreyv atlas: Solana intelligence cockpit with transparent risk signals, workflow guidance, and execution-ready context.",
   alternates: { canonical: "/atlas" },
 };
 
 export const dynamic = "force-dynamic";
 
-export default async function SolanaAtlasPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
-  const backgrounds: string[] = [
-    "https://slelguoygbfzlpylpxfs.supabase.co/storage/v1/object/public/project-uploads/839a9d0f-c8ea-4ee9-aa5d-ded18c4cf0d9/generated_images/wide-4k-ghibli-inspired-city-scene-at-go-bdf9f492-20250928003342.jpg?",
-    "https://slelguoygbfzlpylpxfs.supabase.co/storage/v1/object/public/project-uploads/839a9d0f-c8ea-4ee9-aa5d-ded18c4cf0d9/generated_images/wide-4k-pixar-inspired-stylized-waterfro-eacfb486-20250928003350.jpg?",
-    "https://slelguoygbfzlpylpxfs.supabase.co/storage/v1/object/public/project-uploads/839a9d0f-c8ea-4ee9-aa5d-ded18c4cf0d9/generated_images/wide-4k-photorealistic-city-street-near--d83ee757-20250928003357.jpg?",
-    "https://v3b.fal.media/files/b/koala/NRfzuV5iDhAsU__VRUrxQ_output.png",
-  ];
-  const bgUrl = backgrounds[Math.floor(Math.random() * backgrounds.length)];
-
+function AtlasLoadingFallback() {
   return (
-    <div
-      className="relative min-h-dvh w-full bg-fixed bg-cover bg-center"
-      style={{
-        backgroundImage: `url(${bgUrl})`,
-      }}
-    >
+    <div className="flex min-h-[50vh] items-center justify-center text-sm text-muted-foreground" role="status">
+      Loading Atlas…
+    </div>
+  );
+}
+
+/** Suspense required: AtlasClient uses useSearchParams() (Next.js will error or500 without a boundary in some modes). */
+export default function SolanaAtlasPage() {
+  return (
+    <div className="relative min-h-dvh w-full overflow-hidden bg-slate-50 dark:bg-slate-950">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120rem_42rem_at_-10%_-10%,rgba(115,54,255,0.12),transparent_50%),radial-gradient(90rem_38rem_at_110%_-10%,rgba(56,189,248,0.08),transparent_50%),linear-gradient(to_bottom,rgba(15,23,42,0.02),transparent_25%)] dark:bg-[radial-gradient(120rem_42rem_at_-10%_-10%,rgba(115,54,255,0.24),transparent_50%),radial-gradient(90rem_38rem_at_110%_-10%,rgba(14,165,233,0.18),transparent_50%),linear-gradient(to_bottom,rgba(15,23,42,0.88),rgba(2,6,23,1)_28%)]" />
       <div className="relative z-10 min-h-dvh p-4 md:p-6">
-        <SolanaProviders>
-          <AtlasClient />
-        </SolanaProviders>
+        <Suspense fallback={<AtlasLoadingFallback />}>
+          <SolanaProviders>
+            <AtlasClient />
+          </SolanaProviders>
+        </Suspense>
       </div>
     </div>
   );

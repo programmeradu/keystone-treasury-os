@@ -63,6 +63,8 @@ const RugPullDetector = dynamic(() => import("@/components/atlas/RugPullDetector
 import { AirdropScoutCard } from "@/components/atlas/AirdropScoutCard";
 import { OpportunitiesCard } from "@/components/atlas/OpportunitiesCard";
 import { MarketPulseCard } from "@/components/atlas/MarketPulseCard";
+import { AtlasStatusStrip } from "@/components/atlas/AtlasStatusStrip";
+import { MissionOverviewCard } from "@/components/atlas/MissionOverviewCard";
 const CreateDCABotModal = dynamic<ComponentType<{ isOpen?: boolean; onClose?: () => void }>>(() => import("@/components/atlas/CreateDCABotModal").then(m => (m as any).default || (m as any).CreateDCABotModal), { ssr: false });
 
 // Wrapper to help TypeScript understand the dynamic component accepts these props
@@ -77,6 +79,20 @@ function SectionHeading({ title }: { title: string }) {
     <div className="flex items-center gap-3 mb-4">
       <h2 className="text-xs font-semibold uppercase tracking-widest opacity-50">{title}</h2>
       <div className="flex-1 h-px bg-border/40" />
+    </div>
+  );
+}
+
+function LaneHeading({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="rounded-xl border border-border/40 bg-card/70 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.14em] opacity-50">Workflow lane</p>
+          <h3 className="mt-1 text-sm font-semibold leading-none">{title}</h3>
+          <p className="mt-1.5 text-[11px] opacity-65">{subtitle}</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -606,6 +622,10 @@ export function AtlasClient() {
 
   const [cmdText, setCmdText] = useState("");
   const [cmdLoading, setCmdLoading] = useState(false);
+
+  const marketFresh = typeof pricesUpdatedAt === "number" && Date.now() - pricesUpdatedAt < 90_000;
+  const commandReady = !cmdLoading && !nlpLoading;
+  const rpcHealthy = !balanceError && !inflationError;
 
   /**
    * Local regex fallback parser — works when LLM API is down.
@@ -1752,7 +1772,7 @@ export function AtlasClient() {
               </Button>
             </Link>
             <GlyphAtlas className="h-4 w-4 text-white/90 drop-shadow" />
-            <span className="text-sm font-semibold text-white drop-shadow">Solana Atlas</span>
+            <span className="text-sm font-semibold text-white drop-shadow">dreyv atlas</span>
             <Badge variant="secondary" className="ml-2 h-6 px-2 text-[10px] leading-none">Beta</Badge>
           </div>
           <div className="flex items-center gap-2">
@@ -1824,6 +1844,14 @@ export function AtlasClient() {
 
       <main className="pt-0 md:pt-0 pb-6 md:pb-8">
         <div className="mx-auto max-w-6xl px-4">
+          <AtlasStatusStrip
+            rpcHealth={rpcHealthy ? "healthy" : "degraded"}
+            marketDataHealth={marketFresh ? "healthy" : "degraded"}
+            commandHealth={commandReady ? "healthy" : "degraded"}
+            freshnessLabel={marketFresh ? "Data as of < 90s" : "Data source stale > 90s"}
+            quotaLabel={publicKey ? "Atlas tier: connected" : "Atlas tier: free"}
+          />
+
           {/* Decorative background layer */}
           <div className="pointer-events-none relative -z-[1]">
             <div className="absolute inset-0 -top-6 bg-[linear-gradient(to_bottom,transparent,transparent_70%,var(--color-background)),radial-gradient(24rem_24rem_at_20%_-10%,var(--color-accent)/20%,transparent_60%),radial-gradient(32rem_32rem_at_120%_10%,var(--color-accent)/15%,transparent_60%)] opacity-[0.25]" />
@@ -1842,6 +1870,30 @@ export function AtlasClient() {
             {/* Quests View */}
             <TabsContent value="quests" className="mt-8 space-y-8">
 
+              {/* ── Mission Overview ─────────────────────────────── */}
+              <section id="mission-overview-card">
+                <MissionOverviewCard
+                  solBalance={solBalance}
+                  solPrice={prices.SOL ?? 0}
+                  recentOpportunities={specItems.length}
+                  topRisk={holderError || error ? "Data source degradation" : "Execution without simulator review"}
+                  dataFresh={marketFresh}
+                  asOf={pricesUpdatedAt}
+                />
+              </section>
+
+              <section className="-mt-3 flex items-center justify-end">
+                <Link href="/atlas/methodology" className="inline-flex items-center gap-2 rounded-md border border-border/50 bg-background/50 px-2.5 py-1.5 text-[11px] opacity-80 transition-opacity hover:opacity-100">
+                  Trust methodology
+                  <ArrowRight className="h-3 w-3" />
+                </Link>
+              </section>
+
+              <LaneHeading
+                title="Observe"
+                subtitle="Scan context, validate data freshness, and identify opportunities before acting."
+              />
+
               {/* ── Market Overview (hero) ────────────────────────── */}
               <section id="market-pulse-card">
                 <MarketPulseCard
@@ -1859,17 +1911,6 @@ export function AtlasClient() {
                   trendingError={trendingError}
                   trendingSource={trendingSource}
                 />
-              </section>
-
-              {/* ── Trade ─────────────────────────────────────────── */}
-              <section>
-                <SectionHeading title="Trade" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="h-full min-h-[360px]" id="jupiter-integrated-card">
-                    <JupiterSwapCard />
-                  </div>
-                  <DCABotCard />
-                </div>
               </section>
 
               {/* ── Analyze ───────────────────────────────────────── */}
@@ -1909,6 +1950,31 @@ export function AtlasClient() {
                 </div>
               </section>
 
+              {/* ── Research ──────────────────────────────────────── */}
+              <section>
+                <SectionHeading title="Research" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div id="transaction-time-machine-card"><TransactionTimeMachine /></div>
+                  <div id="rug-pull-detector-card"><RugPullDetector /></div>
+                </div>
+              </section>
+
+              <LaneHeading
+                title="Act"
+                subtitle="Execute swaps, automate DCA, and maintain portfolio posture with explicit controls."
+              />
+
+              {/* ── Trade ─────────────────────────────────────────── */}
+              <section>
+                <SectionHeading title="Trade" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="h-full min-h-[360px]" id="jupiter-integrated-card">
+                    <JupiterSwapCard />
+                  </div>
+                  <DCABotCard />
+                </div>
+              </section>
+
               {/* ── Manage ────────────────────────────────────────── */}
               <section>
                 <SectionHeading title="Manage" />
@@ -1916,15 +1982,6 @@ export function AtlasClient() {
                   <div id="portfolio-rebalancer-card"><PortfolioRebalancer /></div>
                   <div id="copy-my-wallet-card"><CopyMyWallet /></div>
                   <div id="fee-saver-card"><FeeSaver /></div>
-                </div>
-              </section>
-
-              {/* ── Research ──────────────────────────────────────── */}
-              <section>
-                <SectionHeading title="Research" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div id="transaction-time-machine-card"><TransactionTimeMachine /></div>
-                  <div id="rug-pull-detector-card"><RugPullDetector /></div>
                 </div>
               </section>
 

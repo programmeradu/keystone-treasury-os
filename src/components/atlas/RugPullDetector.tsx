@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, AlertTriangle, CheckCircle2, XCircle, Rocket } from "lucide-react";
 import { toast } from "@/lib/toast-notifications";
 import { IconTokenAuditor } from "@/components/ui/icons";
+import { TrustBand } from "@/components/atlas/TrustBand";
 
 export function RugPullDetector() {
   const [mintInput, setMintInput] = useState("");
@@ -87,6 +88,14 @@ export function RugPullDetector() {
           </div>
         </CardHeader>
         <CardContent className="atlas-card-content pt-0 space-y-3">
+          <TrustBand
+            methodology="On-chain heuristic risk scoring"
+            source="Helius DAS + holder concentration checks"
+            confidence={result?.riskScore == null ? "low" : result.riskScore >= 70 ? "high" : "medium"}
+            asOf={result?.createdAt ?? Date.now()}
+            disclaimer="Risk scores are heuristic and should be validated against raw token and liquidity data before execution."
+          />
+
           <div className="flex items-center gap-2">
             <Input
               value={mintInput}

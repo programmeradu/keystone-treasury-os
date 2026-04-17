@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, AlertTriangle, TrendingUp } from "lucide-react";
 import { toast } from "@/lib/toast-notifications";
 import { IconMEVDetector } from "@/components/ui/icons";
+import { TrustBand } from "@/components/atlas/TrustBand";
 
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 
@@ -379,6 +380,14 @@ export function MEVScanner() {
         </CardHeader>
 
         <CardContent className="atlas-card-content pt-0 space-y-3">
+          <TrustBand
+            methodology="Cross-DEX spread detection with pre-execution profitability gate"
+            source="Jupiter quotes + scanner heuristics + Jito execution path"
+            confidence={error ? "low" : loading ? "medium" : opportunities.length > 0 ? "high" : "medium"}
+            asOf={lastScan}
+            disclaimer="Arbitrage opportunities decay quickly; always validate execution risk and slippage before signing."
+          />
+
           {loading && opportunities.length === 0 && (
             <div className="space-y-2"><Skeleton className="h-4 w-40" /><Skeleton className="h-20 w-full" /></div>
           )}

@@ -52,7 +52,7 @@ export default function OpenGraphImage() {
               lineHeight: 1,
             }}
           >
-            Dreyv
+            dreyv
           </span>
         </div>
         <div

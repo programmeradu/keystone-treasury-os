@@ -22,8 +22,6 @@
     "hooks:install": "node -e \"const fs=require('node:fs');fs.mkdirSync('.git/hooks',{recursive:true});fs.writeFileSync('.git/hooks/pre-push','#!/bin/sh\\nnode scripts/pre-push-scan.mjs\\n');fs.chmodSync('.git/hooks/pre-push',0o755);console.log('pre-push hook installed');\""
   },
   "dependencies": {
-    "@vercel/analytics": "^1.5.0",
-    "@vercel/speed-insights": "^1.2.0",
     "@ai-sdk/groq": "^3.0.27",
     "@ai-sdk/openai": "^3.0.37",
     "@ai-sdk/openai-compatible": "^2.0.35",
@@ -89,6 +87,8 @@
     "@turnkey/sdk-browser": "^5.14.0",
     "@turnkey/sdk-server": "^5.0.0",
     "@turnkey/solana": "^1.1.20",
+    "@vercel/analytics": "^1.5.0",
+    "@vercel/speed-insights": "^1.2.0",
     "ai": "^6.0.145",
     "archiver": "^7.0.1",
     "bs58": "^4.0.1",
@@ -124,6 +124,7 @@
     "recharts": "^3.2.1",
     "resend": "^6.1.0",
     "sonner": "^1.5.0",
+    "square": "^44.0.1",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "tweetnacl": "^1.0.3",
