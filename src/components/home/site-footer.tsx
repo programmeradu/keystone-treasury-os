@@ -124,21 +124,25 @@ export function SiteFooter() {
           </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-4">
-            <a
-              href="https://www.producthunt.com/products/dreyv?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-dreyv"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex shrink-0 opacity-90 hover:opacity-100 transition-opacity"
-              aria-label="dreyv on Product Hunt — featured badge"
+            <div
+              className="rounded-xl border border-violet-200/50 bg-gradient-to-b from-white/85 to-violet-50/40 p-2 shadow-[0_2px_14px_-4px_rgba(91,33,182,0.18)] backdrop-blur-sm ring-1 ring-violet-100/40 dark:border-violet-500/20 dark:from-slate-900/80 dark:to-violet-950/30 dark:ring-violet-500/10"
             >
-              <img
-                src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1126334&theme=light&t=1776453903138"
-                alt="dreyv - Manage your web3 treasury like you are texting your friend. | Product Hunt"
-                width={250}
-                height={54}
-                className="h-auto w-[250px] max-w-full"
-              />
-            </a>
+              <a
+                href="https://www.producthunt.com/products/dreyv?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-dreyv"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex shrink-0 rounded-lg transition-[opacity,transform] hover:opacity-95 active:scale-[0.99]"
+                aria-label="dreyv on Product Hunt — featured badge"
+              >
+                <img
+                  src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1126334&theme=dark&t=1776453903138"
+                  alt="dreyv - Manage your web3 treasury like you are texting your friend. | Product Hunt"
+                  width={250}
+                  height={54}
+                  className="h-auto w-[250px] max-w-full rounded-md"
+                />
+              </a>
+            </div>
 
           <div className="flex items-center gap-4">
             <a

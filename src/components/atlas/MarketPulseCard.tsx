@@ -10,7 +10,6 @@ import { toast } from "@/lib/toast-notifications";
 import { pctChange } from "@/lib/atlas-utils";
 import { Sparkline, SparklineArea, SparkBars, SparkHeatmap, SparkCandles } from "./Sparkline";
 import { IconMarketPulse } from "@/components/ui/icons";
-import { TrustBand } from "@/components/atlas/TrustBand";
 
 type CoreToken = { id: string; symbol: string; icon: string };
 type TrendingToken = { mint: string; symbol: string; name?: string; icon?: string };
@@ -81,15 +80,6 @@ export function MarketPulseCard({
           </div>
         </CardHeader>
         <CardContent className="atlas-card-content pt-0">
-          <TrustBand
-            methodology="Cross-source price aggregation"
-            source={trendingSource === "moralis" ? "Jupiter + Moralis" : trendingSource === "bitquery" ? "Jupiter + Bitquery" : "Jupiter"}
-            confidence={trendingError ? "low" : pricesLoading ? "medium" : "high"}
-            asOf={pricesUpdatedAt}
-            disclaimer="Market snapshots are informational and may lag during provider degradation."
-            className="mb-3"
-          />
-
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 text-xs">
             {coreTokens.map((t) => (
               <PriceCell

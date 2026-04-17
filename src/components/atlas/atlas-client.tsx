@@ -63,8 +63,6 @@ const RugPullDetector = dynamic(() => import("@/components/atlas/RugPullDetector
 import { AirdropScoutCard } from "@/components/atlas/AirdropScoutCard";
 import { OpportunitiesCard } from "@/components/atlas/OpportunitiesCard";
 import { MarketPulseCard } from "@/components/atlas/MarketPulseCard";
-import { AtlasStatusStrip } from "@/components/atlas/AtlasStatusStrip";
-import { MissionOverviewCard } from "@/components/atlas/MissionOverviewCard";
 const CreateDCABotModal = dynamic<ComponentType<{ isOpen?: boolean; onClose?: () => void }>>(() => import("@/components/atlas/CreateDCABotModal").then(m => (m as any).default || (m as any).CreateDCABotModal), { ssr: false });
 
 // Wrapper to help TypeScript understand the dynamic component accepts these props
@@ -622,10 +620,6 @@ export function AtlasClient() {
 
   const [cmdText, setCmdText] = useState("");
   const [cmdLoading, setCmdLoading] = useState(false);
-
-  const marketFresh = typeof pricesUpdatedAt === "number" && Date.now() - pricesUpdatedAt < 90_000;
-  const commandReady = !cmdLoading && !nlpLoading;
-  const rpcHealthy = !balanceError && !inflationError;
 
   /**
    * Local regex fallback parser — works when LLM API is down.
@@ -1844,14 +1838,6 @@ export function AtlasClient() {
 
       <main className="pt-0 md:pt-0 pb-6 md:pb-8">
         <div className="mx-auto max-w-6xl px-4">
-          <AtlasStatusStrip
-            rpcHealth={rpcHealthy ? "healthy" : "degraded"}
-            marketDataHealth={marketFresh ? "healthy" : "degraded"}
-            commandHealth={commandReady ? "healthy" : "degraded"}
-            freshnessLabel={marketFresh ? "Data as of < 90s" : "Data source stale > 90s"}
-            quotaLabel={publicKey ? "Atlas tier: connected" : "Atlas tier: free"}
-          />
-
           {/* Decorative background layer */}
           <div className="pointer-events-none relative -z-[1]">
             <div className="absolute inset-0 -top-6 bg-[linear-gradient(to_bottom,transparent,transparent_70%,var(--color-background)),radial-gradient(24rem_24rem_at_20%_-10%,var(--color-accent)/20%,transparent_60%),radial-gradient(32rem_32rem_at_120%_10%,var(--color-accent)/15%,transparent_60%)] opacity-[0.25]" />
@@ -1869,18 +1855,6 @@ export function AtlasClient() {
 
             {/* Quests View */}
             <TabsContent value="quests" className="mt-8 space-y-8">
-
-              {/* ── Mission Overview ─────────────────────────────── */}
-              <section id="mission-overview-card">
-                <MissionOverviewCard
-                  solBalance={solBalance}
-                  solPrice={prices.SOL ?? 0}
-                  recentOpportunities={specItems.length}
-                  topRisk={holderError || error ? "Data source degradation" : "Execution without simulator review"}
-                  dataFresh={marketFresh}
-                  asOf={pricesUpdatedAt}
-                />
-              </section>
 
               <section className="-mt-3 flex items-center justify-end">
                 <Link href="/atlas/methodology" className="inline-flex items-center gap-2 rounded-md border border-border/50 bg-background/50 px-2.5 py-1.5 text-[11px] opacity-80 transition-opacity hover:opacity-100">
