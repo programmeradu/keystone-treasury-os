@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { ExecutionStatus } from "@/lib/agents/types";
 
 interface ActiveExecution {
@@ -99,6 +99,19 @@ export function ExecutionDashboard({
     }
   };
 
+  // Compute summary stats in a single pass to avoid multiple O(n) filter iterations
+  const stats = useMemo(() => {
+    return activeExecutions.reduce(
+      (acc, exec) => {
+        if (exec.status === ExecutionStatus.PLANNING) acc.running++;
+        else if (exec.status === ExecutionStatus.PENDING) acc.pending++;
+        else if (exec.status === ExecutionStatus.APPROVAL_REQUIRED) acc.approval++;
+        return acc;
+      },
+      { running: 0, pending: 0, approval: 0 }
+    );
+  }, [activeExecutions]);
+
   return (
     <div className="space-y-6 p-6 bg-slate-900 rounded-lg border border-slate-700">
       <div className="flex items-center justify-between">
@@ -146,17 +159,17 @@ export function ExecutionDashboard({
             />
             <StatCard
               label="Running"
-              value={activeExecutions.filter(e => e.status === ExecutionStatus.PLANNING).length.toString()}
+              value={stats.running.toString()}
               color="cyan"
             />
             <StatCard
               label="Pending"
-              value={activeExecutions.filter(e => e.status === ExecutionStatus.PENDING).length.toString()}
+              value={stats.pending.toString()}
               color="gray"
             />
             <StatCard
               label="Approval"
-              value={activeExecutions.filter(e => e.status === ExecutionStatus.APPROVAL_REQUIRED).length.toString()}
+              value={stats.approval.toString()}
               color="yellow"
             />
           </div>

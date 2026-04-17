@@ -1,0 +1,3 @@
+## 2024-05-18 - Avoid O(N) filtering in frequently rendered components
+**Learning:** In components with auto-refresh mechanisms (like `ExecutionDashboard` with `autoRefresh`), performing multiple `array.filter()` operations to compute separate counts (e.g., Running, Pending, Approval statuses) causes redundant O(N) array traversals on every render.
+**Action:** Use a single `.reduce()` pass wrapped in a `useMemo` hook to calculate all required statistics simultaneously, turning multiple O(N) operations into a single O(N) operation and avoiding unnecessary recalculations on re-renders when the base data hasn't changed.
