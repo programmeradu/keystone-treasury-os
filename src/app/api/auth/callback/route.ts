@@ -6,7 +6,7 @@
  * We exchange the code for a session and sync the user to Neon.
  */
 
-import { sanitizeRedirect } from '@/lib/auth-utils';
+import { sanitizeRedirect } from '@/lib/utils';
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase';
 import { db } from '@/db';

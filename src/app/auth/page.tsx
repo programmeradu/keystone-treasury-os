@@ -1,5 +1,5 @@
 "use client";
-import { sanitizeRedirect } from '@/lib/auth-utils';
+import { sanitizeRedirect } from '@/lib/utils';
 
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
