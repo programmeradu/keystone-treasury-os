@@ -1562,7 +1562,7 @@ export function AtlasClient() {
   }
 
   // Trending tokens (Jupiter)
-  type TrendingToken = { mint: string; symbol: string; name?: string; icon?: string };
+  type TrendingToken = { mint: string; symbol: string; name?: string; icon?: string; logoURI?: string };
   const [trending, setTrending] = useState<TrendingToken[]>([]);
   const [trendingPrices, setTrendingPrices] = useState<Record<string, number>>({}); // key: mint
   const [trendingHist, setTrendingHist] = useState<Record<string, number[]>>({}); // key: mint -> sparkline
