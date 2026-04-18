@@ -271,6 +271,8 @@ export function AtlasClient() {
   const nlpInputRef = useRef<HTMLInputElement | null>(null);
   const [execLoading, setExecLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("quests");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("overview");
 
   // AbortController refs for cancelling in-flight requests on rapid re-invocation
   const simulateAbortRef = useRef<AbortController | null>(null);
@@ -1755,271 +1757,417 @@ export function AtlasClient() {
     return () => { abort = true; clearInterval(id); };
   }, [trending]);
 
+  const scrollTo = (id: string) => { setActiveSection(id); setSidebarOpen(false); document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }); };
+  const navGroups = [
+    { label: "COMMAND CENTER", items: [
+      { id: "overview", label: "Overview", icon: "dashboard" },
+      { id: "market-pulse-card", label: "Market Pulse", icon: "timeline" },
+      { id: "token-intel-section", label: "Token Intel", icon: "analytics" },
+      { id: "mev-scanner-card", label: "MEV Detector", icon: "radar" },
+    ]},
+    { label: "EXPLORE", items: [
+      { id: "yield-section", label: "Opportunities", icon: "explore" },
+      { id: "time-machine-section", label: "Time Machine", icon: "history_toggle_off" },
+      { id: "strategy-lab", label: "Strategy Lab", icon: "science" },
+    ]},
+  ];
+
   return (
-    <div className="min-h-dvh w-full">
-      <header className="sticky top-3 md:top-4 z-40">
-        <div className="mx-auto max-w-6xl px-4 py-0 flex items-center justify-between pointer-events-none">
-          <div className="flex items-center gap-2">
-            <Link href="/" aria-label="Back to home" className="mr-1">
-              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md pointer-events-auto">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
+    <div className="h-full flex overflow-hidden transition-colors duration-300">
+      {sidebarOpen && <div className="fixed inset-0 bg-black/20 z-30 md:hidden" onClick={() => setSidebarOpen(false)} />}
+
+      {/* ── Sidebar ────────────────────────────────────────── */}
+      <aside className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 fixed md:relative z-40 w-64 flex-shrink-0 border-r border-slate-200 atlas-sidebar flex flex-col justify-between h-full transition-transform duration-200`}>
+        <div>
+          <div className="h-16 flex items-center px-6 border-b border-slate-200">
+            <Link href="/" className="flex items-center gap-3">
+              <GlyphAtlas className="h-7 w-7 text-violet-600" />
+              <span className="font-bold text-xl tracking-tight text-slate-900">dreyv</span>
             </Link>
-            <GlyphAtlas className="h-4 w-4 text-white/90 drop-shadow" />
-            <span className="text-sm font-semibold text-white drop-shadow">dreyv atlas</span>
-            <Badge variant="secondary" className="ml-2 h-6 px-2 text-[10px] leading-none">Beta</Badge>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7 rounded-md pointer-events-auto"
-              onClick={toggleTheme}
-              aria-label="Toggle theme">
-              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-            <div className="text-xs opacity-80 hidden sm:block">
-              {publicKey ? (
-                <div className="hidden sm:flex items-center gap-1.5">
-                  {solBalance != null ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/60 px-2 py-0.5 text-[11px]">
-                      <IconMarketPulse className="h-3 w-3" />
-                      <span>{solBalance.toFixed(3)} SOL</span>
-                    </span>
-                  ) : (
-                    <Skeleton className="h-3 w-20" />
-                  )}
-                </div>
-              ) : null}
-            </div>
-            {/* Wallet actions (refactored to use top-level hooks) */}
-            {publicKey ?
+          <nav className="p-4 space-y-1">
+            {navGroups.map((g) => (
+              <div key={g.label}>
+                <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 mt-4">{g.label}</p>
+                {g.items.map((item) => (
+                  <button key={item.id} onClick={() => scrollTo(item.id)}
+                    className={`w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${activeSection === item.id ? "bg-violet-100 text-violet-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"}`}>
+                    <span className="material-symbols-outlined mr-3 text-[20px]">{item.icon}</span>
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </nav>
+        </div>
+        <div className="p-4 border-t border-slate-200">
+          {publicKey ? (
             <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-6 px-2 text-[11px] rounded-md leading-none font-mono pointer-events-auto">
-
-                    {`${publicKey.toBase58().slice(0, 4)}…${publicKey.toBase58().slice(-4)}`}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40">
-                  <DropdownMenuItem onClick={async () => {await navigator.clipboard.writeText(publicKey!.toBase58());toast.success("Address copied");}}>Copy address</DropdownMenuItem>
-                  <DropdownMenuItem
-                  onClick={() => {
-                    const url = `https://solscan.io/address/${publicKey!.toBase58()}`;
-                    const isInIframe = window.self !== window.top;
-                    if (isInIframe) {
-                      window.parent.postMessage({ type: "OPEN_EXTERNAL_URL", data: { url } }, "*");
-                    } else {
-                      window.open(url, "_blank", "noopener,noreferrer");
-                    }
-                  }}>
-
-                    View on Solscan
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => disconnect?.()}>Disconnect</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu> :
-
-            <Button
-              size="sm"
-              variant="secondary"
-              className="h-6 px-2 text-[11px] rounded-md leading-none pointer-events-auto"
-              onClick={() => setVisible(true)}>
-
-                Select Wallet
-              </Button>
-            }
+              <DropdownMenuTrigger asChild>
+                <button className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg text-slate-600 hover:bg-slate-100 transition-colors">
+                  <div className="flex items-center">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-violet-600 to-purple-400 mr-2 flex items-center justify-center text-[10px] text-white font-bold">DR</div>
+                    <span className="font-mono text-xs">{publicKey.toBase58().slice(0, 4)}…{publicKey.toBase58().slice(-4)}</span>
+                  </div>
+                  <span className="material-symbols-outlined text-[16px]">expand_more</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem onClick={async () => { await navigator.clipboard.writeText(publicKey!.toBase58()); toast.success("Address copied"); }}>Copy address</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => window.open(`https://solscan.io/address/${publicKey!.toBase58()}`, "_blank", "noopener,noreferrer")}>View on Solscan</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => disconnect?.()}>Disconnect</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <button onClick={() => setVisible(true)} className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg text-slate-600 hover:bg-slate-100 transition-colors">
+              <div className="flex items-center">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-violet-600 to-purple-400 mr-2 flex items-center justify-center text-[10px] text-white font-bold">DR</div>
+                <span>Select Wallet</span>
+              </div>
+              <span className="material-symbols-outlined text-[16px]">expand_more</span>
+            </button>
+          )}
+          <div className="mt-2 flex justify-around">
+            <button className="p-2 text-slate-400 hover:text-slate-600 transition-colors rounded-lg hover:bg-slate-100">
+              <span className="material-symbols-outlined text-[20px]">settings</span>
+            </button>
           </div>
         </div>
-      </header>
+      </aside>
 
-      <main className="pt-0 md:pt-0 pb-6 md:pb-8">
-        <div className="mx-auto max-w-6xl px-4">
-          {/* Decorative background layer */}
-          <div className="pointer-events-none relative -z-[1]">
-            <div className="absolute inset-0 -top-6 bg-[linear-gradient(to_bottom,transparent,transparent_70%,var(--color-background)),radial-gradient(24rem_24rem_at_20%_-10%,var(--color-accent)/20%,transparent_60%),radial-gradient(32rem_32rem_at_120%_10%,var(--color-accent)/15%,transparent_60%)] opacity-[0.25]" />
+      {/* ── Main ───────────────────────────────────────────── */}
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
+        <header className="h-16 flex-shrink-0 flex items-center px-4 sm:px-6 lg:px-8 border-b border-slate-200/50 atlas-header z-20">
+          <button className="md:hidden mr-4 text-slate-500 hover:text-slate-700" onClick={() => setSidebarOpen(!sidebarOpen)}>
+            <span className="material-symbols-outlined">menu</span>
+          </button>
+          <div className="flex-1 flex justify-center max-w-3xl mx-auto">
+            <form onSubmit={handleBottomSubmit} className="w-full relative group">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <span className="material-symbols-outlined text-violet-500/70 text-[20px]">auto_awesome</span>
+              </div>
+              <Input value={cmdText} onChange={(e) => setCmdText(e.target.value)}
+                className="block w-full pl-11 pr-20 py-2.5 border border-slate-200 rounded-full leading-5 bg-white/70 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 text-sm transition-all shadow-sm group-hover:shadow backdrop-blur-sm"
+                placeholder="Atlas prompt… e.g., 'Analyze top 5 trending tokens' or 'Swap 10 SOL to USDC'" />
+              <div className="absolute inset-y-0 right-12 pr-2 flex items-center pointer-events-none">
+                <span className="text-xs text-slate-400 border border-slate-200 rounded px-1.5 py-0.5">⌘K</span>
+              </div>
+              <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
+                <Button type="submit" size="icon" variant="ghost" disabled={cmdLoading} className="p-1.5 rounded-full text-slate-400 hover:text-violet-600 hover:bg-violet-100 transition-colors">
+                  {cmdLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+                </Button>
+              </div>
+            </form>
           </div>
+          <div className="ml-4 flex items-center space-x-3">
+            <div className="hidden sm:flex items-center text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
+              Solana: Live
+            </div>
+            {solBalance != null && publicKey && (
+              <span className="hidden sm:inline-flex items-center gap-1 text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
+                {solBalance.toFixed(3)} SOL
+              </span>
+            )}
+          </div>
+        </header>
 
-          <Tabs defaultValue="quests" value={activeTab} onValueChange={handleTabChange}>
-            <TabsList className="relative z-50 mx-auto -mt-5 md:-mt-6 w-max rounded-full bg-muted/60 p-0.5 !h-8 grid grid-cols-2 gap-0.5">
-              <TabsTrigger value="quests" className="h-7 px-3 text-[12px] rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm cursor-pointer w-full justify-center">
-                <span className="flex items-center gap-1.5 whitespace-nowrap"><IconAirDropScout className="h-3.5 w-3.5" /><span>Quests</span></span>
-              </TabsTrigger>
-              <TabsTrigger value="lab" className="h-7 px-3 text-[12px] rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm cursor-pointer w-full justify-center">
-                <span className="flex items-center gap-1.5 whitespace-nowrap"><IconStrategyLab className="h-3.5 w-3.5" /><span>Strategy Lab</span></span>
-              </TabsTrigger>
-            </TabsList>
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8 space-y-6">
 
-            {/* Quests View */}
-            <TabsContent value="quests" className="mt-8 space-y-8">
 
-              <section className="-mt-3 flex items-center justify-end">
-                <Link href="/atlas/methodology" className="inline-flex items-center gap-2 rounded-md border border-border/50 bg-background/50 px-2.5 py-1.5 text-[11px] opacity-80 transition-opacity hover:opacity-100">
-                  Trust methodology
-                  <ArrowRight className="h-3 w-3" />
-                </Link>
-              </section>
-
-              <LaneHeading
-                title="Observe"
-                subtitle="Scan context, validate data freshness, and identify opportunities before acting."
-              />
-
-              {/* ── Market Overview (hero) ────────────────────────── */}
-              <section id="market-pulse-card">
-                <MarketPulseCard
-                  coreTokens={CORE_TOKENS}
-                  prices={prices}
-                  coreHistory={coreHistory}
-                  pricesLoading={pricesLoading}
-                  pricesUpdatedAt={pricesUpdatedAt}
-                  refreshPrices={refreshPrices}
-                  trending={trending}
-                  trendingPrices={trendingPrices}
-                  trendingHist={trendingHist}
-                  trendingUpdatedAt={trendingUpdatedAt}
-                  trendingLoading={trendingLoading}
-                  trendingError={trendingError}
-                  trendingSource={trendingSource}
-                />
-              </section>
-
-              {/* ── Analyze ───────────────────────────────────────── */}
-              <section>
-                <SectionHeading title="Analyze" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <TokenIntelCard
-                    mintInput={mintInput}
-                    setMintInput={setMintInput}
-                    holderLoading={holderLoading}
-                    holderError={holderError}
-                    moralisStats={moralisStats}
-                    dasCount={dasCount}
-                    dasData={dasData}
-                    fetchHolderInsights={fetchHolderInsights}
-                  />
-                  <div id="mev-scanner-card"><MEVScanner /></div>
-                </div>
-              </section>
-
-              {/* ── Discover ──────────────────────────────────────── */}
-              <section>
-                <SectionHeading title="Discover" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <AirdropScoutCard
-                    publicKey={publicKey}
-                    compassLoading={compassLoading}
-                    compassError={compassError}
-                    compassData={compassData}
-                    scanAirdrops={scanAirdrops}
-                    selectedAirdropId={selectedAirdropId}
-                    setSelectedAirdropId={setSelectedAirdropId}
-                    handleSimulateTask={handleSimulateTask}
-                    handleExecuteTask={handleExecuteTask}
-                  />
-                  <OpportunitiesCard specLoading={specLoading} specError={specError} specItems={specItems} />
-                </div>
-              </section>
-
-              {/* ── Research ──────────────────────────────────────── */}
-              <section>
-                <SectionHeading title="Research" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div id="transaction-time-machine-card"><TransactionTimeMachine /></div>
-                  <div id="rug-pull-detector-card"><RugPullDetector /></div>
-                </div>
-              </section>
-
-              <LaneHeading
-                title="Act"
-                subtitle="Execute swaps, automate DCA, and maintain portfolio posture with explicit controls."
-              />
-
-              {/* ── Trade ─────────────────────────────────────────── */}
-              <section>
-                <SectionHeading title="Trade" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="h-full min-h-[360px]" id="jupiter-integrated-card">
-                    <JupiterSwapCard />
+          {/* ── Market Pulse ─────────────────────────────────── */}
+          <section id="market-pulse-card" className="atlas-glass p-5 overflow-hidden">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-violet-600 text-[20px]">timeline</span>
+                <h2 className="text-base font-bold text-slate-900">Market Pulse</h2>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="inline-flex items-center text-xs text-emerald-600"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1" />Jupiter</span>
+                <span className="text-xs text-slate-400">{pricesUpdatedAt ? `Updated ${new Date(pricesUpdatedAt).toLocaleTimeString()}` : ""}</span>
+                <button onClick={refreshPrices} disabled={pricesLoading} className="text-xs text-violet-600 hover:text-violet-800 font-medium disabled:opacity-50">
+                  {pricesLoading ? "Loading…" : "Refresh"}
+                </button>
+              </div>
+            </div>
+            {/* Ticker carousel */}
+            <div className="atlas-ticker-wrap rounded-xl bg-slate-50 py-3 mb-5">
+              <div className="atlas-ticker">
+                {[...CORE_TOKENS, ...CORE_TOKENS].map((t, i) => {
+                  const p = prices[t.id]; const hist = coreHistory[t.id] || []; const d = pctChange(hist); const up = d != null && d >= 0;
+                  const colors: Record<string, string> = { SOL: "from-violet-600 to-indigo-500", JUP: "from-blue-500 to-sky-400", BONK: "from-orange-500 to-amber-400", PYTH: "from-teal-500 to-cyan-400", USDC: "from-green-500 to-emerald-400", mSOL: "from-purple-500 to-fuchsia-400", jitoSOL: "from-emerald-600 to-green-400", bSOL: "from-rose-500 to-pink-400", RAY: "from-indigo-500 to-blue-400", ORCA: "from-cyan-500 to-teal-400" };
+                  return (
+                    <div key={`${t.id}-${i}`} className="inline-flex items-center gap-3 px-5 py-1 border-r border-slate-200 last:border-r-0 shrink-0">
+                      <div className={`w-8 h-8 rounded-full bg-gradient-to-tr ${colors[t.symbol] || "from-slate-400 to-slate-300"} flex items-center justify-center text-white text-xs font-bold shadow-sm`}>
+                        {t.symbol.slice(0, 1)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm text-slate-900">{t.symbol}</span>
+                          <span className="font-mono text-sm text-slate-700">{p != null ? `$${p >= 1 ? p.toFixed(2) : p.toFixed(6)}` : "—"}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {d != null && <span className={`text-xs font-medium ${up ? "text-emerald-600" : "text-red-500"}`}>{up ? "+" : ""}{d.toFixed(1)}%</span>}
+                          <Sparkline data={hist} width={60} height={16} className={up ? "text-emerald-500" : "text-red-400"} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            {/* Trending on DEX */}
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Trending on DEX</span>
+              <span className="text-xs text-slate-400">{trendingSource === "moralis" ? "Moralis" : trendingSource === "bitquery" ? "Bitquery" : "Jupiter"}</span>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {trendingLoading && <div className="flex gap-3">{[...Array(4)].map((_, i) => <div key={i} className="w-40 h-12 rounded-lg bg-slate-100 animate-pulse shrink-0" />)}</div>}
+              {trending.map((t) => {
+                const tp = trendingPrices[t.mint];
+                return (
+                  <div key={t.mint} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white shrink-0 hover:shadow-sm transition-shadow">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-violet-200 to-purple-100 flex items-center justify-center text-violet-700 text-xs font-bold">{t.symbol?.slice(0, 1) || "?"}</div>
+                    <span className="font-medium text-sm text-slate-800">{t.symbol}</span>
+                    <span className="font-mono text-sm text-slate-600">{tp != null ? `$${tp >= 0.01 ? tp.toFixed(4) : tp.toFixed(8)}` : "—"}</span>
                   </div>
-                  <DCABotCard />
+                );
+              })}
+              {!trendingLoading && trending.length === 0 && <span className="text-xs text-slate-400">No trending tokens right now.</span>}
+            </div>
+          </section>
+
+          {/* ── Main 2-col + sidebar grid ──────────────────── */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+
+              {/* ── Token Intel & Security ──────────────────── */}
+              <section id="token-intel-section" className="atlas-glass p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-violet-600 text-[20px]">analytics</span>
+                    <h2 className="text-base font-bold text-slate-900">Token Intel & Security</h2>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">Security</span>
+                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">Analytics</span>
+                  </div>
+                </div>
+                <p className="text-sm text-slate-500 mb-4">Deep scan any token mint for rug risks, contract vulnerabilities, and holder distribution.</p>
+                <div className="flex gap-2 mb-5">
+                  <div className="flex-1 relative">
+                    <span className="absolute inset-y-0 left-3 flex items-center text-slate-400"><span className="material-symbols-outlined text-[18px]">search</span></span>
+                    <input value={mintInput} onChange={(e) => setMintInput(e.target.value)} placeholder="Token mint address (e.g., EPjF…USDC)" className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 outline-none" />
+                  </div>
+                  <button onClick={fetchHolderInsights} disabled={holderLoading} className="px-5 py-2.5 bg-violet-600 text-white rounded-xl text-sm font-semibold hover:bg-violet-700 transition-colors disabled:opacity-50 flex items-center gap-2">
+                    {holderLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Scan"}
+                  </button>
+                </div>
+                {holderError && <div className="mb-4 text-sm text-red-600 bg-red-50 rounded-lg px-4 py-2">{holderError}</div>}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="rounded-xl border border-slate-200 p-4 bg-slate-50/50">
+                    <div className="flex items-center gap-2 mb-3"><span className="material-symbols-outlined text-[16px] text-slate-400">verified_user</span><span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Audit Status</span></div>
+                    {moralisStats ? (
+                      <div className="space-y-2.5">
+                        <div className="flex justify-between items-center"><span className="text-sm text-slate-700">Mint Authority</span><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${moralisStats.mintAuthority === "revoked" || moralisStats.mintAuthorityRevoked ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{moralisStats.mintAuthority === "revoked" || moralisStats.mintAuthorityRevoked ? "✓ Revoked" : "⚠ Active"}</span></div>
+                        <div className="flex justify-between items-center"><span className="text-sm text-slate-700">Freeze Authority</span><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${moralisStats.freezeAuthority === "revoked" || moralisStats.freezeAuthorityRevoked ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{moralisStats.freezeAuthority === "revoked" || moralisStats.freezeAuthorityRevoked ? "✓ Revoked" : "⚠ Active"}</span></div>
+                        {moralisStats.top10HoldersPercent != null && <div className="flex justify-between items-center"><span className="text-sm text-slate-700">Top 10 Holders</span><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${moralisStats.top10HoldersPercent > 50 ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}>⚠ {moralisStats.top10HoldersPercent}% Supply</span></div>}
+                      </div>
+                    ) : <div className="text-xs text-slate-400 text-center py-4">Enter a token mint and scan</div>}
+                  </div>
+                  <div className="rounded-xl border border-slate-200 p-4 bg-slate-50/50">
+                    <div className="flex items-center gap-2 mb-3"><span className="material-symbols-outlined text-[16px] text-slate-400">pie_chart</span><span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Distribution</span></div>
+                    {dasData && Array.isArray(dasData) && dasData.length > 0 ? (
+                      <div className="flex items-end gap-1 h-24">
+                        {dasData.slice(0, 10).map((h: any, i: number) => {
+                          const pct = Math.max(8, Math.min(100, (Number(h?.amount || h?.balance || 1) / Math.max(1, ...dasData.slice(0, 10).map((x: any) => Number(x?.amount || x?.balance || 1)))) * 100));
+                          return <div key={i} className="flex-1 rounded-t" style={{ height: `${pct}%`, background: i < 3 ? "#7C3AED" : i < 6 ? "#A78BFA" : "#DDD6FE" }} />;
+                        })}
+                      </div>
+                    ) : <div className="text-xs text-slate-400 text-center py-4">{dasCount != null ? `${dasCount} holders found` : "Scan a token to see distribution"}</div>}
+                    {dasData && <div className="flex justify-between text-[10px] text-slate-400 mt-2"><span>Top Holders</span><span>Retail</span></div>}
+                  </div>
                 </div>
               </section>
 
-              {/* ── Manage ────────────────────────────────────────── */}
-              <section>
-                <SectionHeading title="Manage" />
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div id="portfolio-rebalancer-card"><PortfolioRebalancer /></div>
-                  <div id="copy-my-wallet-card"><CopyMyWallet /></div>
-                  <div id="fee-saver-card"><FeeSaver /></div>
+              {/* ── Swap ──────────────────────────────────────── */}
+              <section id="swap-section" className="atlas-glass p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-violet-600 text-[20px]">swap_vert</span>
+                    <h2 className="text-base font-bold text-slate-900">Swap</h2>
+                  </div>
+                  <button className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
+                    <span className="material-symbols-outlined text-[18px]">settings</span>
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-slate-200 p-4 bg-slate-50/50">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-slate-500">Selling</span>
+                      <span className="text-xs text-slate-400">{solBalance != null ? `${solBalance.toFixed(3)} SOL` : "— SOL"}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-slate-200">
+                        <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-500 flex items-center justify-center text-white text-[9px] font-bold">S</div>
+                        <span className="text-sm font-medium text-slate-900">SOL</span>
+                      </div>
+                      <input type="number" min={0} step={0.1} value={amountSol} onChange={(e) => setAmountSol(Number(e.target.value))}
+                        className="text-right text-2xl font-semibold text-slate-900 bg-transparent w-32 outline-none" />
+                    </div>
+                    {prices.SOL && <div className="text-right text-xs text-slate-400 mt-1">~${(amountSol * prices.SOL).toFixed(2)}</div>}
+                  </div>
+                  <div className="flex justify-center -my-1">
+                    <button className="p-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 transition-colors">
+                      <span className="material-symbols-outlined text-[18px] text-slate-500">swap_vert</span>
+                    </button>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 p-4 bg-slate-50/50">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-slate-500">Buying</span>
+                      <span className="text-xs text-slate-400">{quote?._parsed?.outAmount ? `${quote._parsed.outAmount.toFixed(2)} USDC` : "0 USDC"}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-slate-200">
+                        <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-green-500 to-emerald-400 flex items-center justify-center text-white text-[9px] font-bold">$</div>
+                        <span className="text-sm font-medium text-slate-900">USDC</span>
+                      </div>
+                      <span className="text-2xl font-semibold text-slate-300">{quote?._parsed?.outAmount ? quote._parsed.outAmount.toFixed(2) : "0.00"}</span>
+                    </div>
+                    {quote?._parsed?.outAmount && <div className="text-right text-xs text-slate-400 mt-1">${quote._parsed.outAmount.toFixed(2)}</div>}
+                  </div>
+                  <button onClick={() => { setKind("swap_jupiter"); publicKey ? simulate() : setVisible(true); }}
+                    disabled={execLoading || loading}
+                    className="w-full py-3 bg-violet-600 text-white rounded-xl text-sm font-semibold hover:bg-violet-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                    {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Quoting…</> : execLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Executing…</> : !publicKey ? "Connect Wallet" : "Swap"}
+                  </button>
+                  {quote && kind === "swap_jupiter" && quote._parsed && (
+                    <div className="grid grid-cols-3 gap-2 text-center text-xs mt-2">
+                      <div className="rounded-lg py-1.5 bg-slate-50 border border-slate-100"><div className="text-slate-400 text-[10px]">Impact</div><div className="font-mono text-slate-700">{((quote._parsed.priceImpact ?? 0) * 100).toFixed(3)}%</div></div>
+                      <div className="rounded-lg py-1.5 bg-slate-50 border border-slate-100"><div className="text-slate-400 text-[10px]">Slippage</div><div className="font-mono text-slate-700">{((quote._parsed.slippageBps ?? 50) / 100).toFixed(1)}%</div></div>
+                      <div className="rounded-lg py-1.5 bg-slate-50 border border-slate-100"><div className="text-slate-400 text-[10px]">Hops</div><div className="font-mono text-slate-700">{quote._parsed.routeCount ?? 1}</div></div>
+                    </div>
+                  )}
+                  {quote && kind === "swap_jupiter" && publicKey && (
+                    <button onClick={executeSwap} disabled={execLoading} className="w-full py-2.5 border border-violet-200 text-violet-700 rounded-xl text-sm font-medium hover:bg-violet-50 transition-colors disabled:opacity-50">
+                      {execLoading ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "Execute Swap →"}
+                    </button>
+                  )}
                 </div>
               </section>
 
-            </TabsContent>
+            </div>{/* end left column */}
 
-            {/* Strategy Lab */}
-            <TabsContent value="lab" className="mt-8" id="strategy-lab">
+            {/* ── Right column ────────────────────────────────── */}
+            <div className="space-y-6">
+
+              {/* ── MEV Detector ────────────────────────────────── */}
+              <section id="mev-scanner-card" className="atlas-glass p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-violet-600 text-[20px]">radar</span>
+                    <h2 className="text-base font-bold text-slate-900">MEV Detector</h2>
+                  </div>
+                  <span className="inline-flex items-center text-xs text-red-500"><span className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1 animate-pulse" />Live</span>
+                </div>
+                <p className="text-sm text-slate-500 mb-4">Monitoring cross-DEX arbitrage and atomic Jito bundles.</p>
+                <MEVScanner />
+              </section>
+
+              {/* ── Yield & Airdrops ────────────────────────────── */}
+              <section id="yield-section" className="atlas-glass p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-violet-600 text-[20px]">explore</span>
+                    <h2 className="text-base font-bold text-slate-900">Yield & Airdrops</h2>
+                  </div>
+                  <span className="text-xs text-slate-400">DYOR</span>
+                </div>
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-slate-200 p-4 bg-white hover:shadow-sm transition-shadow">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-semibold text-sm text-slate-900">Marinade Finance</span>
+                      <span className="text-xs font-medium bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">Liquid Staking</span>
+                    </div>
+                    <p className="text-xs text-slate-500 mb-2">Earn staking yield plus DeFi composability with mSOL. Potential for ecosystem…</p>
+                    <span className="text-sm font-bold text-emerald-600">~{inflationApy ? (inflationApy + 2.8).toFixed(1) : "7.2"}% APY</span>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 p-4 bg-white hover:shadow-sm transition-shadow">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-semibold text-sm text-slate-900">Kamino Finance</span>
+                      <span className="text-xs font-medium bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Yield Vaults</span>
+                    </div>
+                    <p className="text-xs text-slate-500 mb-2">Automated liquidity vaults. Active KMNO points program for early participants.</p>
+                    <span className="text-sm font-bold text-violet-600">✦ Point Program</span>
+                  </div>
+                  {specItems.length > 0 && specItems.slice(0, 2).map((it: any, i: number) => (
+                    <a key={i} href={it.url} target="_blank" rel="noopener noreferrer" className="block rounded-xl border border-slate-200 p-4 bg-white hover:shadow-sm transition-shadow">
+                      <div className="font-semibold text-sm text-slate-900 truncate">{it.title || it.project}</div>
+                      {it.summary && <p className="text-xs text-slate-500 mt-1 truncate">{it.summary}</p>}
+                    </a>
+                  ))}
+                </div>
+              </section>
+
+              {/* ── Time Machine ────────────────────────────────── */}
+              <section id="time-machine-section" className="atlas-glass p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-violet-600 text-[20px]">history_toggle_off</span>
+                    <h2 className="text-base font-bold text-slate-900">Time Machine</h2>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">What-If Analysis</span>
+                </div>
+                <p className="text-sm text-slate-500 mb-4">Backtest strategies: what would you have earned?</p>
+                <TransactionTimeMachine />
+              </section>
+
+            </div>{/* end right column */}
+          </div>{/* end grid */}
+
+          {/* ── Strategy Lab ────────────────────────────────── */}
+          <section id="strategy-lab" className="atlas-glass p-6 mt-6">
               <div className="space-y-4">
 
                 {/* ── Hero: NLP Command ─────────────────────────────── */}
-                <div className="relative rounded-xl border border-border/30 bg-card/60 backdrop-blur-md p-4 overflow-hidden">
-                  <span className="pointer-events-none absolute -top-16 -right-16 h-40 w-40 rounded-full bg-[radial-gradient(closest-side,var(--color-accent)/25%,transparent_70%)]" />
-                  <span className="pointer-events-none absolute -bottom-10 -left-10 h-24 w-24 rounded-full bg-[radial-gradient(closest-side,hsl(var(--chart-2))/20%,transparent_70%)]" />
-
-                  <div className="flex items-center gap-2 mb-3">
-                    <IconStrategyLab className="h-4 w-4 opacity-70" />
-                    <span className="text-xs font-medium opacity-70">Strategy Lab</span>
-                    <LabPulseDot />
-                    <span className="text-[10px] opacity-40 ml-auto">Press / to focus</span>
-                  </div>
-
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="material-symbols-outlined text-violet-600 text-[20px]">science</span>
+                  <h2 className="text-base font-bold text-slate-900">Strategy Lab</h2>
+                  <LabPulseDot />
+                  <span className="text-xs text-slate-400 ml-auto">Press / to focus</span>
+                </div>
+                <div className="rounded-xl border border-slate-200 p-4 bg-slate-50/50 mb-4">
                   <form onSubmit={(e) => { e.preventDefault(); handleParse(); }} className="relative">
-                    <Input
-                      ref={nlpInputRef}
-                      value={nlpText}
-                      onChange={(e) => setNlpText(e.target.value)}
+                    <Input ref={nlpInputRef} value={nlpText} onChange={(e) => setNlpText(e.target.value)}
                       placeholder="stake 5 SOL · swap 10 SOL to USDC · provide liquidity 3 SOL"
-                      className="h-11 pr-24 text-sm bg-background/30 border-border/30 rounded-lg placeholder:opacity-40"
-                    />
-                    <Button
-                      size="sm"
-                      type="submit"
-                      disabled={nlpLoading || !nlpText.trim()}
-                      className="absolute right-1 top-1 h-9 px-4 rounded-md"
-                    >
+                      className="h-11 pr-24 text-sm bg-white border-slate-200 rounded-xl text-slate-900 placeholder-slate-400" />
+                    <button type="submit" disabled={nlpLoading || !nlpText.trim()}
+                      className="absolute right-1 top-1 h-9 px-4 rounded-lg bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition-colors disabled:opacity-50">
                       {nlpLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Run <ArrowRight className="h-3.5 w-3.5 ml-1" /></>}
-                    </Button>
+                    </button>
                   </form>
                 </div>
 
-                {/* ── Strategy Selector + Amount (inline, compact) ──── */}
+                {/* ── Strategy Selector + Amount ──── */}
                 <div className="flex items-center gap-2 flex-wrap">
                   {(["stake_marinade", "swap_jupiter", "lp_sol_usdc"] as StrategyKind[]).map((k) => {
                     const labels: Record<StrategyKind, string> = { stake_marinade: "Stake", swap_jupiter: "Swap", lp_sol_usdc: "LP" };
-                    const icons: Record<StrategyKind, string> = { stake_marinade: "◈", swap_jupiter: "⇄", lp_sol_usdc: "◉" };
                     const active = kind === k;
                     return (
                       <button key={k} onClick={() => { setKind(k); setQuote(null); }}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all cursor-pointer ${active ? "bg-foreground/10 text-foreground shadow-sm ring-1 ring-foreground/10" : "bg-card/40 text-foreground/50 hover:bg-card/60 hover:text-foreground/70"}`}>
-                        <span className="text-xs">{icons[k]}</span>{labels[k]}
+                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${active ? "bg-violet-600 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+                        {labels[k]}
                       </button>
                     );
                   })}
-                  <div className="ml-auto flex items-center gap-1.5">
-                    <Input
-                      type="number" min={0} step={0.1} value={amountSol}
-                      onChange={(e) => setAmountSol(Number(e.target.value))}
-                      className="h-8 w-20 text-xs text-center bg-background/30 border-border/30 rounded-lg"
-                    />
-                    <span className="text-[10px] opacity-40">SOL</span>
-                    <Button size="sm" variant="ghost" onClick={() => simulate()} disabled={loading} className="h-8 px-2 text-[11px]">
+                  <div className="ml-auto flex items-center gap-2">
+                    <input type="number" min={0} step={0.1} value={amountSol} onChange={(e) => setAmountSol(Number(e.target.value))}
+                      className="h-9 w-24 text-sm text-center border border-slate-200 rounded-xl bg-white text-slate-900 outline-none focus:ring-2 focus:ring-violet-500/50" />
+                    <span className="text-xs text-slate-400">SOL</span>
+                    <button onClick={() => simulate()} disabled={loading} className="h-9 px-4 text-sm font-medium bg-violet-600 text-white rounded-xl hover:bg-violet-700 disabled:opacity-50 transition-colors">
                       {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Simulate"}
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={shareLink} className="h-8 px-2 text-[11px] opacity-50 hover:opacity-80">Share</Button>
+                    </button>
+                    <button onClick={shareLink} className="h-9 px-3 text-sm text-slate-400 hover:text-slate-600 transition-colors">Share</button>
                   </div>
                 </div>
 
@@ -2236,29 +2384,12 @@ export function AtlasClient() {
                 })()}
 
               </div>
-            </TabsContent>
-          </Tabs>
-        </div>
+          </section>{/* end Strategy Lab */}
+
+        </div>{/* end scrollable content */}
       </main>
 
-      <form onSubmit={handleBottomSubmit} className="fixed inset-x-0 bottom-4 z-50">
-        <div className="mx-auto max-w-xl px-4">
-          <div className="flex items-center gap-2 rounded-full bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/90 shadow-lg px-2 py-1 border border-border/30">
-            <Input
-              value={cmdText}
-              onChange={(e) => setCmdText(e.target.value)}
-              placeholder="Atlas prompt on Solana… e.g., swap 10 SOL to USDC"
-              className="h-8 flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-              aria-label="Atlas command" />
-
-            <Button type="submit" size="icon" className="h-8 w-8 rounded-full" disabled={cmdLoading}>
-              {cmdLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-            </Button>
-          </div>
-        </div>
-      </form>
-  <CreateDCABotModalWrapper isOpen={isCreateDcaOpen} onClose={() => setCreateDcaOpen(false)} />
-    </div>);
-
+      <CreateDCABotModalWrapper isOpen={isCreateDcaOpen} onClose={() => setCreateDcaOpen(false)} />
+    </div>
+  );
 }
-
