@@ -1,9 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
-import type { ComponentType } from "react";
-import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { useState, useRef, useEffect, useCallback, type ComponentType } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey, LAMPORTS_PER_SOL, VersionedTransaction } from "@solana/web3.js";
+import dynamic from "next/dynamic";
+import { Urbanist } from "next/font/google";
+
+const wordmark = Urbanist({ subsets: ["latin"], weight: "600", display: "swap", adjustFontFallback: true });
+
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,16 +21,13 @@ import { Loader2, ArrowRight, ArrowLeft, Sun, Moon } from "lucide-react";
 import { toast } from "@/lib/toast-notifications";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
-import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem } from
 "@/components/ui/dropdown-menu";
-import { useRouter, useSearchParams } from "next/navigation";
 import { useAtlasCommand } from "@/hooks/use-atlas-command";
-import dynamic from "next/dynamic";
 import {
   IconAirDropScout,
   IconStrategyLab,
@@ -1780,9 +1784,9 @@ export function AtlasClient() {
       <aside className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 fixed md:relative z-40 w-64 flex-shrink-0 border-r border-slate-200 atlas-sidebar flex flex-col justify-between h-full transition-transform duration-200`}>
         <div>
           <div className="h-16 flex items-center px-6 border-b border-slate-200">
-            <Link href="/" className="flex items-center gap-3">
-              <GlyphAtlas className="h-7 w-7 text-violet-600" />
-              <span className="font-bold text-xl tracking-tight text-slate-900">dreyv</span>
+            <Link href="/" className="flex items-center gap-2 group rounded-lg">
+              <span className={`${wordmark.className} text-xl font-semibold tracking-tight text-violet-700 lowercase leading-none group-hover:text-violet-600 transition-colors antialiased`}>dreyv</span>
+              <span className="text-xs text-slate-400 font-medium">atlas</span>
             </Link>
           </div>
           <nav className="p-4 space-y-1">
@@ -1895,12 +1899,9 @@ export function AtlasClient() {
               <div className="atlas-ticker">
                 {[...CORE_TOKENS, ...CORE_TOKENS].map((t, i) => {
                   const p = prices[t.id]; const hist = coreHistory[t.id] || []; const d = pctChange(hist); const up = d != null && d >= 0;
-                  const colors: Record<string, string> = { SOL: "from-violet-600 to-indigo-500", JUP: "from-blue-500 to-sky-400", BONK: "from-orange-500 to-amber-400", PYTH: "from-teal-500 to-cyan-400", USDC: "from-green-500 to-emerald-400", mSOL: "from-purple-500 to-fuchsia-400", jitoSOL: "from-emerald-600 to-green-400", bSOL: "from-rose-500 to-pink-400", RAY: "from-indigo-500 to-blue-400", ORCA: "from-cyan-500 to-teal-400" };
                   return (
-                    <div key={`${t.id}-${i}`} className="inline-flex items-center gap-3 px-5 py-1 border-r border-slate-200 last:border-r-0 shrink-0">
-                      <div className={`w-8 h-8 rounded-full bg-gradient-to-tr ${colors[t.symbol] || "from-slate-400 to-slate-300"} flex items-center justify-center text-white text-xs font-bold shadow-sm`}>
-                        {t.symbol.slice(0, 1)}
-                      </div>
+                    <div key={`${t.id}-${i}`} className="inline-flex items-center gap-3 px-5 py-1.5 border-r border-slate-200/60 last:border-r-0 shrink-0">
+                      <img src={t.icon} alt={t.symbol} className="w-7 h-7 rounded-full object-cover shadow-sm" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-sm text-slate-900">{t.symbol}</span>

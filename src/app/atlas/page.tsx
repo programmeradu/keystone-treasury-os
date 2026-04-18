@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 
 function AtlasLoadingFallback() {
   return (
-    <div className="flex min-h-dvh items-center justify-center text-sm text-slate-500 font-[Manrope,sans-serif]" role="status">
+    <div className="flex min-h-dvh items-center justify-center text-sm text-slate-500 font-manrope" role="status">
       Loading Atlas…
     </div>
   );
@@ -23,7 +23,7 @@ function AtlasLoadingFallback() {
 /** Suspense required: AtlasClient uses useSearchParams() */
 export default function SolanaAtlasPage() {
   return (
-    <div className="atlas-page-bg text-slate-800 dark:text-slate-200 antialiased h-screen overflow-hidden font-[Manrope,sans-serif]">
+    <div className="atlas-page-bg text-slate-800 antialiased h-screen overflow-hidden font-manrope">
       <Suspense fallback={<AtlasLoadingFallback />}>
         <SolanaProviders>
           <AtlasClient />
