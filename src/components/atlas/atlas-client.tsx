@@ -250,7 +250,7 @@ const pctChange = (arr: number[]) => {
 
 export function AtlasClient() {
   const { connection } = useConnection();
-  const { publicKey, sendTransaction, signTransaction, disconnect } = useWallet();
+  const { publicKey, wallet, sendTransaction, signTransaction, disconnect } = useWallet();
   const router = useRouter();
   const searchParams = useSearchParams();
   const isClay = searchParams?.get("style") === "clay";
@@ -1819,7 +1819,11 @@ export function AtlasClient() {
               <DropdownMenuTrigger asChild>
                 <button className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg text-slate-600 hover:bg-slate-100 transition-colors">
                   <div className="flex items-center">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-violet-600 to-purple-400 mr-2 flex items-center justify-center text-[10px] text-white font-bold">DR</div>
+                    {wallet?.adapter?.icon ? (
+                      <img src={wallet.adapter.icon} alt={wallet.adapter.name} className="w-6 h-6 rounded-full mr-2 bg-white object-cover shadow-sm" />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-violet-600 to-purple-400 mr-2 flex items-center justify-center text-[10px] text-white font-bold">DR</div>
+                    )}
                     <span className="font-mono text-xs">{publicKey.toBase58().slice(0, 4)}…{publicKey.toBase58().slice(-4)}</span>
                   </div>
                   <ChevronDown className="h-4 w-4" />
@@ -1937,7 +1941,10 @@ export function AtlasClient() {
                 const tp = trendingPrices[t.mint];
                 return (
                   <div key={t.mint} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white shrink-0 hover:shadow-sm transition-shadow">
-                    <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-violet-200 to-purple-100 flex items-center justify-center text-violet-700 text-xs font-bold">{t.symbol?.slice(0, 1) || "?"}</div>
+                    {t.icon || t.logoURI ? (
+                      <img src={t.icon || t.logoURI} alt={t.symbol} className="w-7 h-7 rounded-full object-cover shadow-sm bg-white" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden'); }} />
+                    ) : null}
+                    <div className={`w-7 h-7 rounded-full bg-gradient-to-tr from-violet-200 to-purple-100 flex items-center justify-center text-violet-700 text-xs font-bold ${(t.icon || t.logoURI) ? 'hidden' : ''}`}>{t.symbol?.slice(0, 1) || "?"}</div>
                     <span className="font-medium text-sm text-slate-800">{t.symbol}</span>
                     <span className="font-mono text-sm text-slate-600">{tp != null ? `$${tp >= 0.01 ? tp.toFixed(4) : tp.toFixed(8)}` : "—"}</span>
                   </div>
@@ -2019,7 +2026,7 @@ export function AtlasClient() {
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-slate-200">
-                        <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-500 flex items-center justify-center text-white text-[9px] font-bold">S</div>
+                        <img src={CORE_TOKENS.find(t => t.id === "SOL")?.icon} alt="SOL" className="w-5 h-5 rounded-full shadow-sm bg-white" />
                         <span className="text-sm font-medium text-slate-900">SOL</span>
                       </div>
                       <input type="number" min={0} step={0.1} value={amountSol} onChange={(e) => setAmountSol(Number(e.target.value))}
@@ -2039,7 +2046,7 @@ export function AtlasClient() {
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-slate-200">
-                        <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-green-500 to-emerald-400 flex items-center justify-center text-white text-[9px] font-bold">$</div>
+                        <img src={CORE_TOKENS.find(t => t.id === "USDC")?.icon} alt="USDC" className="w-5 h-5 rounded-full shadow-sm bg-white" />
                         <span className="text-sm font-medium text-slate-900">USDC</span>
                       </div>
                       <span className="text-2xl font-semibold text-slate-300">{quote?._parsed?.outAmount ? quote._parsed.outAmount.toFixed(2) : "0.00"}</span>
