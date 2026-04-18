@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { ExecutionStatus } from "@/lib/agents/types";
 
 interface ActiveExecution {
@@ -85,6 +85,22 @@ export function ExecutionDashboard({
     }
   }, [autoRefresh, refreshInterval, fetchActiveExecutions]);
 
+
+  // ⚡ Bolt Performance Optimization:
+  // Consolidate multiple O(N) .filter().length traversals into a single O(N) pass,
+  // memoized to prevent redundant calculations on every render of this auto-refreshing dashboard.
+  const summaryCounts = useMemo(() => {
+    return activeExecutions.reduce(
+      (acc, e) => {
+        if (e.status === ExecutionStatus.PLANNING) acc.planning++;
+        if (e.status === ExecutionStatus.PENDING) acc.pending++;
+        if (e.status === ExecutionStatus.APPROVAL_REQUIRED) acc.approval++;
+        return acc;
+      },
+      { planning: 0, pending: 0, approval: 0 }
+    );
+  }, [activeExecutions]);
+
   const handleCancel = async (executionId: string) => {
     try {
       const response = await fetch(`/api/agentic?executionId=${executionId}`, {
@@ -146,17 +162,17 @@ export function ExecutionDashboard({
             />
             <StatCard
               label="Running"
-              value={activeExecutions.filter(e => e.status === ExecutionStatus.PLANNING).length.toString()}
+              value={summaryCounts.planning.toString()}
               color="cyan"
             />
             <StatCard
               label="Pending"
-              value={activeExecutions.filter(e => e.status === ExecutionStatus.PENDING).length.toString()}
+              value={summaryCounts.pending.toString()}
               color="gray"
             />
             <StatCard
               label="Approval"
-              value={activeExecutions.filter(e => e.status === ExecutionStatus.APPROVAL_REQUIRED).length.toString()}
+              value={summaryCounts.approval.toString()}
               color="yellow"
             />
           </div>
