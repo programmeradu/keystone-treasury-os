@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, ArrowRight, ArrowLeft, Sun, Moon } from "lucide-react";
+import { Loader2, ArrowRight, ArrowLeft, Sun, Moon, LayoutDashboard, TrendingUp, Search, Shield, Radar, Compass, History, FlaskConical, Menu, Settings, ChevronDown, Sparkles, ArrowUpDown, PieChart, VerifiedIcon, ExternalLink } from "lucide-react";
 import { toast } from "@/lib/toast-notifications";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
@@ -1762,17 +1762,26 @@ export function AtlasClient() {
   }, [trending]);
 
   const scrollTo = (id: string) => { setActiveSection(id); setSidebarOpen(false); document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }); };
+  const navIcons: Record<string, React.ReactNode> = {
+    overview: <LayoutDashboard className="h-[18px] w-[18px]" />,
+    "market-pulse-card": <TrendingUp className="h-[18px] w-[18px]" />,
+    "token-intel-section": <Shield className="h-[18px] w-[18px]" />,
+    "mev-scanner-card": <Radar className="h-[18px] w-[18px]" />,
+    "yield-section": <Compass className="h-[18px] w-[18px]" />,
+    "time-machine-section": <History className="h-[18px] w-[18px]" />,
+    "strategy-lab": <FlaskConical className="h-[18px] w-[18px]" />,
+  };
   const navGroups = [
     { label: "COMMAND CENTER", items: [
-      { id: "overview", label: "Overview", icon: "dashboard" },
-      { id: "market-pulse-card", label: "Market Pulse", icon: "timeline" },
-      { id: "token-intel-section", label: "Token Intel", icon: "analytics" },
-      { id: "mev-scanner-card", label: "MEV Detector", icon: "radar" },
+      { id: "overview", label: "Overview" },
+      { id: "market-pulse-card", label: "Market Pulse" },
+      { id: "token-intel-section", label: "Token Intel" },
+      { id: "mev-scanner-card", label: "MEV Detector" },
     ]},
     { label: "EXPLORE", items: [
-      { id: "yield-section", label: "Opportunities", icon: "explore" },
-      { id: "time-machine-section", label: "Time Machine", icon: "history_toggle_off" },
-      { id: "strategy-lab", label: "Strategy Lab", icon: "science" },
+      { id: "yield-section", label: "Opportunities" },
+      { id: "time-machine-section", label: "Time Machine" },
+      { id: "strategy-lab", label: "Strategy Lab" },
     ]},
   ];
 
@@ -1796,7 +1805,7 @@ export function AtlasClient() {
                 {g.items.map((item) => (
                   <button key={item.id} onClick={() => scrollTo(item.id)}
                     className={`w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${activeSection === item.id ? "bg-violet-100 text-violet-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"}`}>
-                    <span className="material-symbols-outlined mr-3 text-[20px]">{item.icon}</span>
+                    <span className="mr-3">{navIcons[item.id]}</span>
                     {item.label}
                   </button>
                 ))}
@@ -1813,7 +1822,7 @@ export function AtlasClient() {
                     <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-violet-600 to-purple-400 mr-2 flex items-center justify-center text-[10px] text-white font-bold">DR</div>
                     <span className="font-mono text-xs">{publicKey.toBase58().slice(0, 4)}…{publicKey.toBase58().slice(-4)}</span>
                   </div>
-                  <span className="material-symbols-outlined text-[16px]">expand_more</span>
+                  <ChevronDown className="h-4 w-4" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
@@ -1828,12 +1837,12 @@ export function AtlasClient() {
                 <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-violet-600 to-purple-400 mr-2 flex items-center justify-center text-[10px] text-white font-bold">DR</div>
                 <span>Select Wallet</span>
               </div>
-              <span className="material-symbols-outlined text-[16px]">expand_more</span>
+              <ChevronDown className="h-4 w-4" />
             </button>
           )}
           <div className="mt-2 flex justify-around">
             <button className="p-2 text-slate-400 hover:text-slate-600 transition-colors rounded-lg hover:bg-slate-100">
-              <span className="material-symbols-outlined text-[20px]">settings</span>
+              <Settings className="h-5 w-5" />
             </button>
           </div>
         </div>
@@ -1843,22 +1852,22 @@ export function AtlasClient() {
       <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
         <header className="h-16 flex-shrink-0 flex items-center px-4 sm:px-6 lg:px-8 border-b border-slate-200/50 atlas-header z-20">
           <button className="md:hidden mr-4 text-slate-500 hover:text-slate-700" onClick={() => setSidebarOpen(!sidebarOpen)}>
-            <span className="material-symbols-outlined">menu</span>
+            <Menu className="h-6 w-6" />
           </button>
           <div className="flex-1 flex justify-center max-w-3xl mx-auto">
             <form onSubmit={handleBottomSubmit} className="w-full relative group">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <span className="material-symbols-outlined text-violet-500/70 text-[20px]">auto_awesome</span>
+              <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
+                <Sparkles className="text-violet-500/70 h-4 w-4 sm:h-5 sm:w-5" />
               </div>
               <Input value={cmdText} onChange={(e) => setCmdText(e.target.value)}
-                className="block w-full pl-11 pr-20 py-2.5 border border-slate-200 rounded-full leading-5 bg-white/70 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 text-sm transition-all shadow-sm group-hover:shadow backdrop-blur-sm"
-                placeholder="Atlas prompt… e.g., 'Analyze top 5 trending tokens' or 'Swap 10 SOL to USDC'" />
-              <div className="absolute inset-y-0 right-12 pr-2 flex items-center pointer-events-none">
+                className="block w-full pl-9 sm:pl-11 pr-12 sm:pr-20 py-2 sm:py-2.5 border border-slate-200 rounded-full leading-5 bg-white/70 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 text-xs sm:text-sm transition-all shadow-sm group-hover:shadow backdrop-blur-sm"
+                placeholder="Ask Atlas... (e.g., 'Swap 10 SOL')" />
+              <div className="hidden sm:flex absolute inset-y-0 right-12 pr-2 items-center pointer-events-none">
                 <span className="text-xs text-slate-400 border border-slate-200 rounded px-1.5 py-0.5">⌘K</span>
               </div>
-              <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
-                <Button type="submit" size="icon" variant="ghost" disabled={cmdLoading} className="p-1.5 rounded-full text-slate-400 hover:text-violet-600 hover:bg-violet-100 transition-colors">
-                  {cmdLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+              <div className="absolute inset-y-0 right-0 pr-1 sm:pr-2 flex items-center">
+                <Button type="submit" size="icon" variant="ghost" disabled={cmdLoading} className="h-7 w-7 sm:h-8 sm:w-8 rounded-full text-slate-400 hover:text-violet-600 hover:bg-violet-100 transition-colors">
+                  {cmdLoading ? <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" /> : <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />}
                 </Button>
               </div>
             </form>
@@ -1946,7 +1955,7 @@ export function AtlasClient() {
               <section id="token-intel-section" className="atlas-glass p-5">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-violet-600 text-[20px]">analytics</span>
+                    <Shield className="text-violet-600 h-5 w-5" />
                     <h2 className="text-base font-bold text-slate-900">Token Intel & Security</h2>
                   </div>
                   <div className="flex gap-2">
@@ -1957,7 +1966,7 @@ export function AtlasClient() {
                 <p className="text-sm text-slate-500 mb-4">Deep scan any token mint for rug risks, contract vulnerabilities, and holder distribution.</p>
                 <div className="flex gap-2 mb-5">
                   <div className="flex-1 relative">
-                    <span className="absolute inset-y-0 left-3 flex items-center text-slate-400"><span className="material-symbols-outlined text-[18px]">search</span></span>
+                    <span className="absolute inset-y-0 left-3 flex items-center text-slate-400"><Search className="h-[18px] w-[18px]" /></span>
                     <input value={mintInput} onChange={(e) => setMintInput(e.target.value)} placeholder="Token mint address (e.g., EPjF…USDC)" className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 outline-none" />
                   </div>
                   <button onClick={fetchHolderInsights} disabled={holderLoading} className="px-5 py-2.5 bg-violet-600 text-white rounded-xl text-sm font-semibold hover:bg-violet-700 transition-colors disabled:opacity-50 flex items-center gap-2">
@@ -1967,7 +1976,7 @@ export function AtlasClient() {
                 {holderError && <div className="mb-4 text-sm text-red-600 bg-red-50 rounded-lg px-4 py-2">{holderError}</div>}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="rounded-xl border border-slate-200 p-4 bg-slate-50/50">
-                    <div className="flex items-center gap-2 mb-3"><span className="material-symbols-outlined text-[16px] text-slate-400">verified_user</span><span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Audit Status</span></div>
+                    <div className="flex items-center gap-2 mb-3"><VerifiedIcon className="h-4 w-4 text-slate-400" /><span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Audit Status</span></div>
                     {moralisStats ? (
                       <div className="space-y-2.5">
                         <div className="flex justify-between items-center"><span className="text-sm text-slate-700">Mint Authority</span><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${moralisStats.mintAuthority === "revoked" || moralisStats.mintAuthorityRevoked ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{moralisStats.mintAuthority === "revoked" || moralisStats.mintAuthorityRevoked ? "✓ Revoked" : "⚠ Active"}</span></div>
@@ -1977,7 +1986,7 @@ export function AtlasClient() {
                     ) : <div className="text-xs text-slate-400 text-center py-4">Enter a token mint and scan</div>}
                   </div>
                   <div className="rounded-xl border border-slate-200 p-4 bg-slate-50/50">
-                    <div className="flex items-center gap-2 mb-3"><span className="material-symbols-outlined text-[16px] text-slate-400">pie_chart</span><span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Distribution</span></div>
+                    <div className="flex items-center gap-2 mb-3"><PieChart className="h-4 w-4 text-slate-400" /><span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Distribution</span></div>
                     {dasData && Array.isArray(dasData) && dasData.length > 0 ? (
                       <div className="flex items-end gap-1 h-24">
                         {dasData.slice(0, 10).map((h: any, i: number) => {
@@ -1995,11 +2004,11 @@ export function AtlasClient() {
               <section id="swap-section" className="atlas-glass p-5">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-violet-600 text-[20px]">swap_vert</span>
+                    <ArrowUpDown className="text-violet-600 h-5 w-5" />
                     <h2 className="text-base font-bold text-slate-900">Swap</h2>
                   </div>
                   <button className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
-                    <span className="material-symbols-outlined text-[18px]">settings</span>
+                    <Settings className="h-[18px] w-[18px]" />
                   </button>
                 </div>
                 <div className="space-y-3">
@@ -2020,7 +2029,7 @@ export function AtlasClient() {
                   </div>
                   <div className="flex justify-center -my-1">
                     <button className="p-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 transition-colors">
-                      <span className="material-symbols-outlined text-[18px] text-slate-500">swap_vert</span>
+                      <ArrowUpDown className="h-[18px] w-[18px] text-slate-500" />
                     </button>
                   </div>
                   <div className="rounded-xl border border-slate-200 p-4 bg-slate-50/50">
@@ -2066,7 +2075,7 @@ export function AtlasClient() {
               <section id="mev-scanner-card" className="atlas-glass p-5">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-violet-600 text-[20px]">radar</span>
+                    <Radar className="text-violet-600 h-5 w-5" />
                     <h2 className="text-base font-bold text-slate-900">MEV Detector</h2>
                   </div>
                   <span className="inline-flex items-center text-xs text-red-500"><span className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1 animate-pulse" />Live</span>
@@ -2079,7 +2088,7 @@ export function AtlasClient() {
               <section id="yield-section" className="atlas-glass p-5">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-violet-600 text-[20px]">explore</span>
+                    <Compass className="text-violet-600 h-5 w-5" />
                     <h2 className="text-base font-bold text-slate-900">Yield & Airdrops</h2>
                   </div>
                   <span className="text-xs text-slate-400">DYOR</span>
@@ -2114,7 +2123,7 @@ export function AtlasClient() {
               <section id="time-machine-section" className="atlas-glass p-5">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-violet-600 text-[20px]">history_toggle_off</span>
+                    <History className="text-violet-600 h-5 w-5" />
                     <h2 className="text-base font-bold text-slate-900">Time Machine</h2>
                   </div>
                   <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">What-If Analysis</span>
@@ -2132,7 +2141,7 @@ export function AtlasClient() {
 
                 {/* ── Hero: NLP Command ─────────────────────────────── */}
                 <div className="flex items-center gap-2 mb-4">
-                  <span className="material-symbols-outlined text-violet-600 text-[20px]">science</span>
+                  <FlaskConical className="text-violet-600 h-5 w-5" />
                   <h2 className="text-base font-bold text-slate-900">Strategy Lab</h2>
                   <LabPulseDot />
                   <span className="text-xs text-slate-400 ml-auto">Press / to focus</span>
