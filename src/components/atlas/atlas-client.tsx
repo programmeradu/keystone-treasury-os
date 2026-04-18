@@ -1941,10 +1941,10 @@ export function AtlasClient() {
                 const tp = trendingPrices[t.mint];
                 return (
                   <div key={t.mint} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white shrink-0 hover:shadow-sm transition-shadow">
-                    {t.icon || t.logoURI ? (
-                      <img src={t.icon || t.logoURI} alt={t.symbol} className="w-7 h-7 rounded-full object-cover shadow-sm bg-white" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden'); }} />
+                    {t.icon || t.icon ? (
+                      <img src={t.icon || t.icon} alt={t.symbol} className="w-7 h-7 rounded-full object-cover shadow-sm bg-white" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden'); }} />
                     ) : null}
-                    <div className={`w-7 h-7 rounded-full bg-gradient-to-tr from-violet-200 to-purple-100 flex items-center justify-center text-violet-700 text-xs font-bold ${(t.icon || t.logoURI) ? 'hidden' : ''}`}>{t.symbol?.slice(0, 1) || "?"}</div>
+                    <div className={`w-7 h-7 rounded-full bg-gradient-to-tr from-violet-200 to-purple-100 flex items-center justify-center text-violet-700 text-xs font-bold ${(t.icon || t.icon) ? 'hidden' : ''}`}>{t.symbol?.slice(0, 1) || "?"}</div>
                     <span className="font-medium text-sm text-slate-800">{t.symbol}</span>
                     <span className="font-mono text-sm text-slate-600">{tp != null ? `$${tp >= 0.01 ? tp.toFixed(4) : tp.toFixed(8)}` : "—"}</span>
                   </div>
