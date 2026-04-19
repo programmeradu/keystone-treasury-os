@@ -27,7 +27,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem } from
 "@/components/ui/dropdown-menu";
-import { useAtlasCommand } from "@/hooks/use-atlas-command";
+import { AtlasShell } from "./atlas-shell";
+import { useAtlasData, CORE_TOKENS } from "@/hooks/use-atlas-data";
 import {
   IconAirDropScout,
   IconStrategyLab,
@@ -257,25 +258,26 @@ export function AtlasClient() {
   const { setVisible } = useWalletModal();
   const { dispatch, lastCommand } = useAtlasCommand();
 
-  const [solBalance, setSolBalance] = useState<number | null>(null);
-  const [prices, setPrices] = useState<Record<string, number>>({});
-  const [inflationApy, setInflationApy] = useState<number | null>(null);
+  // Unified data source
+  const { 
+    prices, 
+    solBalance, 
+    inflationApy, 
+    coreHistory, 
+    pricesLoading, 
+    pricesUpdatedAt, 
+    refreshPrices 
+  } = useAtlasData();
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [balanceError, setBalanceError] = useState<string | null>(null);
-  const [inflationError, setInflationError] = useState<string | null>(null);
 
   // Strategy Lab state
   const [kind, setKind] = useState<StrategyKind>("stake_marinade");
   const [amountSol, setAmountSol] = useState<number>(5);
   const [selectedLst, setSelectedLst] = useState<string>("MSOL"); // default to Marinade
   const [quote, setQuote] = useState<any>(null);
-  const [nlpText, setNlpText] = useState("");
-  const [nlpLoading, setNlpLoading] = useState(false);
-  const nlpInputRef = useRef<HTMLInputElement | null>(null);
-  const [execLoading, setExecLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("quests");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("overview");
 
   // AbortController refs for cancelling in-flight requests on rapid re-invocation
@@ -302,11 +304,12 @@ export function AtlasClient() {
     switch (tool_id) {
       // ── Navigation ─────────────────────────────────────────────────
       case "navigate_to_tab":
-        if (parameters.tab_id) {
+        if (parameters.tab_id === 'lab') {
+          router.push('/atlas/strategy-lab');
+        } else if (parameters.tab_id) {
           handleTabChange(parameters.tab_id);
           setTimeout(() => {
-            const elementId = parameters.tab_id === 'lab' ? 'strategy-lab' : 'quests-content';
-            document.getElementById(elementId)?.scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('quests-content')?.scrollIntoView({ behavior: 'smooth' });
             toast.info(`Navigated to the ${parameters.tab_id} tab.`);
           }, 100);
         }
@@ -331,14 +334,16 @@ export function AtlasClient() {
         const resolvedOutput = resolveTokenMint(outputSymbol) || MINTS.USDC;
         const swapAmount = typeof parameters.amount === "number" ? parameters.amount : 0.1;
 
-        // Also route through Strategy Lab if the user typed "swap X SOL to Y"
-        handleTabChange("lab");
+        if (parameters._isStrategizing) {
+          router.push(`/atlas/strategy-lab?kind=swap_jupiter&amountSol=${swapAmount}&inputToken=${inputSymbol}&outputToken=${outputSymbol}`);
+          toast.info("Redirecting to Strategy Lab for swap comparison...");
+          break;
+        }
+
+        // Direct execution via Jupiter widget
         setKind("swap_jupiter");
         setAmountSol(swapAmount);
-        setTimeout(() => {
-          simulate();
-          document.getElementById('strategy-lab')?.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
+        setTimeout(() => simulate(), 100);
 
         // Additionally drive the Jupiter widget on the Quests tab
         setTimeout(() => {
@@ -356,34 +361,38 @@ export function AtlasClient() {
       // ── Strategy Lab: Stake ────────────────────────────────────────
       case "stake_sol": {
         const lstId = resolveStakeProvider(parameters.provider);
-        handleTabChange("lab");
+        const amount = parameters.amount || 5;
+        const lstLabel = LST_OPTIONS.find(l => l.id === lstId)?.name || "Marinade";
+
+        if (parameters._isStrategizing) {
+          router.push(`/atlas/strategy-lab?kind=stake_marinade&amountSol=${amount}&provider=${lstId}`);
+          toast.info("Redirecting to Strategy Lab for staking analysis...");
+          break;
+        }
+
+        // Direct execution
         setKind("stake_marinade");
         setSelectedLst(lstId);
-        if (parameters.amount) {
-          setAmountSol(parameters.amount);
-        }
-        const lstLabel = LST_OPTIONS.find(l => l.id === lstId)?.name || "Marinade";
-        setTimeout(() => {
-          simulate(lstId);
-          document.getElementById('strategy-lab')?.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
-        toast.info(`Staking${parameters.amount ? ` ${parameters.amount} SOL` : ""} via ${lstLabel}`);
+        setAmountSol(amount);
+        toast.info(`Executing stake: ${amount} SOL via ${lstLabel}...`);
+        setTimeout(() => executeStake(), 100);
         break;
       }
 
       // ── Strategy Lab: LP ───────────────────────────────────────────
-      case "provide_liquidity":
-        handleTabChange("lab");
-        setKind("lp_sol_usdc");
-        if (parameters.amount) {
-          setAmountSol(parameters.amount);
+      case "provide_liquidity": {
+        const amount = parameters.amount || 5;
+        if (parameters._isStrategizing) {
+          router.push(`/atlas/strategy-lab?kind=lp_sol_usdc&amountSol=${amount}`);
+          toast.info("Redirecting to Strategy Lab for LP analysis...");
+          break;
         }
-        setTimeout(() => {
-          simulate();
-          document.getElementById('strategy-lab')?.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
-        toast.info(`LP simulation${parameters.amount ? ` for ${parameters.amount} SOL` : ""} started`);
+        setKind("lp_sol_usdc");
+        setAmountSol(amount);
+        toast.info(`Executing LP provision: ${amount} SOL...`);
+        setTimeout(() => executeLp(), 100);
         break;
+      }
 
       // ── Analyze ────────────────────────────────────────────────────
       case "view_holder_insights":
@@ -624,160 +633,8 @@ export function AtlasClient() {
   }, [theme]);
   const toggleTheme = () => setTheme((t) => t === 'dark' ? 'light' : 'dark');
 
-  const [cmdText, setCmdText] = useState("");
-  const [cmdLoading, setCmdLoading] = useState(false);
+  // Command states removed - delegating to AtlasShell
 
-  /**
-   * Local regex fallback parser — works when LLM API is down.
-   * Returns { tool_id, parameters } or null if no match.
-   */
-  function regexFallbackParse(text: string): { tool_id: string; parameters: Record<string, any> } | null {
-    const lower = text.toLowerCase().trim();
-    const amtMatch = lower.match(/([0-9]+(?:\.[0-9]+)?)/);
-    const amt = amtMatch ? Number(amtMatch[1]) : undefined;
-
-    // ── Stake ──
-    if (/\b(stake|staking)\b/.test(lower)) {
-      let provider = "marinade";
-      if (/\bjito\b/.test(lower)) provider = "jito";
-      else if (/\bblaze\b|\bbsol\b/.test(lower)) provider = "blazestake";
-      return { tool_id: "stake_sol", parameters: { amount: amt, provider } };
-    }
-
-    // ── Swap ──
-    if (/\b(swap|buy|sell|convert|trade)\b/.test(lower)) {
-      // Try to extract "X SOL to Y" or "buy Y with X"
-      const swapMatch = lower.match(/(\d+(?:\.\d+)?)\s*(\w+)\s*(?:to|for|into|→)\s*(\w+)/);
-      if (swapMatch) {
-        return { tool_id: "swap_tokens", parameters: { amount: Number(swapMatch[1]), input_token: swapMatch[2], output_token: swapMatch[3] } };
-      }
-      const buyMatch = lower.match(/buy\s+(\d+(?:\.\d+)?)\s*(\w+)\s*(?:with|using)?\s*(\w+)?/);
-      if (buyMatch) {
-        return { tool_id: "swap_tokens", parameters: { amount: Number(buyMatch[1]), input_token: buyMatch[3] || "SOL", output_token: buyMatch[2] } };
-      }
-      return { tool_id: "swap_tokens", parameters: { amount: amt, input_token: "SOL", output_token: "USDC" } };
-    }
-
-    // ── LP / Liquidity ──
-    if (/\b(lp|liquidity|pool)\b/.test(lower)) {
-      return { tool_id: "provide_liquidity", parameters: { amount: amt } };
-    }
-
-    // ── Price check ──
-    if (/\b(price|how much|worth|cost)\b/.test(lower)) {
-      const tokenMatch = lower.match(/(?:price\s+(?:of\s+)?|how much (?:is )?|worth of )(\w+)/);
-      return { tool_id: "price_check", parameters: { token: tokenMatch ? tokenMatch[1].toUpperCase() : "SOL" } };
-    }
-
-    // ── Portfolio / Balance ──
-    if (/\b(balance|portfolio|holdings|what do i have)\b/.test(lower)) {
-      return { tool_id: "show_portfolio", parameters: {} };
-    }
-
-    // ── Market overview ──
-    if (/\b(market|overview|pulse|trend)\b/.test(lower)) {
-      return { tool_id: "market_overview", parameters: {} };
-    }
-
-    // ── Airdrops ──
-    if (/\b(airdrop|quest)\b/.test(lower)) {
-      return { tool_id: "scan_airdrops", parameters: {} };
-    }
-
-    // ── MEV ──
-    if (/\bmev\b/.test(lower)) {
-      return { tool_id: "scan_mev", parameters: {} };
-    }
-
-    // ── DCA ──
-    if (/\bdca\b/.test(lower)) {
-      return { tool_id: "create_dca_bot", parameters: {} };
-    }
-
-    // ── Rug pull / safety ──
-    if (/\b(rug|scam|safe|audit)\b/.test(lower)) {
-      const mintMatch = lower.match(/([1-9A-HJ-NP-Za-km-z]{32,44})/);
-      return { tool_id: "rug_pull_detector", parameters: { mint_address: mintMatch ? mintMatch[1] : undefined } };
-    }
-
-    // ── Rebalance ──
-    if (/\brebalanc/.test(lower)) {
-      return { tool_id: "portfolio_rebalancer", parameters: {} };
-    }
-
-    // ── Fee saver ──
-    if (/\bfee\b/.test(lower)) {
-      return { tool_id: "fee_saver_insights", parameters: {} };
-    }
-
-    // ── Time machine / tx lookup ──
-    if (/\b(time machine|transaction|tx|lookup)\b/.test(lower)) {
-      const sigMatch = lower.match(/([1-9A-HJ-NP-Za-km-z]{64,88})/);
-      return { tool_id: "transaction_time_machine", parameters: { signature: sigMatch ? sigMatch[1] : undefined } };
-    }
-
-    // ── Copy wallet ──
-    if (/\bcopy\b/.test(lower)) {
-      return { tool_id: "copy_trader", parameters: {} };
-    }
-
-    // ── Navigation: lab ──
-    if (/\blab\b|\bstrategy\b/.test(lower)) {
-      return { tool_id: "navigate_to_tab", parameters: { tab_id: "lab" } };
-    }
-
-    // ── Navigation: quests ──
-    if (/\bquest\b|\btool\b/.test(lower)) {
-      return { tool_id: "navigate_to_tab", parameters: { tab_id: "quests" } };
-    }
-
-    return null;
-  }
-
-  const handleBottomSubmit = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    const text = cmdText.trim();
-    if (!text) return;
-
-    setCmdLoading(true);
-    try {
-      let command: { tool_id: string; parameters: Record<string, any> } | null = null;
-
-      // Try LLM-powered parser first
-      try {
-        const response = await fetch("/api/ai/parse-atlas-command", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text }),
-        });
-        if (response.ok) {
-          const parsed = await response.json();
-          // Accept only if the LLM returned a real tool_id (not "unknown" or empty)
-          if (parsed && parsed.tool_id && parsed.tool_id !== "unknown") {
-            command = parsed;
-          }
-        }
-      } catch {
-        // LLM API failed — fall through to regex
-      }
-
-      // Fallback: local regex parser
-      if (!command) {
-        command = regexFallbackParse(text);
-      }
-
-      if (command && command.tool_id) {
-        dispatch(command);
-      } else {
-        toast.error("Sorry, I couldn't understand that command. Try: 'swap 10 SOL to USDC', 'stake 5 SOL with Jito', or 'show SOL price'.");
-      }
-    } catch (error: any) {
-      toast.error("Error processing command", { description: error.message });
-    } finally {
-      setCmdLoading(false);
-      setCmdText("");
-    }
-  };
 
   async function simulate(overrideLst?: string) {
     // Validate input before making any API calls
@@ -917,157 +774,8 @@ export function AtlasClient() {
     }
   }
 
-  // Manual refresh for Market Snapshot
-  async function refreshPrices() {
-    if (refreshAbortRef.current) refreshAbortRef.current.abort();
-    refreshAbortRef.current = new AbortController();
-    try {
-      setPricesLoading(true);
-      const j = await fetchJsonWithRetry(`/api/jupiter/price?ids=${CORE_TOKEN_IDS}`, { cache: "no-store" });
-      if ((j as any)?.data) {
-        const map: Record<string, number> = {};
-        for (const k of Object.keys((j as any).data)) {
-          const p = (j as any).data[k]?.price;
-          if (typeof p === "number") map[k.toUpperCase()] = p;
-        }
-        setPrices(map);
-        setCoreHistory((prev) => {
-          const next = { ...prev };
-          for (const t of CORE_TOKENS) {
-            const p = map[t.id];
-            if (typeof p === "number") next[t.id] = [...(next[t.id] || []).slice(-47), p];
-          }
-          return next;
-        });
-        setPricesUpdatedAt(Date.now());
-      }
-    } catch (e: any) {
-      toast.error("Refresh failed", { description: e?.message || String(e) });
-    } finally {
-      setPricesLoading(false);
-    }
-  }
+  // Redundant fetchers removed - delegating to useAtlasData
 
-  // Lightweight retry/backoff helper
-  async function fetchJsonWithRetry(input: RequestInfo | URL, init?: RequestInit, retries = 3, baseDelayMs = 400) {
-    let lastErr: any = null;
-    for (let i = 0; i <= retries; i++) {
-      try {
-        const res = await fetch(input, init);
-        const isJson = res.headers.get("content-type")?.includes("application/json");
-        const data = isJson ? await res.json() : await res.text();
-        if (!res.ok) {
-          lastErr = new Error((data as any)?.error || res.statusText || "Request failed");
-        } else {
-          return data;
-        }
-      } catch (e) {
-        lastErr = e;
-      }
-      const delay = baseDelayMs * Math.pow(2, i) + Math.floor(Math.random() * 200);
-      await new Promise((r) => setTimeout(r, delay));
-    }
-    throw lastErr;
-  }
-
-  // Fetch wallet SOL balance
-  useEffect(() => {
-    let abort = false;
-    async function run() {
-      if (!publicKey) {setSolBalance(null);return;}
-      try {
-        const bal = await connection.getBalance(publicKey as PublicKey, "processed");
-        if (!abort) setSolBalance(bal / LAMPORTS_PER_SOL);
-        if (!abort) setBalanceError(null);
-      } catch (e1: any) {
-        // Fallback via our RPC proxy to avoid adapter connection issues
-        try {
-          const j = await fetchJsonWithRetry("/api/solana/rpc", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "getBalance", params: [publicKey!.toBase58(), { commitment: "processed" }] })
-          });
-          const val = (j as any)?.result?.value;
-          if (!abort && typeof val === "number") {
-            setSolBalance(val / LAMPORTS_PER_SOL);
-            setBalanceError(null);
-            return;
-          }
-          if (!abort) {
-            setBalanceError(e1?.message || "Failed to fetch balance");
-            setSolBalance(0);
-          }
-        } catch (e2: any) {
-          if (!abort) {
-            setBalanceError(e2?.message || e1?.message || "Failed to fetch balance");
-            setSolBalance(0);
-          }
-        }
-      }
-    }
-    run();
-    const id = setInterval(run, 15_000);
-    return () => {abort = true;clearInterval(id);};
-  }, [connection, publicKey]);
-
-  // Fetch price snapshots for all core tokens via Jupiter Price API proxy
-  useEffect(() => {
-    let abort = false;
-    async function run() {
-      try {
-        const j = await fetchJsonWithRetry(`/api/jupiter/price?ids=${CORE_TOKEN_IDS}`, { cache: "no-store" });
-        if (!abort && (j as any)?.data) {
-          const map: Record<string, number> = {};
-          for (const k of Object.keys((j as any).data)) {
-            const p = (j as any).data[k]?.price;
-            if (typeof p === "number") map[k.toUpperCase()] = p;
-          }
-          setPrices(map);
-          setPricesUpdatedAt(Date.now());
-          setCoreHistory((prev) => {
-            const next = { ...prev };
-            for (const t of CORE_TOKENS) {
-              const p = map[t.id];
-              if (typeof p === "number") next[t.id] = [...(next[t.id] || []).slice(-47), p];
-            }
-            return next;
-          });
-        }
-      } catch (_e) {
-        // Price polling failed — will retry on next interval
-      }
-    }
-    run();
-    const id = setInterval(run, 30_000);
-    return () => {abort = true;clearInterval(id);};
-  }, []);
-
-  // Fetch network inflation rate as staking APY baseline
-  useEffect(() => {
-    let abort = false;
-    async function run() {
-      try {
-        const j = await fetchJsonWithRetry("/api/solana/rpc", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getInflationRate", params: [] })
-        });
-        const rate = (j as any)?.result?.total; // use total inflation rate (fractional, e.g. 0.07)
-        if (!abort && typeof rate === "number") {
-          setInflationApy(Math.max(0, Math.min(20, rate * 100)));
-          setInflationError(null);
-        }
-      } catch (e: any) {
-        if (!abort) {
-          setInflationError(e?.message || "Failed to fetch inflation rate");
-          setInflationApy(0);
-        }
-      }
-    }
-    run();
-    const id = setInterval(run, 60_000);
-    return () => {abort = true;clearInterval(id);};
-  }, []);
 
   // NEW: fetch speculative opportunities on mount
   useEffect(() => {
@@ -1562,7 +1270,7 @@ export function AtlasClient() {
   }
 
   // Trending tokens (Jupiter)
-  type TrendingToken = { mint: string; symbol: string; name?: string; icon?: string };
+  type TrendingToken = { mint: string; symbol: string; name?: string; icon?: string; logoURI?: string };
   const [trending, setTrending] = useState<TrendingToken[]>([]);
   const [trendingPrices, setTrendingPrices] = useState<Record<string, number>>({}); // key: mint
   const [trendingHist, setTrendingHist] = useState<Record<string, number[]>>({}); // key: mint -> sparkline
@@ -1761,7 +1469,20 @@ export function AtlasClient() {
     return () => { abort = true; clearInterval(id); };
   }, [trending]);
 
-  const scrollTo = (id: string) => { setActiveSection(id); setSidebarOpen(false); document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }); };
+  const scrollTo = (id: string) => { 
+    if (id === "strategy-lab") {
+      router.push("/atlas/strategy-lab");
+      return;
+    }
+    setActiveSection(id); 
+    setSidebarOpen(false); 
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" }); 
+    } else if (id === "overview") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
   const navIcons: Record<string, React.ReactNode> = {
     overview: <LayoutDashboard className="h-[18px] w-[18px]" />,
     "market-pulse-card": <TrendingUp className="h-[18px] w-[18px]" />,
@@ -1786,108 +1507,14 @@ export function AtlasClient() {
   ];
 
   return (
-    <div className="h-full flex overflow-hidden transition-colors duration-300">
-      {sidebarOpen && <div className="fixed inset-0 bg-black/20 z-30 md:hidden" onClick={() => setSidebarOpen(false)} />}
+    <AtlasShell activeSection={activeSection}>
+      <div className="flex-1 overflow-y-auto custom-scrollbar scroll-smooth" id="quests-content">
 
       {/* ── Sidebar ────────────────────────────────────────── */}
-      <aside className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 fixed md:relative z-40 w-64 flex-shrink-0 border-r border-slate-200 atlas-sidebar flex flex-col justify-between h-full transition-transform duration-200`}>
-        <div>
-          <div className="h-16 flex items-center px-6 border-b border-slate-200">
-            <Link href="/" className="flex items-center gap-2 group rounded-lg">
-              <span className={`${wordmark.className} text-xl font-semibold tracking-tight text-violet-700 lowercase leading-none group-hover:text-violet-600 transition-colors antialiased`}>dreyv</span>
-              <span className="text-xs text-slate-400 font-medium">atlas</span>
-            </Link>
-          </div>
-          <nav className="p-4 space-y-1">
-            {navGroups.map((g) => (
-              <div key={g.label}>
-                <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 mt-4">{g.label}</p>
-                {g.items.map((item) => (
-                  <button key={item.id} onClick={() => scrollTo(item.id)}
-                    className={`w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${activeSection === item.id ? "bg-violet-100 text-violet-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"}`}>
-                    <span className="mr-3">{navIcons[item.id]}</span>
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            ))}
-          </nav>
-        </div>
-        <div className="p-4 border-t border-slate-200">
-          {publicKey ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg text-slate-600 hover:bg-slate-100 transition-colors">
-                  <div className="flex items-center">
-                    {wallet?.adapter?.icon ? (
-                      <img src={wallet.adapter.icon} alt={wallet.adapter.name} className="w-6 h-6 rounded-full mr-2 bg-white object-cover shadow-sm" />
-                    ) : (
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-violet-600 to-purple-400 mr-2 flex items-center justify-center text-[10px] text-white font-bold">DR</div>
-                    )}
-                    <span className="font-mono text-xs">{publicKey.toBase58().slice(0, 4)}…{publicKey.toBase58().slice(-4)}</span>
-                  </div>
-                  <ChevronDown className="h-4 w-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuItem onClick={async () => { await navigator.clipboard.writeText(publicKey!.toBase58()); toast.success("Address copied"); }}>Copy address</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => window.open(`https://solscan.io/address/${publicKey!.toBase58()}`, "_blank", "noopener,noreferrer")}>View on Solscan</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => disconnect?.()}>Disconnect</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <button onClick={() => setVisible(true)} className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg text-slate-600 hover:bg-slate-100 transition-colors">
-              <div className="flex items-center">
-                <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-violet-600 to-purple-400 mr-2 flex items-center justify-center text-[10px] text-white font-bold">DR</div>
-                <span>Select Wallet</span>
-              </div>
-              <ChevronDown className="h-4 w-4" />
-            </button>
-          )}
-          <div className="mt-2 flex justify-around">
-            <button className="p-2 text-slate-400 hover:text-slate-600 transition-colors rounded-lg hover:bg-slate-100">
-              <Settings className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-      </aside>
+      {/* Sidebar removed */}
 
       {/* ── Main ───────────────────────────────────────────── */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
-        <header className="h-16 flex-shrink-0 flex items-center px-4 sm:px-6 lg:px-8 border-b border-slate-200/50 atlas-header z-20">
-          <button className="md:hidden mr-4 text-slate-500 hover:text-slate-700" onClick={() => setSidebarOpen(!sidebarOpen)}>
-            <Menu className="h-6 w-6" />
-          </button>
-          <div className="flex-1 flex justify-center max-w-3xl mx-auto">
-            <form onSubmit={handleBottomSubmit} className="w-full relative group">
-              <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
-                <Sparkles className="text-violet-500/70 h-4 w-4 sm:h-5 sm:w-5" />
-              </div>
-              <Input value={cmdText} onChange={(e) => setCmdText(e.target.value)}
-                className="block w-full pl-9 sm:pl-11 pr-12 sm:pr-20 py-2 sm:py-2.5 border border-slate-200 rounded-full leading-5 bg-white/70 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 text-xs sm:text-sm transition-all shadow-sm group-hover:shadow backdrop-blur-sm"
-                placeholder="Ask Atlas... (e.g., 'Swap 10 SOL')" />
-              <div className="hidden sm:flex absolute inset-y-0 right-12 pr-2 items-center pointer-events-none">
-                <span className="text-xs text-slate-400 border border-slate-200 rounded px-1.5 py-0.5">⌘K</span>
-              </div>
-              <div className="absolute inset-y-0 right-0 pr-1 sm:pr-2 flex items-center">
-                <Button type="submit" size="icon" variant="ghost" disabled={cmdLoading} className="h-7 w-7 sm:h-8 sm:w-8 rounded-full text-slate-400 hover:text-violet-600 hover:bg-violet-100 transition-colors">
-                  {cmdLoading ? <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" /> : <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />}
-                </Button>
-              </div>
-            </form>
-          </div>
-          <div className="ml-4 flex items-center space-x-3">
-            <div className="hidden sm:flex items-center text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
-              Solana: Live
-            </div>
-            {solBalance != null && publicKey && (
-              <span className="hidden sm:inline-flex items-center gap-1 text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
-                {solBalance.toFixed(3)} SOL
-              </span>
-            )}
-          </div>
-        </header>
+      {/* Header removed */}
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8 space-y-6">
 
@@ -2142,271 +1769,12 @@ export function AtlasClient() {
             </div>{/* end right column */}
           </div>{/* end grid */}
 
-          {/* ── Strategy Lab ────────────────────────────────── */}
-          <section id="strategy-lab" className="atlas-glass p-6 mt-6">
-              <div className="space-y-4">
 
-                {/* ── Hero: NLP Command ─────────────────────────────── */}
-                <div className="flex items-center gap-2 mb-4">
-                  <FlaskConical className="text-violet-600 h-5 w-5" />
-                  <h2 className="text-base font-bold text-slate-900">Strategy Lab</h2>
-                  <LabPulseDot />
-                  <span className="text-xs text-slate-400 ml-auto">Press / to focus</span>
-                </div>
-                <div className="rounded-xl border border-slate-200 p-4 bg-slate-50/50 mb-4">
-                  <form onSubmit={(e) => { e.preventDefault(); handleParse(); }} className="relative">
-                    <Input ref={nlpInputRef} value={nlpText} onChange={(e) => setNlpText(e.target.value)}
-                      placeholder="stake 5 SOL · swap 10 SOL to USDC · provide liquidity 3 SOL"
-                      className="h-11 pr-24 text-sm bg-white border-slate-200 rounded-xl text-slate-900 placeholder-slate-400" />
-                    <button type="submit" disabled={nlpLoading || !nlpText.trim()}
-                      className="absolute right-1 top-1 h-9 px-4 rounded-lg bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition-colors disabled:opacity-50">
-                      {nlpLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Run <ArrowRight className="h-3.5 w-3.5 ml-1" /></>}
-                    </button>
-                  </form>
-                </div>
 
-                {/* ── Strategy Selector + Amount ──── */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  {(["stake_marinade", "swap_jupiter", "lp_sol_usdc"] as StrategyKind[]).map((k) => {
-                    const labels: Record<StrategyKind, string> = { stake_marinade: "Stake", swap_jupiter: "Swap", lp_sol_usdc: "LP" };
-                    const active = kind === k;
-                    return (
-                      <button key={k} onClick={() => { setKind(k); setQuote(null); }}
-                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${active ? "bg-violet-600 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
-                        {labels[k]}
-                      </button>
-                    );
-                  })}
-                  <div className="ml-auto flex items-center gap-2">
-                    <input type="number" min={0} step={0.1} value={amountSol} onChange={(e) => setAmountSol(Number(e.target.value))}
-                      className="h-9 w-24 text-sm text-center border border-slate-200 rounded-xl bg-white text-slate-900 outline-none focus:ring-2 focus:ring-violet-500/50" />
-                    <span className="text-xs text-slate-400">SOL</span>
-                    <button onClick={() => simulate()} disabled={loading} className="h-9 px-4 text-sm font-medium bg-violet-600 text-white rounded-xl hover:bg-violet-700 disabled:opacity-50 transition-colors">
-                      {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Simulate"}
-                    </button>
-                    <button onClick={shareLink} className="h-9 px-3 text-sm text-slate-400 hover:text-slate-600 transition-colors">Share</button>
-                  </div>
-                </div>
-
-                {/* ── Loading State ─────────────────────────────────── */}
-                {loading && (
-                  <div className="rounded-xl border border-border/30 bg-card/60 backdrop-blur-md p-6 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin opacity-50" />
-                      <span className="text-xs opacity-50">Analyzing strategy…</span>
-                    </div>
-                    <Skeleton className="h-16 w-full rounded-lg" />
-                    <div className="grid grid-cols-3 gap-2">
-                      <Skeleton className="h-12 rounded-lg" />
-                      <Skeleton className="h-12 rounded-lg" />
-                      <Skeleton className="h-12 rounded-lg" />
-                    </div>
-                    <Skeleton className="h-24 w-full rounded-lg" />
-                  </div>
-                )}
-
-                {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
-
-                {/* ── Strategy Comparison (shown before simulation) ── */}
-                {!quote && !loading && (
-                  <div className="rounded-xl border border-border/30 bg-card/60 backdrop-blur-md p-4 space-y-3">
-                    <div className="text-[11px] font-medium opacity-60">Compare Strategies</div>
-                    <LabStrategyCompare strategies={[
-                      { name: "Stake", apy: inflationApy ?? 7.0, risk: "Low", active: kind === "stake_marinade" },
-                      { name: "Swap", apy: 0, risk: "None", active: kind === "swap_jupiter" },
-                      { name: "LP", apy: 12.5, risk: "Med", active: kind === "lp_sol_usdc" },
-                    ]} />
-                    <div className="text-[10px] opacity-30 text-center">Select a strategy and hit Simulate, or type a command above</div>
-                  </div>
-                )}
-
-                {/* ── Swap Results ──────────────────────────────────── */}
-                {quote && kind === "swap_jupiter" && (() => {
-                  const p = quote._parsed || {};
-                  const score = p.score ?? 0;
-                  return (
-                  <div className="rounded-xl border border-border/30 bg-card/60 backdrop-blur-md overflow-hidden">
-                    <div className="p-4 space-y-3">
-                      <div className="flex items-start gap-4">
-                        <LabScoreGauge score={score} size={64} label="Strategy" />
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-medium">Swap via Jupiter</span>
-                            <LabPulseDot />
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="rounded-lg p-2.5 bg-background/30">
-                              <div className="text-[10px] opacity-40">You Send</div>
-                              <div className="font-mono text-sm font-semibold">{amountSol} SOL</div>
-                              <div className="text-[10px] opacity-30 font-mono">${p.inputUsd?.toFixed(2) ?? "-"}</div>
-                            </div>
-                            <div className="rounded-lg p-2.5 bg-background/30">
-                              <div className="text-[10px] opacity-40">You Receive</div>
-                              <div className="font-mono text-sm font-semibold text-emerald-500">{p.outAmount?.toFixed(2) ?? "-"} USDC</div>
-                              <div className="text-[10px] opacity-30 font-mono">{p.outAmount && amountSol ? (p.outAmount / amountSol).toFixed(2) : "-"}/SOL</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-2 text-center">
-                        {[
-                          { label: "Price Impact", value: `${((p.priceImpact ?? 0) * 100).toFixed(3)}%`, warn: (p.priceImpact ?? 0) > 0.01 },
-                          { label: "Slippage", value: `${((p.slippageBps ?? 50) / 100).toFixed(1)}%`, warn: false },
-                          { label: "Route Hops", value: String(p.routeCount ?? 1), warn: false },
-                        ].map((m, i) => (
-                          <div key={i} className="rounded-lg py-1.5 bg-background/25">
-                            <div className="text-[9px] opacity-40">{m.label}</div>
-                            <div className={`font-mono text-[11px] font-medium ${m.warn ? "text-red-400" : ""}`}>{m.value}</div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <LabRiskBar level={p.riskLevel || "low"} label={p.riskLabel || "Execution Risk"} />
-                    </div>
-                    <div className="border-t border-border/20 p-3">
-                      <Button size="sm" onClick={executeSwap} disabled={!publicKey || execLoading} className="w-full h-9 rounded-lg">
-                        {execLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : !publicKey ? "Connect Wallet" : "Execute Swap →"}
-                      </Button>
-                    </div>
-                  </div>);
-                })()}
-
-                {/* ── Stake Results ─────────────────────────────────── */}
-                {quote && kind === "stake_marinade" && (() => {
-                  const score = quote.score ?? 0;
-                  const apy = quote.apy ?? 7;
-                  const activeLst = LST_OPTIONS.find(l => l.id === selectedLst) || LST_OPTIONS[0];
-                  return (
-                  <div className="rounded-xl border border-border/30 bg-card/60 backdrop-blur-md overflow-hidden">
-                    <div className="p-4 space-y-3">
-                      {/* LST Protocol Selector — re-simulates on switch */}
-                      <div className="flex items-center gap-1.5 mb-1">
-                        {LST_OPTIONS.map((lst) => (
-                          <button
-                            key={lst.id}
-                            onClick={() => { if (selectedLst !== lst.id) { setSelectedLst(lst.id); simulate(lst.id); } }}
-                            className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium transition-all cursor-pointer ${selectedLst === lst.id ? "bg-foreground/10 text-foreground ring-1 ring-foreground/10" : "bg-card/40 text-foreground/40 hover:text-foreground/60"}`}
-                          >
-                            <img src={lst.icon} alt={lst.symbol} className="h-3.5 w-3.5 rounded-full" />
-                            {lst.symbol}
-                          </button>
-                        ))}
-                      </div>
-
-                      <div className="flex items-start gap-4">
-                        <LabScoreGauge score={score} size={64} label="Strategy" />
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-medium">Stake via {activeLst.name}</span>
-                            <LabPulseDot />
-                          </div>
-                          <div className="grid grid-cols-3 gap-2">
-                            <div className="rounded-lg p-2.5 bg-background/30">
-                              <div className="text-[10px] opacity-40">Deposit</div>
-                              <div className="font-mono text-sm font-semibold">{amountSol} SOL</div>
-                              <div className="text-[10px] opacity-30 font-mono">${quote.inputUsd?.toFixed(2) ?? "-"}</div>
-                            </div>
-                            <div className="rounded-lg p-2.5 bg-background/30">
-                              <div className="text-[10px] opacity-40">APY</div>
-                              <div className="font-mono text-sm font-semibold text-emerald-500">{apy.toFixed(2)}%</div>
-                              <div className="text-[10px] opacity-30">{activeLst.name}</div>
-                            </div>
-                            <div className="rounded-lg p-2.5 bg-background/30">
-                              <div className="text-[10px] opacity-40">12m Yield</div>
-                              <div className="font-mono text-sm font-semibold">{quote.yield12m?.toFixed(3)} SOL</div>
-                              <div className="text-[10px] opacity-30 font-mono">${quote.yieldUsd?.toFixed(2) ?? "-"}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="rounded-lg p-3 bg-background/20">
-                        <div className="text-[10px] opacity-40 mb-1">Projected Growth (12 months)</div>
-                        <LabYieldChart principal={amountSol} apy={apy} />
-                      </div>
-
-                      <LabRiskBar level={(quote as any).riskLevel || "low"} label={(quote as any).riskLabel || "Protocol Risk"} />
-                    </div>
-                    <div className="border-t border-border/20 p-3">
-                      <Button size="sm" onClick={executeStake} disabled={!publicKey || execLoading} className="w-full h-9 rounded-lg">
-                        {execLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : !publicKey ? "Connect Wallet" : `Stake → ${activeLst.symbol}`}
-                      </Button>
-                    </div>
-                  </div>);
-                })()}
-
-                {/* ── LP Results ────────────────────────────────────── */}
-                {quote && kind === "lp_sol_usdc" && (() => {
-                  const score = quote.score ?? 0;
-                  const pools = quote.pools || [];
-                  const lpApy = quote.lpApy ?? 12.5;
-                  return (
-                  <div className="rounded-xl border border-border/30 bg-card/60 backdrop-blur-md overflow-hidden">
-                    <div className="p-4 space-y-3">
-                      <div className="flex items-start gap-4">
-                        <LabScoreGauge score={score} size={64} label="Strategy" />
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-medium">LP SOL/USDC</span>
-                            <LabPulseDot />
-                          </div>
-                          <div className="grid grid-cols-3 gap-2">
-                            <div className="rounded-lg p-2.5 bg-background/30">
-                              <div className="text-[10px] opacity-40">Deposit</div>
-                              <div className="font-mono text-sm font-semibold">{amountSol} SOL</div>
-                              <div className="text-[10px] opacity-30 font-mono">${quote.inputUsd?.toFixed(2) ?? "-"}</div>
-                            </div>
-                            <div className="rounded-lg p-2.5 bg-background/30">
-                              <div className="text-[10px] opacity-40">Best APY</div>
-                              <div className="font-mono text-sm font-semibold text-emerald-500">{lpApy.toFixed(1)}%</div>
-                              <div className="text-[10px] opacity-30">{quote.bestPool?.dex ?? "Orca"}</div>
-                            </div>
-                            <div className="rounded-lg p-2.5 bg-background/30">
-                              <div className="text-[10px] opacity-40">12m Yield</div>
-                              <div className="font-mono text-sm font-semibold">{quote.yield12m?.toFixed(3)} SOL</div>
-                              <div className="text-[10px] opacity-30 font-mono">${quote.yieldUsd?.toFixed(2) ?? "-"}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="rounded-lg p-3 bg-background/20">
-                        <div className="text-[10px] opacity-40 mb-1">Projected Growth (12 months, excl. IL)</div>
-                        <LabYieldChart principal={amountSol} apy={lpApy} color="#6366f1" />
-                      </div>
-
-                      {pools.length > 0 && (
-                        <div className="space-y-1">
-                          <div className="text-[10px] font-medium opacity-50">Pools</div>
-                          {pools.slice(0, 4).map((pool: any, i: number) => (
-                            <div key={i} className="flex items-center justify-between text-[10px] rounded-lg px-2.5 py-1.5 bg-background/20">
-                              <span className="opacity-60">{pool.dex}</span>
-                              <span className="opacity-40">{pool.pair}</span>
-                              <span className="font-mono text-emerald-500">{pool.apy?.toFixed(1)}%</span>
-                              <span className="opacity-30">${(pool.tvl / 1e6).toFixed(1)}M</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <LabRiskBar level={(quote as any).riskLevel || "medium"} label={(quote as any).riskLabel || "IL + Protocol Risk"} />
-                    </div>
-                    <div className="border-t border-border/20 p-3">
-                      <Button size="sm" onClick={executeLp} disabled={!publicKey || execLoading} className="w-full h-9 rounded-lg">
-                        {execLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : !publicKey ? "Connect Wallet" : `Deposit LP → ${quote.bestPool?.dex ?? "Orca"}`}
-                      </Button>
-                    </div>
-                  </div>);
-                })()}
-
-              </div>
-          </section>{/* end Strategy Lab */}
-
-        </div>{/* end scrollable content */}
-      </main>
+        </div>
+      </div>
 
       <CreateDCABotModalWrapper isOpen={isCreateDcaOpen} onClose={() => setCreateDcaOpen(false)} />
-    </div>
+    </AtlasShell>
   );
 }

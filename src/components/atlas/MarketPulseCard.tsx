@@ -12,7 +12,7 @@ import { Sparkline, SparklineArea, SparkBars, SparkHeatmap, SparkCandles } from 
 import { IconMarketPulse } from "@/components/ui/icons";
 
 type CoreToken = { id: string; symbol: string; icon: string };
-type TrendingToken = { mint: string; symbol: string; name?: string; icon?: string };
+type TrendingToken = { mint: string; symbol: string; name?: string; icon?: string; logoURI?: string };
 
 interface MarketPulseCardProps {
   coreTokens: CoreToken[];

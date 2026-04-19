@@ -12,23 +12,6 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-function AtlasLoadingFallback() {
-  return (
-    <div className="flex min-h-dvh items-center justify-center text-sm text-slate-500 font-manrope" role="status">
-      Loading Atlas…
-    </div>
-  );
-}
-
-/** Suspense required: AtlasClient uses useSearchParams() */
 export default function SolanaAtlasPage() {
-  return (
-    <div className="atlas-page-bg text-slate-800 antialiased h-screen overflow-hidden font-manrope">
-      <Suspense fallback={<AtlasLoadingFallback />}>
-        <SolanaProviders>
-          <AtlasClient />
-        </SolanaProviders>
-      </Suspense>
-    </div>
-  );
+  return <AtlasClient />;
 }

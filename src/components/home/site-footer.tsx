@@ -144,7 +144,7 @@ export function SiteFooter() {
               </a>
             </div>
 
-            <a target="_blank" href="https://thankjohn.com"><img src="https://thankjohn.com/badge.png" alt="THANK JOHN AI Tools" height="54" /></a>
+            <a href="https://thankjohn.com" target="_blank"><img src="https://thankjohn.com/badge.png" alt="THANK JOHN AI Tools" height="54" /></a>
 
           <div className="flex items-center gap-4">
             <a
