@@ -1,0 +1,4 @@
+## 2024-05-24 - Fix Open Redirect Vulnerabilities
+**Vulnerability:** Several API routes and client pages read user-provided query parameters (`redirect` or `next`) and assign them directly to `window.location.href` or use them in `NextResponse.redirect()` without validation. This is an Open Redirect vulnerability that allows attackers to redirect users to arbitrary external, potentially malicious sites.
+**Learning:** This existed because the codebase assumed URL paths fetched from `searchParams` would naturally be relative application paths, failing to validate that the string does not represent an absolute URI (e.g. `//evil.com`).
+**Prevention:** To avoid this next time, always wrap any user-supplied redirect query parameters with the `sanitizeRedirect` utility function from `src/lib/utils.ts` before using them in navigation.

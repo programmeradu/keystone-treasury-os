@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, Suspense } from "react";
+import { sanitizeRedirect } from '@/lib/utils';
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useKeystoneAuth } from "@/hooks/useKeystoneAuth";
@@ -414,7 +415,7 @@ function AuthPageContent() {
     }, [searchParams, addLog]);
 
     // Determine where to go after auth (supports ?redirect= param from middleware)
-    const postAuthRedirect = searchParams.get('redirect') || '/app';
+    const postAuthRedirect = sanitizeRedirect(searchParams.get('redirect'));
 
     // Handle OAuth completion: exchange Neon Auth session for local JWT
     useEffect(() => {
