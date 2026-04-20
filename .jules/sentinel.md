@@ -1,0 +1,4 @@
+## 2024-05-20 - Open Redirect via Unsanitized Next Parameter
+**Vulnerability:** The application was directly using user-supplied URLs from `?next=` or `?redirect=` query parameters in `NextResponse.redirect()` and `window.location.href` (e.g., in `src/app/api/auth/callback/route.ts` and `src/app/auth/page.tsx`).
+**Learning:** These parameters were not validated to ensure they were relative paths. An attacker could craft a malicious URL (e.g., `https://myapp.com/auth?redirect=//evil.com`) which would successfully authenticate the user and then seamlessly redirect them to an external, attacker-controlled site.
+**Prevention:** Always validate and sanitize user-supplied redirect URLs before using them. A centralized `sanitizeRedirect` utility should enforce that the URL is a relative path starting with `/` and reject protocol-relative URLs (`//`) and path traversal attempts (`/\`).
