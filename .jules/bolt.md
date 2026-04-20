@@ -1,0 +1,3 @@
+## 2025-04-20 - Memoizing status filter lengths for ExecutionDashboard
+**Learning:** In frequently rendering components like `ExecutionDashboard` with an auto-refresh timer, calculating arrays with multiple `.filter().length` on the same state (like checking for different statuses such as PLANNING, PENDING, APPROVAL_REQUIRED) causes multiple redundant N-length traversals.
+**Action:** Use a single `reduce` approach wrapped in `useMemo` to consolidate O(N) array traversals when counting occurrences across multiple criteria. This prevents multiple iterations over the same collection on every state update or timer tick.
