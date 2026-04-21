@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { ExecutionStatus } from "@/lib/agents/types";
 
 interface ActiveExecution {
@@ -136,31 +136,7 @@ export function ExecutionDashboard({
 
       {/* Queue Summary */}
       {activeExecutions.length > 0 && (
-        <div className="border-t border-slate-700 pt-6">
-          <h3 className="text-sm font-semibold text-slate-300 mb-4">Summary</h3>
-          <div className="grid grid-cols-4 gap-4">
-            <StatCard
-              label="Total"
-              value={activeExecutions.length.toString()}
-              color="blue"
-            />
-            <StatCard
-              label="Running"
-              value={activeExecutions.filter(e => e.status === ExecutionStatus.PLANNING).length.toString()}
-              color="cyan"
-            />
-            <StatCard
-              label="Pending"
-              value={activeExecutions.filter(e => e.status === ExecutionStatus.PENDING).length.toString()}
-              color="gray"
-            />
-            <StatCard
-              label="Approval"
-              value={activeExecutions.filter(e => e.status === ExecutionStatus.APPROVAL_REQUIRED).length.toString()}
-              color="yellow"
-            />
-          </div>
-        </div>
+        <QueueSummary activeExecutions={activeExecutions} />
       )}
     </div>
   );
@@ -262,6 +238,46 @@ function ExecutionCard({
             Requires Approval
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Consolidated Queue Summary to prevent redundant filter passes
+ */
+function QueueSummary({ activeExecutions }: { activeExecutions: ActiveExecution[] }) {
+  const counts = useMemo(() => {
+    return activeExecutions.reduce((acc, curr) => {
+      acc[curr.status] = (acc[curr.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [activeExecutions]);
+
+  return (
+    <div className="border-t border-slate-700 pt-6">
+      <h3 className="text-sm font-semibold text-slate-300 mb-4">Summary</h3>
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard
+          label="Total"
+          value={activeExecutions.length.toString()}
+          color="blue"
+        />
+        <StatCard
+          label="Running"
+          value={(counts[ExecutionStatus.PLANNING] || 0).toString()}
+          color="cyan"
+        />
+        <StatCard
+          label="Pending"
+          value={(counts[ExecutionStatus.PENDING] || 0).toString()}
+          color="gray"
+        />
+        <StatCard
+          label="Approval"
+          value={(counts[ExecutionStatus.APPROVAL_REQUIRED] || 0).toString()}
+          color="yellow"
+        />
       </div>
     </div>
   );
