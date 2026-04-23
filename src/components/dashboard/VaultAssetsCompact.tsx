@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { ArrowRight, Copy, ExternalLink, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -19,13 +20,15 @@ interface TokenAccount {
 export function VaultAssetsCompact({ tokens }: { tokens: TokenAccount[] }) {
     const { refresh, loading } = useVault();
 
-    // Sort: SOL first, then by value desc
-    const sortedTokens = [...tokens].sort((a, b) => {
-        if (a.symbol === "SOL") return -1;
-        if (b.symbol === "SOL") return 1;
-        return (b.value || 0) - (a.value || 0);
-    });
-    const topTokens = sortedTokens.slice(0, 5); // Show top 5
+    // Sort: SOL first, then by value desc, memoized to prevent O(N log N) recalculation on every render
+    const topTokens = useMemo(() => {
+        const sortedTokens = [...tokens].sort((a, b) => {
+            if (a.symbol === "SOL") return -1;
+            if (b.symbol === "SOL") return 1;
+            return (b.value || 0) - (a.value || 0);
+        });
+        return sortedTokens.slice(0, 5); // Show top 5
+    }, [tokens]);
 
     return (
         <div className="h-full min-h-[300px] w-full bg-card border border-border rounded-2xl relative overflow-hidden flex flex-col shadow-lg">
