@@ -1,0 +1,4 @@
+## 2024-04-02 - Unsanitized User Input in Contract Compiler endpoint
+**Vulnerability:** Found a potential command injection vulnerability and path traversal in `src/app/api/studio/compile-contract/route.ts`. The endpoint was using `exec` to run `anchor build`, and writing files directly based on unsanitized filenames, allowing a malicious actor to break out of the directory via `../` sequences.
+**Learning:** `exec` spawns a shell and parses arguments as a string, making it riskier than strictly necessary even without obvious dynamic strings. In Node.js, `path.join` does not natively prevent path traversal if `../` is used.
+**Prevention:** Use `execFile` with an array of arguments as a defense-in-depth measure, as it does not spawn a shell. Use regex `^[a-zA-Z0-9_-]+$` to validate identifiers (e.g., program names) and use `path.resolve` combined with `startsWith` checks to mathematically confine file creation to a specific directory.

@@ -12,10 +12,10 @@ import { NextRequest, NextResponse } from "next/server";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as crypto from "node:crypto";
-import { exec } from "node:child_process";
+import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 interface CompileRequest {
     files: Record<string, string>; // filename -> Rust source code
@@ -52,9 +52,14 @@ async function compileLocal(
 
         // Write source files
         for (const [filename, content] of Object.entries(files)) {
-            const filePath = path.join(srcDir, filename);
-            fs.mkdirSync(path.dirname(filePath), { recursive: true });
-            fs.writeFileSync(filePath, content, "utf-8");
+            // SECURITY: Prevent path traversal by ensuring the resolved path is within srcDir
+            const resolvedPath = path.resolve(srcDir, filename);
+            if (!resolvedPath.startsWith(path.resolve(srcDir) + path.sep)) {
+                throw new Error(`Invalid file path detected: ${filename}`);
+            }
+
+            fs.mkdirSync(path.dirname(resolvedPath), { recursive: true });
+            fs.writeFileSync(resolvedPath, content, "utf-8");
         }
 
         // Generate minimal Anchor.toml
@@ -113,7 +118,8 @@ anchor-spl = "0.30.1"
         );
 
         // Run anchor build
-        const { stdout, stderr } = await execAsync("anchor build", {
+        // SECURITY: Use execFile instead of exec to mitigate command injection risks
+        const { stdout, stderr } = await execFileAsync("anchor", ["build"], {
             cwd: tmpDir,
             timeout: 120000, // 2 min timeout
         });
@@ -226,6 +232,14 @@ export async function POST(req: NextRequest) {
     try {
         const body: CompileRequest = await req.json();
         const { files, programName = "keystone_app", useCloud = false } = body;
+
+        // SECURITY: Validate programName to prevent directory traversal and injection
+        if (!/^[a-zA-Z0-9_-]+$/.test(programName)) {
+            return NextResponse.json(
+                { error: "Invalid programName format" },
+                { status: 400 }
+            );
+        }
 
         if (!files || Object.keys(files).length === 0) {
             return NextResponse.json(
