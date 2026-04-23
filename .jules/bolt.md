@@ -1,0 +1,3 @@
+## 2024-04-16 - Batch update API queries to avoid N+1 and optimize count queries
+**Learning:** Found sequential `await db.update(...)` inside a `for...of` loop in the notifications `PUT` API route, causing N+1 query problems. Also, found count queries fetching full records (e.g. IDs) then checking `.length` instead of using SQL `count(*)` in the notifications `GET` API route, moving large arrays over the wire into Edge function memory.
+**Action:** Use Drizzle ORM's `inArray` to batch update multiple records in a single database query rather than looping. Use `count(*)::int` instead of getting lengths of ID queries to minimize payload and runtime memory overhead.
