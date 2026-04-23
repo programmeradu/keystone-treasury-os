@@ -1,4 +1,5 @@
 "use client";
+import { sanitizeRedirect } from '@/lib/utils';
 
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -414,7 +415,7 @@ function AuthPageContent() {
     }, [searchParams, addLog]);
 
     // Determine where to go after auth (supports ?redirect= param from middleware)
-    const postAuthRedirect = searchParams.get('redirect') || '/app';
+    const postAuthRedirect = sanitizeRedirect(searchParams.get('redirect'));
 
     // Handle OAuth completion: exchange Neon Auth session for local JWT
     useEffect(() => {

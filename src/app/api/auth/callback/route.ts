@@ -6,6 +6,7 @@
  * We exchange the code for a session and sync the user to Neon.
  */
 
+import { sanitizeRedirect } from '@/lib/utils';
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase';
 import { db } from '@/db';
@@ -15,7 +16,7 @@ import { eq } from 'drizzle-orm';
 export async function GET(request: NextRequest) {
     const { searchParams, origin } = new URL(request.url);
     const code = searchParams.get('code');
-    const next = searchParams.get('next') ?? '/app';
+    const next = sanitizeRedirect(searchParams.get('next'));
 
     if (!code) {
         // No code — redirect to auth page with error
