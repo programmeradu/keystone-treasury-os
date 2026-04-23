@@ -28,7 +28,8 @@ import {
   DropdownMenuItem } from
 "@/components/ui/dropdown-menu";
 import { AtlasShell } from "./atlas-shell";
-import { useAtlasData, CORE_TOKENS } from "@/hooks/use-atlas-data";
+import { useAtlasData, fetchJsonWithRetry } from "@/hooks/use-atlas-data";
+import { useAtlasCommand } from "@/hooks/use-atlas-command";
 import {
   IconAirDropScout,
   IconStrategyLab,
@@ -275,6 +276,11 @@ export function AtlasClient() {
   // Strategy Lab state
   const [kind, setKind] = useState<StrategyKind>("stake_marinade");
   const [amountSol, setAmountSol] = useState<number>(5);
+  const [nlpText, setNlpText] = useState("");
+  const [nlpLoading, setNlpLoading] = useState(false);
+  const nlpInputRef = useRef<HTMLInputElement | null>(null);
+  const [execLoading, setExecLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedLst, setSelectedLst] = useState<string>("MSOL"); // default to Marinade
   const [quote, setQuote] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<string>("quests");
@@ -610,9 +616,6 @@ export function AtlasClient() {
   const [ohlcvActive, setOhlcvActive] = useState(false);
 
   // Sparkline price history for all core tokens (keyed by uppercase ID)
-  const [coreHistory, setCoreHistory] = useState<Record<string, number[]>>({});
-  const [pricesLoading, setPricesLoading] = useState(false);
-  const [pricesUpdatedAt, setPricesUpdatedAt] = useState<number | null>(null);
 
   // THEME: light/dark toggle
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
