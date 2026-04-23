@@ -22,6 +22,7 @@ import { DreyvMark } from "@/components/brand/dreyv-mark";
 import { DreyvLogoLight } from "@/components/brand/dreyv-logo-light";
 import { motion, AnimatePresence } from "framer-motion";
 import { marketingPrimaryCta } from "@/components/home/marketing-styles";
+import { sanitizeRedirect } from '@/lib/utils';
 
 const LOGO_DEV_TOKEN = "pk_DFEjHHL4QteaMOzcFuSlwg";
 
@@ -414,7 +415,7 @@ function AuthPageContent() {
     }, [searchParams, addLog]);
 
     // Determine where to go after auth (supports ?redirect= param from middleware)
-    const postAuthRedirect = searchParams.get('redirect') || '/app';
+    const postAuthRedirect = sanitizeRedirect(searchParams.get('redirect'), '/app');
 
     // Handle OAuth completion: exchange Neon Auth session for local JWT
     useEffect(() => {
