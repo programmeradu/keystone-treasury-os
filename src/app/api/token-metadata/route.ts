@@ -96,16 +96,17 @@ export async function POST(req: NextRequest) {
     const unresolved: string[] = [];
 
     for (const mint of mints) {
-      const cached = cache.get(mint);
+      const mintStr = String(mint);
+      const cached = cache.get(mintStr);
       if (cached && cached.expiresAt > Date.now()) {
-        metadata[mint] = cached.data;
+        metadata[mintStr] = cached.data;
         continue;
       }
-      const wk = WELL_KNOWN[mint];
+      const wk = WELL_KNOWN[mintStr];
       if (wk) {
-        metadata[mint] = { price: wk.price ?? 0, symbol: wk.symbol, name: wk.name, logo: wk.logo, change24h: 0 };
+        metadata[mintStr] = { price: wk.price ?? 0, symbol: wk.symbol, name: wk.name, logo: wk.logo, change24h: 0 };
       }
-      unresolved.push(mint);
+      unresolved.push(mintStr);
     }
 
     if (!isBreakerOpen() && unresolved.length > 0) {
@@ -155,7 +156,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const missingSymbols = mints.filter((m) => !metadata[m]?.symbol || metadata[m]?.symbol === "SPL");
+    const missingSymbols = mints.map(String).filter((m) => !metadata[m]?.symbol || metadata[m]?.symbol === "SPL");
     await Promise.allSettled(missingSymbols.map(async (mint) => {
       const res = await fetch(`https://tokens.jup.ag/token/${mint}`, { signal: AbortSignal.timeout(5000) });
       if (!res.ok) return;
@@ -172,7 +173,7 @@ export async function POST(req: NextRequest) {
       };
     }));
 
-    const noPrice = mints.filter((m) => !metadata[m]?.price || metadata[m].price === 0);
+    const noPrice = mints.map(String).filter((m) => !metadata[m]?.price || metadata[m].price === 0);
     if (noPrice.length > 0) {
       try {
         const json = await fetchJsonWithRetry(`https://lite-api.jup.ag/price/v2?ids=${noPrice.join(",")}`, 2);
@@ -188,10 +189,11 @@ export async function POST(req: NextRequest) {
     }
 
     for (const mint of mints) {
-      const wk = WELL_KNOWN[mint];
-      if (!metadata[mint]) metadata[mint] = { price: wk?.price ?? 0 };
-      if (!metadata[mint].logo && wk?.logo) metadata[mint].logo = wk.logo;
-      cache.set(mint, { data: metadata[mint], expiresAt: Date.now() + CACHE_TTL_MS });
+      const mintStr = String(mint);
+      const wk = WELL_KNOWN[mintStr];
+      if (!metadata[mintStr]) metadata[mintStr] = { price: wk?.price ?? 0 };
+      if (!metadata[mintStr].logo && wk?.logo) metadata[mintStr].logo = wk.logo;
+      cache.set(mintStr, { data: metadata[mintStr], expiresAt: Date.now() + CACHE_TTL_MS });
     }
 
     return NextResponse.json({ metadata, breakerOpen: isBreakerOpen() });
