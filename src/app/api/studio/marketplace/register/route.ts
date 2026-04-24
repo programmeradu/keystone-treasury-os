@@ -26,11 +26,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Build and send initialize_app transaction via Turnkey/wallet
-    // 1. Derive app_id as [u8; 32] from appId string (hash)
-    // 2. Derive ipfs_cid as [u8; 64] from ipfsCid (pad/truncate)
-    // 3. Build instruction, sign with developer wallet, send
-    // 4. Return tx signature
+        // Phase 2 implementation of on-chain registration is pending.
+    // The current architecture relies on the client (browser) to use the SDK
+    // \`useTurnkey().signTransaction()\` for the \`initialize_app\` instruction
+    // because server-side signing for non-custodial apps violates the non-custodial
+    // security model unless a delegated/ephemeral key is explicitly granted.
+    // For now, we return a 202 Accepted to indicate the payload is valid
+    // and instruct the client to perform the on-chain submission.
 
     return NextResponse.json({
       status: "pending",
