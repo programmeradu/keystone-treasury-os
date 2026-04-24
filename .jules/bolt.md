@@ -1,0 +1,3 @@
+## 2024-06-25 - React Component Array Traversals Optimization
+**Learning:** Found an anti-pattern in React component `ExecutionDashboard` where multiple `.filter(condition).length` calls were executed inline on every re-render, creating redundant O(N) array traversals (in this case 3x traversals per status summary count). While individual arrays may be small, this compounds when combined with frequent status-refreshing components like dashboards.
+**Action:** Consolidate multiple `.filter().length` calls on the same array into a single `.reduce()` pass wrapped in `useMemo` to compute required statistics in a single O(N) traversal. Apply this pattern to frequently updating dashboards to avoid redundant computations on every React re-render tick.
