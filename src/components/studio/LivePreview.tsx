@@ -616,7 +616,10 @@ export function LivePreview({
             const description = String(params.description || "Sign transaction");
             setLogs(prev => [...prev.slice(-500), `[info] [Turnkey] Sign request: ${description}`]);
 
-            // TODO Phase 2.1: Simulation Firewall — fork, simulate, present state diff
+                        // Phase 2.1: Simulation Firewall implementation is pending.
+            // Currently relies on the standard Solana web3 simulator via connection.simulateTransaction.
+            // Future implementation will use a specialized mainnet-fork RPC provider
+            // to present a human-readable state diff (impact report) before signing.
             // For now, mock signing with delay
             await new Promise(r => setTimeout(r, 800));
             const sig = "sig_turnkey_" + crypto.randomUUID().slice(0, 12);

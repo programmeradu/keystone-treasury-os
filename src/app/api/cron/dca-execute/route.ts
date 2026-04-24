@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { dcaBots, dcaExecutions } from "@/db/schema";
+import { dcaBots, dcaExecutions, users } from "@/db/schema";
 import { eq, and, lte, gte } from "drizzle-orm";
 import { executeSwapWithSigning, getJupiterQuote, validateDelegation } from "@/lib/jupiter-executor";
 import { decryptKeypair } from "@/lib/keypair-envelope";
 import bs58 from "bs58";
-import { Keypair } from "@solana/web3.js";
+import { Keypair, Connection, PublicKey } from "@solana/web3.js";
+import { sendNotificationEmail } from "@/lib/email-service";
+import { sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // 5 minutes max execution time
@@ -107,12 +109,14 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
       throw new Error("Database not available");
     }
 
-    // Phase 2 TODO: Validate wallet balance
-    // const balance = await checkBalance(bot.walletAddress, bot.paymentTokenMint);
-    // if (balance < bot.amountUsd) {
-    //   await pauseBot(bot.id, "Insufficient balance");
-    //   return { success: false, error: "Insufficient balance" };
-    // }
+
+
+    // Validate wallet balance
+    const balance = await checkBalance(bot.walletAddress, bot.paymentTokenMint);
+    if (balance < bot.amountUsd) {
+      await recordFailedExecution(bot, "Insufficient balance");
+      return { success: false, error: "Insufficient balance" };
+    }
 
     // Get Jupiter quote
     const USDC_DECIMALS = 6;
@@ -233,8 +237,25 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
     const duration = Date.now() - startTime;
     console.log(`[Bot ${bot.id}] Execution successful in ${duration}ms`);
 
-    // Phase 2 TODO: Send notification email
-    // await sendExecutionNotification(bot, executionResult);
+    // Send success notification email
+    try {
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, bot.userId)
+      });
+      const userEmail = user?.email;
+
+      if (userEmail) {
+        await sendNotificationEmail({
+          to: userEmail,
+          title: "DCA Execution Successful",
+          message: `Your DCA bot "${bot.name}" successfully executed a swap. Received ${executionResult.outAmount / Math.pow(10, 9)} tokens.`,
+          actionUrl: "https://dreyv.stauniverse.tech/app/atlas/dca",
+          actionLabel: "View Bot"
+        });
+      }
+    } catch (e) {
+      console.error(`[Bot ${bot.id}] Failed to send success notification:`, e);
+    }
 
     return { success: true };
 
@@ -282,7 +303,25 @@ async function recordFailedExecution(bot: any, errorMessage: string) {
 
     if (shouldPause) {
       console.warn(`[Bot ${bot.id}] Paused after ${newFailedAttempts} failures`);
-      // Phase 2 TODO: Send notification email
+      // Send pause notification email
+      try {
+        const user = await db.query.users.findFirst({
+          where: eq(users.id, bot.userId)
+        });
+        const userEmail = user?.email;
+
+        if (userEmail) {
+          await sendNotificationEmail({
+            to: userEmail,
+            title: "DCA Bot Paused",
+            message: `Your DCA bot "${bot.name}" has been paused after ${newFailedAttempts} consecutive failures. Reason: ${errorMessage}`,
+            actionUrl: "https://dreyv.stauniverse.tech/app/atlas/dca",
+            actionLabel: "Review Bot"
+          });
+        }
+      } catch (e) {
+        console.error(`[Bot ${bot.id}] Failed to send pause notification:`, e);
+      }
     }
   } catch (error) {
     console.error(`[Bot ${bot.id}] Failed to record execution failure:`, error);
@@ -333,4 +372,27 @@ function calculateNextExecution(bot: any): Date {
     default:
       return new Date(now + (24 * 60 * 60 * 1000));
   }
+}
+
+
+/**
+ * Check token balance for a wallet
+ */
+async function checkBalance(walletAddress: string, tokenMint: string): Promise<number> {
+    const connection = new Connection("https://api.mainnet-beta.solana.com");
+    if (tokenMint === "So11111111111111111111111111111111111111112") { // Native SOL
+        const balance = await connection.getBalance(new PublicKey(walletAddress));
+        return balance / 1e9; // Convert lamports to SOL
+    } else {
+        try {
+            // dynamic import of spl-token to avoid global require if not needed
+            const { getAssociatedTokenAddress } = await import("@solana/spl-token");
+            const tokenAccount = await getAssociatedTokenAddress(new PublicKey(tokenMint), new PublicKey(walletAddress));
+            const balance = await connection.getTokenAccountBalance(tokenAccount);
+            return balance.value.uiAmount || 0;
+        } catch (e) {
+            console.error(`Failed to get token balance:`, e);
+            return 0;
+        }
+    }
 }

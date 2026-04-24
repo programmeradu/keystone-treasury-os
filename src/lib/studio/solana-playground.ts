@@ -139,7 +139,12 @@ export async function deployProgram(
     // a) Assumes the program is small enough (or mocks the loop)
     // b) Sends 1 transaction to "simulate" the deployment on-chain (Memo or Transfer).
 
-    // TODO: Implement Ephemeral Keypair strategy for chunked upload.
+        // Phase 2: Ephemeral Keypair strategy for chunked upload is pending.
+    // The BPF Loader requires dozens of transactions to upload a full program.
+    // In production, we will generate an ephemeral keypair, fund it via a single
+    // Turnkey signature from the user, and have the backend/worker use that
+    // keypair to sign the ~50 chunked upload transactions automatically.
+    // Finally, the user signs the final "deploy" transaction.
 
     // For now, let's create a new Keypair for the program and return its ID.
     const programKeypair = Keypair.generate();
