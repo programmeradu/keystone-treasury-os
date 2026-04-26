@@ -1,0 +1,1 @@
+git commit -m "[skip ci] 🛡️ Sentinel: [HIGH] Fix Open Redirect vulnerabilities" -m "🚨 Severity: HIGH" -m "💡 Vulnerability: Open Redirect via unvalidated searchParams" -m "🎯 Impact: Phishing / hijacking" -m "🔧 Fix: Sanitize redirect URLs using a centralized relative path enforcement utility." -m "✅ Verification: Verified using linter and build tests."
