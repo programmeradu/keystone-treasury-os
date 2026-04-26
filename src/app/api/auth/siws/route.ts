@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { users } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { users, siwsNonces } from '@/db/schema';
+import { eq, sql } from 'drizzle-orm';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { SignJWT, jwtVerify } from 'jose';
@@ -9,9 +9,6 @@ import { SignJWT, jwtVerify } from 'jose';
 const COOKIE_NAME = 'keystone-siws-session';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
-// In-memory nonce tracking to prevent replay attacks
-const usedNonces = new Set<string>();
-const NONCE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 
 function getJwtSecret() {
     const secret = process.env.JWT_SECRET;
@@ -65,15 +62,7 @@ export async function POST(request: NextRequest) {
         if (nonceMatch) {
             const nonce = nonceMatch[1].trim();
 
-            // Check if nonce was already used (replay attack prevention)
-            if (usedNonces.has(nonce)) {
-                return NextResponse.json(
-                    { error: 'Nonce already used. Please generate a new sign-in request.' },
-                    { status: 401 }
-                );
-            }
-
-            // Check timestamp freshness
+            // Check timestamp freshness first
             if (timestampMatch) {
                 const messageTime = new Date(timestampMatch[1]).getTime();
                 const now = Date.now();
@@ -86,9 +75,38 @@ export async function POST(request: NextRequest) {
                 }
             }
 
-            // Mark nonce as used and schedule cleanup
-            usedNonces.add(nonce);
-            setTimeout(() => usedNonces.delete(nonce), NONCE_EXPIRY_MS);
+            // Check if nonce was already used (replay attack prevention) using Neon DB
+            if (db) {
+                const existingNonce = await db
+                    .select()
+                    .from(siwsNonces)
+                    .where(eq(siwsNonces.nonce, nonce))
+                    .limit(1);
+
+                if (existingNonce.length > 0) {
+                    return NextResponse.json(
+                        { error: 'Nonce already used. Please generate a new sign-in request.' },
+                        { status: 401 }
+                    );
+                }
+
+                // Mark nonce as used by inserting into DB
+                try {
+                    await db.insert(siwsNonces).values({ nonce });
+                    // Basic cleanup: Delete nonces older than 5 minutes probabilistically (e.g. 1% of the time)
+                    if (Math.random() < 0.01) {
+                        const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000);
+                        await db.delete(siwsNonces).where(sql`created_at < ${fiveMinsAgo.toISOString()}`);
+                    }
+                } catch (e) {
+                    // If insert fails due to a unique constraint violation,
+                    // it means another concurrent request already used this nonce.
+                    return NextResponse.json(
+                        { error: 'Nonce already used concurrently. Please generate a new sign-in request.' },
+                        { status: 401 }
+                    );
+                }
+            }
         } else {
             // Reject messages without a nonce — all SIWS messages must include one
             return NextResponse.json(

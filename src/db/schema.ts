@@ -672,3 +672,11 @@ export const vaults = pgTable('vaults', {
   userIdx: index('vaults_user_idx').on(table.userId),
   addressIdx: index('vaults_address_idx').on(table.address),
 }));
+
+// ─── SIWS Nonces (Replay Attack Prevention) ───────────────────────────
+export const siwsNonces = pgTable('siws_nonces', {
+  nonce: text('nonce').primaryKey(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  createdAtIdx: index('siws_nonces_created_at_idx').on(table.createdAt),
+}));
