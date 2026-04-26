@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { ExecutionStatus } from "@/lib/agents/types";
 
 interface ActiveExecution {
@@ -85,6 +85,20 @@ export function ExecutionDashboard({
     }
   }, [autoRefresh, refreshInterval, fetchActiveExecutions]);
 
+  // Memoize status counts to avoid O(N*K) filter.length calculations on every render
+  const counts = useMemo(() => {
+    return activeExecutions.reduce(
+      (acc, exec) => {
+        acc.total++;
+        if (exec.status === ExecutionStatus.PLANNING) acc.running++;
+        else if (exec.status === ExecutionStatus.PENDING) acc.pending++;
+        else if (exec.status === ExecutionStatus.APPROVAL_REQUIRED) acc.approval++;
+        return acc;
+      },
+      { total: 0, running: 0, pending: 0, approval: 0 }
+    );
+  }, [activeExecutions]);
+
   const handleCancel = async (executionId: string) => {
     try {
       const response = await fetch(`/api/agentic?executionId=${executionId}`, {
@@ -141,22 +155,22 @@ export function ExecutionDashboard({
           <div className="grid grid-cols-4 gap-4">
             <StatCard
               label="Total"
-              value={activeExecutions.length.toString()}
+              value={counts.total.toString()}
               color="blue"
             />
             <StatCard
               label="Running"
-              value={activeExecutions.filter(e => e.status === ExecutionStatus.PLANNING).length.toString()}
+              value={counts.running.toString()}
               color="cyan"
             />
             <StatCard
               label="Pending"
-              value={activeExecutions.filter(e => e.status === ExecutionStatus.PENDING).length.toString()}
+              value={counts.pending.toString()}
               color="gray"
             />
             <StatCard
               label="Approval"
-              value={activeExecutions.filter(e => e.status === ExecutionStatus.APPROVAL_REQUIRED).length.toString()}
+              value={counts.approval.toString()}
               color="yellow"
             />
           </div>
