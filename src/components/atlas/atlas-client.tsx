@@ -28,7 +28,8 @@ import {
   DropdownMenuItem } from
 "@/components/ui/dropdown-menu";
 import { AtlasShell } from "./atlas-shell";
-import { useAtlasData, CORE_TOKENS } from "@/hooks/use-atlas-data";
+import { useAtlasData, CORE_TOKENS, fetchJsonWithRetry } from "@/hooks/use-atlas-data";
+import { useAtlasCommand } from "@/hooks/use-atlas-command";
 import {
   IconAirDropScout,
   IconStrategyLab,
@@ -169,20 +170,6 @@ const LST_OPTIONS = [
   { id: "BSOL",    mint: MINTS.BSOL,    name: "BlazeStake", symbol: "bSOL",    apyBoost: 2.0,  maturity: 14, riskNote: "BLZE incentives + staking", icon: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1/logo.png" },
 ] as const;
 
-// Core tokens displayed in the Market Pulse hero section (symbol must match Jupiter price API key)
-const CORE_TOKENS: { id: string; symbol: string; icon: string }[] = [
-  { id: "SOL",     symbol: "SOL",     icon: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" },
-  { id: "MSOL",    symbol: "mSOL",    icon: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So/logo.png" },
-  { id: "JITOSOL", symbol: "jitoSOL", icon: "https://storage.googleapis.com/token-metadata/JitoSOL-256.png" },
-  { id: "BSOL",    symbol: "bSOL",    icon: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1/logo.png" },
-  { id: "USDC",    symbol: "USDC",    icon: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png" },
-  { id: "JUP",     symbol: "JUP",     icon: "https://static.jup.ag/jup/icon.png" },
-  { id: "BONK",    symbol: "BONK",    icon: "https://arweave.net/hQiPZOsRZXGXBJd_82PhVdlM_hACsT_q6wqwf5cSY7I" },
-  { id: "PYTH",    symbol: "PYTH",    icon: "https://pyth.network/token.svg" },
-  { id: "RAY",     symbol: "RAY",     icon: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R/logo.png" },
-  { id: "ORCA",    symbol: "ORCA",    icon: "https://arweave.net/jQJRDpMM7NWRAQ3VQyr7K_Me6K6UZbOacJ62blhdsNg" },
-];
-const CORE_TOKEN_IDS = CORE_TOKENS.map((t) => t.id).join(",");
 
 type StrategyKind = "stake_marinade" | "swap_jupiter" | "lp_sol_usdc";
 
@@ -294,6 +281,7 @@ export function AtlasClient() {
 
   // Modal States
   const [isCreateDcaOpen, setCreateDcaOpen] = useState(false);
+  const [execLoading, setExecLoading] = useState(false);
 
   // Command handler effect
   useEffect(() => {
@@ -609,10 +597,6 @@ export function AtlasClient() {
   const [lastCandle, setLastCandle] = useState<any | null>(null);
   const [ohlcvActive, setOhlcvActive] = useState(false);
 
-  // Sparkline price history for all core tokens (keyed by uppercase ID)
-  const [coreHistory, setCoreHistory] = useState<Record<string, number[]>>({});
-  const [pricesLoading, setPricesLoading] = useState(false);
-  const [pricesUpdatedAt, setPricesUpdatedAt] = useState<number | null>(null);
 
   // THEME: light/dark toggle
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -855,7 +839,6 @@ export function AtlasClient() {
       if (tab === "lab") setActiveTab("lab");
       if (k === "stake_marinade" || k === "swap_jupiter" || k === "lp_sol_usdc") setKind(k);
       if (amt && !Number.isNaN(Number(amt))) setAmountSol(Number(amt));
-      if (nlp) setNlpText(nlp);
       // auto simulate if kind + amount present
       if (tab === "lab" && k && amt) {
         setTimeout(() => simulate(), 50);
@@ -892,7 +875,7 @@ export function AtlasClient() {
       sp.set("tab", "lab");
       sp.set("kind", kind);
       sp.set("amountSol", String(amountSol));
-      if (nlpText.trim()) sp.set("nlp", nlpText.trim());else sp.delete("nlp");
+      sp.delete("nlp");
       url.search = sp.toString();
       const href = url.toString();
       navigator.clipboard.writeText(href);
@@ -902,50 +885,6 @@ export function AtlasClient() {
     }
   }
 
-  async function handleParse() {
-    const text = nlpText.trim();
-    if (!text) return;
-    setNlpLoading(true);
-    try {
-      let parsed: any | null = null;
-      try {
-        const r = await fetch("/api/ai/parse", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text })
-        });
-        if (r.ok) parsed = await r.json();
-      } catch {}
-
-      // Fallback lightweight parser (client-side)
-      if (!parsed || !parsed.ok) {
-        const lower = text.toLowerCase();
-        const amtMatch = lower.match(/([0-9]+(?:\.[0-9]+)?)\s*sol/);
-        const amt = amtMatch ? Number(amtMatch[1]) : amountSol;
-        if (/\b(stake|staking)\b/.test(lower)) parsed = { action: "stake", amount: amt, asset: "SOL", venue: "marinade", confidence: 0.5 };
-        else if (/\b(swap|buy|sell|convert)\b/.test(lower)) parsed = { action: "swap", amount: amt, asset: "SOL", venue: "jupiter", confidence: 0.5 };
-        else if (/\b(lp|liquidity|pool)\b/.test(lower)) parsed = { action: "lp", amount: amt, asset: "SOL", venue: "orca", confidence: 0.5 };
-      }
-
-      if (!parsed || !parsed.action) {
-        toast.error("Could not understand that. Try: 'stake 5 sol', 'swap 10 sol to usdc', or 'lp 5 sol'");
-        return;
-      }
-
-      // Map parsed action → StrategyKind
-      let nextKind: StrategyKind = "stake_marinade";
-      if (parsed.action === "swap" || parsed.action === "dca") nextKind = "swap_jupiter";
-      if (parsed.action === "lp") nextKind = "lp_sol_usdc";
-      setKind(nextKind);
-      if (typeof parsed.amount === "number" && !Number.isNaN(parsed.amount)) setAmountSol(parsed.amount);
-
-      const conf = parsed.confidence ? ` (${(parsed.confidence * 100).toFixed(0)}% conf)` : "";
-      toast.success(`Parsed: ${parsed.action} ${parsed.amount ?? ""} ${parsed.asset ?? "SOL"}${parsed.venue ? " via " + parsed.venue : ""}${conf}`);
-      await simulate();
-    } finally {
-      setNlpLoading(false);
-    }
-  }
 
   // Keyboard shortcuts: "/" focus NLP, "s" simulate, 1/2/3 switch strategies
   const simulateRef = useRef(simulate);
@@ -957,10 +896,7 @@ export function AtlasClient() {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
       if (tag === "input" || tag === "textarea") return;
-      if (e.key === "/") {
-        e.preventDefault();
-        nlpInputRef.current?.focus();
-      } else if (e.key.toLowerCase() === "s") {
+      if (e.key.toLowerCase() === "s") {
         e.preventDefault();
         simulateRef.current();
       } else if (["1", "2", "3"].includes(e.key)) {
@@ -1475,7 +1411,6 @@ export function AtlasClient() {
       return;
     }
     setActiveSection(id); 
-    setSidebarOpen(false); 
     const el = document.getElementById(id);
     if (el) {
       el.scrollIntoView({ behavior: "smooth" }); 

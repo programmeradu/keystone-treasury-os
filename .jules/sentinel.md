@@ -1,0 +1,4 @@
+## 2025-04-27 - [High] Open Redirect via Next.js Auth Query Parameters
+**Vulnerability:** Found an Open Redirect vulnerability in `src/app/auth/page.tsx` (`searchParams.get('redirect')`) and `src/app/api/auth/callback/route.ts` (`searchParams.get('next')`), where query parameters were used to directly manipulate `window.location.href` and `NextResponse.redirect()` without validation.
+**Learning:** Next.js `searchParams` inputs can easily receive absolute URLs (like `//evil.com` or `https://evil.com`) which bypassed our intention of relative redirects. This existed because the application assumed query arguments meant for post-auth routing would be relative paths.
+**Prevention:** Always validate and sanitize user-provided redirect paths. A central utility like `sanitizeRedirect` that strictly ensures paths start with exactly `/` and not `//` or `/\` has been implemented and should be used anywhere redirects from query parameters are handled.
