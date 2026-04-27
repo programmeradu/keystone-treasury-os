@@ -126,7 +126,7 @@ const NAVIGATION_ROUTE_ALLOWLIST = new Set([
   "/app/atlas",
 ]);
 
-function classifyEvidenceNeed(userText: string): EvidenceClass {
+export function classifyEvidenceNeed(userText: string): EvidenceClass {
   const t = userText.trim().toLowerCase();
   if (!t || isSimpleConversation(t)) return "conversational";
   if (/\b(navigate|open|go to|redirect)\b/.test(t)) return "navigation_required";
@@ -134,7 +134,7 @@ function classifyEvidenceNeed(userText: string): EvidenceClass {
   return "tool_required";
 }
 
-function validateNavigationPath(path: string):
+export function validateNavigationPath(path: string):
   | { success: true; pathname: string; query: Record<string, string> }
   | { success: false; code: "INVALID_ROUTE"; reason: string } {
   if (!path || typeof path !== "string") {
@@ -189,7 +189,7 @@ function buildBudgetedMessages(formattedMessages: any[]): { messages: any[]; red
   return buildBudgetedMessagesWithCap(formattedMessages, MAX_CHARS);
 }
 
-function buildBudgetedMessagesWithCap(formattedMessages: any[], maxChars: number): { messages: any[]; reduced: boolean } {
+export function buildBudgetedMessagesWithCap(formattedMessages: any[], maxChars: number): { messages: any[]; reduced: boolean } {
   if (!Array.isArray(formattedMessages)) return { messages: [], reduced: true };
   if (estimateMessageChars(formattedMessages) <= maxChars) {
     return { messages: formattedMessages, reduced: false };
@@ -215,7 +215,7 @@ function normalizeStudioProject(project: any) {
   };
 }
 
-function evaluateGroundingGate(
+export function evaluateGroundingGate(
   evidenceClass: EvidenceClass,
   observed: { lookupSuccess: boolean; navigationSuccess: boolean },
 ): GroundingGateResult {
