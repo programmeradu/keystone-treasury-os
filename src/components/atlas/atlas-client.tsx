@@ -598,7 +598,6 @@ export function AtlasClient() {
   const [lastCandle, setLastCandle] = useState<any | null>(null);
   const [ohlcvActive, setOhlcvActive] = useState(false);
 
-  // Sparkline price history for all core tokens (keyed by uppercase ID)
 
   // THEME: light/dark toggle
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -829,7 +828,6 @@ export function AtlasClient() {
       es.close();
     };
   }, [ohlcvActive]);
-
   // Prefill from URL (deep link)
   useEffect(() => {
     try {
@@ -841,6 +839,7 @@ export function AtlasClient() {
       if (tab === "lab") setActiveTab("lab");
       if (k === "stake_marinade" || k === "swap_jupiter" || k === "lp_sol_usdc") setKind(k);
       if (amt && !Number.isNaN(Number(amt))) setAmountSol(Number(amt));
+
       // auto simulate if kind + amount present
       if (tab === "lab" && k && amt) {
         setTimeout(() => simulate(), 50);
@@ -888,7 +887,6 @@ export function AtlasClient() {
   }
 
 
-  // Keyboard shortcuts: "/" focus NLP, "s" simulate, 1/2/3 switch strategies
   const simulateRef = useRef(simulate);
   simulateRef.current = simulate;
   const refreshPricesRef = useRef(refreshPrices);
@@ -900,7 +898,6 @@ export function AtlasClient() {
       if (tag === "input" || tag === "textarea") return;
       if (e.key === "/") {
         e.preventDefault();
-      } else if (e.key.toLowerCase() === "s") {
         e.preventDefault();
         simulateRef.current();
       } else if (["1", "2", "3"].includes(e.key)) {
