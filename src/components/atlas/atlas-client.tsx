@@ -29,6 +29,10 @@ import {
 "@/components/ui/dropdown-menu";
 import { AtlasShell } from "./atlas-shell";
 import { useAtlasData, CORE_TOKENS } from "@/hooks/use-atlas-data";
+import { useAtlasCommand } from '@/hooks/use-atlas-command';
+import { fetchJsonWithRetry } from '@/hooks/use-atlas-data';
+
+
 import {
   IconAirDropScout,
   IconStrategyLab,
@@ -170,7 +174,7 @@ const LST_OPTIONS = [
 ] as const;
 
 // Core tokens displayed in the Market Pulse hero section (symbol must match Jupiter price API key)
-const CORE_TOKENS: { id: string; symbol: string; icon: string }[] = [
+const LOCAL_CORE_TOKENS: { id: string; symbol: string; icon: string }[] = [
   { id: "SOL",     symbol: "SOL",     icon: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" },
   { id: "MSOL",    symbol: "mSOL",    icon: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So/logo.png" },
   { id: "JITOSOL", symbol: "jitoSOL", icon: "https://storage.googleapis.com/token-metadata/JitoSOL-256.png" },
@@ -182,7 +186,7 @@ const CORE_TOKENS: { id: string; symbol: string; icon: string }[] = [
   { id: "RAY",     symbol: "RAY",     icon: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R/logo.png" },
   { id: "ORCA",    symbol: "ORCA",    icon: "https://arweave.net/jQJRDpMM7NWRAQ3VQyr7K_Me6K6UZbOacJ62blhdsNg" },
 ];
-const CORE_TOKEN_IDS = CORE_TOKENS.map((t) => t.id).join(",");
+const CORE_TOKEN_IDS = LOCAL_CORE_TOKENS.map((t) => t.id).join(",");
 
 type StrategyKind = "stake_marinade" | "swap_jupiter" | "lp_sol_usdc";
 
@@ -274,7 +278,12 @@ export function AtlasClient() {
 
   // Strategy Lab state
   const [kind, setKind] = useState<StrategyKind>("stake_marinade");
-  const [amountSol, setAmountSol] = useState<number>(5);
+  const [amountSol, setAmountSol] = useState(1);
+  const [nlpText, setNlpText] = useState("");
+  const [nlpLoading, setNlpLoading] = useState(false);
+  const [execLoading, setExecLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   const [selectedLst, setSelectedLst] = useState<string>("MSOL"); // default to Marinade
   const [quote, setQuote] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<string>("quests");
@@ -609,10 +618,6 @@ export function AtlasClient() {
   const [lastCandle, setLastCandle] = useState<any | null>(null);
   const [ohlcvActive, setOhlcvActive] = useState(false);
 
-  // Sparkline price history for all core tokens (keyed by uppercase ID)
-  const [coreHistory, setCoreHistory] = useState<Record<string, number[]>>({});
-  const [pricesLoading, setPricesLoading] = useState(false);
-  const [pricesUpdatedAt, setPricesUpdatedAt] = useState<number | null>(null);
 
   // THEME: light/dark toggle
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -948,6 +953,7 @@ export function AtlasClient() {
   }
 
   // Keyboard shortcuts: "/" focus NLP, "s" simulate, 1/2/3 switch strategies
+  const nlpInputRef = useRef<HTMLInputElement>(null);
   const simulateRef = useRef(simulate);
   simulateRef.current = simulate;
   const refreshPricesRef = useRef(refreshPrices);
@@ -1537,7 +1543,7 @@ export function AtlasClient() {
             {/* Ticker carousel */}
             <div className="atlas-ticker-wrap rounded-xl bg-slate-50 py-3 mb-5">
               <div className="atlas-ticker">
-                {[...CORE_TOKENS, ...CORE_TOKENS].map((t, i) => {
+                {[...LOCAL_CORE_TOKENS, ...LOCAL_CORE_TOKENS].map((t, i) => {
                   const p = prices[t.id]; const hist = coreHistory[t.id] || []; const d = pctChange(hist); const up = d != null && d >= 0;
                   return (
                     <div key={`${t.id}-${i}`} className="inline-flex items-center gap-3 px-5 py-1.5 border-r border-slate-200/60 last:border-r-0 shrink-0">
@@ -1653,7 +1659,7 @@ export function AtlasClient() {
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-slate-200">
-                        <img src={CORE_TOKENS.find(t => t.id === "SOL")?.icon} alt="SOL" className="w-5 h-5 rounded-full shadow-sm bg-white" />
+                        <img src={LOCAL_CORE_TOKENS.find(t => t.id === "SOL")?.icon} alt="SOL" className="w-5 h-5 rounded-full shadow-sm bg-white" />
                         <span className="text-sm font-medium text-slate-900">SOL</span>
                       </div>
                       <input type="number" min={0} step={0.1} value={amountSol} onChange={(e) => setAmountSol(Number(e.target.value))}
@@ -1673,7 +1679,7 @@ export function AtlasClient() {
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-slate-200">
-                        <img src={CORE_TOKENS.find(t => t.id === "USDC")?.icon} alt="USDC" className="w-5 h-5 rounded-full shadow-sm bg-white" />
+                        <img src={LOCAL_CORE_TOKENS.find(t => t.id === "USDC")?.icon} alt="USDC" className="w-5 h-5 rounded-full shadow-sm bg-white" />
                         <span className="text-sm font-medium text-slate-900">USDC</span>
                       </div>
                       <span className="text-2xl font-semibold text-slate-300">{quote?._parsed?.outAmount ? quote._parsed.outAmount.toFixed(2) : "0.00"}</span>
