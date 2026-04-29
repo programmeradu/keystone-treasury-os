@@ -1,0 +1,4 @@
+## 2024-04-29 - Open Redirect Vulnerability
+**Vulnerability:** Open Redirect vulnerability via unsanitized `redirect` and `next` URL parameters in `src/app/auth/page.tsx` and `src/app/api/auth/callback/route.ts`.
+**Learning:** Query parameters that are used for redirection must be treated as untrusted user input. In this case, `window.location.href = searchParams.get('redirect')` and `NextResponse.redirect(origin + searchParams.get('next'))` allowed an attacker to redirect users to arbitrary external domains (e.g. `//malicious.com`).
+**Prevention:** All redirect URLs extracted from request parameters must be validated and sanitized to ensure they are relative paths and not protocol-relative URLs. A centralized `sanitizeRedirect` utility has been introduced to enforce that the URL begins with a single `/` and not `//` or `/\`.
