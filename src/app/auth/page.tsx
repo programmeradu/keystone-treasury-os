@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { Logo, Sparkles } from "@/components/icons";
+import { sanitizeRedirect } from "@/lib/utils";
 import { DreyvMark } from "@/components/brand/dreyv-mark";
 import { DreyvLogoLight } from "@/components/brand/dreyv-logo-light";
 import { motion, AnimatePresence } from "framer-motion";
@@ -414,7 +415,7 @@ function AuthPageContent() {
     }, [searchParams, addLog]);
 
     // Determine where to go after auth (supports ?redirect= param from middleware)
-    const postAuthRedirect = searchParams.get('redirect') || '/app';
+    const postAuthRedirect = sanitizeRedirect(searchParams.get('redirect'));
 
     // Handle OAuth completion: exchange Neon Auth session for local JWT
     useEffect(() => {
