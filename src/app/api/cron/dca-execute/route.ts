@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { dcaBots, dcaExecutions } from "@/db/schema";
 import { eq, and, lte, gte } from "drizzle-orm";
-import { executeSwapWithSigning, getJupiterQuote, validateDelegation } from "@/lib/jupiter-executor";
+import { checkBalance, executeSwapWithSigning, getJupiterQuote, validateDelegation } from "@/lib/jupiter-executor";
 import { decryptKeypair } from "@/lib/keypair-envelope";
 import bs58 from "bs58";
 import { Keypair } from "@solana/web3.js";
@@ -107,12 +107,14 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
       throw new Error("Database not available");
     }
 
-    // Phase 2 TODO: Validate wallet balance
-    // const balance = await checkBalance(bot.walletAddress, bot.paymentTokenMint);
-    // if (balance < bot.amountUsd) {
-    //   await pauseBot(bot.id, "Insufficient balance");
-    //   return { success: false, error: "Insufficient balance" };
-    // }
+    // Phase 2: Validate wallet balance
+    const balance = await checkBalance(bot.walletAddress, bot.paymentTokenMint);
+    if (balance < Number(bot.amountUsd)) {
+      console.warn(`[Bot ${bot.id}] Insufficient balance: ${balance} < ${bot.amountUsd}`);
+      await recordFailedExecution(bot, "Insufficient balance");
+      await pauseBot(bot.id, "Insufficient balance");
+      return { success: false, error: "Insufficient balance" };
+    }
 
     // Get Jupiter quote
     const USDC_DECIMALS = 6;
@@ -242,6 +244,28 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
     console.error(`[Bot ${bot.id}] Execution failed:`, error);
     await recordFailedExecution(bot, error.message);
     return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Pause a bot due to specific reason
+ */
+async function pauseBot(botId: string, reason: string) {
+  if (!db) return;
+
+  try {
+    await db
+      .update(dcaBots)
+      .set({
+        status: "paused",
+        pauseReason: reason,
+        updatedAt: new Date(),
+      })
+      .where(eq(dcaBots.id, botId));
+
+    console.warn(`[Bot ${botId}] Bot paused: ${reason}`);
+  } catch (error) {
+    console.error(`[Bot ${botId}] Failed to pause bot:`, error);
   }
 }
 
