@@ -28,7 +28,8 @@ import {
   DropdownMenuItem } from
 "@/components/ui/dropdown-menu";
 import { AtlasShell } from "./atlas-shell";
-import { useAtlasData, CORE_TOKENS } from "@/hooks/use-atlas-data";
+import { useAtlasData, fetchJsonWithRetry } from "@/hooks/use-atlas-data";
+import { useAtlasCommand } from "@/hooks/use-atlas-command";
 import {
   IconAirDropScout,
   IconStrategyLab,
@@ -270,6 +271,7 @@ export function AtlasClient() {
   } = useAtlasData();
 
   const [loading, setLoading] = useState(false);
+  const [execLoading, setExecLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Strategy Lab state
@@ -609,11 +611,6 @@ export function AtlasClient() {
   const [lastCandle, setLastCandle] = useState<any | null>(null);
   const [ohlcvActive, setOhlcvActive] = useState(false);
 
-  // Sparkline price history for all core tokens (keyed by uppercase ID)
-  const [coreHistory, setCoreHistory] = useState<Record<string, number[]>>({});
-  const [pricesLoading, setPricesLoading] = useState(false);
-  const [pricesUpdatedAt, setPricesUpdatedAt] = useState<number | null>(null);
-
   // THEME: light/dark toggle
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window === 'undefined') return 'light';
@@ -849,17 +846,7 @@ export function AtlasClient() {
     try {
       const sp = new URLSearchParams(window.location.search);
       const tab = sp.get("tab");
-      const k = sp.get("kind") as StrategyKind | null;
-      const amt = sp.get("amountSol");
-      const nlp = sp.get("nlp");
       if (tab === "lab") setActiveTab("lab");
-      if (k === "stake_marinade" || k === "swap_jupiter" || k === "lp_sol_usdc") setKind(k);
-      if (amt && !Number.isNaN(Number(amt))) setAmountSol(Number(amt));
-      if (nlp) setNlpText(nlp);
-      // auto simulate if kind + amount present
-      if (tab === "lab" && k && amt) {
-        setTimeout(() => simulate(), 50);
-      }
     } catch {}
   }, []);
 
@@ -890,60 +877,12 @@ export function AtlasClient() {
       const url = new URL(window.location.href);
       const sp = url.searchParams;
       sp.set("tab", "lab");
-      sp.set("kind", kind);
-      sp.set("amountSol", String(amountSol));
-      if (nlpText.trim()) sp.set("nlp", nlpText.trim());else sp.delete("nlp");
       url.search = sp.toString();
       const href = url.toString();
       navigator.clipboard.writeText(href);
-      toast.success("Link copied", { description: "Shareable Strategy Lab link copied to clipboard" });
+      toast.success("Link copied", { description: "Shareable Atlas link copied to clipboard" });
     } catch (e: any) {
       toast.error("Failed to copy link", { description: e?.message || String(e) });
-    }
-  }
-
-  async function handleParse() {
-    const text = nlpText.trim();
-    if (!text) return;
-    setNlpLoading(true);
-    try {
-      let parsed: any | null = null;
-      try {
-        const r = await fetch("/api/ai/parse", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text })
-        });
-        if (r.ok) parsed = await r.json();
-      } catch {}
-
-      // Fallback lightweight parser (client-side)
-      if (!parsed || !parsed.ok) {
-        const lower = text.toLowerCase();
-        const amtMatch = lower.match(/([0-9]+(?:\.[0-9]+)?)\s*sol/);
-        const amt = amtMatch ? Number(amtMatch[1]) : amountSol;
-        if (/\b(stake|staking)\b/.test(lower)) parsed = { action: "stake", amount: amt, asset: "SOL", venue: "marinade", confidence: 0.5 };
-        else if (/\b(swap|buy|sell|convert)\b/.test(lower)) parsed = { action: "swap", amount: amt, asset: "SOL", venue: "jupiter", confidence: 0.5 };
-        else if (/\b(lp|liquidity|pool)\b/.test(lower)) parsed = { action: "lp", amount: amt, asset: "SOL", venue: "orca", confidence: 0.5 };
-      }
-
-      if (!parsed || !parsed.action) {
-        toast.error("Could not understand that. Try: 'stake 5 sol', 'swap 10 sol to usdc', or 'lp 5 sol'");
-        return;
-      }
-
-      // Map parsed action → StrategyKind
-      let nextKind: StrategyKind = "stake_marinade";
-      if (parsed.action === "swap" || parsed.action === "dca") nextKind = "swap_jupiter";
-      if (parsed.action === "lp") nextKind = "lp_sol_usdc";
-      setKind(nextKind);
-      if (typeof parsed.amount === "number" && !Number.isNaN(parsed.amount)) setAmountSol(parsed.amount);
-
-      const conf = parsed.confidence ? ` (${(parsed.confidence * 100).toFixed(0)}% conf)` : "";
-      toast.success(`Parsed: ${parsed.action} ${parsed.amount ?? ""} ${parsed.asset ?? "SOL"}${parsed.venue ? " via " + parsed.venue : ""}${conf}`);
-      await simulate();
-    } finally {
-      setNlpLoading(false);
     }
   }
 
@@ -957,10 +896,7 @@ export function AtlasClient() {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
       if (tag === "input" || tag === "textarea") return;
-      if (e.key === "/") {
-        e.preventDefault();
-        nlpInputRef.current?.focus();
-      } else if (e.key.toLowerCase() === "s") {
+      if (e.key.toLowerCase() === "s") {
         e.preventDefault();
         simulateRef.current();
       } else if (["1", "2", "3"].includes(e.key)) {
@@ -1475,7 +1411,6 @@ export function AtlasClient() {
       return;
     }
     setActiveSection(id); 
-    setSidebarOpen(false); 
     const el = document.getElementById(id);
     if (el) {
       el.scrollIntoView({ behavior: "smooth" }); 
