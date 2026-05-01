@@ -1,0 +1,4 @@
+## 2024-05-01 - Open Redirect via Unsanitized Next/Redirect Query Parameters
+**Vulnerability:** The application was using user-supplied URL parameters (`searchParams.get('redirect')` and `searchParams.get('next')`) directly in redirection logic (`window.location.href` and `NextResponse.redirect()`) without validating that the target was a local relative path.
+**Learning:** Next.js and frontend applications often use `redirect` or `next` parameters for post-login redirection. If an attacker crafts a malicious URL (e.g., `?redirect=//evil.com` or `?redirect=https://evil.com`), it can lead to an Open Redirect vulnerability, tricking users into visiting malicious sites.
+**Prevention:** Always sanitize user-provided redirect URLs by strictly validating that they start with a single `/` and reject `//` or `/\` protocol-relative paths. Centralize this validation in a utility like `sanitizeRedirect` and enforce its use across the application.
