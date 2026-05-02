@@ -1,0 +1,3 @@
+## 2024-05-02 - Redundant O(N) Array Traversals in Auto-Refresh Components
+**Learning:** React components that use `setInterval` for auto-refreshing (e.g., `ExecutionDashboard`) can trigger redundant O(N) array traversals if computations like `array.filter(...).length` are used multiple times in the render cycle. Every auto-refresh cycle forces a re-render, compounding the performance cost on large datasets.
+**Action:** Consolidate multiple `.filter().length` calls into a single pass using `.reduce()` and wrap the computation in `useMemo` with the array as a dependency. This ensures the array is only traversed once per dataset change, regardless of how often the component re-renders.
