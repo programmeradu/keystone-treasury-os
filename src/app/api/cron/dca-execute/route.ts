@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { dcaBots, dcaExecutions } from "@/db/schema";
+import { dcaBots, dcaExecutions, users } from "@/db/schema";
 import { eq, and, lte, gte } from "drizzle-orm";
-import { executeSwapWithSigning, getJupiterQuote, validateDelegation } from "@/lib/jupiter-executor";
+import { executeSwapWithSigning, getJupiterQuote, validateDelegation, checkBalance, getTokenInfo, getTokenPrice } from "@/lib/jupiter-executor";
+import { sendNotificationEmail } from "@/lib/email-service";
 import { decryptKeypair } from "@/lib/keypair-envelope";
 import bs58 from "bs58";
 import { Keypair } from "@solana/web3.js";
@@ -108,11 +109,41 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
     }
 
     // Phase 2 TODO: Validate wallet balance
-    // const balance = await checkBalance(bot.walletAddress, bot.paymentTokenMint);
-    // if (balance < bot.amountUsd) {
-    //   await pauseBot(bot.id, "Insufficient balance");
-    //   return { success: false, error: "Insufficient balance" };
-    // }
+    const amountUsdNum = Number(bot.amountUsd);
+
+    // Check balance logic: balance returned from checkBalance is in human-readable token units (e.g. 0.5 SOL).
+    // We must check if the USD value of this token balance is >= amountUsdNum.
+    const tokenBalance = await checkBalance(bot.walletAddress, bot.paymentTokenMint);
+
+    // Convert USD target amount to equivalent token amount using real price.
+    // If we cannot fetch the price, we fall back to raw amount comparison but this is risky,
+    // so let's enforce proper price checking.
+    const tokenPrice = await getTokenPrice(bot.paymentTokenMint);
+    let isInsufficient = false;
+
+    if (tokenPrice && tokenPrice > 0) {
+      // 1 token = $tokenPrice. So balance in USD = tokenBalance * tokenPrice.
+      const balanceInUsd = tokenBalance * tokenPrice;
+      if (balanceInUsd < amountUsdNum) {
+         isInsufficient = true;
+      }
+    } else {
+       // If payment token happens to be USDC or we fail to fetch price, check using raw amount
+       // This handles stablecoins well assuming 1 token ~= $1
+       if (tokenBalance < amountUsdNum) {
+         isInsufficient = true;
+       }
+    }
+
+    if (isInsufficient) {
+      await recordFailedExecution(bot, "Insufficient balance");
+      await db.update(dcaBots).set({
+        status: "paused",
+        pauseReason: "Insufficient balance"
+      }).where(eq(dcaBots.id, bot.id));
+      await sendBotPausedNotification(bot, "Insufficient balance");
+      return { success: false, error: "Insufficient balance" };
+    }
 
     // Get Jupiter quote
     const USDC_DECIMALS = 6;
@@ -198,11 +229,16 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
       return { success: false, error: executionResult.error };
     }
 
+    // Fetch token info to get correct decimals for outAmount calculation
+    const outTokenInfo = await getTokenInfo(bot.buyTokenMint);
+    const outTokenDecimals = outTokenInfo?.decimals || 9; // Fallback to 9 if not found
+    const receivedAmountVal = executionResult.outAmount / Math.pow(10, outTokenDecimals);
+
     // Record successful execution
     await db.insert(dcaExecutions).values({
       botId: bot.id,
       paymentAmount: String(bot.amountUsd),
-      receivedAmount: String(executionResult.outAmount / Math.pow(10, 9)),
+      receivedAmount: String(receivedAmountVal),
       price: String(executionResult.price),
       slippage: String(executionResult.slippage),
       txSignature: executionResult.txSignature,
@@ -213,7 +249,7 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
 
     // Update bot statistics
     const newTotalInvested = Number(bot.totalInvested) + Number(bot.amountUsd);
-    const newTotalReceived = Number(bot.totalReceived) + (executionResult.outAmount / Math.pow(10, 9));
+    const newTotalReceived = Number(bot.totalReceived) + receivedAmountVal;
     const newExecutionCount = bot.executionCount + 1;
     const newNextExecution = calculateNextExecution(bot);
 
@@ -234,7 +270,7 @@ async function executeBot(bot: any): Promise<{ success: boolean; error?: string 
     console.log(`[Bot ${bot.id}] Execution successful in ${duration}ms`);
 
     // Phase 2 TODO: Send notification email
-    // await sendExecutionNotification(bot, executionResult);
+    await sendExecutionNotification(bot, executionResult);
 
     return { success: true };
 
@@ -283,6 +319,7 @@ async function recordFailedExecution(bot: any, errorMessage: string) {
     if (shouldPause) {
       console.warn(`[Bot ${bot.id}] Paused after ${newFailedAttempts} failures`);
       // Phase 2 TODO: Send notification email
+      await sendBotPausedNotification(bot, `Failed ${newFailedAttempts} times: ${errorMessage}`);
     }
   } catch (error) {
     console.error(`[Bot ${bot.id}] Failed to record execution failure:`, error);
@@ -332,5 +369,57 @@ function calculateNextExecution(bot: any): Date {
       return new Date(now + (30 * 24 * 60 * 60 * 1000));
     default:
       return new Date(now + (24 * 60 * 60 * 1000));
+  }
+}
+
+/**
+ * Send execution notification
+ */
+async function sendExecutionNotification(bot: any, executionResult: any) {
+  if (!db) return;
+
+  try {
+    const userRecords = await db.select().from(users).where(eq(users.id, bot.userId)).limit(1);
+    const user = userRecords[0];
+
+    if (!user || !user.email) return;
+
+    const outTokenInfo = await getTokenInfo(bot.buyTokenMint);
+    const outTokenDecimals = outTokenInfo?.decimals || 9;
+    const receivedAmount = executionResult.outAmount / Math.pow(10, outTokenDecimals);
+
+    await sendNotificationEmail({
+      to: user.email,
+      title: `DCA Bot Executed: ${bot.name}`,
+      message: `Your DCA bot successfully executed a trade. Swapped ${bot.amountUsd} ${bot.paymentTokenSymbol} for ${receivedAmount.toFixed(6)} ${bot.buyTokenSymbol}.`,
+      actionUrl: `https://dreyv.stauniverse.tech/app/dca/${bot.id}`,
+      actionLabel: "View Bot Details"
+    });
+  } catch (error) {
+    console.error(`[Bot ${bot.id}] Failed to send execution notification email:`, error);
+  }
+}
+
+/**
+ * Send bot paused notification
+ */
+async function sendBotPausedNotification(bot: any, reason: string) {
+  if (!db) return;
+
+  try {
+    const userRecords = await db.select().from(users).where(eq(users.id, bot.userId)).limit(1);
+    const user = userRecords[0];
+
+    if (!user || !user.email) return;
+
+    await sendNotificationEmail({
+      to: user.email,
+      title: `Action Required: DCA Bot Paused - ${bot.name}`,
+      message: `Your DCA bot has been automatically paused. Reason: ${reason}. Please resolve the issue to resume automated trading.`,
+      actionUrl: `https://dreyv.stauniverse.tech/app/dca/${bot.id}`,
+      actionLabel: "View Bot Settings"
+    });
+  } catch (error) {
+    console.error(`[Bot ${bot.id}] Failed to send bot paused notification email:`, error);
   }
 }
