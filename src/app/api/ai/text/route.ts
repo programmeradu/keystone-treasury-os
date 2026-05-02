@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     if (provider === "puter") {
       const configuredPuterUrl = process.env.PUTER_BASE_URL || ""; // optional override
       const puterUrl = configuredPuterUrl || "https://api.puter.com/ai/text";
-      const apiKey = process.env.PUTER_API_KEY || process.env.NEXT_PUBLIC_PUTER_API_KEY || ""; // optional
+      const apiKey = process.env.PUTER_API_KEY || ""; // optional
       const headers: Record<string, string> = { "Content-Type": "application/json", "User-Agent": "ChainFlow/AI Text API" };
       if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
 

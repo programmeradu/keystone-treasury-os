@@ -1,0 +1,4 @@
+## 2024-05-18 - Client-Side Exposure of Server API Keys
+**Vulnerability:** Multiple server-side API routes (`api/bridge/quote`, `api/command`, `api/ai/text`) implemented fallbacks to `process.env.NEXT_PUBLIC_` variables for sensitive keys (`RANGO_API_KEY`, `PUTER_API_KEY`).
+**Learning:** In Next.js, any environment variable prefixed with `NEXT_PUBLIC_` is automatically statically embedded into the client-side JavaScript bundle during build. If a developer sets `NEXT_PUBLIC_RANGO_API_KEY` to provide the key to the server, they inadvertently expose that secret to anyone inspecting the client browser code.
+**Prevention:** Never use the `NEXT_PUBLIC_` prefix for secrets that should only reside on the server. Strictly validate environment variables and remove any code that allows a fallback from a secure server variable (`process.env.MY_KEY`) to an exposed public variable (`process.env.NEXT_PUBLIC_MY_KEY`).

@@ -46,7 +46,7 @@ const TOKEN_MAP: Record<string, string> = {
 };
 
 // Provider API key (required): Rango only
-const RANGO_API_KEY = process.env.RANGO_API_KEY || process.env.NEXT_PUBLIC_RANGO_API_KEY;
+const RANGO_API_KEY = process.env.RANGO_API_KEY;
 
 function firstNonEmpty(...vals: Array<string | null | undefined>) {
   for (const v of vals) if (v && v.trim().length) return v;
