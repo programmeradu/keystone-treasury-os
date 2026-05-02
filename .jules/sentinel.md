@@ -1,0 +1,4 @@
+## 2025-02-27 - Fix Open Redirect in authentication flows
+**Vulnerability:** Found an Open Redirect vulnerability in the authentication flow where `searchParams.get('redirect')` and `searchParams.get('next')` are used to directly set `window.location.href` and `NextResponse.redirect` without validation.
+**Learning:** This occurs when the `redirect` and `next` parameters are unchecked, which may allow attackers to redirect users to malicious websites via crafted URLs after successful authentication.
+**Prevention:** Validate and sanitize the `redirect` and `next` parameters ensuring that they are relative paths by checking if they start with a single slash (`/`), and reject protocol-relative `//` or mixed `/\` paths. We created a `sanitizeRedirect` utility in `src/lib/utils.ts` to perform this check. Always validate external URLs and never directly use query parameters to perform a redirect.
