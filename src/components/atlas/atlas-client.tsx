@@ -1,4 +1,5 @@
 "use client";
+import { useAtlasCommand } from "@/hooks/use-atlas-command";
 
 import { useState, useRef, useEffect, useCallback, type ComponentType } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -28,7 +29,7 @@ import {
   DropdownMenuItem } from
 "@/components/ui/dropdown-menu";
 import { AtlasShell } from "./atlas-shell";
-import { useAtlasData, CORE_TOKENS } from "@/hooks/use-atlas-data";
+import { useAtlasData, fetchJsonWithRetry } from "@/hooks/use-atlas-data";
 import {
   IconAirDropScout,
   IconStrategyLab,
@@ -610,9 +611,9 @@ export function AtlasClient() {
   const [ohlcvActive, setOhlcvActive] = useState(false);
 
   // Sparkline price history for all core tokens (keyed by uppercase ID)
-  const [coreHistory, setCoreHistory] = useState<Record<string, number[]>>({});
-  const [pricesLoading, setPricesLoading] = useState(false);
-  const [pricesUpdatedAt, setPricesUpdatedAt] = useState<number | null>(null);
+
+
+
 
   // THEME: light/dark toggle
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -855,7 +856,7 @@ export function AtlasClient() {
       if (tab === "lab") setActiveTab("lab");
       if (k === "stake_marinade" || k === "swap_jupiter" || k === "lp_sol_usdc") setKind(k);
       if (amt && !Number.isNaN(Number(amt))) setAmountSol(Number(amt));
-      if (nlp) setNlpText(nlp);
+
       // auto simulate if kind + amount present
       if (tab === "lab" && k && amt) {
         setTimeout(() => simulate(), 50);
@@ -892,7 +893,7 @@ export function AtlasClient() {
       sp.set("tab", "lab");
       sp.set("kind", kind);
       sp.set("amountSol", String(amountSol));
-      if (nlpText.trim()) sp.set("nlp", nlpText.trim());else sp.delete("nlp");
+
       url.search = sp.toString();
       const href = url.toString();
       navigator.clipboard.writeText(href);
@@ -903,23 +904,23 @@ export function AtlasClient() {
   }
 
   async function handleParse() {
-    const text = nlpText.trim();
-    if (!text) return;
-    setNlpLoading(true);
+
+
+
     try {
       let parsed: any | null = null;
       try {
         const r = await fetch("/api/ai/parse", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text })
+          body: JSON.stringify({ text: "" })
         });
         if (r.ok) parsed = await r.json();
       } catch {}
 
       // Fallback lightweight parser (client-side)
       if (!parsed || !parsed.ok) {
-        const lower = text.toLowerCase();
+        const lower = "";
         const amtMatch = lower.match(/([0-9]+(?:\.[0-9]+)?)\s*sol/);
         const amt = amtMatch ? Number(amtMatch[1]) : amountSol;
         if (/\b(stake|staking)\b/.test(lower)) parsed = { action: "stake", amount: amt, asset: "SOL", venue: "marinade", confidence: 0.5 };
@@ -943,7 +944,7 @@ export function AtlasClient() {
       toast.success(`Parsed: ${parsed.action} ${parsed.amount ?? ""} ${parsed.asset ?? "SOL"}${parsed.venue ? " via " + parsed.venue : ""}${conf}`);
       await simulate();
     } finally {
-      setNlpLoading(false);
+
     }
   }
 
@@ -959,7 +960,7 @@ export function AtlasClient() {
       if (tag === "input" || tag === "textarea") return;
       if (e.key === "/") {
         e.preventDefault();
-        nlpInputRef.current?.focus();
+
       } else if (e.key.toLowerCase() === "s") {
         e.preventDefault();
         simulateRef.current();
@@ -990,7 +991,7 @@ export function AtlasClient() {
         toast.error("No quote to execute");
         return;
       }
-      setExecLoading(true);
+
 
       // Strip internal _parsed analysis data before sending to Jupiter swap API
       const rawQuote = quote?.data ?? quote;
@@ -1044,7 +1045,7 @@ export function AtlasClient() {
     } catch (e: any) {
       toast.error("Swap failed", { description: e?.message || String(e) });
     } finally {
-      setExecLoading(false);
+
     }
   }
 
@@ -1065,7 +1066,7 @@ export function AtlasClient() {
         toast.error("Enter amount > 0");
         return;
       }
-      setExecLoading(true);
+
 
       // Step 1: Get Jupiter quote for SOL → LST (liquid staking)
       const lst = LST_OPTIONS.find(l => l.id === selectedLst) || LST_OPTIONS[0];
@@ -1122,7 +1123,7 @@ export function AtlasClient() {
     } catch (e: any) {
       toast.error("Stake failed", { description: e?.message || String(e) });
     } finally {
-      setExecLoading(false);
+
     }
   }
 
@@ -1143,7 +1144,7 @@ export function AtlasClient() {
         toast.error("Enter amount > 0");
         return;
       }
-      setExecLoading(true);
+
 
       // Step 1: Swap half SOL → USDC to create the LP pair
       const quoteUrl = new URL("/api/jupiter/quote", window.location.origin);
@@ -1216,7 +1217,7 @@ export function AtlasClient() {
     } catch (e: any) {
       toast.error("LP execution failed", { description: e?.message || String(e) });
     } finally {
-      setExecLoading(false);
+
     }
   }
 
@@ -1475,7 +1476,7 @@ export function AtlasClient() {
       return;
     }
     setActiveSection(id); 
-    setSidebarOpen(false); 
+
     const el = document.getElementById(id);
     if (el) {
       el.scrollIntoView({ behavior: "smooth" }); 
@@ -1681,9 +1682,9 @@ export function AtlasClient() {
                     {quote?._parsed?.outAmount && <div className="text-right text-xs text-slate-400 mt-1">${quote._parsed.outAmount.toFixed(2)}</div>}
                   </div>
                   <button onClick={() => { setKind("swap_jupiter"); publicKey ? simulate() : setVisible(true); }}
-                    disabled={execLoading || loading}
+                    disabled={false || loading}
                     className="w-full py-3 bg-violet-600 text-white rounded-xl text-sm font-semibold hover:bg-violet-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                    {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Quoting…</> : execLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Executing…</> : !publicKey ? "Connect Wallet" : "Swap"}
+                    {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Quoting…</> : false ? <><Loader2 className="h-4 w-4 animate-spin" /> Executing…</> : !publicKey ? "Connect Wallet" : "Swap"}
                   </button>
                   {quote && kind === "swap_jupiter" && quote._parsed && (
                     <div className="grid grid-cols-3 gap-2 text-center text-xs mt-2">
@@ -1693,8 +1694,8 @@ export function AtlasClient() {
                     </div>
                   )}
                   {quote && kind === "swap_jupiter" && publicKey && (
-                    <button onClick={executeSwap} disabled={execLoading} className="w-full py-2.5 border border-violet-200 text-violet-700 rounded-xl text-sm font-medium hover:bg-violet-50 transition-colors disabled:opacity-50">
-                      {execLoading ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "Execute Swap →"}
+                    <button onClick={executeSwap} disabled={false} className="w-full py-2.5 border border-violet-200 text-violet-700 rounded-xl text-sm font-medium hover:bg-violet-50 transition-colors disabled:opacity-50">
+                      {false ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "Execute Swap →"}
                     </button>
                   )}
                 </div>
