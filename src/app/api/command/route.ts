@@ -633,7 +633,7 @@ Wallet State: ${JSON.stringify(walletState || {})}
           const finalAmount = splitAmount.amount;
           console.log(`[Tool: bridge] ${finalAmount} ${token}: ${sourceChain} → ${destinationChain}`);
 
-          const RANGO_API_KEY = process.env.RANGO_API_KEY || process.env.NEXT_PUBLIC_RANGO_API_KEY;
+          const RANGO_API_KEY = process.env.RANGO_API_KEY;
           if (!RANGO_API_KEY) {
             return { success: false, operation: "bridge", token, amount, sourceChain, destinationChain, error: "Bridge provider API key not configured.", message: "Bridge unavailable — RANGO_API_KEY not set." };
           }
