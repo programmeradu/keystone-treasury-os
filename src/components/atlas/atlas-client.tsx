@@ -612,9 +612,6 @@ export function AtlasClient() {
 
   // Sparkline price history for all core tokens (keyed by uppercase ID)
 
-
-
-
   // THEME: light/dark toggle
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window === 'undefined') return 'light';
@@ -856,7 +853,6 @@ export function AtlasClient() {
       if (tab === "lab") setActiveTab("lab");
       if (k === "stake_marinade" || k === "swap_jupiter" || k === "lp_sol_usdc") setKind(k);
       if (amt && !Number.isNaN(Number(amt))) setAmountSol(Number(amt));
-
       // auto simulate if kind + amount present
       if (tab === "lab" && k && amt) {
         setTimeout(() => simulate(), 50);
@@ -893,7 +889,6 @@ export function AtlasClient() {
       sp.set("tab", "lab");
       sp.set("kind", kind);
       sp.set("amountSol", String(amountSol));
-
       url.search = sp.toString();
       const href = url.toString();
       navigator.clipboard.writeText(href);
@@ -904,8 +899,6 @@ export function AtlasClient() {
   }
 
   async function handleParse() {
-
-
 
     try {
       let parsed: any | null = null;
@@ -944,7 +937,6 @@ export function AtlasClient() {
       toast.success(`Parsed: ${parsed.action} ${parsed.amount ?? ""} ${parsed.asset ?? "SOL"}${parsed.venue ? " via " + parsed.venue : ""}${conf}`);
       await simulate();
     } finally {
-
     }
   }
 
@@ -960,7 +952,6 @@ export function AtlasClient() {
       if (tag === "input" || tag === "textarea") return;
       if (e.key === "/") {
         e.preventDefault();
-
       } else if (e.key.toLowerCase() === "s") {
         e.preventDefault();
         simulateRef.current();
@@ -991,7 +982,6 @@ export function AtlasClient() {
         toast.error("No quote to execute");
         return;
       }
-
 
       // Strip internal _parsed analysis data before sending to Jupiter swap API
       const rawQuote = quote?.data ?? quote;
@@ -1045,7 +1035,6 @@ export function AtlasClient() {
     } catch (e: any) {
       toast.error("Swap failed", { description: e?.message || String(e) });
     } finally {
-
     }
   }
 
@@ -1066,7 +1055,6 @@ export function AtlasClient() {
         toast.error("Enter amount > 0");
         return;
       }
-
 
       // Step 1: Get Jupiter quote for SOL → LST (liquid staking)
       const lst = LST_OPTIONS.find(l => l.id === selectedLst) || LST_OPTIONS[0];
@@ -1123,7 +1111,6 @@ export function AtlasClient() {
     } catch (e: any) {
       toast.error("Stake failed", { description: e?.message || String(e) });
     } finally {
-
     }
   }
 
@@ -1144,7 +1131,6 @@ export function AtlasClient() {
         toast.error("Enter amount > 0");
         return;
       }
-
 
       // Step 1: Swap half SOL → USDC to create the LP pair
       const quoteUrl = new URL("/api/jupiter/quote", window.location.origin);
@@ -1217,7 +1203,6 @@ export function AtlasClient() {
     } catch (e: any) {
       toast.error("LP execution failed", { description: e?.message || String(e) });
     } finally {
-
     }
   }
 
@@ -1476,7 +1461,6 @@ export function AtlasClient() {
       return;
     }
     setActiveSection(id); 
-
     const el = document.getElementById(id);
     if (el) {
       el.scrollIntoView({ behavior: "smooth" }); 
