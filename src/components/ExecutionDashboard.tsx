@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { ExecutionStatus } from "@/lib/agents/types";
 
 interface ActiveExecution {
@@ -81,7 +81,8 @@ export function ExecutionDashboard({
 
     if (autoRefresh) {
       const interval = setInterval(fetchActiveExecutions, refreshInterval);
-      return () => clearInterval(interval);
+
+  return () => clearInterval(interval);
     }
   }, [autoRefresh, refreshInterval, fetchActiveExecutions]);
 
@@ -98,6 +99,20 @@ export function ExecutionDashboard({
       console.error("Failed to cancel execution:", error);
     }
   };
+
+  // ⚡ Bolt: Consolidated multiple .filter().length calls into a single pass
+  // Performance impact: Reduces O(N) array traversals from 3x to 1x on every render (every 2s on autoRefresh)
+  const summaryCounts = useMemo(() => {
+    return activeExecutions.reduce(
+      (acc, e) => {
+        if (e.status === ExecutionStatus.PLANNING) acc.running++;
+        if (e.status === ExecutionStatus.PENDING) acc.pending++;
+        if (e.status === ExecutionStatus.APPROVAL_REQUIRED) acc.approval++;
+        return acc;
+      },
+      { running: 0, pending: 0, approval: 0 }
+    );
+  }, [activeExecutions]);
 
   return (
     <div className="space-y-6 p-6 bg-slate-900 rounded-lg border border-slate-700">
@@ -146,17 +161,17 @@ export function ExecutionDashboard({
             />
             <StatCard
               label="Running"
-              value={activeExecutions.filter(e => e.status === ExecutionStatus.PLANNING).length.toString()}
+              value={summaryCounts.running.toString()}
               color="cyan"
             />
             <StatCard
               label="Pending"
-              value={activeExecutions.filter(e => e.status === ExecutionStatus.PENDING).length.toString()}
+              value={summaryCounts.pending.toString()}
               color="gray"
             />
             <StatCard
               label="Approval"
-              value={activeExecutions.filter(e => e.status === ExecutionStatus.APPROVAL_REQUIRED).length.toString()}
+              value={summaryCounts.approval.toString()}
               color="yellow"
             />
           </div>
